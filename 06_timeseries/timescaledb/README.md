@@ -34,3 +34,7 @@
 - Chunk 策略：时间窗口大小、空间维度（如 `device_id`）
 - 压缩：列编码策略、冷/热数据分层
 - 连续聚合：刷新策略与并发，物化视图索引
+
+## 参考脚本索引
+
+- `continuous_aggregate_example.sql`

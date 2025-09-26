@@ -43,3 +43,8 @@ CREATE SUBSCRIPTION sub_demo CONNECTION 'host=PUB_HOST dbname=DB user=USER passw
 -- 检查复制进度
 SELECT * FROM pg_stat_subscription;
 ```
+
+## 参考脚本索引
+
+- `logical_replication_min.sql`
+- `pitr_example.md`

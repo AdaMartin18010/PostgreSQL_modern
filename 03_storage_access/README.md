@@ -55,3 +55,8 @@ ANALYZE demo.events;
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM demo.events WHERE user_id = 42 ORDER BY ts DESC LIMIT 10;
 ```
+
+## 参考脚本索引
+
+- `EXPLAIN_example.sql`
+- `index_maintenance.sql`
