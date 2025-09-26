@@ -49,6 +49,11 @@ SELECT * FROM pg_stat_subscription;
 - `logical_replication_min.sql`
 - `pitr_example.md`
 
+## 复制与高可用
+
+- `replication_topologies.md`
+- `failover_playbook.md`
+
 ## 版本差异与迁移
 
 - `version_diff_16_to_17.md`
