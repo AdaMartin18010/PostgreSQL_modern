@@ -20,3 +20,13 @@
 
 - pgvector 仓库与文档：`https://github.com/pgvector/pgvector`
 - PostgreSQL 扩展：`https://www.postgresql.org/docs/current/extend.html`
+
+## 端到端 Checklist（从零到检索）
+
+- 环境：确认 `pgvector` 安装与 `CREATE EXTENSION`
+- Schema：创建 `rag.docs(meta jsonb, embedding vector(d))`
+- 数据：生成/导入 embedding（批量写入，必要时先不建索引）
+- 索引：选择 HNSW/IVFFlat 并建索引（大批量导入后建索引或重建）
+- 统计：`ANALYZE` 更新统计信息
+- 查询：`<->` 距离 + 过滤；验证 P95/P99 延迟与召回率
+- 维护：索引重建策略、`probes/ef` 调优、分批更新与真空

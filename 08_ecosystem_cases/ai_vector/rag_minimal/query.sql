@@ -3,3 +3,10 @@
 -- SELECT id, meta FROM rag.docs
 -- ORDER BY embedding <-> :query_embedding
 -- LIMIT 5;
+
+-- psql 参数化示例：
+-- \set q '(0.01,0.02,0.03, ... ,0.04)'
+-- SELECT id, meta
+-- FROM rag.docs
+-- ORDER BY embedding <-> (:q)::vector
+-- LIMIT 5;
