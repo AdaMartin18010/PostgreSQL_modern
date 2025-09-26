@@ -20,3 +20,15 @@
 
 - 文档：`https://docs.timescale.com/`
 - Releases：`https://github.com/timescale/timescaledb/releases`
+
+## 评测要点
+
+- 写入吞吐（批写/乱序写）、查询延迟（窗口/近实时）、压缩比与查询影响
+- 连续聚合刷新滞后、资源占用与并发下的稳定性
+- Retention/TTL 对存储与查询路径的影响
+
+## 常见参数（示例）
+
+- Chunk 策略：时间窗口大小、空间维度（如 `device_id`）
+- 压缩：列编码策略、冷/热数据分层
+- 连续聚合：刷新策略与并发，物化视图索引
