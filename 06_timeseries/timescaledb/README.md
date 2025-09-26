@@ -1,5 +1,7 @@
 ﻿# timescaledb
 
+> 版本对标（更新于 2025-09）
+
 ## 主题边界
 
 - 基于 PostgreSQL 的时序扩展：Hypertable、压缩、连续聚合、数据保留

@@ -1,5 +1,7 @@
 ﻿# 08_ecosystem_cases
 
+> 版本对标（更新于 2025-09）
+
 ## 目录结构建议
 
 - ai_vector/: RAG/召回+重排、Embedding 管道、混合检索示例
