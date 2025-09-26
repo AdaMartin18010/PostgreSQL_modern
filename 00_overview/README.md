@@ -1,5 +1,7 @@
 ﻿# 00_overview
 
+> 版本对标（更新于 2025-09）
+
 ## 项目定位
 
 知识 + 软件工程梳理：系统化对标 PostgreSQL 核心与现代生态（向量/时序/地理/分布式），结合工程方法（CMMI、PMBOK、敏捷/DevOps）形成“主题 → 知识地图 → 工程实践 → 案例”的结构化内容。
@@ -59,3 +61,6 @@
 - TimescaleDB：`https://github.com/timescale/timescaledb`
 - PostGIS：`https://postgis.net/`
 - Citus：`https://github.com/citusdata/citus`
+
+## 更新记录
+- 2025-09：初始化目录、核心/扩展/运维/基准/案例骨架；补充 RAG 最小案例与运维脚本

@@ -1,5 +1,7 @@
 ﻿# 01_sql_ddl_dcl
 
+> 版本对标（更新于 2025-09）
+
 ## 主题边界
 
 - SQL 语言基础与进阶：数据定义（DDL）、数据操纵（DML）、数据控制（DCL）、事务控制（TCL）
@@ -25,6 +27,7 @@
 - SQL 语法参考：`https://www.postgresql.org/docs/current/sql-syntax.html`
 
 ## Checklist（执行前/提交前）
+
 - 表/索引/约束命名规范一致，避免大小写混用与未加引号的歧义
 - 所有 DDL 评审：是否需要并发索引（`CREATE INDEX CONCURRENTLY`）与锁影响评估
 - 大批量 DML：是否分批、是否使用 `RETURNING`/CTE、是否需要禁用触发器/外键后再回填
@@ -32,6 +35,7 @@
 - 事务边界明确：TCL 使用清晰，避免隐式提交/自动提交带来的半成品状态
 
 ## 最小可复现脚本（psql）
+
 ```sql
 -- DDL 与 DML 基本流程
 CREATE SCHEMA IF NOT EXISTS demo;

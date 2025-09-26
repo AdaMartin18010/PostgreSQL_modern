@@ -1,5 +1,7 @@
 ﻿# 03_storage_access
 
+> 版本对标（更新于 2025-09）
+
 ## 主题边界
 
 - 物理/逻辑存储、索引类型与选择、统计信息与执行计划、Vacuum/Autovacuum、TOAST

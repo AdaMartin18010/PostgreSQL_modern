@@ -1,5 +1,7 @@
 ﻿# 02_transactions
 
+> 版本对标（更新于 2025-09）
+
 ## 主题边界
 
 - 事务、并发控制与隔离级别；锁、MVCC、快照、死锁处理
@@ -23,12 +25,14 @@
 - 锁机制文档：`https://www.postgresql.org/docs/current/explicit-locking.html`
 
 ## Checklist（上线/变更前）
+
 - 避免长事务：确认业务不持有长事务；后台任务批量提交并定期 `COMMIT`
 - 隔离级别评估：确认是否需要 `SERIALIZABLE`；可否用 `REPEATABLE READ`/`READ COMMITTED`
 - 死锁风险检查：统一锁顺序；将大事务拆分；必要时使用 NOWAIT/SKIP LOCKED
 - 监控可观测性：启用 `log_lock_waits`、`deadlock_timeout` 合理、保留锁等待与阻塞链路脚本
 
 ## 最小可复现脚本（两个会话模拟锁冲突）
+
 ```sql
 -- Session A
 BEGIN;
