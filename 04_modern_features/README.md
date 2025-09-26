@@ -48,3 +48,7 @@ SELECT * FROM pg_stat_subscription;
 
 - `logical_replication_min.sql`
 - `pitr_example.md`
+
+## 版本差异与迁移
+
+- `version_diff_16_to_17.md`
