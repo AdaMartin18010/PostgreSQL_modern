@@ -22,11 +22,11 @@
 
 • 目录导航：
 
-- 00_overview/
-- 01_sql_ddl_dcl/
-- 02_transactions/
-- 03_storage_access/
-- 04_modern_features/
+- 00_overview/（项目总览与版本对标）
+- 01_sql_ddl_dcl/（SQL 语言与 DDL/DML/DCL/TCL）
+- 02_transactions/（ACID/MVCC/隔离级别/锁）
+- 03_storage_access/（索引/统计/执行计划/维护）
+- 04_modern_features/（分区/复制/备份/全文/FDW）
 - 05_ai_vector/
   - pgvector/
 - 06_timeseries/
@@ -34,12 +34,13 @@
 - 07_extensions/
   - postgis/
   - citus/
-- 08_ecosystem_cases/
-- 09_deployment_ops/
-- 10_benchmarks/
-- 11_courses_papers/
-- 12_comparison_wiki_uni/
-- 99_references/
+- 08_ecosystem_cases/（实战案例与脚本）
+- 09_deployment_ops/（部署/运维/监控/安全）
+- 10_benchmarks/（评测方法/脚本/指标）
+- 11_courses_papers/（课程/教材/论文索引）
+- 12_comparison_wiki_uni/（国际 wiki/高校对照）
+- 99_references/（统一参考清单）
+- GLOSSARY.md（统一术语表）
 
 • 更新策略：
 
