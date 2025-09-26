@@ -63,3 +63,11 @@ SELECT * FROM pg_stat_subscription;
 ## 版本差异与迁移
 
 - `version_diff_16_to_17.md`
+
+## 拓扑样例配置集
+
+- `topology_samples/primary.conf`
+- `topology_samples/standby.conf`
+- `topology_samples/delayed_standby.conf`
+- `topology_samples/cascading_standby.conf`
+- `topology_samples/citus_cluster.md`
