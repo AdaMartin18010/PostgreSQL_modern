@@ -23,3 +23,31 @@
 
 - PostgreSQL 文档（SQL 命令）：`https://www.postgresql.org/docs/current/sql-commands.html`
 - SQL 语法参考：`https://www.postgresql.org/docs/current/sql-syntax.html`
+
+## Checklist（执行前/提交前）
+- 表/索引/约束命名规范一致，避免大小写混用与未加引号的歧义
+- 所有 DDL 评审：是否需要并发索引（`CREATE INDEX CONCURRENTLY`）与锁影响评估
+- 大批量 DML：是否分批、是否使用 `RETURNING`/CTE、是否需要禁用触发器/外键后再回填
+- 权限最小化：按角色授予最小权限，避免使用超级用户
+- 事务边界明确：TCL 使用清晰，避免隐式提交/自动提交带来的半成品状态
+
+## 最小可复现脚本（psql）
+```sql
+-- DDL 与 DML 基本流程
+CREATE SCHEMA IF NOT EXISTS demo;
+CREATE TABLE IF NOT EXISTS demo.users (
+  id bigserial PRIMARY KEY,
+  name text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_name ON demo.users (name);
+
+BEGIN;
+INSERT INTO demo.users(name) VALUES ('alice') RETURNING id;
+COMMIT;
+
+-- 权限示例
+CREATE ROLE app_rw LOGIN PASSWORD 'secret';
+GRANT USAGE ON SCHEMA demo TO app_rw;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA demo TO app_rw;
+```
