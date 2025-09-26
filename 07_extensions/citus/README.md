@@ -18,6 +18,12 @@
 
 - 数据建模 → 分片策略 → 查询与事务 → 运维与高可用
 
+## 与分布式模块的关系
+
+- 通用原理与工程方法见：`04_modern_features/distributed_db/README.md`
+- Citus 作为实现路径之一：提供分片、路由、重分布与协调执行
+- 对比项：一致性与事务语义、跨分片 JOIN 策略、扩缩容与重分片行为
+
 ## 权威参考
 
 - 文档：`https://docs.citusdata.com/`

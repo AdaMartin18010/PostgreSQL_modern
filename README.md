@@ -27,6 +27,7 @@
 - 02_transactions/（ACID/MVCC/隔离级别/锁）
 - 03_storage_access/（索引/统计/执行计划/维护）
 - 04_modern_features/（分区/复制/备份/全文/FDW）
+  - distributed_db/（分布式数据库：一致性/共识/分片/分布式事务/HTAP/云原生/评测）
 - 05_ai_vector/
   - pgvector/
 - 06_timeseries/

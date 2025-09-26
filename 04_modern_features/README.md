@@ -18,6 +18,10 @@
 
 - 数据生命周期与可用性 → 复制/备份/恢复 → 扩展与集成 → 安全与审计
 
+## 分布式数据库（模块入口）
+
+- 参见：`distributed_db/README.md`
+
 ## 权威参考
 
 - 复制：`https://www.postgresql.org/docs/current/logical-replication.html`
