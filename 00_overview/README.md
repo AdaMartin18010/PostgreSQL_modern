@@ -63,13 +63,16 @@
 - Citus：`https://github.com/citusdata/citus`
 
 ## 更新记录
+
 - 2025-09：初始化目录、核心/扩展/运维/基准/案例骨架；补充 RAG 最小案例与运维脚本
 
 ## 月度巡检看板与定时任务
+
 - 创建 Issue：使用 `.github/ISSUE_TEMPLATE/monthly_review.md`
 - PR 流程：使用 `.github/pull_request_template.md`，在 `CHANGELOG.md` 记录结果
 - 自动化（可选）：结合外部 CI/定时任务触发链接校验与版本对比（本仓库记录方法与结果）
 
 ## OLTP 观测与规划入口
+
 - 运维：`09_deployment_ops/oltp_observability_planning.md`
 - 基准：`10_benchmarks/pgbench_oltp_playbook.md`

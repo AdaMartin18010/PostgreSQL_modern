@@ -22,6 +22,7 @@
 - 建议按场景建立 Grafana/Prometheus 看板（模板占位）
 
 ### Grafana 面板示例结构（占位）
+
 - 概览：TPS/P95/P99、错误率、活动连接
 - 资源：CPU/内存/IO 带宽与延迟、网络带宽
 - PostgreSQL：
