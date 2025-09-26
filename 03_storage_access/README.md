@@ -21,3 +21,35 @@
 - 索引指南：`https://www.postgresql.org/docs/current/indexes.html`
 - 计划与分析：`https://www.postgresql.org/docs/current/using-explain.html`
 - 维护：`https://www.postgresql.org/docs/current/routine-vacuuming.html`
+
+## Checklist（设计/排错）
+
+- 索引是否与查询谓词匹配（顺序、前缀、表达式/部分索引）
+- `ANALYZE` 是否最新；必要时使用扩展统计（多列相关性、NDV）
+- 观察 `EXPLAIN (ANALYZE, BUFFERS)`：是否发生意外的 Seq Scan/Bitmap Heap Recheck
+- 膨胀治理：Autovacuum 触发是否及时；长事务是否阻碍冻结
+- TOAST/大字段：读写路径与压缩权衡；必要时外置存储或拆表
+
+## 最小可复现脚本（索引与计划）
+
+```sql
+-- 建表与示例数据
+CREATE SCHEMA IF NOT EXISTS demo;
+CREATE TABLE IF NOT EXISTS demo.events (
+  id bigserial PRIMARY KEY,
+  user_id bigint NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  payload text
+);
+INSERT INTO demo.events(user_id, payload)
+SELECT (random()*1000)::int, md5(random()::text)
+FROM generate_series(1, 50000);
+
+-- 索引与统计
+CREATE INDEX IF NOT EXISTS idx_events_user_ts ON demo.events (user_id, ts);
+ANALYZE demo.events;
+
+-- 计划观察
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM demo.events WHERE user_id = 42 ORDER BY ts DESC LIMIT 10;
+```
