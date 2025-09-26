@@ -1,12 +1,15 @@
 ﻿# 12_comparison_wiki_uni
 
 ## 目标
+
 - 对照国际 wiki 与高校课程/教材/论文，将本仓库主题映射到外部权威知识体系，突出差异与互补。
 
 ## 对照结构
+
 - 主题（本仓库） → 国际 wiki 条目 → 高校课程/教材章节 → 差异点/补充点
 
 ## 建议条目（骨架）
+
 - SQL/DDL/DCL → Wikipedia: SQL / DDL / DCL → 教材相应章节 → 方言差异与 PostgreSQL 实现
 - 事务与并发（ACID/MVCC/隔离级别）→ Wikipedia: ACID / MVCC → 课程讲义 → SSI/锁模型差异
 - 存储与访问（索引/计划/统计）→ Wikipedia: B-tree/GiST/BRIN → 课程讲义 → 优化与代价估算
@@ -14,10 +17,12 @@
 - 向量/时序/地理/分布式 → Wikipedia/项目 Wiki → 课程专题 → 工具链与评测
 
 ## 统一入口
+
 - Wikipedia（按主题检索）：`https://en.wikipedia.org/`
 - PostgreSQL 官方：`https://www.postgresql.org/`
 - CMU 15-445：`https://15445.courses.cs.cmu.edu/`
 
 ## 维护策略
+
 - 对照项新增时，同步在各主题 README 的“对标/延伸阅读”中添加跳转。
 - 每季度巡检，确保链接可用并更新差异说明。

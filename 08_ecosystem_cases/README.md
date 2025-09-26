@@ -17,6 +17,7 @@
 - 参考与链接（官方/论文/课程）
 
 ## 示例：ai_vector/rag_minimal（占位）
+
 - 目标：用 pgvector 存储文本 Embedding，进行 KNN + 过滤检索
 - 步骤：
   1) `CREATE EXTENSION pgvector;`
@@ -24,6 +25,7 @@
   3) 选择 `HNSW` 或 `IVFFlat` 索引并建索引；
   4) 使用 `<->` + 过滤条件进行查询；
 - 脚本占位：
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE SCHEMA IF NOT EXISTS rag;
