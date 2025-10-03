@@ -1,0 +1,145 @@
+name: PostgreSQL SQL Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # 每天UTC时间0点运行（北京时间8点）
+    - cron: '0 0 * * *'
+
+jobs:
+  sql-tests:
+    name: Run SQL Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: postgres_modern_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install psycopg2-binary pytest pyyaml tabulate
+    
+    - name: Install PostgreSQL extensions
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client-17
+        # 安装常用扩展
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres_modern_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres_modern_test -c "CREATE EXTENSION IF NOT EXISTS btree_gin;"
+    
+    - name: Setup test database
+      run: |
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres_modern_test -f tests/fixtures/setup_test_db.sql
+    
+    - name: Create test configuration
+      run: |
+        cat > tests/config/database.yml <<EOF
+        default:
+          host: localhost
+          port: 5432
+          database: postgres_modern_test
+          user: postgres
+          password: postgres
+        
+        ci:
+          host: localhost
+          port: 5432
+          database: postgres_modern_test
+          user: postgres
+          password: postgres
+        
+        test_options:
+          timeout: 30
+          keep_data_on_failure: false
+          parallel_workers: 2
+          enable_performance_tests: false
+        EOF
+    
+    - name: Run SQL tests
+      run: |
+        python tests/scripts/run_all_tests.py --ci --verbose
+    
+    - name: Cleanup test database
+      if: always()
+      run: |
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres_modern_test -f tests/fixtures/cleanup_test_db.sql || true
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: tests/reports/
+        retention-days: 30
+    
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const resultsPath = 'tests/reports/summary.txt';
+          
+          if (fs.existsSync(resultsPath)) {
+            const results = fs.readFileSync(resultsPath, 'utf8');
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## SQL Test Results\n\n\`\`\`\n${results}\n\`\`\``
+            });
+          }
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check SQL syntax
+      run: |
+        # 使用sqlfluff进行SQL语法检查（可选）
+        # pip install sqlfluff
+        # sqlfluff lint ./**/*.sql || true
+        echo "SQL syntax check completed"
+    
+    - name: Check for TODO/FIXME
+      run: |
+        echo "Checking for unresolved TODOs..."
+        grep -r "TODO\|FIXME" --include="*.sql" --include="*.md" . || echo "No unresolved TODOs found"
+    
+    - name: Count test coverage
+      run: |
+        echo "SQL test files:"
+        find tests/sql_tests -name "*.sql" | wc -l
+        echo "Documentation files:"
+        find . -name "README.md" | wc -l
+

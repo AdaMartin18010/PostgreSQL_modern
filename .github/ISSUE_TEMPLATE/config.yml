@@ -1,0 +1,12 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 讨论区 / Discussions
+    url: https://github.com/your-username/PostgreSQL_modern/discussions
+    about: 提问、分享经验、技术讨论
+  - name: 📚 PostgreSQL官方文档
+    url: https://www.postgresql.org/docs/17/
+    about: PostgreSQL 17官方文档
+  - name: 🌐 PostgreSQL中文社区
+    url: https://www.postgres.cn/
+    about: 中文社区资源和讨论
+
