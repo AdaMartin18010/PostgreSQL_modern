@@ -1,18 +1,29 @@
 ﻿# 04_modern_features
 
-> 版本对标（更新于 2025-09）
+> 版本对标（更新于 2025-10）- PostgreSQL 17
 
 ## 主题边界
 
 - 分区、复制（物理/逻辑）、高可用、备份恢复、全文检索、扩展机制、外部数据源（FDW）
+- **PostgreSQL 17 新特性**：JSON 增强、性能优化、逻辑复制增强、增量备份、连接优化
 
 ## 核心要点
+
+### 传统现代特性
 
 - 分区：范围/列表/哈希；全局索引策略与维护
 - 复制与 HA：流复制（主备/一主多从/级联、同步/异步/延迟只读）、逻辑复制（库/表/过滤）
 - 备份恢复：`pg_basebackup`、`pg_dump/pg_restore`、WAL 归档与 PITR
 - 检索与搜索：全文检索（TSVector/TSQuery）、模糊/相似度
 - 可扩展性：`CREATE EXTENSION`、FDW（如 `postgres_fdw`、`mysql_fdw`）
+
+### PostgreSQL 17 新特性重点
+
+- **JSON 数据处理**：JSON_TABLE()、JSON 构造函数和查询函数
+- **性能优化**：VACUUM 内存管理、流式 I/O、高并发写入优化
+- **逻辑复制增强**：故障转移控制、pg_createsubscriber 工具
+- **备份恢复改进**：pg_basebackup 增量备份、COPY 容错选项
+- **连接优化**：sslnegotiation=direct 选项
 
 ## 知识地图
 
@@ -54,6 +65,7 @@ SELECT * FROM pg_stat_subscription;
 - `pitr_example.md`
 - `primary_standby_params.md`
 - `dr_runbook_templates.sql`
+- `pg17_new_features.md` - PostgreSQL 17 新特性详解
 
 ## 复制与高可用
 

@@ -4,7 +4,7 @@
 
 • 对标目标：
 
-- PostgreSQL 最新稳定版本（核心）
+- PostgreSQL 17（最新稳定版本，2024年9月发布）
 - 生态组件：pgvector（向量）、TimescaleDB（时序）、PostGIS（地理空间）、Citus（分布式/扩展性）
 - 工程方法论：CMMI、PMBOK、敏捷/DevOps 等（用于组织知识与工程流程）
 - 国际维基、高校课程与权威教材/论文的对照梳理
@@ -43,9 +43,17 @@
 - 99_references/（统一参考清单）
 - GLOSSARY.md（统一术语表）
 
+• PostgreSQL 17 核心新特性：
+
+- **JSON 增强**：JSON_TABLE() 函数、JSON 构造函数和查询函数（JSON_EXISTS、JSON_QUERY、JSON_VALUE）
+- **性能优化**：VACUUM 内存管理优化、流式 I/O 顺序读取、高并发写入吞吐量提升
+- **逻辑复制增强**：故障转移控制、pg_createsubscriber 工具、升级过程保留复制槽和订阅状态
+- **备份恢复**：pg_basebackup 增量备份支持、COPY 命令 ON_ERROR ignore 选项
+- **连接优化**：sslnegotiation=direct 客户端连接选项
+
 • 更新策略：
 
-- 持续跟踪 PostgreSQL 官方“最新稳定版”与主要生态扩展的“最新 GA 版”，定期对照更新。
+- 持续跟踪 PostgreSQL 官方"最新稳定版"与主要生态扩展的"最新 GA 版"，定期对照更新。
 - 每个目录内的 README 给出主题边界、知识地图与权威参考链接。
 
 • 贡献指南（简）：
