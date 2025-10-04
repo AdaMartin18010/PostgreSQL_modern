@@ -72,64 +72,55 @@
 
 ---
 
-### 02_transactions - 事务管理（15+测试）
+### 02_transactions - 事务管理与并发控制（25+测试）
 
-**状态**：设计中
+**文档**：[02_transactions_test_design.md](02_transactions_test_design.md)
 
-**计划覆盖**：
+**状态**：✅ 设计完成
 
-- **隔离级别**（4个）
-  - READ UNCOMMITTED
-  - READ COMMITTED（默认）
-  - REPEATABLE READ
-  - SERIALIZABLE
+**测试覆盖**：
 
-- **事务控制**（3个）
-  - BEGIN/COMMIT/ROLLBACK
-  - SAVEPOINT/ROLLBACK TO SAVEPOINT
-  - 嵌套事务
+- **ACID特性**（4个）：原子性、一致性、隔离性、持久性
+- **MVCC多版本并发控制**（4个）：读写不冲突、事务ID、可见性规则、XID冻结
+- **事务隔离级别**（6个）：Read Committed、Repeatable Read、Serializable
+- **锁机制**（6个）：表级锁、行级锁、NOWAIT、SKIP LOCKED、死锁检测
+- **长事务管理**（3个）：监控、idle in transaction、超时设置
+- **PostgreSQL 17并发优化**（2个）：高并发写入、VACUUM内存管理
 
-- **并发控制**（4个）
-  - 脏读测试
-  - 不可重复读测试
-  - 幻读测试
-  - 写偏斜测试
+**关键测试**：
 
-- **锁机制**（2个）
-  - 行锁（FOR UPDATE/SHARE）
-  - 表锁（LOCK TABLE）
-
-- **MVCC机制**（2个）
-  - 快照隔离验证
-  - XID可见性测试
+- ✅ 事务回滚与约束检查
+- ✅ MVCC可见性规则验证
+- ✅ 不可重复读、幻读现象
+- ✅ Serializable串行化验证
+- ✅ FOR UPDATE SKIP LOCKED（任务队列）
+- ✅ 死锁检测机制
 
 ---
 
-### 03_storage_access - 存储与访问（10+测试）
+### 03_storage_access - 存储结构与访问路径（30+测试）
 
-**状态**：设计中
+**文档**：[03_storage_access_test_design.md](03_storage_access_test_design.md)
 
-**计划覆盖**：
+**状态**：✅ 设计完成
 
-- **EXPLAIN分析**（3个）
-  - Sequential Scan
-  - Index Scan
-  - Index Only Scan
+**测试覆盖**：
 
-- **索引选择**（2个）
-  - 优化器索引选择
-  - 强制索引使用（pg_hint_plan）
+- **存储结构测试**（6个）：堆表、TOAST、FILLFACTOR、HOT更新、表膨胀、页结构
+- **索引类型测试**（8个）：B-tree、Hash、GIN、GiST、BRIN、SP-GiST
+- **执行计划分析**（6个）：EXPLAIN选项、扫描方法、JOIN方法
+- **统计信息测试**（4个）：ANALYZE、统计目标、扩展统计、pg_stats
+- **维护操作测试**（4个）：VACUUM、Autovacuum、REINDEX、CLUSTER
+- **PostgreSQL 17存储优化**（2个）：B-tree多值搜索、VACUUM内存管理
 
-- **VACUUM操作**（2个）
-  - VACUUM回收死元组
-  - VACUUM FULL重建表
+**关键测试**：
 
-- **表膨胀**（2个）
-  - 检测表膨胀
-  - HOT更新验证
-
-- **统计信息**（1个）
-  - ANALYZE更新统计
+- ✅ TOAST策略验证
+- ✅ 6种索引类型性能对比
+- ✅ Index Only Scan优化
+- ✅ EXPLAIN解析和验证
+- ✅ Bitmap Scan机制
+- ✅ BRIN vs B-tree索引大小对比
 
 ---
 
@@ -202,9 +193,9 @@ WAIT_FOR_LOCK(timeout)          # 等待锁释放
 
 | 模块 | 当前测试数 | 新增测试数 | 目标测试数 |
 |------|-----------|-----------|-----------|
-| 01_sql_ddl_dcl | 0 | 20+ | 20+ |
-| 02_transactions | 0 | 15+ | 15+ |
-| 03_storage_access | 0 | 10+ | 10+ |
+| 01_sql_ddl_dcl | 0 | 20 | 20 ✅ |
+| 02_transactions | 0 | 25 | 25 ✅ |
+| 03_storage_access | 0 | 30 | 30 ✅ |
 | 04_modern_features | 25 | 0 | 25 |
 | 05_ai_vector | 12 | 0 | 12 |
 | 06_timeseries | 8 | 0 | 8 |
@@ -212,7 +203,7 @@ WAIT_FOR_LOCK(timeout)          # 等待锁释放
 | 08_ecosystem_cases | 20 | 0 | 20 |
 | 09_deployment_ops | 6 | 0 | 6 |
 | 10_benchmarks | 5 | 0 | 5 |
-| **总计** | **91** | **45+** | **136+** |
+| **总计** | **91** | **75** | **166** |
 
 ---
 
