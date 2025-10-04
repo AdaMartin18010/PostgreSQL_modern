@@ -59,7 +59,7 @@ check_postgresql() {
 # 检查pgvector
 check_pgvector() {
     echo -e "${YELLOW}[2/5] 检查 pgvector（向量检索）...${NC}"
-    local current="v0.5.1"
+    local current="v0.8.0"
     local latest=$(get_github_latest_release "pgvector/pgvector")
     
     echo "  当前追踪版本: $current"
@@ -77,7 +77,7 @@ check_pgvector() {
 # 检查TimescaleDB
 check_timescaledb() {
     echo -e "${YELLOW}[3/5] 检查 TimescaleDB（时序数据）...${NC}"
-    local current="2.13.0"
+    local current="2.17.2"
     local latest=$(get_github_latest_release "timescale/timescaledb")
     
     echo "  当前追踪版本: $current"
@@ -95,7 +95,7 @@ check_timescaledb() {
 # 检查PostGIS
 check_postgis() {
     echo -e "${YELLOW}[4/5] 检查 PostGIS（地理空间）...${NC}"
-    local current="3.4.0"
+    local current="3.5.0"
     local latest=$(get_github_latest_release "postgis/postgis")
     
     echo "  当前追踪版本: $current"
@@ -113,7 +113,7 @@ check_postgis() {
 # 检查Citus
 check_citus() {
     echo -e "${YELLOW}[5/5] 检查 Citus（分布式）...${NC}"
-    local current="v12.1"
+    local current="v12.1.4"
     local latest=$(get_github_latest_release "citusdata/citus")
     
     echo "  当前追踪版本: $current"

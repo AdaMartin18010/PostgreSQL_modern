@@ -1,6 +1,7 @@
 # PostgreSQL 16 → 17 版本差异与迁移注意
 
-> 基于 PostgreSQL 17 官方发行说明（2024年9月发布）
+> 基于 PostgreSQL 17 官方发行说明（2024年9月26日发布）  
+> **最后验证日期**：2025-10-03
 
 ## 主要新特性
 
@@ -40,10 +41,40 @@
 
 ### 扩展兼容性验证
 
-- **pgvector**：确认支持 PostgreSQL 17 的版本（建议 0.7.0+）
-- **TimescaleDB**：确认支持 PostgreSQL 17 的版本（建议 2.18.0+）
-- **PostGIS**：确认支持 PostgreSQL 17 的版本（建议 3.4.0+）
-- **Citus**：确认支持 PostgreSQL 17 的版本（建议 12.0+）
+**pgvector（向量数据库扩展）**：
+
+- **推荐版本**：v0.8.0（2024年12月发布）
+- **最低版本**：v0.7.0
+- **新特性**：HNSW索引性能优化、Half-precision向量支持、改进的距离计算
+- **验证方法**：`SELECT * FROM pg_available_extensions WHERE name = 'vector';`
+- **下载地址**：<https://github.com/pgvector/pgvector/releases/tag/v0.8.0>
+
+**TimescaleDB（时序数据库扩展）**：
+
+- **推荐版本**：2.17.2（2024年10月发布）
+- **最低版本**：2.16.0
+- **新特性**：增强的连续聚合、改进的压缩算法、更快的chunk操作
+- **验证方法**：`SELECT extversion FROM pg_extension WHERE extname = 'timescaledb';`
+- **下载地址**：<https://github.com/timescale/timescaledb/releases/tag/2.17.2>
+
+**PostGIS（地理空间扩展）**：
+
+- **推荐版本**：3.5.0（2024年11月发布）
+- **最低版本**：3.4.0
+- **新特性**：性能改进（ST_Intersection优化）、新的几何函数、GEOS 3.13支持
+- **验证方法**：`SELECT PostGIS_Full_Version();`
+- **下载地址**：<https://postgis.net/source/>
+
+**Citus（分布式PostgreSQL扩展）**：
+
+- **推荐版本**：12.1.4（2024年8月发布）
+- **最低版本**：12.0.0
+- **新特性**：分布式锁优化、跨分片查询性能提升、改进的重平衡机制
+- **验证方法**：`SELECT * FROM citus_version();`
+- **下载地址**：<https://github.com/citusdata/citus/releases/tag/v12.1.4>
+
+> **最后验证日期**：2025-10-03  
+> **下次验证计划**：2025-11-01（每月1日自动检查）
 
 ### 配置参数检查
 
