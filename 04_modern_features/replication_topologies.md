@@ -1,4 +1,4 @@
-# 复制与拓扑（主从/主备/一主多从/级联/分布式概览）
+﻿# 复制与拓扑（主从/主备/一主多从/级联/分布式概览）
 
 ## 概览
 
@@ -46,5 +46,5 @@
 
 ## 参考
 
-- 物理复制：`https://www.postgresql.org/docs/current/warm-standby.html`
-- 逻辑复制：`https://www.postgresql.org/docs/current/logical-replication.html`
+- 物理复制：`<https://www.postgresql.org/docs/current/warm-standby.html`>
+- 逻辑复制：`<https://www.postgresql.org/docs/current/logical-replication.html`>

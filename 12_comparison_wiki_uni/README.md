@@ -119,11 +119,11 @@
 
 | 本项目章节 | Wikipedia条目 | 差异与补充 |
 |----------|--------------|----------|
-| **1.1 数据类型** | [SQL Data Types](https://en.wikipedia.org/wiki/SQL#Data_types) | 本项目补充PostgreSQL特有类型（jsonb、array、range等） |
-| **1.2 标识符命名** | [Identifier (computer languages)](https://en.wikipedia.org/wiki/Identifier_(computer_languages)) | 本项目详解PostgreSQL大小写规则与命名陷阱 |
-| **2.3 分区表** | [Partition (database)](https://en.wikipedia.org/wiki/Partition_(database)) | 本项目提供Range/List/Hash三种分区的完整示例 |
-| **3.3 CTE与递归** | [Hierarchical and recursive queries](https://en.wikipedia.org/wiki/Hierarchical_and_recursive_queries_in_SQL) | 本项目提供树遍历与图遍历防循环示例 |
-| **4.2 行级安全** | [Row-level security](https://en.wikipedia.org/wiki/Row-level_security) | 本项目提供多租户隔离完整教程 |
+| **1.1 数据类型** | [SQL Data Types](<https://en.wikipedia.org/wiki/SQL#Data_type>s) | 本项目补充PostgreSQL特有类型（jsonb、array、range等） |
+| **1.2 标识符命名** | [Identifier (computer languages)](<https://en.wikipedia.org/wiki/Identifier_(computer_language>s)) | 本项目详解PostgreSQL大小写规则与命名陷阱 |
+| **2.3 分区表** | [Partition (database)](<https://en.wikipedia.org/wiki/Partition_(databas>e)) | 本项目提供Range/List/Hash三种分区的完整示例 |
+| **3.3 CTE与递归** | [Hierarchical and recursive queries](<https://en.wikipedia.org/wiki/Hierarchical_and_recursive_queries_in_SQ>L) | 本项目提供树遍历与图遍历防循环示例 |
+| **4.2 行级安全** | [Row-level security](<https://en.wikipedia.org/wiki/Row-level_securit>y) | 本项目提供多租户隔离完整教程 |
 
 **外部资源链接**：
 
@@ -137,11 +137,11 @@
 
 | 本项目章节 | Wikipedia条目 | 差异与补充 |
 |----------|--------------|----------|
-| **1. ACID特性** | [ACID](https://en.wikipedia.org/wiki/ACID) | 本项目详解PostgreSQL的WAL、fsync实现 |
-| **2. MVCC** | [MVCC](https://en.wikipedia.org/wiki/Multiversion_concurrency_control) | 本项目详解xmin/xmax可见性规则与XID冻结 |
-| **3. 隔离级别** | [Isolation](https://en.wikipedia.org/wiki/Isolation_(database_systems)) | 本项目提供5个异常现象可复现演示 |
-| **4. 锁机制** | [Lock (computer science)](https://en.wikipedia.org/wiki/Lock_(computer_science)) | 本项目详解PostgreSQL 8种表锁+4种行锁 |
-| **6. 长事务管理** | [Long-running transaction](https://en.wikipedia.org/wiki/Long-running_transaction) | 本项目提供监控SQL与治理策略 |
+| **1. ACID特性** | [ACID](<https://en.wikipedia.org/wiki/ACI>D) | 本项目详解PostgreSQL的WAL、fsync实现 |
+| **2. MVCC** | [MVCC](<https://en.wikipedia.org/wiki/Multiversion_concurrency_contro>l) | 本项目详解xmin/xmax可见性规则与XID冻结 |
+| **3. 隔离级别** | [Isolation](<https://en.wikipedia.org/wiki/Isolation_(database_system>s)) | 本项目提供5个异常现象可复现演示 |
+| **4. 锁机制** | [Lock (computer science)](<https://en.wikipedia.org/wiki/Lock_(computer_scienc>e)) | 本项目详解PostgreSQL 8种表锁+4种行锁 |
+| **6. 长事务管理** | [Long-running transaction](<https://en.wikipedia.org/wiki/Long-running_transactio>n) | 本项目提供监控SQL与治理策略 |
 
 **外部资源链接**：
 
@@ -155,11 +155,11 @@
 
 | 本项目章节 | Wikipedia条目 | 差异与补充 |
 |----------|--------------|----------|
-| **1.1 堆表** | [Database storage structures](https://en.wikipedia.org/wiki/Database_storage_structures) | 本项目详解PostgreSQL 8KB页结构 |
+| **1.1 堆表** | [Database storage structures](<https://en.wikipedia.org/wiki/Database_storage_structure>s) | 本项目详解PostgreSQL 8KB页结构 |
 | **1.2 TOAST** | （PostgreSQL特有） | Wikipedia无对应条目，本项目独家详解 |
-| **2.1 B-tree** | [B-tree](https://en.wikipedia.org/wiki/B-tree) | 本项目补充PostgreSQL 17多值搜索优化 |
-| **2.3 GIN** | [Inverted Index](https://en.wikipedia.org/wiki/Inverted_index) | 本项目提供JSON/数组/全文搜索完整示例 |
-| **3.4 执行计划优化** | [Query optimization](https://en.wikipedia.org/wiki/Query_optimization) | 本项目提供3个真实优化案例 |
+| **2.1 B-tree** | [B-tree](<https://en.wikipedia.org/wiki/B-tre>e) | 本项目补充PostgreSQL 17多值搜索优化 |
+| **2.3 GIN** | [Inverted Index](<https://en.wikipedia.org/wiki/Inverted_inde>x) | 本项目提供JSON/数组/全文搜索完整示例 |
+| **3.4 执行计划优化** | [Query optimization](<https://en.wikipedia.org/wiki/Query_optimizatio>n) | 本项目提供3个真实优化案例 |
 | **5.1 VACUUM** | （PostgreSQL特有） | Wikipedia无对应条目，本项目详解死元组清理 |
 
 **外部资源链接**：
@@ -174,11 +174,11 @@
 
 | 本项目章节 | Wikipedia条目 | 差异与补充 |
 |----------|--------------|----------|
-| **concepts_overview** | [Distributed database](https://en.wikipedia.org/wiki/Distributed_database) | 本项目详解CAP权衡与工程实践 |
-| **consistency_consensus** | [Consensus](https://en.wikipedia.org/wiki/Consensus_(computer_science)) | 本项目对比Paxos/Raft与PostgreSQL逻辑复制 |
-| **sharding_replication** | [Shard](https://en.wikipedia.org/wiki/Shard_(database_architecture)) | 本项目详解Hash/Range/Directory三种分片策略 |
-| **distributed_transactions** | [Two-phase commit](https://en.wikipedia.org/wiki/Two-phase_commit_protocol) | 本项目补充Saga模式与幂等性设计 |
-| **htap_architecture** | [HTAP](https://en.wikipedia.org/wiki/Hybrid_transactional/analytical_processing) | 本项目详解行列混合存储与资源隔离 |
+| **concepts_overview** | [Distributed database](<https://en.wikipedia.org/wiki/Distributed_databas>e) | 本项目详解CAP权衡与工程实践 |
+| **consistency_consensus** | [Consensus](<https://en.wikipedia.org/wiki/Consensus_(computer_scienc>e)) | 本项目对比Paxos/Raft与PostgreSQL逻辑复制 |
+| **sharding_replication** | [Shard](<https://en.wikipedia.org/wiki/Shard_(database_architectur>e)) | 本项目详解Hash/Range/Directory三种分片策略 |
+| **distributed_transactions** | [Two-phase commit](<https://en.wikipedia.org/wiki/Two-phase_commit_protoco>l) | 本项目补充Saga模式与幂等性设计 |
+| **htap_architecture** | [HTAP](<https://en.wikipedia.org/wiki/Hybrid_transactional/analytical_processin>g) | 本项目详解行列混合存储与资源隔离 |
 
 **外部资源链接**：
 
@@ -192,8 +192,8 @@
 
 | 本项目章节 | Wikipedia条目 | 差异与补充 |
 |----------|--------------|----------|
-| **pgvector** | [Vector database](https://en.wikipedia.org/wiki/Vector_database) | 本项目提供RAG最小案例 |
-| **向量检索** | [Nearest neighbor search](https://en.wikipedia.org/wiki/Nearest_neighbor_search) | 本项目对比HNSW vs IVFFlat |
+| **pgvector** | [Vector database](<https://en.wikipedia.org/wiki/Vector_databas>e) | 本项目提供RAG最小案例 |
+| **向量检索** | [Nearest neighbor search](<https://en.wikipedia.org/wiki/Nearest_neighbor_searc>h) | 本项目对比HNSW vs IVFFlat |
 
 **外部资源链接**：
 
@@ -206,7 +206,7 @@
 
 | 本项目章节 | Wikipedia条目 | 差异与补充 |
 |----------|--------------|----------|
-| **TimescaleDB** | [Time series database](https://en.wikipedia.org/wiki/Time_series_database) | 本项目详解超表与连续聚合 |
+| **TimescaleDB** | [Time series database](<https://en.wikipedia.org/wiki/Time_series_databas>e) | 本项目详解超表与连续聚合 |
 
 **外部资源链接**：
 
@@ -219,8 +219,8 @@
 
 | 本项目章节 | Wikipedia条目 | 差异与补充 |
 |----------|--------------|----------|
-| **PostGIS** | [GIS](https://en.wikipedia.org/wiki/Geographic_information_system) | 本项目提供地理查询示例 |
-| **Citus** | [Database sharding](https://en.wikipedia.org/wiki/Shard_(database_architecture)) | 本项目详解Citus分片实践 |
+| **PostGIS** | [GIS](<https://en.wikipedia.org/wiki/Geographic_information_syste>m) | 本项目提供地理查询示例 |
+| **Citus** | [Database sharding](<https://en.wikipedia.org/wiki/Shard_(database_architectur>e)) | 本项目详解Citus分片实践 |
 
 ---
 

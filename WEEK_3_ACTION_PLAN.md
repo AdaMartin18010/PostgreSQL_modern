@@ -1,4 +1,4 @@
-# Week 3 行动计划
+﻿# Week 3 行动计划
 
 **规划日期**：2025年10月3日  
 **预期完成**：2025年10月10日（7天）  
@@ -109,7 +109,7 @@ psql -d your_database
 
 ```bash
 # 方法1：使用在线工具
-# 访问：https://www.deadlinkchecker.com/
+# 访问：<https://www.deadlinkchecker.com/>
 # 输入项目GitHub Pages URL或直接检查markdown文件
 
 # 方法2：使用命令行工具（如果已安装）
@@ -233,11 +233,11 @@ markdown-link-check 09_deployment_ops/monitoring_metrics.md
 
 2. **配置Prometheus数据源**
 
-    访问 `http://localhost:9090`，确认postgres_exporter指标可见。
+    访问 `<http://localhost:9090`，确认postgres_exporter指标可见。>
 
 3. **在Grafana中创建Dashboard**
 
-    访问 `http://localhost:3000`（admin/admin），创建Dashboard：
+    访问 `<http://localhost:3000`（admin/admin），创建Dashboard：>
 
     - 添加Panel（根据设计文档）
     - 配置查询（PromQL或直接SQL）

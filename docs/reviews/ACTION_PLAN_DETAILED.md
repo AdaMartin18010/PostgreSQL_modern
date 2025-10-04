@@ -1,4 +1,4 @@
-# PostgreSQL_modern 项目改进行动计划（详细版）
+﻿# PostgreSQL_modern 项目改进行动计划（详细版）
 
 > **计划制定日期**：2025年10月3日  
 > **计划执行期**：2025年10月 - 2026年1月（12周）  
@@ -660,19 +660,19 @@
   
   # pgvector
   echo "=== pgvector ==="
-  curl -s https://api.github.com/repos/pgvector/pgvector/releases/latest | jq -r '.tag_name'
+  curl -s <https://api.github.com/repos/pgvector/pgvector/releases/latest> | jq -r '.tag_name'
   
   # TimescaleDB
   echo "=== TimescaleDB ==="
-  curl -s https://api.github.com/repos/timescale/timescaledb/releases/latest | jq -r '.tag_name'
+  curl -s <https://api.github.com/repos/timescale/timescaledb/releases/latest> | jq -r '.tag_name'
   
   # PostGIS
   echo "=== PostGIS ==="
-  curl -s https://api.github.com/repos/postgis/postgis/releases/latest | jq -r '.tag_name'
+  curl -s <https://api.github.com/repos/postgis/postgis/releases/latest> | jq -r '.tag_name'
   
   # Citus
   echo "=== Citus ==="
-  curl -s https://api.github.com/repos/citusdata/citus/releases/latest | jq -r '.tag_name'
+  curl -s <https://api.github.com/repos/citusdata/citus/releases/latest> | jq -r '.tag_name'
   ```
 
 - [ ] **Step 2**：更新版本建议（1小时）

@@ -1,4 +1,4 @@
-# 下一步快速启动指南 🚀
+﻿# 下一步快速启动指南 🚀
 
 **更新日期**：2025年10月3日  
 **当前版本**：v0.96  
@@ -59,7 +59,7 @@ cd PostgreSQL_modern
 # 可选：使用docker-compose启动Grafana+Prometheus
 
 # 2. 创建Dashboard
-# 访问 http://localhost:3000
+# 访问 <http://localhost:3000>
 # 根据monitoring_metrics.md创建面板
 
 # 3. 导出JSON配置

@@ -1,4 +1,4 @@
-# 故障切换与演练剧本（主从/主备/级联）
+﻿# 故障切换与演练剧本（主从/主备/级联）
 
 ## 前置
 
@@ -31,5 +31,5 @@
 
 ## 参考
 
-- 热备用与故障切换：`https://www.postgresql.org/docs/current/warm-standby.html`
-- 逻辑复制切换：`https://www.postgresql.org/docs/current/logical-replication.html`
+- 热备用与故障切换：`<https://www.postgresql.org/docs/current/warm-standby.html`>
+- 逻辑复制切换：`<https://www.postgresql.org/docs/current/logical-replication.html`>

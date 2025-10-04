@@ -1,4 +1,4 @@
-# 修复摘要：解决 psycopg2 导入错误
+﻿# 修复摘要：解决 psycopg2 导入错误
 
 ## 问题描述
 
@@ -80,7 +80,7 @@ tabulate>=0.9.0
 
 ```powershell
 # 从Microsoft Store安装Python 3.12
-# 或访问 https://www.python.org/downloads/
+# 或访问 <https://www.python.org/downloads/>
 ```
 
 ### 步骤2: 安装依赖包

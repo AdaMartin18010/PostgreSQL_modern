@@ -1,0 +1,383 @@
+{
+  "dashboard": {
+    "title": "PostgreSQL 17 Production Monitoring",
+    "tags": ["postgresql", "postgresql-17", "database", "monitoring", "production"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h"]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "postgres",
+          "current": {
+            "text": "PostgreSQL-Prod",
+            "value": "PostgreSQL-Prod"
+          }
+        },
+        {
+          "name": "database",
+          "type": "query",
+          "datasource": "$datasource",
+          "query": "SELECT datname FROM pg_database WHERE datname NOT IN ('template0', 'template1', 'postgres') ORDER BY datname;",
+          "refresh": 1,
+          "multi": false,
+          "includeAll": false
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "type": "stat",
+        "title": "当前连接数",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT COUNT(*) as value, NOW() as time FROM pg_stat_activity WHERE state IS NOT NULL;",
+            "format": "time_series"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 80, "color": "yellow"},
+                {"value": 100, "color": "red"}
+              ]
+            },
+            "max": 200,
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "type": "stat",
+        "title": "TPS (每秒事务数)",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT SUM(xact_commit + xact_rollback) as value, NOW() as time FROM pg_stat_database WHERE datname = '$database';",
+            "format": "time_series"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "blue"},
+                {"value": 1000, "color": "green"},
+                {"value": 5000, "color": "yellow"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "type": "gauge",
+        "title": "缓存命中率",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT ROUND(100.0 * SUM(blks_hit) / NULLIF(SUM(blks_hit + blks_read), 0), 2) as value, NOW() as time FROM pg_stat_database WHERE datname = '$database';",
+            "format": "time_series"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            },
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "type": "stat",
+        "title": "复制延迟 (秒)",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT COALESCE(MAX(EXTRACT(EPOCH FROM replay_lag)::int), 0) as value, NOW() as time FROM pg_stat_replication;",
+            "format": "time_series"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 30, "color": "yellow"},
+                {"value": 60, "color": "red"}
+              ]
+            },
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "type": "piechart",
+        "title": "连接状态分布",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT state as metric, COUNT(*) as value FROM pg_stat_activity WHERE state IS NOT NULL GROUP BY state;",
+            "format": "table"
+          }
+        ],
+        "options": {
+          "pieType": "pie",
+          "displayLabels": ["name", "percent"],
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value", "percent"]
+          }
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "type": "barchart",
+        "title": "数据库连接分布",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT datname as metric, COUNT(*) as value, NOW() as time FROM pg_stat_activity WHERE datname IS NOT NULL GROUP BY datname ORDER BY value DESC;",
+            "format": "time_series"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "xTickLabelRotation": 0,
+          "xTickLabelSpacing": 100
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 12},
+        "type": "table",
+        "title": "TOP 10 慢查询",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT LEFT(query, 100) as query, calls, ROUND(mean_exec_time::numeric, 2) as avg_time_ms, ROUND(total_exec_time::numeric, 2) as total_time_ms FROM pg_stat_statements WHERE query NOT LIKE '%pg_stat_statements%' AND dbid = (SELECT oid FROM pg_database WHERE datname = '$database') ORDER BY mean_exec_time DESC LIMIT 10;",
+            "format": "table"
+          }
+        ],
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {"displayName": "avg_time_ms", "desc": true}
+          ]
+        },
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "avg_time_ms"},
+              "properties": [
+                {
+                  "id": "custom.width",
+                  "value": 120
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {"value": 0, "color": "green"},
+                      {"value": 100, "color": "yellow"},
+                      {"value": 1000, "color": "red"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+        "type": "barchart",
+        "title": "锁类型分布",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT mode as metric, COUNT(*) as value, NOW() as time FROM pg_locks WHERE granted = true GROUP BY mode ORDER BY value DESC;",
+            "format": "time_series"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal"
+        }
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+        "type": "table",
+        "title": "TOP 10 最大表",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT schemaname || '.' || tablename as table_name, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC LIMIT 10;",
+            "format": "table"
+          }
+        ],
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 30},
+        "type": "timeseries",
+        "title": "性能趋势（TPS / 缓存命中率 / 复制延迟）",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT NOW() as time, SUM(xact_commit + xact_rollback) as \"TPS\" FROM pg_stat_database WHERE datname = '$database';",
+            "format": "time_series"
+          },
+          {
+            "refId": "B",
+            "rawSql": "SELECT NOW() as time, ROUND(100.0 * SUM(blks_hit) / NULLIF(SUM(blks_hit + blks_read), 0), 2) as \"缓存命中率(%)\" FROM pg_stat_database WHERE datname = '$database';",
+            "format": "time_series"
+          },
+          {
+            "refId": "C",
+            "rawSql": "SELECT NOW() as time, COALESCE(MAX(EXTRACT(EPOCH FROM replay_lag)::int), 0) as \"复制延迟(秒)\" FROM pg_stat_replication;",
+            "format": "time_series"
+          }
+        ],
+        "options": {
+          "tooltip": {
+            "mode": "multi",
+            "sort": "none"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "fillOpacity": 10,
+              "showPoints": "never"
+            }
+          }
+        }
+      },
+      {
+        "id": 11,
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+        "type": "table",
+        "title": "阻塞会话监控",
+        "datasource": "$datasource",
+        "targets": [
+          {
+            "refId": "A",
+            "rawSql": "SELECT blocked_locks.pid AS blocked_pid, blocked_activity.usename AS blocked_user, blocking_locks.pid AS blocking_pid, blocking_activity.usename AS blocking_user, LEFT(blocked_activity.query, 50) AS blocked_query, LEFT(blocking_activity.query, 50) AS blocking_query FROM pg_catalog.pg_locks blocked_locks JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid JOIN pg_catalog.pg_locks blocking_locks ON blocking_locks.locktype = blocked_locks.locktype AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation AND blocking_locks.pid != blocked_locks.pid JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_activity.pid = blocking_locks.pid WHERE NOT blocked_locks.granted;",
+            "format": "table"
+          }
+        ],
+        "options": {
+          "showHeader": true
+        }
+      }
+    ]
+  },
+  "overwrite": false,
+  "folderId": 0,
+  "folderUid": ""
+}
+

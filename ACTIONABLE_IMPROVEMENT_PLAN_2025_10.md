@@ -48,7 +48,7 @@
     
 [ ] 2. 同步更新 00_overview/README.md 版本对标部分
 [ ] 3. 同步更新 README.md 生态组件版本说明
-[ ] 4. 全局搜索替换"2024年9月发布" → "2024年9月26日发布"
+[ ] 4. 全局搜索替换"2024年9月26日发布" → "2024年9月26日发布"
 [ ] 5. 手动触发 .github/workflows/monthly-version-check.yml 验证自动化
 [ ] 6. 在 CHANGELOG.md 添加版本更新记录
 [ ] 7. 提交 PR: "Version Information Update (2025-10-03)"
@@ -148,10 +148,9 @@
     
     ## 📚 项目评审与改进计划
     
-    - [2025年10月评审报告](docs/reviews/2025_10_critical_review.md)（推荐阅读）
-    - [项目统计数据](docs/reviews/2025_10_statistics.md)
-    - [改进行动计划](docs/reviews/2025_10_action_plan.md)
-    - [所有评审文档](docs/reviews/INDEX.md)
+   - [2025年10月评审报告](docs/reviews/2025_10_critical_review.md)（推荐阅读）
+   - [项目统计数据](docs/reviews/PROJECT_STATISTICS.md)
+   - [所有评审文档](docs/reviews/INDEX.md)
 
 [ ] 5. 更新 .gitignore 确保 docs/ 目录被追踪
 
@@ -356,9 +355,8 @@
     
     ### 🔗 相关链接
     
-    - [完整评审报告](docs/reviews/2025_10_critical_review.md)
-    - [改进行动计划](docs/reviews/2025_10_action_plan.md)
-    - [项目统计数据](docs/reviews/2025_10_statistics.md)
+   - [完整评审报告](docs/reviews/2025_10_critical_review.md)
+   - [项目统计数据](docs/reviews/PROJECT_STATISTICS.md)
 ```
 
 **验收标准**：

@@ -22,7 +22,7 @@
 
 ## 权威参考
 
-- 官方配置：`https://www.postgresql.org/docs/current/runtime-config.html`
-- 备份与恢复：`https://www.postgresql.org/docs/current/backup.html`
-- 监控统计：`https://www.postgresql.org/docs/current/monitoring-stats.html`
-- pg_stat_statements：`https://www.postgresql.org/docs/current/pgstatstatements.html`
+- 官方配置：`<https://www.postgresql.org/docs/current/runtime-config.html`>
+- 备份与恢复：`<https://www.postgresql.org/docs/current/backup.html`>
+- 监控统计：`<https://www.postgresql.org/docs/current/monitoring-stats.html`>
+- pg_stat_statements：`<https://www.postgresql.org/docs/current/pgstatstatements.html`>

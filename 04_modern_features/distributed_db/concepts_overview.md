@@ -1,4 +1,4 @@
-# 分布式数据库核心概念与模型综述
+﻿# 分布式数据库核心概念与模型综述
 
 > 基于现代分布式系统理论，结合PostgreSQL生态实践
 
@@ -287,7 +287,7 @@
 
 ## 参考资源
 
-- [Designing Data-Intensive Applications](https://dataintensive.net/) - Martin Kleppmann
-- [Distributed Systems: Concepts and Design](https://www.cdk5.net/) - George Coulouris
-- [PostgreSQL逻辑复制文档](https://www.postgresql.org/docs/current/logical-replication.html)
-- [Citus官方文档](https://docs.citusdata.com/)
+- [Designing Data-Intensive Applications](<https://dataintensive.net>/) - Martin Kleppmann
+- [Distributed Systems: Concepts and Design](<https://www.cdk5.net>/) - George Coulouris
+- [PostgreSQL逻辑复制文档](<https://www.postgresql.org/docs/current/logical-replication.htm>l)
+- [Citus官方文档](<https://docs.citusdata.com>/)

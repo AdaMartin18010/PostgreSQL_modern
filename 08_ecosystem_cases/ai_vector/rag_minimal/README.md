@@ -203,8 +203,8 @@ SET work_mem = '256MB'; -- 查询时使用
 
 ## 📚 扩展阅读
 
-- pgvector文档：`https://github.com/pgvector/pgvector`
-- HNSW算法论文：`https://arxiv.org/abs/1603.09320`
+- pgvector文档：`<https://github.com/pgvector/pgvector`>
+- HNSW算法论文：`<https://arxiv.org/abs/1603.09320`>
 - RAG架构指南：`../../05_ai_vector/README.md`
 
 ## ⚠️ 注意事项

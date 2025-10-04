@@ -1,4 +1,4 @@
-# 分布式事务与幂等补偿
+﻿# 分布式事务与幂等补偿
 
 > 基于分布式系统理论，结合PostgreSQL生态实践
 
@@ -337,7 +337,7 @@ WHERE prepared < now() - interval '1 hour';
 
 ## 参考资源
 
-- [PostgreSQL Two-Phase Commit](https://www.postgresql.org/docs/current/sql-prepare-transaction.html)
-- [Saga Pattern](https://microservices.io/patterns/data/saga.html)
-- [Designing Data-Intensive Applications](https://dataintensive.net/)
-- [Citus Distributed Transactions](https://docs.citusdata.com/)
+- [PostgreSQL Two-Phase Commit](<https://www.postgresql.org/docs/current/sql-prepare-transaction.htm>l)
+- [Saga Pattern](<https://microservices.io/patterns/data/saga.htm>l)
+- [Designing Data-Intensive Applications](<https://dataintensive.net>/)
+- [Citus Distributed Transactions](<https://docs.citusdata.com>/)

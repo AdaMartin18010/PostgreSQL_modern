@@ -1,4 +1,4 @@
-# 云原生与跨区域多活
+﻿# 云原生与跨区域多活
 
 > PostgreSQL在云原生环境中的部署与多活架构实践
 
@@ -580,7 +580,7 @@ data:
 
 ## 参考资源
 
-- [Kubernetes StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
-- [PostgreSQL高可用](https://www.postgresql.org/docs/current/high-availability.html)
-- [AWS RDS for PostgreSQL](https://aws.amazon.com/rds/postgresql/)
-- [Cloud Native PostgreSQL](https://cloudnative-pg.io/)
+- [Kubernetes StatefulSets](<https://kubernetes.io/docs/concepts/workloads/controllers/statefulset>/)
+- [PostgreSQL高可用](<https://www.postgresql.org/docs/current/high-availability.htm>l)
+- [AWS RDS for PostgreSQL](<https://aws.amazon.com/rds/postgresql>/)
+- [Cloud Native PostgreSQL](<https://cloudnative-pg.io>/)

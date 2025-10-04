@@ -26,8 +26,8 @@
 
 ## 权威参考
 
-- 文档：`https://docs.citusdata.com/`
-- Releases：`https://github.com/citusdata/citus/releases`
+- 文档：`<https://docs.citusdata.com/`>
+- Releases：`<https://github.com/citusdata/citus/releases`>
 
 ## 评测要点
 

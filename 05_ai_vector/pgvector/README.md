@@ -20,8 +20,8 @@
 
 ## 权威参考
 
-- Releases：`https://github.com/pgvector/pgvector/releases`
-- 文档与示例：`https://github.com/pgvector/pgvector`
+- Releases：`<https://github.com/pgvector/pgvector/releases`>
+- 文档与示例：`<https://github.com/pgvector/pgvector`>
 
 ## 评测要点
 

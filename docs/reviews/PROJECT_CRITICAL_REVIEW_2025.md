@@ -1,7 +1,7 @@
-# PostgreSQL_modern 项目批判性评价与改进计划
+﻿# PostgreSQL_modern 项目批判性评价与改进计划
 
 > **评审日期**：2025年10月3日  
-> **评审基准**：PostgreSQL 17（2024年9月发布）  
+> **评审基准**：PostgreSQL 17（2024年9月26日发布）  
 > **项目状态**：生产就绪（声称100%完成）
 
 ---
@@ -318,8 +318,8 @@ PostgreSQL 17新特性： ~800行 (8%)
 
 | **本项目章节** | **Wikipedia条目** | **CMU 15-445讲义** | **差异点** |
 |--------------|-----------------|------------------|---------|
-| 02_transactions | [MVCC](https://en.wikipedia.org/wiki/Multiversion_concurrency_control) | Lecture 15 | PG的SSI实现 |
-| 03_storage_access | [B-tree](https://en.wikipedia.org/wiki/B-tree) | Lecture 7 | GIN/BRIN特有 |
+| 02_transactions | [MVCC](<https://en.wikipedia.org/wiki/Multiversion_concurrency_contro>l) | Lecture 15 | PG的SSI实现 |
+| 03_storage_access | [B-tree](<https://en.wikipedia.org/wiki/B-tre>e) | Lecture 7 | GIN/BRIN特有 |
 | ... | ... | ... | ... |
 
 #### Step 2：嵌入式对标（4周工作量）
@@ -554,18 +554,18 @@ jobs:
 
 | **项目** | **定位** | **内容深度** | **社区活跃度** | **工程化** | **本项目差距** |
 |---------|---------|------------|--------------|-----------|-------------|
-| [PostgreSQL官方文档](https://www.postgresql.org/docs/) | 权威手册 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 深度/权威性 |
-| [pgDash指南](https://pgdash.io/blog) | 实战博客 | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | 案例数量 |
-| [PostgreSQL Wiki](https://wiki.postgresql.org/) | 社区知识库 | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | 社区参与 |
+| [PostgreSQL官方文档](<https://www.postgresql.org/docs>/) | 权威手册 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 深度/权威性 |
+| [pgDash指南](<https://pgdash.io/blo>g) | 实战博客 | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | 案例数量 |
+| [PostgreSQL Wiki](<https://wiki.postgresql.org>/) | 社区知识库 | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | 社区参与 |
 | **PostgreSQL_modern** | **导航+高级特性** | **⭐⭐** | **⭐** | **⭐** | **全方位** |
 
 ### 学习国内优秀项目
 
 **参考**：
 
-- [awesome-postgres](https://github.com/dhamaniasad/awesome-postgres)：资源聚合典范
-- [PostgreSQL中文文档](http://www.postgres.cn/docs/)：翻译质量标杆
-- [阿里云RDS文档](https://help.aliyun.com/zh/rds/apsaradb-rds-for-postgresql/)：生产实践案例
+- [awesome-postgres](<https://github.com/dhamaniasad/awesome-postgre>s)：资源聚合典范
+- [PostgreSQL中文文档](<http://www.postgres.cn/docs>/)：翻译质量标杆
+- [阿里云RDS文档](<https://help.aliyun.com/zh/rds/apsaradb-rds-for-postgresql>/)：生产实践案例
 
 **借鉴点**：
 

@@ -1,4 +1,4 @@
-# PostgreSQL_modern 版本追踪机制
+﻿# PostgreSQL_modern 版本追踪机制
 
 > **最后更新**：2025-10-03  
 > **追踪范围**：PostgreSQL 17 + 4大核心扩展  
@@ -88,7 +88,7 @@ PostgreSQL_modern 版本检查工具
 
 [1/5] 检查 PostgreSQL 核心版本...
   当前追踪版本: 17.0
-  检查地址: https://www.postgresql.org/download/
+  检查地址: <https://www.postgresql.org/download/>
   ✓ 手动检查建议: 访问官网确认最新版本
 
 [2/5] 检查 pgvector（向量检索）...
@@ -285,7 +285,7 @@ brew install curl jq git
 
 # Windows（使用Git Bash或WSL）
 # Git Bash已自带curl和git，只需安装jq
-# 下载jq：https://stedolan.github.io/jq/download/
+# 下载jq：<https://stedolan.github.io/jq/download/>
 ```
 
 ### 问题3：无法获取最新版本（显示"unknown"）

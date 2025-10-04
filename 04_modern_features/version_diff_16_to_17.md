@@ -1,4 +1,4 @@
-# PostgreSQL 16 → 17 版本差异与迁移注意
+﻿# PostgreSQL 16 → 17 版本差异与迁移注意
 
 > 基于 PostgreSQL 17 官方发行说明（2024年9月26日发布）  
 > **最后验证日期**：2025-10-03
@@ -147,5 +147,5 @@
 
 ## 参考
 
-- 官方发行说明：`https://www.postgresql.org/docs/release/`
+- 官方发行说明：`<https://www.postgresql.org/docs/release/`>
 - 各扩展 Releases：见 `00_overview/README.md`

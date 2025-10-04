@@ -1,4 +1,4 @@
-# 联邦查询实战案例 — Federated Queries with Foreign Data Wrappers
+﻿# 联邦查询实战案例 — Federated Queries with Foreign Data Wrappers
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐ 高级  
@@ -276,7 +276,7 @@ sudo apt-get install postgresql-17-mysql-fdw
 sudo yum install mysql_fdw_17
 
 -- 编译安装:
-git clone https://github.com/EnterpriseDB/mysql_fdw.git
+git clone <https://github.com/EnterpriseDB/mysql_fdw.git>
 cd mysql_fdw
 make USE_PGXS=1
 sudo make USE_PGXS=1 install
@@ -347,7 +347,7 @@ ORDER BY
 
 ```bash
 -- 编译安装
-git clone https://github.com/EnterpriseDB/mongo_fdw.git
+git clone <https://github.com/EnterpriseDB/mongo_fdw.git>
 cd mongo_fdw
 make USE_PGXS=1
 sudo make USE_PGXS=1 install

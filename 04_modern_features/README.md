@@ -35,9 +35,9 @@
 
 ## 权威参考
 
-- 复制：`https://www.postgresql.org/docs/current/logical-replication.html`
-- 备份与恢复：`https://www.postgresql.org/docs/current/backup.html`
-- 全文检索：`https://www.postgresql.org/docs/current/textsearch.html`
+- 复制：`<https://www.postgresql.org/docs/current/logical-replication.html`>
+- 备份与恢复：`<https://www.postgresql.org/docs/current/backup.html`>
+- 全文检索：`<https://www.postgresql.org/docs/current/textsearch.html`>
 
 ## Checklist（上线/演练）
 

@@ -1,4 +1,4 @@
-# Distributed Database（分布式数据库）
+﻿# Distributed Database（分布式数据库）
 
 > 版本对标（更新于 2025-10）
 
@@ -45,9 +45,9 @@
 
 ## 权威参考（对标）
 
-- Wikipedia：`https://en.wikipedia.org/wiki/Distributed_database`、`https://en.wikipedia.org/wiki/Consistency_model`、`https://en.wikipedia.org/wiki/Raft_(algorithm)`
-- CMU 15-445/645：`https://15445.courses.cs.cmu.edu/`（分布式与并发专题）
-- MIT 6.824：`https://pdos.csail.mit.edu/6.824/`
+- Wikipedia：`<https://en.wikipedia.org/wiki/Distributed_database`、`https://en.wikipedia.org/wiki/Consistency_model`、`https://en.wikipedia.org/wiki/Raft_(algorith>m)`
+- CMU 15-445/645：`<https://15445.courses.cs.cmu.edu/`（分布式与并发专题）>
+- MIT 6.824：`<https://pdos.csail.mit.edu/6.824/`>
 - 论文与教科书："Designing Data-Intensive Applications"（Kleppmann）、"Readings in Database Systems"
 
 ## Checklist（工程落地）

@@ -39,11 +39,11 @@
 
 ## 权威参考
 
-- PostgreSQL扩展机制：`https://www.postgresql.org/docs/current/extend.html`
-- pgvector：`https://github.com/pgvector/pgvector`
-- TimescaleDB：`https://docs.timescale.com/`
-- PostGIS：`https://postgis.net/`
-- Citus：`https://docs.citusdata.com/`
+- PostgreSQL扩展机制：`<https://www.postgresql.org/docs/current/extend.html`>
+- pgvector：`<https://github.com/pgvector/pgvector`>
+- TimescaleDB：`<https://docs.timescale.com/`>
+- PostGIS：`<https://postgis.net/`>
+- Citus：`<https://docs.citusdata.com/`>
 
 ## 快速开始
 

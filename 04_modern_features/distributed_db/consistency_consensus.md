@@ -1,4 +1,4 @@
-# 分布式数据库一致性模型与共识协议
+﻿# 分布式数据库一致性模型与共识协议
 
 > 基于现代分布式系统理论，结合PostgreSQL生态实践
 
@@ -279,9 +279,9 @@
 
 ## 参考资源
 
-- [Designing Data-Intensive Applications](https://dataintensive.net/) - Martin Kleppmann
-- [Consistency Models](https://en.wikipedia.org/wiki/Consistency_model) - Wikipedia
-- [Raft Algorithm](https://en.wikipedia.org/wiki/Raft_(algorithm)) - Wikipedia
-- [MIT 6.824 Distributed Systems](https://pdos.csail.mit.edu/6.824/) - MIT Course
-- [PostgreSQL Replication](https://www.postgresql.org/docs/current/high-availability.html) - PostgreSQL Docs
-- [Citus Documentation](https://docs.citusdata.com/) - Citus Docs
+- [Designing Data-Intensive Applications](<https://dataintensive.net>/) - Martin Kleppmann
+- [Consistency Models](<https://en.wikipedia.org/wiki/Consistency_mode>l) - Wikipedia
+- [Raft Algorithm](<https://en.wikipedia.org/wiki/Raft_(algorith>m)) - Wikipedia
+- [MIT 6.824 Distributed Systems](<https://pdos.csail.mit.edu/6.824>/) - MIT Course
+- [PostgreSQL Replication](<https://www.postgresql.org/docs/current/high-availability.htm>l) - PostgreSQL Docs
+- [Citus Documentation](<https://docs.citusdata.com>/) - Citus Docs

@@ -1,4 +1,4 @@
-# PostgreSQL_modern 项目工具集
+﻿# PostgreSQL_modern 项目工具集
 
 本目录包含用于项目维护和质量保证的各种自动化工具。
 
@@ -215,7 +215,7 @@ class SQLChecker:
 
 ℹ️  找到 25 个文件，共 120 个链接（52 个唯一）
 ℹ️  开始检查链接有效性...
-检查 [52/52]: https://www.postgresql.org/docs/17/...
+检查 [52/52]: <https://www.postgresql.org/docs/17/...>
 
 ============================================================
 链接检查结果
@@ -231,7 +231,7 @@ class SQLChecker:
 失效链接详情
 ============================================================
 
-❌ https://example.com/404
+❌ <https://example.com/404>
   状态: 404
   位置:
     - GLOSSARY.md:45

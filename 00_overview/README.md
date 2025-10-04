@@ -9,25 +9,25 @@
 ## 版本对标（核心与生态）
 
 - PostgreSQL（官方下载/文档）
-  - 官方下载页（始终为最新稳定版）：`https://www.postgresql.org/download/`
-  - 官方文档总览：`https://www.postgresql.org/docs/`
-  - 发行说明总览：`https://www.postgresql.org/docs/release/`
+  - 官方下载页（始终为最新稳定版）：`<https://www.postgresql.org/download/`>
+  - 官方文档总览：`<https://www.postgresql.org/docs/`>
+  - 发行说明总览：`<https://www.postgresql.org/docs/release/`>
 
 - 向量检索扩展 pgvector（GitHub Releases）
-  - Releases：`https://github.com/pgvector/pgvector/releases`
-  - 文档：`https://github.com/pgvector/pgvector`
+  - Releases：`<https://github.com/pgvector/pgvector/releases`>
+  - 文档：`<https://github.com/pgvector/pgvector`>
 
 - 时序扩展 TimescaleDB（GitHub Releases）
-  - Releases：`https://github.com/timescale/timescaledb/releases`
-  - 文档：`https://docs.timescale.com/`
+  - Releases：`<https://github.com/timescale/timescaledb/releases`>
+  - 文档：`<https://docs.timescale.com/`>
 
 - 地理空间扩展 PostGIS（官方/安装文档）
-  - 官网：`https://postgis.net/`
-  - 安装与文档：`https://postgis.net/install/`
+  - 官网：`<https://postgis.net/`>
+  - 安装与文档：`<https://postgis.net/install/`>
 
 - 分布式/扩展性 Citus（GitHub Releases）
-  - Releases：`https://github.com/citusdata/citus/releases`
-  - 文档：`https://docs.citusdata.com/`
+  - Releases：`<https://github.com/citusdata/citus/releases`>
+  - 文档：`<https://docs.citusdata.com/`>
 
 更新策略：
 
@@ -56,11 +56,11 @@
 
 ## 权威参考（统一入口）
 
-- PostgreSQL 官方：`https://www.postgresql.org/`
-- pgvector：`https://github.com/pgvector/pgvector`
-- TimescaleDB：`https://github.com/timescale/timescaledb`
-- PostGIS：`https://postgis.net/`
-- Citus：`https://github.com/citusdata/citus`
+- PostgreSQL 官方：`<https://www.postgresql.org/`>
+- pgvector：`<https://github.com/pgvector/pgvector`>
+- TimescaleDB：`<https://github.com/timescale/timescaledb`>
+- PostGIS：`<https://postgis.net/`>
+- Citus：`<https://github.com/citusdata/citus`>
 
 ## PostgreSQL 17 核心特性概览
 

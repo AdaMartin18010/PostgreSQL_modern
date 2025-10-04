@@ -1,7 +1,7 @@
-# PostgreSQL_modern 项目评审文档索引
+﻿# PostgreSQL_modern 项目评审文档索引
 
 > **评审日期**：2025年10月3日  
-> **评审基准**：PostgreSQL 17（2024年9月发布）+ 2025年10月时间点  
+> **评审基准**：PostgreSQL 17（2024年9月26日发布）+ 2025年10月时间点  
 > **评审类型**：批判性全面评价 + 可执行改进计划
 
 ---
@@ -365,9 +365,9 @@
 
 ### 评审标准参考
 
-- [PostgreSQL官方文档质量标准](https://www.postgresql.org/docs/)
-- [Google技术写作指南](https://developers.google.com/tech-writing)
-- [Microsoft风格指南](https://docs.microsoft.com/en-us/style-guide/)
+- [PostgreSQL官方文档质量标准](<https://www.postgresql.org/docs>/)
+- [Google技术写作指南](<https://developers.google.com/tech-writin>g)
+- [Microsoft风格指南](<https://docs.microsoft.com/en-us/style-guide>/)
 - 开源项目最佳实践（Linux、Kubernetes等）
 
 ---

@@ -1,4 +1,4 @@
-# 备份与容灾（全量/增量/恢复/主从互换/演练）
+﻿# 备份与容灾（全量/增量/恢复/主从互换/演练）
 
 ## 备份类型
 
@@ -37,6 +37,6 @@
 
 ## 参考
 
-- 备份与恢复：`https://www.postgresql.org/docs/current/backup.html`
-- 热备用/故障切换：`https://www.postgresql.org/docs/current/warm-standby.html`
-- 逻辑复制：`https://www.postgresql.org/docs/current/logical-replication.html`
+- 备份与恢复：`<https://www.postgresql.org/docs/current/backup.html`>
+- 热备用/故障切换：`<https://www.postgresql.org/docs/current/warm-standby.html`>
+- 逻辑复制：`<https://www.postgresql.org/docs/current/logical-replication.html`>

@@ -1,4 +1,4 @@
-# 分片策略与复制拓扑
+﻿# 分片策略与复制拓扑
 
 > 分布式PostgreSQL的数据分片、复制策略与查询执行
 
@@ -634,7 +634,7 @@ SELECT * FROM citus_rebalance_status();
 
 ## 参考资源
 
-- [Wikipedia: Database Shard](https://en.wikipedia.org/wiki/Shard_(database))
-- [Citus Distributed Tables](https://docs.citusdata.com/en/stable/develop/reference_sql.html)
-- [PostgreSQL Replication](https://www.postgresql.org/docs/current/high-availability.html)
-- [Citus Shard Rebalancing](https://docs.citusdata.com/en/stable/admin_guide/cluster_management.html)
+- [Wikipedia: Database Shard](<https://en.wikipedia.org/wiki/Shard_(databas>e))
+- [Citus Distributed Tables](<https://docs.citusdata.com/en/stable/develop/reference_sql.htm>l)
+- [PostgreSQL Replication](<https://www.postgresql.org/docs/current/high-availability.htm>l)
+- [Citus Shard Rebalancing](<https://docs.citusdata.com/en/stable/admin_guide/cluster_management.htm>l)

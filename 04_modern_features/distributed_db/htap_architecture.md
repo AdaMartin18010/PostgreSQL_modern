@@ -1,4 +1,4 @@
-# HTAP混合负载架构
+﻿# HTAP混合负载架构
 
 > Hybrid Transaction/Analytical Processing - 事务与分析混合处理架构
 
@@ -563,7 +563,7 @@ WHERE (query LIKE '%SELECT COUNT%' OR query LIKE '%GROUP BY%')
 
 ## 参考资源
 
-- [TimescaleDB连续聚合](https://docs.timescale.com/timescaledb/latest/how-to-guides/continuous-aggregates/)
-- [Citus HTAP](https://docs.citusdata.com/en/stable/use_cases/realtime_analytics.html)
-- [PostgreSQL并行查询](https://www.postgresql.org/docs/current/parallel-query.html)
-- [列存储扩展](https://github.com/citusdata/cstore_fdw)
+- [TimescaleDB连续聚合](<https://docs.timescale.com/timescaledb/latest/how-to-guides/continuous-aggregates>/)
+- [Citus HTAP](<https://docs.citusdata.com/en/stable/use_cases/realtime_analytics.htm>l)
+- [PostgreSQL并行查询](<https://www.postgresql.org/docs/current/parallel-query.htm>l)
+- [列存储扩展](<https://github.com/citusdata/cstore_fd>w)

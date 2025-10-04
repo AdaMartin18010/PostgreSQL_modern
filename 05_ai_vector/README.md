@@ -20,8 +20,8 @@
 
 ## 权威参考
 
-- pgvector 仓库与文档：`https://github.com/pgvector/pgvector`
-- PostgreSQL 扩展：`https://www.postgresql.org/docs/current/extend.html`
+- pgvector 仓库与文档：`<https://github.com/pgvector/pgvector`>
+- PostgreSQL 扩展：`<https://www.postgresql.org/docs/current/extend.html`>
 
 ## 端到端 Checklist（从零到检索）
 

@@ -20,8 +20,8 @@
 
 ## 权威参考
 
-- 官网与文档：`https://postgis.net/`
-- 安装与指南：`https://postgis.net/install/`
+- 官网与文档：`<https://postgis.net/`>
+- 安装与指南：`<https://postgis.net/install/`>
 
 ## 评测要点
 

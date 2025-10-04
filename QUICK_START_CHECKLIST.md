@@ -1,4 +1,4 @@
-# 改进行动快速启动清单
+﻿# 改进行动快速启动清单
 
 > **适用人群**：项目维护者、贡献者  
 > **目标**：从"现在"到"2周后"的最小可行改进  
@@ -243,31 +243,31 @@ echo ""
 # PostgreSQL
 echo "=== PostgreSQL ==="
 echo -n "Current Stable: "
-curl -s https://www.postgresql.org/versions.json | jq -r '.[0].version' || echo "查询失败"
+curl -s <https://www.postgresql.org/versions.json> | jq -r '.[0].version' || echo "查询失败"
 echo ""
 
 # pgvector
 echo "=== pgvector ==="
 echo -n "Latest Release: "
-curl -s https://api.github.com/repos/pgvector/pgvector/releases/latest | jq -r '.tag_name' || echo "查询失败"
+curl -s <https://api.github.com/repos/pgvector/pgvector/releases/latest> | jq -r '.tag_name' || echo "查询失败"
 echo ""
 
 # TimescaleDB
 echo "=== TimescaleDB ==="
 echo -n "Latest Release: "
-curl -s https://api.github.com/repos/timescale/timescaledb/releases/latest | jq -r '.tag_name' || echo "查询失败"
+curl -s <https://api.github.com/repos/timescale/timescaledb/releases/latest> | jq -r '.tag_name' || echo "查询失败"
 echo ""
 
 # PostGIS
 echo "=== PostGIS ==="
 echo -n "Latest Release: "
-curl -s https://api.github.com/repos/postgis/postgis/releases/latest | jq -r '.tag_name' || echo "查询失败"
+curl -s <https://api.github.com/repos/postgis/postgis/releases/latest> | jq -r '.tag_name' || echo "查询失败"
 echo ""
 
 # Citus
 echo "=== Citus ==="
 echo -n "Latest Release: "
-curl -s https://api.github.com/repos/citusdata/citus/releases/latest | jq -r '.tag_name' || echo "查询失败"
+curl -s <https://api.github.com/repos/citusdata/citus/releases/latest> | jq -r '.tag_name' || echo "查询失败"
 echo ""
 
 echo "========================================="

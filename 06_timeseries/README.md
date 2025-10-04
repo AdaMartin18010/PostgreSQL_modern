@@ -20,5 +20,5 @@
 
 ## 权威参考
 
-- TimescaleDB 文档：`https://docs.timescale.com/`
-- Releases：`https://github.com/timescale/timescaledb/releases`
+- TimescaleDB 文档：`<https://docs.timescale.com/`>
+- Releases：`<https://github.com/timescale/timescaledb/releases`>

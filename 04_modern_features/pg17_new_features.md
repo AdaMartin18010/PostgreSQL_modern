@@ -1,6 +1,6 @@
-# PostgreSQL 17 新特性详解
+﻿# PostgreSQL 17 新特性详解
 
-> 基于 PostgreSQL 17 官方发行说明（2024年9月发布）
+> 基于 PostgreSQL 17 官方发行说明（2024年9月26日发布）
 
 ## 1. JSON 数据处理革命性提升
 
@@ -384,7 +384,7 @@ postgresql://user:password@host:port/database?sslmode=require&sslnegotiation=dir
 
 ## 参考资源
 
-- [PostgreSQL 17 官方发行说明](https://www.postgresql.org/docs/17/release-17.html)
-- [PostgreSQL 17 新特性文档](https://www.postgresql.org/docs/17/release-17.html#id-1.11.6.5)
-- [JSON_TABLE 函数文档](https://www.postgresql.org/docs/17/functions-json.html#FUNCTIONS-JSON-TABLE)
-- [逻辑复制文档](https://www.postgresql.org/docs/17/logical-replication.html)
+- [PostgreSQL 17 官方发行说明](<https://www.postgresql.org/docs/17/release-17.htm>l)
+- [PostgreSQL 17 新特性文档](<https://www.postgresql.org/docs/17/release-17.html#id-1.11.6.>5)
+- [JSON_TABLE 函数文档](<https://www.postgresql.org/docs/17/functions-json.html#FUNCTIONS-JSON-TABL>E)
+- [逻辑复制文档](<https://www.postgresql.org/docs/17/logical-replication.htm>l)
