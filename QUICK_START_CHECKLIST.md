@@ -95,7 +95,7 @@ touch QUALITY_MATRIX.md
     - 🚧 第三阶段：对标落地（2025年11月）
     - 🚧 第四阶段：工程化（2025年12月）
 
-    完整路线图见：[改进计划](ACTION_PLAN_DETAILED.md)
+    完整路线图见：[改进计划](docs/reviews/ACTION_PLAN_DETAILED.md)
 ```
 
 **1.4 为重点README添加成熟度标签（1.5小时）**
@@ -104,7 +104,7 @@ touch QUALITY_MATRIX.md
 ```markdown
     > **📊 成熟度**：Level 1（骨架级）→ 目标：Level 3（教程级）  
     > **📅 更新**：2025-10-03 | 预计达成：2025-10-25  
-    > **👥 贡献**：欢迎PR扩充内容（见 [贡献指南](../CONTRIBUTING.md)）
+    > **👥 贡献**：欢迎PR扩充内容（见 [贡献指南](CONTRIBUTING.md)）
     ```
 
     #### 完成标志

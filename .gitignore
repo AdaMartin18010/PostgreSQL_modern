@@ -49,3 +49,12 @@ tests/config/database.yml
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Temporary output files (should not be committed)
+*_output.txt
+link_check_output.txt
+validation_output.txt
+
+# Archive directories (created during cleanup)
+archive/
+archive_*/

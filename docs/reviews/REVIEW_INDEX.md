@@ -13,7 +13,7 @@
 | 文档 | 用途 | 适用人群 | 阅读时间 |
 |-----|------|---------|---------|
 | **[IMPROVEMENT_SUMMARY.md](IMPROVEMENT_SUMMARY.md)** | 🎯 **快速摘要**：5大问题+3大优势+优先建议 | 项目Owner、快速决策 | 10分钟 |
-| **[QUICK_START_CHECKLIST.md](QUICK_START_CHECKLIST.md)** | ✅ **行动清单**：2周内必做的3件事（详细步骤） | 执行者、贡献者 | 20分钟 |
+| **[QUICK_START_CHECKLIST.md](../../QUICK_START_CHECKLIST.md)** | ✅ **行动清单**：2周内必做的3件事（详细步骤） | 执行者、贡献者 | 20分钟 |
 | **[PROJECT_CRITICAL_REVIEW_2025.md](PROJECT_CRITICAL_REVIEW_2025.md)** | 📊 **完整评价**：批判性分析+评分+对标 | 全体成员、外部评审 | 45分钟 |
 | **[ACTION_PLAN_DETAILED.md](ACTION_PLAN_DETAILED.md)** | 📋 **详细计划**：12周分阶段改进路线图 | 项目经理、规划者 | 30分钟 |
 
@@ -62,7 +62,7 @@
 
 ### 如果你只有2周时间
 
-**阅读**：[QUICK_START_CHECKLIST.md](QUICK_START_CHECKLIST.md)  
+**阅读**：[QUICK_START_CHECKLIST.md](../../QUICK_START_CHECKLIST.md)  
 **行动**：完成3件事
 
 1. 诚实定位（4小时）
