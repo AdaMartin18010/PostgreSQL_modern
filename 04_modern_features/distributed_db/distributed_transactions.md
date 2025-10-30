@@ -1,31 +1,31 @@
 ﻿# 分布式事务与幂等补偿
 
-> 基于分布式系统理论，结合PostgreSQL生态实践
+> 基于分布式系统理论，结合 PostgreSQL 生态实践
 
 ## 📋 目录
 
 - [分布式事务与幂等补偿](#分布式事务与幂等补偿)
   - [📋 目录](#-目录)
   - [1. 分布式事务基础](#1-分布式事务基础)
-    - [1.1 ACID在分布式环境的挑战](#11-acid在分布式环境的挑战)
+    - [1.1 ACID 在分布式环境的挑战](#11-acid-在分布式环境的挑战)
     - [1.2 分布式事务的类型](#12-分布式事务的类型)
   - [2. 两阶段提交（2PC）](#2-两阶段提交2pc)
     - [2.1 协议流程](#21-协议流程)
-    - [2.2 PostgreSQL中的2PC实现](#22-postgresql中的2pc实现)
-    - [2.3 2PC的优势与局限](#23-2pc的优势与局限)
+    - [2.2 PostgreSQL 中的 2PC 实现](#22-postgresql-中的-2pc-实现)
+    - [2.3 2PC 的优势与局限](#23-2pc-的优势与局限)
   - [3. 三阶段提交（3PC）](#3-三阶段提交3pc)
-  - [4. 补偿事务与Saga模式](#4-补偿事务与saga模式)
-    - [4.1 Saga模式原理](#41-saga模式原理)
-    - [4.2 PostgreSQL实现示例](#42-postgresql实现示例)
+  - [4. 补偿事务与 Saga 模式](#4-补偿事务与-saga-模式)
+    - [4.1 Saga 模式原理](#41-saga-模式原理)
+    - [4.2 PostgreSQL 实现示例](#42-postgresql-实现示例)
   - [5. 幂等性设计](#5-幂等性设计)
     - [5.1 幂等键设计](#51-幂等键设计)
     - [5.2 去重表模式](#52-去重表模式)
-  - [6. Outbox模式](#6-outbox模式)
+  - [6. Outbox 模式](#6-outbox-模式)
     - [6.1 模式原理](#61-模式原理)
-    - [6.2 PostgreSQL实现](#62-postgresql实现)
+    - [6.2 PostgreSQL 实现](#62-postgresql-实现)
   - [7. 跨分片事务策略](#7-跨分片事务策略)
     - [7.1 单分片优先](#71-单分片优先)
-    - [7.2 Citus分布式事务](#72-citus分布式事务)
+    - [7.2 Citus 分布式事务](#72-citus-分布式事务)
   - [8. 隔离级别与一致性权衡](#8-隔离级别与一致性权衡)
   - [9. 故障恢复与补偿](#9-故障恢复与补偿)
   - [10. 工程实践建议](#10-工程实践建议)
@@ -33,19 +33,22 @@
 
 ## 1. 分布式事务基础
 
-### 1.1 ACID在分布式环境的挑战
+### 1.1 ACID 在分布式环境的挑战
 
-**单机ACID vs 分布式ACID**:
+**单机 ACID vs 分布式 ACID**:
 
 - **原子性（Atomicity）**：跨节点的所有操作要么全部成功，要么全部失败
+
   - 挑战：部分节点失败，如何保证全局原子性
   - 解决：协调者协议（2PC/3PC）或补偿机制（Saga）
 
 - **一致性（Consistency）**：分布式环境下维护业务规则
+
   - 挑战：跨分片的约束检查和外键关系
   - 解决：应用层验证或最终一致性
 
 - **隔离性（Isolation）**：分布式锁和全局快照
+
   - 挑战：跨节点的并发控制和死锁检测
   - 解决：分布式锁管理器或乐观并发控制
 
@@ -57,7 +60,7 @@
 
 **强一致性事务**:
 
-- 特点：保证严格的ACID属性
+- 特点：保证严格的 ACID 属性
 - 实现：2PC、3PC、Paxos Commit
 - 适用：金融交易、库存管理
 - 代价：高延迟、低可用性
@@ -75,17 +78,17 @@
 
 **准备阶段（Prepare Phase）**:
 
-1. 协调者向所有参与者发送PREPARE请求
+1. 协调者向所有参与者发送 PREPARE 请求
 2. 参与者执行事务操作，写入重做和撤销日志
-3. 参与者返回YES（准备就绪）或NO（中止）
+3. 参与者返回 YES（准备就绪）或 NO（中止）
 
 **提交阶段（Commit Phase）**:
 
-1. 如果所有参与者返回YES，协调者发送COMMIT
-2. 如果任何参与者返回NO，协调者发送ROLLBACK
+1. 如果所有参与者返回 YES，协调者发送 COMMIT
+2. 如果任何参与者返回 NO，协调者发送 ROLLBACK
 3. 参与者执行最终操作并返回确认
 
-### 2.2 PostgreSQL中的2PC实现
+### 2.2 PostgreSQL 中的 2PC 实现
 
 ```sql
 -- 参与者节点1
@@ -106,13 +109,13 @@ COMMIT PREPARED 'txn_payment_123';
 SELECT * FROM pg_prepared_xacts;
 ```
 
-### 2.3 2PC的优势与局限
+### 2.3 2PC 的优势与局限
 
 **优势**:
 
 - 保证强一致性和原子性
 - 实现相对简单
-- PostgreSQL原生支持
+- PostgreSQL 原生支持
 
 **局限**:
 
@@ -123,24 +126,24 @@ SELECT * FROM pg_prepared_xacts;
 
 ## 3. 三阶段提交（3PC）
 
-3PC通过引入预提交阶段来减少阻塞：
+3PC 通过引入预提交阶段来减少阻塞：
 
-1. **CanCommit阶段**：询问参与者是否可以提交
-2. **PreCommit阶段**：参与者确认可以提交，但不提交
-3. **DoCommit阶段**：最终提交或中止
+1. **CanCommit 阶段**：询问参与者是否可以提交
+2. **PreCommit 阶段**：参与者确认可以提交，但不提交
+3. **DoCommit 阶段**：最终提交或中止
 
-**实际应用**：3PC在实践中应用较少，因为实现复杂且仍然无法完全避免阻塞。
+**实际应用**：3PC 在实践中应用较少，因为实现复杂且仍然无法完全避免阻塞。
 
-## 4. 补偿事务与Saga模式
+## 4. 补偿事务与 Saga 模式
 
-### 4.1 Saga模式原理
+### 4.1 Saga 模式原理
 
 将长事务分解为多个本地事务，每个本地事务都有对应的补偿操作：
 
 - **正向操作**：执行业务逻辑（Ti）
 - **补偿操作**：撤销业务逻辑（Ci）
 
-### 4.2 PostgreSQL实现示例
+### 4.2 PostgreSQL 实现示例
 
 ```sql
 -- 创建Saga状态表
@@ -166,15 +169,15 @@ BEGIN
     -- 记录步骤开始
     INSERT INTO saga_steps (saga_id, step_number, step_name, status, executed_at)
     VALUES (p_saga_id, p_step_number, p_step_name, 'PENDING', NOW());
-    
+
     -- 执行业务操作
     -- v_success := execute_business_logic();
-    
+
     -- 更新步骤状态
-    UPDATE saga_steps 
+    UPDATE saga_steps
     SET status = CASE WHEN v_success THEN 'SUCCESS' ELSE 'FAILED' END
     WHERE saga_id = p_saga_id AND step_number = p_step_number;
-    
+
     RETURN v_success;
 END;
 $$ LANGUAGE plpgsql;
@@ -188,7 +191,7 @@ $$ LANGUAGE plpgsql;
 
 - 使用业务唯一标识作为幂等键
 - 幂等键应该包含足够的上下文信息
-- 避免使用自增ID或时间戳
+- 避免使用自增 ID 或时间戳
 
 ### 5.2 去重表模式
 
@@ -215,30 +218,30 @@ BEGIN
     FROM idempotency_keys
     WHERE idempotency_key = p_key
     FOR UPDATE SKIP LOCKED;
-    
+
     IF FOUND AND v_existing.status = 'COMPLETED' THEN
         RETURN v_existing.response_data;
     END IF;
-    
+
     -- 执行业务逻辑
     -- ...
-    
+
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 ```
 
-## 6. Outbox模式
+## 6. Outbox 模式
 
 ### 6.1 模式原理
 
 通过在同一个本地事务中写入业务数据和事件消息，保证数据一致性：
 
-1. 在本地事务中同时写入业务表和outbox表
-2. 独立进程读取outbox表并发送消息
-3. 消息发送成功后标记或删除outbox记录
+1. 在本地事务中同时写入业务表和 outbox 表
+2. 独立进程读取 outbox 表并发送消息
+3. 消息发送成功后标记或删除 outbox 记录
 
-### 6.2 PostgreSQL实现
+### 6.2 PostgreSQL 实现
 
 ```sql
 -- 创建Outbox表
@@ -263,11 +266,11 @@ BEGIN
     INSERT INTO orders (user_id, amount, status)
     VALUES (p_user_id, p_amount, 'CREATED')
     RETURNING id INTO v_order_id;
-    
+
     INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload)
     VALUES ('Order', v_order_id::TEXT, 'OrderCreated',
             jsonb_build_object('order_id', v_order_id, 'amount', p_amount));
-    
+
     RETURN v_order_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -283,7 +286,7 @@ $$ LANGUAGE plpgsql;
 - 选择合适的分片键保证数据局部性
 - 大部分事务在单分片内完成
 
-### 7.2 Citus分布式事务
+### 7.2 Citus 分布式事务
 
 ```sql
 -- Citus自动处理分布式事务
@@ -320,7 +323,7 @@ SET idle_in_transaction_session_timeout = '60s';
 SET lock_timeout = '10s';
 
 -- 清理孤立的准备事务
-SELECT gid FROM pg_prepared_xacts 
+SELECT gid FROM pg_prepared_xacts
 WHERE prepared < now() - interval '1 hour';
 ```
 
@@ -337,7 +340,8 @@ WHERE prepared < now() - interval '1 hour';
 
 ## 参考资源
 
-- [PostgreSQL Two-Phase Commit](<https://www.postgresql.org/docs/current/sql-prepare-transaction.htm>l)
+- [PostgreSQL Two-Phase
+  Commit](<https://www.postgresql.org/docs/current/sql-prepare-transaction.htm>l)
 - [Saga Pattern](<https://microservices.io/patterns/data/saga.htm>l)
 - [Designing Data-Intensive Applications](<https://dataintensive.net>/)
 - [Citus Distributed Transactions](<https://docs.citusdata.com>/)

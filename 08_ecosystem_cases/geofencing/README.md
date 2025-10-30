@@ -2,8 +2,8 @@
 
 > **版本对标**：PostgreSQL 17 + PostGIS 3.4（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐ 高级  
-> **预计时间**：60-90分钟  
-> **适合场景**：外卖配送、共享出行、物流跟踪、LBS营销
+> **预计时间**：60-90 分钟  
+> **适合场景**：外卖配送、共享出行、物流跟踪、LBS 营销
 
 ---
 
@@ -13,7 +13,7 @@
 
 1. ✅ 点在多边形内判断（Point-in-Polygon）
 2. ✅ 实时位置追踪与告警
-3. ✅ 高性能空间索引（GiST索引）
+3. ✅ 高性能空间索引（GiST 索引）
 4. ✅ 多围栏管理与优先级
 5. ✅ 地理围栏进出事件触发
 
@@ -29,7 +29,7 @@
   - 查询附近可用骑手
   - 计算配送路线距离
 - **性能要求**：
-  - 10万骑手实时位置更新
+  - 10 万骑手实时位置更新
   - 查询响应时间<50ms
   - 支持复杂多边形围栏
 
@@ -53,7 +53,7 @@ PostGIS空间查询（ST_Contains）
 
 ## 📦 1. 环境准备
 
-### 1.1 安装PostGIS扩展
+### 1.1 安装 PostGIS 扩展
 
 ```sql
 -- 创建PostGIS扩展
@@ -127,7 +127,7 @@ CREATE TABLE rider_locations (
     heading real,              -- 方向（0-360度）
     accuracy real,             -- GPS精度（米）
     recorded_at timestamptz DEFAULT now(),
-    
+
     -- 冗余字段（减少JOIN查询）
     latitude double precision,
     longitude double precision
@@ -232,7 +232,7 @@ INSERT INTO geofences (name, description, fence_type, priority, geometry, metada
 );
 
 -- 查看已创建的围栏
-SELECT 
+SELECT
     id,
     name,
     fence_type,
@@ -256,7 +256,7 @@ INSERT INTO rider_locations (rider_id, location, latitude, longitude, speed, hea
 (5, ST_SetSRID(ST_MakePoint(116.487, 39.928), 4326), 39.928, 116.487, 18.0, 270, 4);
 
 -- 查看位置数据
-SELECT 
+SELECT
     id,
     rider_id,
     ST_AsText(location) AS point,
@@ -276,7 +276,7 @@ ORDER BY id;
 
 ```sql
 -- 查询骑手在哪些围栏内
-SELECT 
+SELECT
     rl.rider_id,
     rl.latitude,
     rl.longitude,
@@ -284,13 +284,13 @@ SELECT
     g.name AS fence_name,
     g.fence_type,
     g.priority
-FROM 
+FROM
     rider_locations rl
-JOIN 
+JOIN
     geofences g ON ST_Contains(g.geometry, rl.location)
-WHERE 
+WHERE
     g.is_active = true
-ORDER BY 
+ORDER BY
     rl.rider_id, g.priority DESC;
 
 -- 查询特定骑手当前在哪个围栏内（按优先级取最高）
@@ -300,19 +300,19 @@ SELECT DISTINCT ON (rider_id)
     fence_name,
     priority
 FROM (
-    SELECT 
+    SELECT
         rl.rider_id,
         g.id AS fence_id,
         g.name AS fence_name,
         g.priority
-    FROM 
+    FROM
         rider_locations rl
-    JOIN 
+    JOIN
         geofences g ON ST_Contains(g.geometry, rl.location)
-    WHERE 
+    WHERE
         g.is_active = true
         AND rl.rider_id = 1
-    ORDER BY 
+    ORDER BY
         rl.recorded_at DESC, g.priority DESC
     LIMIT 1
 ) sub
@@ -323,7 +323,7 @@ ORDER BY rider_id;
 
 ```sql
 -- 查询指定围栏内的所有骑手
-SELECT 
+SELECT
     rl.rider_id,
     rl.latitude,
     rl.longitude,
@@ -333,14 +333,14 @@ SELECT
         rl.location::geography,
         ST_Centroid(g.geometry)::geography
     ) AS distance_to_center_m  -- 到围栏中心的距离
-FROM 
+FROM
     rider_locations rl
-JOIN 
+JOIN
     geofences g ON ST_Contains(g.geometry, rl.location)
-WHERE 
+WHERE
     g.name = '朝阳大悦城配送区'
     AND g.is_active = true
-ORDER BY 
+ORDER BY
     rl.recorded_at DESC;
 ```
 
@@ -348,7 +348,7 @@ ORDER BY
 
 ```sql
 -- 查询指定点附近1000米内的骑手
-SELECT 
+SELECT
     rider_id,
     latitude,
     longitude,
@@ -358,15 +358,15 @@ SELECT
     ) AS distance_m,
     speed,
     recorded_at
-FROM 
+FROM
     rider_locations
-WHERE 
+WHERE
     ST_DWithin(
         location::geography,
         ST_SetSRID(ST_MakePoint(116.485, 39.930), 4326)::geography,
         1000  -- 1000米
     )
-ORDER BY 
+ORDER BY
     distance_m
 LIMIT 10;
 ```
@@ -375,7 +375,7 @@ LIMIT 10;
 
 ```sql
 -- 计算骑手到目标点的直线距离
-SELECT 
+SELECT
     rider_id,
     ST_Distance(
         location::geography,
@@ -385,19 +385,19 @@ SELECT
         location::geography,
         ST_SetSRID(ST_MakePoint(116.480, 39.925), 4326)::geography
     ) / 1000 AS straight_distance_km
-FROM 
+FROM
     rider_locations
-WHERE 
+WHERE
     rider_id = 1;
 
 -- 计算围栏面积
-SELECT 
+SELECT
     id,
     name,
     ST_Area(geometry::geography) AS area_sqm,
     ST_Area(geometry::geography) / 1000000 AS area_sqkm,
     ST_Perimeter(geometry::geography) AS perimeter_m
-FROM 
+FROM
     geofences
 ORDER BY area_sqm DESC;
 ```
@@ -425,7 +425,7 @@ BEGIN
     FROM geofences g
     WHERE ST_Contains(g.geometry, NEW.location)
       AND g.is_active = true;
-    
+
     -- 获取上一次位置所在的围栏
     SELECT ARRAY_AGG(g.id)
     INTO previous_fences
@@ -436,31 +436,31 @@ BEGIN
       AND g.is_active = true
     ORDER BY rl.id DESC
     LIMIT 1;
-    
+
     -- 处理NULL情况
     current_fences := COALESCE(current_fences, ARRAY[]::bigint[]);
     previous_fences := COALESCE(previous_fences, ARRAY[]::bigint[]);
-    
+
     -- 计算进入的围栏
     entered_fences := ARRAY(
         SELECT unnest(current_fences)
         EXCEPT
         SELECT unnest(previous_fences)
     );
-    
+
     -- 计算离开的围栏
     exited_fences := ARRAY(
         SELECT unnest(previous_fences)
         EXCEPT
         SELECT unnest(current_fences)
     );
-    
+
     -- 记录进入事件
     FOREACH fence_id IN ARRAY entered_fences
     LOOP
         INSERT INTO fence_events (rider_id, fence_id, event_type, location, event_time)
         VALUES (NEW.rider_id, fence_id, 'enter', NEW.location, NEW.recorded_at);
-        
+
         -- 发送通知
         PERFORM pg_notify('fence_event', json_build_object(
             'rider_id', NEW.rider_id,
@@ -469,13 +469,13 @@ BEGIN
             'timestamp', extract(epoch from NEW.recorded_at)
         )::text);
     END LOOP;
-    
+
     -- 记录离开事件
     FOREACH fence_id IN ARRAY exited_fences
     LOOP
         INSERT INTO fence_events (rider_id, fence_id, event_type, location, event_time)
         VALUES (NEW.rider_id, fence_id, 'exit', NEW.location, NEW.recorded_at);
-        
+
         -- 发送通知
         PERFORM pg_notify('fence_event', json_build_object(
             'rider_id', NEW.rider_id,
@@ -484,7 +484,7 @@ BEGIN
             'timestamp', extract(epoch from NEW.recorded_at)
         )::text);
     END LOOP;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -508,20 +508,20 @@ INSERT INTO rider_locations (rider_id, location, latitude, longitude)
 VALUES (10, ST_SetSRID(ST_MakePoint(116.500, 39.940), 4326), 39.940, 116.500);
 
 -- 查看事件记录
-SELECT 
+SELECT
     fe.id,
     fe.rider_id,
     g.name AS fence_name,
     fe.event_type,
     ST_AsText(fe.location) AS location,
     fe.event_time
-FROM 
+FROM
     fence_events fe
-JOIN 
+JOIN
     geofences g ON fe.fence_id = g.id
-WHERE 
+WHERE
     fe.rider_id = 10
-ORDER BY 
+ORDER BY
     fe.event_time DESC;
 ```
 
@@ -529,37 +529,37 @@ ORDER BY
 
 ```sql
 -- 查询重叠的围栏
-SELECT 
+SELECT
     a.id AS fence_a_id,
     a.name AS fence_a_name,
     b.id AS fence_b_id,
     b.name AS fence_b_name,
     ST_Area(ST_Intersection(a.geometry, b.geometry)::geography) AS overlap_area_sqm
-FROM 
+FROM
     geofences a
-JOIN 
+JOIN
     geofences b ON a.id < b.id
-WHERE 
+WHERE
     ST_Intersects(a.geometry, b.geometry)
     AND a.is_active = true
     AND b.is_active = true;
 
 -- 查询某点所在的所有围栏（按优先级排序）
-SELECT 
+SELECT
     g.id,
     g.name,
     g.fence_type,
     g.priority,
     g.metadata
-FROM 
+FROM
     geofences g
-WHERE 
+WHERE
     ST_Contains(
         g.geometry,
         ST_SetSRID(ST_MakePoint(116.485, 39.930), 4326)
     )
     AND g.is_active = true
-ORDER BY 
+ORDER BY
     g.priority DESC;
 ```
 
@@ -584,7 +584,7 @@ WHERE g.is_active = true;
 SET enable_seqscan = off;
 
 -- 分析空间索引效率
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexname,
@@ -605,7 +605,7 @@ SET geometry = ST_SimplifyPreserveTopology(geometry, 0.0001)
 WHERE ST_NPoints(geometry) > 100;
 
 -- 查看简化效果
-SELECT 
+SELECT
     id,
     name,
     ST_NPoints(geometry) AS num_points,
@@ -645,11 +645,11 @@ FROM generate_series(1, 10000);
 
 ## 🎨 7. 可视化与监控
 
-### 7.1 导出GeoJSON（供前端地图展示）
+### 7.1 导出 GeoJSON（供前端地图展示）
 
 ```sql
 -- 导出围栏为GeoJSON
-SELECT 
+SELECT
     jsonb_build_object(
         'type', 'FeatureCollection',
         'features', jsonb_agg(
@@ -670,7 +670,7 @@ FROM geofences
 WHERE is_active = true;
 
 -- 导出骑手位置为GeoJSON
-SELECT 
+SELECT
     jsonb_build_object(
         'type', 'FeatureCollection',
         'features', jsonb_agg(
@@ -696,23 +696,23 @@ WHERE recorded_at > now() - interval '5 minutes';
 ```sql
 -- 创建实时监控视图
 CREATE OR REPLACE VIEW geofence_realtime_stats AS
-SELECT 
+SELECT
     g.id AS fence_id,
     g.name AS fence_name,
     g.fence_type,
     COUNT(DISTINCT rl.rider_id) AS rider_count,
     AVG(rl.speed) AS avg_speed,
     MAX(rl.recorded_at) AS last_update_time
-FROM 
+FROM
     geofences g
-LEFT JOIN 
+LEFT JOIN
     rider_locations rl ON ST_Contains(g.geometry, rl.location)
-WHERE 
+WHERE
     g.is_active = true
     AND rl.recorded_at > now() - interval '5 minutes'
-GROUP BY 
+GROUP BY
     g.id, g.name, g.fence_type
-ORDER BY 
+ORDER BY
     rider_count DESC;
 
 -- 查询统计
@@ -729,7 +729,7 @@ WITH target_location AS (
     SELECT ST_SetSRID(ST_MakePoint(116.485, 39.930), 4326) AS point
 ),
 nearby_riders AS (
-    SELECT 
+    SELECT
         rl.rider_id,
         rl.location,
         rl.speed,
@@ -737,10 +737,10 @@ nearby_riders AS (
             rl.location::geography,
             tl.point::geography
         ) AS distance_m
-    FROM 
+    FROM
         rider_locations rl,
         target_location tl
-    WHERE 
+    WHERE
         rl.recorded_at > now() - interval '1 minute'
         AND ST_DWithin(
             rl.location::geography,
@@ -749,27 +749,27 @@ nearby_riders AS (
         )
 ),
 riders_in_fence AS (
-    SELECT 
+    SELECT
         nr.rider_id,
         nr.distance_m,
         g.name AS fence_name,
         g.priority AS fence_priority
-    FROM 
+    FROM
         nearby_riders nr
-    JOIN 
+    JOIN
         geofences g ON ST_Contains(g.geometry, nr.location)
-    WHERE 
+    WHERE
         g.fence_type = 'delivery_zone'
         AND g.is_active = true
 )
-SELECT 
+SELECT
     rider_id,
     round(distance_m::numeric, 2) AS distance_m,
     fence_name,
     fence_priority
-FROM 
+FROM
     riders_in_fence
-ORDER BY 
+ORDER BY
     fence_priority DESC,
     distance_m ASC
 LIMIT 5;
@@ -781,16 +781,16 @@ LIMIT 5;
 
 ### 9.1 坐标系选择
 
-- ✅ 使用SRID 4326（WGS84）存储经纬度
-- ✅ 距离计算时转换为geography类型
+- ✅ 使用 SRID 4326（WGS84）存储经纬度
+- ✅ 距离计算时转换为 geography 类型
 - ✅ 避免混用不同坐标系
 
 ### 9.2 性能优化
 
-- ✅ 创建GiST空间索引
+- ✅ 创建 GiST 空间索引
 - ✅ 简化复杂几何对象
 - ✅ 使用分区表存储历史位置
-- ✅ 定期VACUUM维护
+- ✅ 定期 VACUUM 维护
 
 ### 9.3 业务设计
 
@@ -804,17 +804,19 @@ LIMIT 5;
 ## 🎯 10. 练习任务
 
 1. **基础练习**：
-   - 创建3个配送区域围栏
-   - 插入10个骑手位置
+
+   - 创建 3 个配送区域围栏
+   - 插入 10 个骑手位置
    - 查询每个围栏内的骑手数量
 
 2. **进阶练习**：
+
    - 实现围栏进出事件检测
    - 创建实时监控视图
-   - 导出GeoJSON供前端展示
+   - 导出 GeoJSON 供前端展示
 
 3. **挑战任务**：
-   - 构建完整的LBS配送系统
+   - 构建完整的 LBS 配送系统
    - 优化百万级位置更新性能
    - 实现复杂路径规划算法
 

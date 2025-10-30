@@ -1,4 +1,5 @@
 ﻿# Citus 集群样例（示意）
+
 - coordinator: 1 节点
 - workers: N 节点（每节点 replicas=k）
 - 与 HA 方案：每个节点依旧可用物理/逻辑复制实现 HA/DR

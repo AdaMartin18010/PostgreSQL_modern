@@ -1,0 +1,26 @@
+{
+  // Line length: wrap prose at 100, ignore code blocks/URLs
+  "MD013": {
+    "line_length": 100,
+    "code_blocks": false,
+    "tables": false,
+    "headings": false,
+    "stern": false
+  },
+  // Allow files without a leading H1 (many docs are partials)
+  "MD041": false,
+  // Ordered list style: always "1." for simplicity
+  "MD029": { "style": "one" },
+  // Code block style: fenced with backticks
+  "MD046": { "style": "fenced" },
+  // Heading style: ATX (#) and require spaces after #
+  "MD003": { "style": "atx" },
+  "MD018": true,
+  "MD019": true,
+  // Trailing spaces are allowed in Markdown for hard line breaks
+  "MD009": { "br_spaces": 2, "list_item_empty_lines": false, "strict": false },
+  // Unordered list markers: dash
+  "MD004": { "style": "dash" },
+  // Permit inline HTML when needed (Grafana JSON blocks etc.)
+  "MD033": false
+}

@@ -1,7 +1,7 @@
 # PostgreSQL SQL 自动化测试框架
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
-> **目标**：为所有SQL示例提供自动化测试，确保代码质量和可执行性
+> **目标**：为所有 SQL 示例提供自动化测试，确保代码质量和可执行性
 
 ---
 
@@ -9,8 +9,8 @@
 
 ### 设计目标
 
-- ✅ 自动化执行所有SQL脚本
-- ✅ 验证SQL语法正确性
+- ✅ 自动化执行所有 SQL 脚本
+- ✅ 验证 SQL 语法正确性
 - ✅ 检查执行结果
 - ✅ 生成测试报告
 - ✅ 持续集成（CI）支持
@@ -18,7 +18,7 @@
 ### 测试范围
 
 - **基础模块**：01_sql_ddl_dcl, 02_transactions, 03_storage_access
-- **实战案例**：08_ecosystem_cases（5个案例）
+- **实战案例**：08_ecosystem_cases（5 个案例）
 - **扩展功能**：pgvector, PostGIS, TimescaleDB, Citus
 
 ---
@@ -95,7 +95,7 @@ xdg-open tests/reports/test_results.html  # Linux
 
 ## 📝 测试用例编写规范
 
-### SQL测试文件格式
+### SQL 测试文件格式
 
 每个测试文件应包含以下部分：
 
@@ -146,7 +146,7 @@ SELECT id, name FROM users ORDER BY id LIMIT 1;
 
 ### 基础测试套件
 
-#### 1. SQL DDL/DCL测试
+#### 1. SQL DDL/DCL 测试
 
 - 创建/修改/删除表
 - 约束测试（主键、外键、检查约束）
@@ -155,7 +155,7 @@ SELECT id, name FROM users ORDER BY id LIMIT 1;
 
 #### 2. 事务测试
 
-- ACID特性验证
+- ACID 特性验证
 - 隔离级别测试
 - 锁机制测试
 - 死锁检测
@@ -164,31 +164,31 @@ SELECT id, name FROM users ORDER BY id LIMIT 1;
 
 - 索引类型测试
 - 执行计划验证
-- VACUUM/ANALYZE测试
+- VACUUM/ANALYZE 测试
 
 ### 实战案例测试
 
 #### 1. 全文搜索测试
 
-- tsvector/tsquery功能
-- GIN索引性能
+- tsvector/tsquery 功能
+- GIN 索引性能
 - 搜索结果相关性
 
-#### 2. CDC测试
+#### 2. CDC 测试
 
-- 触发器CDC功能
-- 逻辑复制CDC
+- 触发器 CDC 功能
+- 逻辑复制 CDC
 - 变更数据完整性
 
 #### 3. 地理围栏测试
 
-- PostGIS扩展功能
+- PostGIS 扩展功能
 - 空间查询正确性
-- GiST索引性能
+- GiST 索引性能
 
 #### 4. 联邦查询测试
 
-- postgres_fdw连接
+- postgres_fdw 连接
 - 跨库查询正确性
 - 数据一致性
 
@@ -234,7 +234,7 @@ python tests/scripts/run_all_tests.py --fail-fast
 
 **功能**：
 
-- 运行单个SQL测试文件
+- 运行单个 SQL 测试文件
 - 详细的错误信息
 - 调试模式
 
@@ -252,7 +252,7 @@ python tests/scripts/run_single_test.py --debug test_file.sql
 
 ## 📊 测试报告
 
-### HTML报告
+### HTML 报告
 
 包含以下内容：
 
@@ -273,7 +273,7 @@ Results:
   ✓ Passed:  45
   ✗ Failed:   3
   ⊘ Skipped:  2
-  
+
 Total time: 12.34s
 
 Failed tests:
@@ -289,7 +289,7 @@ Failed tests:
 
 ## 🔄 持续集成（CI）
 
-### GitHub Actions工作流
+### GitHub Actions 工作流
 
 文件：`.github/workflows/sql-tests.yml`
 
@@ -298,48 +298,45 @@ name: SQL Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   schedule:
-    - cron: '0 0 * * *'  # 每天运行
+    - cron: "0 0 * * *" # 每天运行
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        pip install psycopg2-binary pytest pyyaml tabulate
-    
-    - name: Run SQL tests
-      run: |
-        python tests/scripts/run_all_tests.py --ci
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v3
-      with:
-        name: test-results
-        path: tests/reports/
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install psycopg2-binary pytest pyyaml tabulate
+
+      - name: Run SQL tests
+        run: |
+          python tests/scripts/run_all_tests.py --ci
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: tests/reports/
 ```
 
 ---
@@ -348,13 +345,13 @@ jobs:
 
 ### 1. 测试隔离
 
-- ✅ 每个测试使用独立的schema
+- ✅ 每个测试使用独立的 schema
 - ✅ 测试后清理所有数据
 - ✅ 避免测试之间的依赖
 
 ### 2. 测试数据
 
-- ✅ 使用fixtures准备测试数据
+- ✅ 使用 fixtures 准备测试数据
 - ✅ 数据量适中（避免过大）
 - ✅ 数据多样性（覆盖边界情况）
 
@@ -380,10 +377,11 @@ jobs:
 
 ## 📚 扩展阅读
 
-- **pgTAP**：PostgreSQL单元测试框架 - <https://pgtap.org/>
-- **pg_prove**：TAP测试运行器 - <https://pgtap.org/documentation.html>
-- **pytest-postgresql**：Python PostgreSQL测试插件 - <https://github.com/ClearcodeHQ/pytest-postgresql>
-- **GitHub Actions**：CI/CD配置 - <https://docs.github.com/en/actions>
+- **pgTAP**：PostgreSQL 单元测试框架 - <https://pgtap.org/>
+- **pg_prove**：TAP 测试运行器 - <https://pgtap.org/documentation.html>
+- **pytest-postgresql**：Python PostgreSQL 测试插件 -
+  <https://github.com/ClearcodeHQ/pytest-postgresql>
+- **GitHub Actions**：CI/CD 配置 - <https://docs.github.com/en/actions>
 
 ---
 
@@ -394,13 +392,13 @@ jobs:
 1. 在对应目录创建测试文件
 2. 按照规范编写测试用例
 3. 本地验证测试通过
-4. 提交PR并等待CI验证
+4. 提交 PR 并等待 CI 验证
 
 ### 报告测试问题
 
 如果发现测试失败或不准确：
 
-1. 在GitHub创建Issue
+1. 在 GitHub 创建 Issue
 2. 包含测试文件路径
 3. 附上错误信息和日志
 4. 说明预期行为

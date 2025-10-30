@@ -16,7 +16,7 @@
 -- ================================================
 
 -- 1.1 实时连接数统计
-SELECT 
+SELECT
     COUNT(*) FILTER (WHERE state = 'active') AS active_connections,
     COUNT(*) FILTER (WHERE state = 'idle') AS idle_connections,
     COUNT(*) FILTER (WHERE state = 'idle in transaction') AS idle_in_transaction,
@@ -26,7 +26,7 @@ SELECT
 FROM pg_stat_activity;
 
 -- 1.2 按数据库统计连接数
-SELECT 
+SELECT
     datname AS database_name,
     COUNT(*) AS connection_count,
     COUNT(*) FILTER (WHERE state = 'active') AS active_count
@@ -35,7 +35,7 @@ GROUP BY datname
 ORDER BY connection_count DESC;
 
 -- 1.3 按用户统计连接数
-SELECT 
+SELECT
     usename AS username,
     COUNT(*) AS connection_count,
     COUNT(*) FILTER (WHERE state = 'active') AS active_count,
@@ -45,7 +45,7 @@ GROUP BY usename
 ORDER BY connection_count DESC;
 
 -- 1.4 长时间IDLE IN TRANSACTION会话（危险！）
-SELECT 
+SELECT
     pid,
     usename,
     application_name,
@@ -59,7 +59,7 @@ WHERE state = 'idle in transaction'
 ORDER BY xact_start;
 
 -- 1.5 当前活跃查询
-SELECT 
+SELECT
     pid,
     usename,
     datname,
@@ -79,7 +79,7 @@ ORDER BY query_start;
 -- ================================================
 
 -- 2.1 数据库级别统计信息
-SELECT 
+SELECT
     datname AS database_name,
     xact_commit AS commits,
     xact_rollback AS rollbacks,
@@ -98,7 +98,7 @@ ORDER BY xact_commit + xact_rollback DESC;
 
 -- 2.2 TOP 10慢查询（需要pg_stat_statements扩展）
 -- CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-SELECT 
+SELECT
     LEFT(query, 100) AS query_preview,
     calls,
     ROUND(mean_exec_time::numeric, 2) AS avg_time_ms,
@@ -111,7 +111,7 @@ ORDER BY mean_exec_time DESC
 LIMIT 10;
 
 -- 2.3 TOP 10频繁执行的查询
-SELECT 
+SELECT
     LEFT(query, 100) AS query_preview,
     calls,
     ROUND(mean_exec_time::numeric, 2) AS avg_time_ms,
@@ -122,7 +122,7 @@ ORDER BY calls DESC
 LIMIT 10;
 
 -- 2.4 表级别读写统计
-SELECT 
+SELECT
     schemaname,
     tablename,
     seq_scan,
@@ -139,7 +139,7 @@ ORDER BY seq_scan DESC
 LIMIT 20;
 
 -- 2.5 缓存命中率（按表）
-SELECT 
+SELECT
     schemaname,
     tablename,
     heap_blks_read,
@@ -155,7 +155,7 @@ LIMIT 20;
 -- ================================================
 
 -- 3.1 当前锁等待情况
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -165,14 +165,14 @@ SELECT
     NOW() - blocked_activity.query_start AS block_duration
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.pid != blocked_locks.pid
 JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_activity.pid = blocking_locks.pid
 WHERE NOT blocked_locks.granted;
 
 -- 3.2 死锁统计
-SELECT 
+SELECT
     datname,
     deadlocks,
     stats_reset
@@ -181,7 +181,7 @@ WHERE datname NOT IN ('template0', 'template1')
 ORDER BY deadlocks DESC;
 
 -- 3.3 长事务（超过5分钟）
-SELECT 
+SELECT
     pid,
     usename,
     datname,
@@ -197,7 +197,7 @@ WHERE xact_start IS NOT NULL
 ORDER BY xact_start;
 
 -- 3.4 当前持有的锁
-SELECT 
+SELECT
     locktype,
     database,
     relation::regclass,
@@ -213,7 +213,7 @@ WHERE granted = true
 ORDER BY pid;
 
 -- 3.5 等待事件统计
-SELECT 
+SELECT
     wait_event_type,
     wait_event,
     COUNT(*) AS wait_count
@@ -227,7 +227,7 @@ ORDER BY wait_count DESC;
 -- ================================================
 
 -- 4.1 表大小TOP 20
-SELECT 
+SELECT
     schemaname,
     tablename,
     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
@@ -239,7 +239,7 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
 LIMIT 20;
 
 -- 4.2 表膨胀检测（死元组比例）
-SELECT 
+SELECT
     schemaname,
     tablename,
     n_live_tup,
@@ -255,7 +255,7 @@ ORDER BY dead_ratio_pct DESC NULLS LAST
 LIMIT 20;
 
 -- 4.3 索引大小TOP 20
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexname,
@@ -268,7 +268,7 @@ ORDER BY pg_relation_size(indexrelid) DESC
 LIMIT 20;
 
 -- 4.4 未使用的索引（idx_scan = 0）
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexname,
@@ -280,7 +280,7 @@ WHERE idx_scan = 0
 ORDER BY pg_relation_size(indexrelid) DESC;
 
 -- 4.5 VACUUM进度（正在执行的VACUUM）
-SELECT 
+SELECT
     pid,
     datname,
     relid::regclass AS table_name,
@@ -298,7 +298,7 @@ FROM pg_stat_progress_vacuum;
 -- ================================================
 
 -- 5.1 复制状态（在主库执行）
-SELECT 
+SELECT
     application_name,
     client_addr,
     client_hostname,
@@ -313,7 +313,7 @@ SELECT
 FROM pg_stat_replication;
 
 -- 5.2 复制槽状态
-SELECT 
+SELECT
     slot_name,
     slot_type,
     database,
@@ -327,7 +327,7 @@ SELECT
 FROM pg_replication_slots;
 
 -- 5.3 WAL统计信息（PostgreSQL 14+）
-SELECT 
+SELECT
     wal_records,
     wal_fpi,
     wal_bytes,
@@ -341,7 +341,7 @@ SELECT
 FROM pg_stat_wal;
 
 -- 5.4 逻辑复制订阅状态（PostgreSQL 10+）
-SELECT 
+SELECT
     subname,
     pid,
     relid,
@@ -353,9 +353,9 @@ SELECT
 FROM pg_stat_subscription;
 
 -- 5.5 检查是否为主库或备库
-SELECT 
+SELECT
     pg_is_in_recovery() AS is_standby,
-    CASE 
+    CASE
         WHEN pg_is_in_recovery() THEN 'Standby Server'
         ELSE 'Primary Server'
     END AS server_role,
@@ -368,7 +368,7 @@ SELECT
 -- ================================================
 
 -- 6.1 数据库大小
-SELECT 
+SELECT
     datname AS database_name,
     pg_size_pretty(pg_database_size(datname)) AS database_size,
     pg_database_size(datname) AS size_bytes
@@ -377,14 +377,14 @@ WHERE datname NOT IN ('template0', 'template1')
 ORDER BY pg_database_size(datname) DESC;
 
 -- 6.2 表空间使用情况
-SELECT 
+SELECT
     spcname AS tablespace_name,
     pg_size_pretty(pg_tablespace_size(spcname)) AS tablespace_size,
     pg_tablespace_location(oid) AS location
 FROM pg_tablespace;
 
 -- 6.3 临时文件统计
-SELECT 
+SELECT
     datname,
     temp_files,
     pg_size_pretty(temp_bytes) AS temp_size,
@@ -394,7 +394,7 @@ WHERE datname NOT IN ('template0', 'template1')
 ORDER BY temp_bytes DESC;
 
 -- 6.4 共享内存使用（需要超级用户）
-SELECT 
+SELECT
     name,
     setting,
     unit,
@@ -405,7 +405,7 @@ WHERE name IN ('shared_buffers', 'effective_cache_size', 'work_mem', 'maintenanc
 ORDER BY name;
 
 -- 6.5 连接池配置检查（PgBouncer相关）
-SELECT 
+SELECT
     name,
     setting,
     unit
@@ -418,7 +418,7 @@ ORDER BY name;
 -- ================================================
 
 -- 7.1 JSON_TABLE函数使用统计
-SELECT 
+SELECT
     LEFT(query, 100) AS query_preview,
     calls,
     ROUND(mean_exec_time::numeric, 2) AS avg_time_ms,
@@ -429,7 +429,7 @@ ORDER BY calls DESC
 LIMIT 10;
 
 -- 7.2 VACUUM内存配置（PG17优化）
-SELECT 
+SELECT
     name,
     setting,
     unit,
@@ -439,7 +439,7 @@ WHERE name LIKE '%vacuum%mem%' OR name LIKE '%vacuum%'
 ORDER BY name;
 
 -- 7.3 逻辑复制插槽（PG17增强）
-SELECT 
+SELECT
     slot_name,
     plugin,
     slot_type,
@@ -451,7 +451,7 @@ FROM pg_replication_slots
 WHERE slot_type = 'logical';
 
 -- 7.4 增量备份相关（PG17新增）
-SELECT 
+SELECT
     name,
     setting,
     unit,
@@ -461,7 +461,7 @@ WHERE name LIKE '%backup%' OR name LIKE '%incremental%'
 ORDER BY name;
 
 -- 7.5 MERGE语句使用统计（PG17增强）
-SELECT 
+SELECT
     LEFT(query, 100) AS query_preview,
     calls,
     ROUND(mean_exec_time::numeric, 2) AS avg_time_ms

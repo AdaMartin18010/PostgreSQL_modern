@@ -4,11 +4,11 @@
 
 - Python 3.8+
 - PostgreSQL 16+ (推荐 PostgreSQL 17)
-- pip (Python包管理器)
+- pip (Python 包管理器)
 
 ## 安装步骤
 
-### 1. 安装Python依赖
+### 1. 安装 Python 依赖
 
 #### Windows (PowerShell)
 
@@ -69,7 +69,7 @@ python tests/scripts/run_single_test.py --debug tests/sql_tests/example_test.sql
 
 ### Q1: 导入错误 "Import psycopg2 could not be resolved"
 
-**原因**: Python包 `psycopg2-binary` 未安装
+**原因**: Python 包 `psycopg2-binary` 未安装
 
 **解决方案**:
 
@@ -83,7 +83,7 @@ pip install psycopg2-binary
 
 **解决方案**:
 
-1. 检查PostgreSQL服务是否运行
+1. 检查 PostgreSQL 服务是否运行
 2. 验证 `tests/config/database.yml` 中的连接信息
 3. 确保测试数据库已创建
 
@@ -98,17 +98,15 @@ pip install psycopg2-binary
 GRANT ALL PRIVILEGES ON DATABASE postgres_modern_test TO postgres;
 ```
 
-## IDE配置
+## IDE 配置
 
 ### VS Code / Cursor
 
-如果使用VS Code或Cursor，创建/更新 `.vscode/settings.json`:
+如果使用 VS Code 或 Cursor，创建/更新 `.vscode/settings.json`:
 
 ```json
 {
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/tests/scripts"
-  ],
+  "python.analysis.extraPaths": ["${workspaceFolder}/tests/scripts"],
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": true
 }

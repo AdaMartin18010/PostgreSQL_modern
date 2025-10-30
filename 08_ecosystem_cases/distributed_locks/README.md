@@ -2,16 +2,16 @@
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐ 高级  
-> **预计时间**：45-60分钟  
+> **预计时间**：45-60 分钟  
 > **适合场景**：分布式系统、任务调度、资源互斥、幂等性保证
 
 ---
 
 ## 📋 案例目标
 
-构建一个基于PostgreSQL Advisory Locks的分布式锁系统，包括：
+构建一个基于 PostgreSQL Advisory Locks 的分布式锁系统，包括：
 
-1. ✅ Session级和Transaction级锁
+1. ✅ Session 级和 Transaction 级锁
 2. ✅ 分布式任务调度
 3. ✅ 资源互斥访问
 4. ✅ 死锁检测与处理
@@ -24,14 +24,14 @@
 **场景描述**：分布式任务调度系统
 
 - **系统架构**：
-  - 10个Worker节点
-  - 100个定时任务
+  - 10 个 Worker 节点
+  - 100 个定时任务
   - 每个任务需要独占执行
-  - 任务执行时间：1秒-10分钟
+  - 任务执行时间：1 秒-10 分钟
 - **需求**：
   - 保证任务不会被重复执行
   - 支持任务超时自动释放
-  - Worker节点故障时自动恢复
+  - Worker 节点故障时自动恢复
   - 高并发场景下的锁竞争
 
 ---
@@ -52,7 +52,7 @@ PostgreSQL Advisory Locks
 
 ## 📦 1. Advisory Lock 基础
 
-### 1.1 Session级锁 vs Transaction级锁
+### 1.1 Session 级锁 vs Transaction 级锁
 
 ```sql
 -- Session级锁（需要显式释放）
@@ -74,11 +74,11 @@ COMMIT;  -- 自动释放锁
 
 ### 1.2 锁类型对比
 
-| 锁类型 | 获取函数 | 释放方式 | 适用场景 |
-|--------|---------|---------|---------|
-| **Session级** | `pg_advisory_lock()` | 显式调用unlock | 长时间持有、跨事务 |
-| **Transaction级** | `pg_advisory_xact_lock()` | 事务提交/回滚 | 短时间持有、事务内 |
-| **共享锁** | `pg_advisory_lock_shared()` | unlock_shared | 读写分离 |
+| 锁类型             | 获取函数                    | 释放方式        | 适用场景           |
+| ------------------ | --------------------------- | --------------- | ------------------ |
+| **Session 级**     | `pg_advisory_lock()`        | 显式调用 unlock | 长时间持有、跨事务 |
+| **Transaction 级** | `pg_advisory_xact_lock()`   | 事务提交/回滚   | 短时间持有、事务内 |
+| **共享锁**         | `pg_advisory_lock_shared()` | unlock_shared   | 读写分离           |
 
 ---
 
@@ -140,21 +140,21 @@ DECLARE
 BEGIN
     -- 使用task_id作为锁ID
     v_lock_id := p_task_id;
-    
+
     -- 尝试获取Advisory Lock（非阻塞）
     v_acquired := pg_try_advisory_lock(v_lock_id);
-    
+
     IF v_acquired THEN
         -- 记录任务执行日志
         INSERT INTO task_execution_log (task_id, worker_id, status, lock_id)
         VALUES (p_task_id, p_worker_id, 'running', v_lock_id);
-        
+
         -- 更新任务的最后运行时间
         UPDATE scheduled_tasks
         SET last_run_at = now()
         WHERE id = p_task_id;
     END IF;
-    
+
     RETURN v_acquired;
 END;
 $$ LANGUAGE plpgsql;
@@ -179,7 +179,7 @@ DECLARE
     v_lock_id bigint;
 BEGIN
     v_lock_id := p_task_id;
-    
+
     -- 更新任务执行日志
     UPDATE task_execution_log
     SET status = p_status,
@@ -189,10 +189,10 @@ BEGIN
       AND worker_id = p_worker_id
       AND status = 'running'
       AND completed_at IS NULL;
-    
+
     -- 释放Advisory Lock
     PERFORM pg_advisory_unlock(v_lock_id);
-    
+
     -- 更新下次运行时间（示例：5分钟后）
     IF p_status = 'completed' THEN
         UPDATE scheduled_tasks
@@ -210,7 +210,7 @@ SELECT release_task_lock(1, 'worker-001', 'completed');
 
 ## 🚀 4. 实战应用
 
-### 4.1 Worker节点任务调度
+### 4.1 Worker 节点任务调度
 
 ```sql
 -- Worker节点获取并执行任务的完整流程
@@ -242,7 +242,7 @@ BEGIN
             RETURN;  -- 获取到一个任务后立即返回
         END IF;
     END LOOP;
-    
+
     -- 没有获取到任务
     RETURN QUERY
     SELECT NULL::int, NULL::text, NULL::text, false;
@@ -271,7 +271,7 @@ DECLARE
 BEGIN
     -- 查找超时任务
     FOR v_timeout_task IN
-        SELECT 
+        SELECT
             tel.task_id,
             tel.worker_id,
             tel.lock_id,
@@ -283,7 +283,7 @@ BEGIN
         -- 尝试释放锁（可能worker已释放）
         BEGIN
             PERFORM pg_advisory_unlock(v_timeout_task.lock_id);
-            
+
             -- 更新任务状态为超时
             UPDATE task_execution_log
             SET status = 'failed',
@@ -296,7 +296,7 @@ BEGIN
                   AND status = 'running'
                 LIMIT 1
             );
-            
+
             RETURN QUERY
             SELECT v_timeout_task.task_id, v_timeout_task.worker_id, true;
         EXCEPTION
@@ -321,7 +321,7 @@ SELECT * FROM check_and_recover_timeout_tasks(30);
 
 ```sql
 -- 查看所有Advisory Locks
-SELECT 
+SELECT
     locktype,
     database,
     classid,
@@ -337,7 +337,7 @@ WHERE locktype = 'advisory'
 ORDER BY pid;
 
 -- 查看任务锁的详细信息
-SELECT 
+SELECT
     l.pid,
     l.objid AS lock_id,
     st.task_name,
@@ -358,7 +358,7 @@ ORDER BY tel.started_at;
 
 ```sql
 -- 查看锁等待的进程
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -368,7 +368,7 @@ SELECT
     blocked_activity.application_name AS blocked_application
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
     AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -388,7 +388,7 @@ WHERE NOT blocked_locks.granted;
 
 ## 📊 6. 性能优化
 
-### 6.1 使用两个参数的锁ID
+### 6.1 使用两个参数的锁 ID
 
 ```sql
 -- 使用两个int4参数（更灵活）
@@ -436,10 +436,10 @@ BEGIN
     LOOP
         IF try_acquire_task_lock(v_task.id, p_worker_id) THEN
             v_acquired_count := v_acquired_count + 1;
-            
+
             RETURN QUERY
             SELECT v_task.id, v_task.task_name, true;
-            
+
             EXIT WHEN v_acquired_count >= p_max_tasks;
         END IF;
     END LOOP;
@@ -462,16 +462,16 @@ BEGIN
     -- 获取任务
     SELECT * INTO v_task
     FROM worker_fetch_and_execute_task('worker-001');
-    
+
     IF v_task.acquired THEN
         RAISE NOTICE 'Worker-001 acquired task: % (ID: %)', v_task.task_name, v_task.task_id;
-        
+
         -- 模拟任务执行
         PERFORM pg_sleep(2);
-        
+
         -- 任务执行成功，释放锁
         PERFORM release_task_lock(v_task.task_id, 'worker-001', 'completed');
-        
+
         RAISE NOTICE 'Worker-001 completed task: %', v_task.task_name;
     ELSE
         RAISE NOTICE 'Worker-001 没有获取到可用任务';
@@ -479,7 +479,7 @@ BEGIN
 END $$;
 
 -- Step 2: 查看执行日志
-SELECT 
+SELECT
     st.task_name,
     tel.worker_id,
     tel.status,
@@ -498,8 +498,8 @@ LIMIT 10;
 
 ### 8.1 锁管理
 
-- ✅ 使用Transaction级锁处理短任务
-- ✅ 使用Session级锁处理长任务
+- ✅ 使用 Transaction 级锁处理短任务
+- ✅ 使用 Session 级锁处理长任务
 - ✅ 实现锁超时机制
 - ✅ 记录锁的持有者信息
 
@@ -529,11 +529,13 @@ LIMIT 10;
 ## 🎯 9. 练习任务
 
 1. **基础练习**：
+
    - 实现基本的任务锁获取和释放
-   - 测试多个Worker竞争同一任务
+   - 测试多个 Worker 竞争同一任务
    - 实现任务执行日志记录
 
 2. **进阶练习**：
+
    - 实现任务超时自动恢复
    - 创建任务调度监控视图
    - 实现锁竞争统计分析
@@ -547,8 +549,9 @@ LIMIT 10;
 
 ## 📖 10. 参考资源
 
-- PostgreSQL Advisory Locks: <https://www.postgresql.org/docs/17/explicit-locking.html#ADVISORY-LOCKS>
-- pg_locks系统视图: <https://www.postgresql.org/docs/17/view-pg-locks.html>
+- PostgreSQL Advisory Locks:
+  <https://www.postgresql.org/docs/17/explicit-locking.html#ADVISORY-LOCKS>
+- pg_locks 系统视图: <https://www.postgresql.org/docs/17/view-pg-locks.html>
 - 分布式锁最佳实践: <https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html>
 
 ---

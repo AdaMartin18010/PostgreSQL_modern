@@ -23,9 +23,9 @@
 
 ## 典型部署步骤（物理复制）
 
-1) 主库开启 WAL 与复制参数，创建复制槽（可选）
-2) 基础备份：`pg_basebackup -D $DATADIR -R -C -S slot_name`
-3) 启动从库，验证 `pg_stat_wal_receiver`、`pg_stat_replication`
+1. 主库开启 WAL 与复制参数，创建复制槽（可选）
+2. 基础备份：`pg_basebackup -D $DATADIR -R -C -S slot_name`
+3. 启动从库，验证 `pg_stat_wal_receiver`、`pg_stat_replication`
 
 ## 逻辑复制（发布/订阅）
 

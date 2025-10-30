@@ -2,7 +2,7 @@
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **模块完整度**：⭐⭐⭐⭐ 85%（已深化，持续完善）  
-> **适合人群**：理解事务ACID、MVCC机制、隔离级别、锁机制及生产实践
+> **适合人群**：理解事务 ACID、MVCC 机制、隔离级别、锁机制及生产实践
 
 ---
 
@@ -13,25 +13,25 @@
   - [模块定位与边界](#模块定位与边界)
     - [主题边界](#主题边界)
     - [知识地图](#知识地图)
-  - [1. ACID特性与实现](#1-acid特性与实现)
+  - [1. ACID 特性与实现](#1-acid-特性与实现)
     - [1.1 原子性（Atomicity）](#11-原子性atomicity)
     - [1.2 一致性（Consistency）](#12-一致性consistency)
     - [1.3 隔离性（Isolation）](#13-隔离性isolation)
     - [1.4 持久性（Durability）](#14-持久性durability)
-  - [2. MVCC多版本并发控制](#2-mvcc多版本并发控制)
-    - [2.1 MVCC核心原理](#21-mvcc核心原理)
-    - [2.2 事务ID（XID）与快照](#22-事务idxid与快照)
-      - [事务ID（Transaction ID）](#事务idtransaction-id)
+  - [2. MVCC 多版本并发控制](#2-mvcc-多版本并发控制)
+    - [2.1 MVCC 核心原理](#21-mvcc-核心原理)
+    - [2.2 事务 ID（XID）与快照](#22-事务-idxid与快照)
+      - [事务 ID（Transaction ID）](#事务-idtransaction-id)
       - [快照（Snapshot）](#快照snapshot)
     - [2.3 可见性规则](#23-可见性规则)
-    - [2.4 XID回卷与冻结](#24-xid回卷与冻结)
+    - [2.4 XID 回卷与冻结](#24-xid-回卷与冻结)
   - [3. 事务隔离级别](#3-事务隔离级别)
     - [3.1 隔离级别对比](#31-隔离级别对比)
     - [3.2 Read Committed（默认）](#32-read-committed默认)
     - [3.3 Repeatable Read](#33-repeatable-read)
     - [3.4 Serializable（SSI）](#34-serializablessi)
     - [3.5 异常现象实战演示](#35-异常现象实战演示)
-      - [脏读（Dirty Read）- PostgreSQL不会发生](#脏读dirty-read--postgresql不会发生)
+      - [脏读（Dirty Read）- PostgreSQL 不会发生](#脏读dirty-read--postgresql-不会发生)
       - [不可重复读（Non-Repeatable Read）](#不可重复读non-repeatable-read)
       - [幻读（Phantom Read）](#幻读phantom-read)
   - [4. 锁机制](#4-锁机制)
@@ -49,9 +49,9 @@
     - [6.2 监控长事务](#62-监控长事务)
     - [6.3 长事务处理](#63-长事务处理)
     - [6.4 长事务最佳实践](#64-长事务最佳实践)
-  - [7. PostgreSQL 17并发优化](#7-postgresql-17并发优化)
+  - [7. PostgreSQL 17 并发优化](#7-postgresql-17-并发优化)
     - [7.1 高并发写入优化](#71-高并发写入优化)
-    - [7.2 VACUUM内存管理优化](#72-vacuum内存管理优化)
+    - [7.2 VACUUM 内存管理优化](#72-vacuum-内存管理优化)
   - [8. 生产实践与调优](#8-生产实践与调优)
     - [8.1 隔离级别选择](#81-隔离级别选择)
     - [8.2 锁优化策略](#82-锁优化策略)
@@ -72,9 +72,9 @@
 
 ### 主题边界
 
-- **核心内容**：事务ACID特性、MVCC机制、隔离级别、锁机制、并发控制
-- **深度定位**：从理论到实践，涵盖MVCC原理、4种隔离级别实战、死锁案例、长事务治理
-- **PostgreSQL 17对齐**：高并发写入优化、B-tree锁改进
+- **核心内容**：事务 ACID 特性、MVCC 机制、隔离级别、锁机制、并发控制
+- **深度定位**：从理论到实践，涵盖 MVCC 原理、4 种隔离级别实战、死锁案例、长事务治理
+- **PostgreSQL 17 对齐**：高并发写入优化、B-tree 锁改进
 
 ### 知识地图
 
@@ -112,13 +112,13 @@ MVCC多版本并发控制
 
 ---
 
-## 1. ACID特性与实现
+## 1. ACID 特性与实现
 
 ### 1.1 原子性（Atomicity）
 
 **定义**：事务中的所有操作要么全部成功，要么全部失败回滚。
 
-**PostgreSQL实现**：
+**PostgreSQL 实现**：
 
 - **WAL（Write-Ahead Logging）**：所有修改先写日志，后写数据文件
 - **回滚机制**：通过撤销日志恢复到事务开始前的状态
@@ -143,11 +143,11 @@ ROLLBACK;
 
 **定义**：事务执行前后，数据库从一个一致状态转换到另一个一致状态。
 
-**PostgreSQL实现**：
+**PostgreSQL 实现**：
 
 - **约束检查**：PRIMARY KEY、FOREIGN KEY、UNIQUE、CHECK
 - **触发器**：在事务内执行业务规则校验
-- **延迟约束**：DEFERRABLE约束在事务结束时检查
+- **延迟约束**：DEFERRABLE 约束在事务结束时检查
 
 ```sql
 -- 一致性示例：转账事务保持总额不变
@@ -180,10 +180,11 @@ COMMIT; -- 提交时检查约束
 
 **定义**：并发执行的事务之间互不干扰。
 
-**PostgreSQL实现**：
+**PostgreSQL 实现**：
 
 - **MVCC（多版本并发控制）**：读不阻塞写，写不阻塞读
-- **4种隔离级别**：Read Uncommitted（实际实现为Read Committed）、Read Committed、Repeatable Read、Serializable
+- **4 种隔离级别**：Read Uncommitted（实际实现为 Read Committed）、Read Committed、Repeatable
+  Read、Serializable
 
 详见 [3. 事务隔离级别](#3-事务隔离级别)
 
@@ -191,7 +192,7 @@ COMMIT; -- 提交时检查约束
 
 **定义**：事务一旦提交，修改永久保存，即使系统崩溃也不会丢失。
 
-**PostgreSQL实现**：
+**PostgreSQL 实现**：
 
 - **WAL（Write-Ahead Logging）**：事务提交前，日志必须落盘
 - **fsync**：确保数据刷到磁盘
@@ -209,9 +210,9 @@ SET synchronous_commit = off;  -- 异步提交（可能丢失最后几秒数据�
 
 ---
 
-## 2. MVCC多版本并发控制
+## 2. MVCC 多版本并发控制
 
-### 2.1 MVCC核心原理
+### 2.1 MVCC 核心原理
 
 **多版本并发控制**（Multi-Version Concurrency Control）：
 
@@ -229,11 +230,11 @@ SET synchronous_commit = off;  -- 异步提交（可能丢失最后几秒数据�
 
 - ⚠️ 旧版本数据需要清理（VACUUM）
 - ⚠️ 表膨胀（Bloat）问题
-- ⚠️ 事务ID回卷风险
+- ⚠️ 事务 ID 回卷风险
 
-### 2.2 事务ID（XID）与快照
+### 2.2 事务 ID（XID）与快照
 
-#### 事务ID（Transaction ID）
+#### 事务 ID（Transaction ID）
 
 ```sql
 -- 查看当前事务ID
@@ -258,17 +259,17 @@ LIMIT 10;
 #### 快照（Snapshot）
 
 - **快照创建时机**：
-  - Read Committed：每条SQL语句开始时创建新快照
+  - Read Committed：每条 SQL 语句开始时创建新快照
   - Repeatable Read/Serializable：事务开始时创建快照，整个事务使用同一快照
 
 ### 2.3 可见性规则
 
-每个元组（行）有4个系统列：
+每个元组（行）有 4 个系统列：
 
-- `xmin`：插入该行的事务ID
-- `xmax`：删除该行的事务ID（0表示未删除）
-- `cmin`：插入该行的命令ID（同一事务内）
-- `cmax`：删除该行的命令ID（同一事务内）
+- `xmin`：插入该行的事务 ID
+- `xmax`：删除该行的事务 ID（0 表示未删除）
+- `cmin`：插入该行的命令 ID（同一事务内）
+- `cmax`：删除该行的命令 ID（同一事务内）
 
 ```sql
 -- 查看系统列
@@ -278,23 +279,20 @@ UPDATE test_mvcc SET value = 'v2' WHERE id = 1;
 
 -- 查看隐藏列（需要使用pageinspect扩展）
 CREATE EXTENSION IF NOT EXISTS pageinspect;
-SELECT lp, t_xmin, t_xmax, t_ctid 
+SELECT lp, t_xmin, t_xmax, t_ctid
 FROM heap_page_items(get_raw_page('test_mvcc', 0));
 ```
 
-**可见性判断**：
+**可见性判断**： 1. 如果`xmin`未提交或在快照之后，该行不可见 2. 如果`xmax`已提交且在快照之前，该行不
+可见（已删除） 3. 否则，该行可见
 
-1. 如果`xmin`未提交或在快照之后，该行不可见
-2. 如果`xmax`已提交且在快照之前，该行不可见（已删除）
-3. 否则，该行可见
+### 2.4 XID 回卷与冻结
 
-### 2.4 XID回卷与冻结
-
-**问题**：PostgreSQL的事务ID是32位整数（约42亿），会回卷。
+**问题**：PostgreSQL 的事务 ID 是 32 位整数（约 42 亿），会回卷。
 
 **解决方案**：冻结（Freezing）
 
-- VACUUM会将旧元组的`xmin`标记为"冻结"（FrozenXID = 2）
+- VACUUM 会将旧元组的`xmin`标记为"冻结"（FrozenXID = 2）
 - 冻结后的行对所有事务可见
 
 ```sql
@@ -320,24 +318,24 @@ SHOW autovacuum_freeze_max_age;   -- 2亿（默认，触发紧急VACUUM）
 
 ### 3.1 隔离级别对比
 
-| 隔离级别 | 脏读 | 不可重复读 | 幻读 | 序列化异常 | 性能 | PostgreSQL实现 |
-|---------|------|-----------|------|-----------|------|---------------|
-| **Read Uncommitted** | ❌可能 | ❌可能 | ❌可能 | ❌可能 | 最高 | **实际等同于Read Committed** |
-| **Read Committed** | ✅不会 | ❌可能 | ❌可能 | ❌可能 | 高 | **默认级别** |
-| **Repeatable Read** | ✅不会 | ✅不会 | ✅不会 | ❌可能 | 中 | SSI部分实现 |
-| **Serializable** | ✅不会 | ✅不会 | ✅不会 | ✅不会 | 低 | SSI完整实现 |
+| 隔离级别             | 脏读    | 不可重复读 | 幻读    | 序列化异常 | 性能 | PostgreSQL 实现               |
+| -------------------- | ------- | ---------- | ------- | ---------- | ---- | ----------------------------- |
+| **Read Uncommitted** | ❌ 可能 | ❌ 可能    | ❌ 可能 | ❌ 可能    | 最高 | **实际等同于 Read Committed** |
+| **Read Committed**   | ✅ 不会 | ❌ 可能    | ❌ 可能 | ❌ 可能    | 高   | **默认级别**                  |
+| **Repeatable Read**  | ✅ 不会 | ✅ 不会    | ✅ 不会 | ❌ 可能    | 中   | SSI 部分实现                  |
+| **Serializable**     | ✅ 不会 | ✅ 不会    | ✅ 不会 | ✅ 不会    | 低   | SSI 完整实现                  |
 
-**PostgreSQL特点**：
+**PostgreSQL 特点**：
 
-- 不存在真正的Read Uncommitted（自动提升为Read Committed）
-- Repeatable Read通过MVCC防止幻读（强于SQL标准）
-- Serializable使用SSI（Serializable Snapshot Isolation）算法
+- 不存在真正的 Read Uncommitted（自动提升为 Read Committed）
+- Repeatable Read 通过 MVCC 防止幻读（强于 SQL 标准）
+- Serializable 使用 SSI（Serializable Snapshot Isolation）算法
 
 ### 3.2 Read Committed（默认）
 
 **特性**：
 
-- 每条SQL语句开始时创建新快照
+- 每条 SQL 语句开始时创建新快照
 - 只能读到已提交的数据（不会脏读）
 - 同一事务内多次读取可能得到不同结果（不可重复读）
 
@@ -358,7 +356,7 @@ COMMIT;
 
 **适用场景**：
 
-- 大多数OLTP应用
+- 大多数 OLTP 应用
 - 对数据一致性要求不高
 - 需要高并发性能
 
@@ -368,7 +366,7 @@ COMMIT;
 
 - 事务开始时创建快照，整个事务使用同一快照
 - 不会出现不可重复读和幻读
-- 更新冲突时抛出serialization错误
+- 更新冲突时抛出 serialization 错误
 
 ```sql
 -- Session A
@@ -401,7 +399,7 @@ ROLLBACK;
 
 - 完全串行化执行的效果
 - 检测读写依赖，防止序列化异常
-- 冲突时抛出serialization错误，需要应用重试
+- 冲突时抛出 serialization 错误，需要应用重试
 
 ```sql
 -- 经典序列化异常示例：两个事务交叉读写
@@ -434,12 +432,12 @@ UPDATE accounts SET balance = balance - 500 WHERE id = 2;
 
 **性能考虑**：
 
-- Serializable比Repeatable Read慢10-20%
+- Serializable 比 Repeatable Read 慢 10-20%
 - 需要应用层实现重试逻辑
 
 ### 3.5 异常现象实战演示
 
-#### 脏读（Dirty Read）- PostgreSQL不会发生
+#### 脏读（Dirty Read）- PostgreSQL 不会发生
 
 ```sql
 -- Session A
@@ -501,23 +499,23 @@ COMMIT;
 
 ### 4.1 锁类型与级别
 
-PostgreSQL有两大类锁：
+PostgreSQL 有两大类锁：
 
-1. **表级锁**（Table-Level Locks）：8种模式
-2. **行级锁**（Row-Level Locks）：4种模式
+1. **表级锁**（Table-Level Locks）：8 种模式
+2. **行级锁**（Row-Level Locks）：4 种模式
 
 ### 4.2 表级锁
 
-| 锁模式 | 触发操作 | 与自身冲突 | 阻塞SELECT | 阻塞INSERT/UPDATE/DELETE |
-|--------|---------|-----------|-----------|------------------------|
-| **AccessShareLock** | SELECT | ❌ | ❌ | ❌ |
-| **RowShareLock** | SELECT FOR UPDATE | ❌ | ❌ | ❌ |
-| **RowExclusiveLock** | INSERT/UPDATE/DELETE | ❌ | ❌ | ❌ |
-| **ShareUpdateExclusiveLock** | VACUUM, CREATE INDEX CONCURRENTLY | ✅ | ❌ | ❌ |
-| **ShareLock** | CREATE INDEX | ❌ | ❌ | ✅ |
-| **ShareRowExclusiveLock** | 少见 | ✅ | ❌ | ✅ |
-| **ExclusiveLock** | REFRESH MATERIALIZED VIEW CONCURRENTLY | ✅ | ❌ | ✅ |
-| **AccessExclusiveLock** | DROP TABLE, TRUNCATE, ALTER TABLE | ✅ | ✅ | ✅ |
+| 锁模式                       | 触发操作                               | 与自身冲突 | 阻塞 SELECT | 阻塞 INSERT/UPDATE/DELETE |
+| ---------------------------- | -------------------------------------- | ---------- | ----------- | ------------------------- |
+| **AccessShareLock**          | SELECT                                 | ❌         | ❌          | ❌                        |
+| **RowShareLock**             | SELECT FOR UPDATE                      | ❌         | ❌          | ❌                        |
+| **RowExclusiveLock**         | INSERT/UPDATE/DELETE                   | ❌         | ❌          | ❌                        |
+| **ShareUpdateExclusiveLock** | VACUUM, CREATE INDEX CONCURRENTLY      | ✅         | ❌          | ❌                        |
+| **ShareLock**                | CREATE INDEX                           | ❌         | ❌          | ✅                        |
+| **ShareRowExclusiveLock**    | 少见                                   | ✅         | ❌          | ✅                        |
+| **ExclusiveLock**            | REFRESH MATERIALIZED VIEW CONCURRENTLY | ✅         | ❌          | ✅                        |
+| **AccessExclusiveLock**      | DROP TABLE, TRUNCATE, ALTER TABLE      | ✅         | ✅          | ✅                        |
 
 ```sql
 -- 显式获取表级锁
@@ -534,12 +532,12 @@ WHERE pid = pg_backend_pid();
 
 ### 4.3 行级锁
 
-| 锁模式 | 获取方式 | 说明 |
-|--------|---------|------|
-| **FOR UPDATE** | `SELECT ... FOR UPDATE` | 独占锁，阻塞其他FOR UPDATE和修改 |
-| **FOR NO KEY UPDATE** | `SELECT ... FOR NO KEY UPDATE` | 允许并发外键检查 |
-| **FOR SHARE** | `SELECT ... FOR SHARE` | 共享锁，阻塞修改但允许其他FOR SHARE |
-| **FOR KEY SHARE** | `SELECT ... FOR KEY SHARE` | 最弱的锁，仅阻塞FOR UPDATE |
+| 锁模式                | 获取方式                       | 说明                                 |
+| --------------------- | ------------------------------ | ------------------------------------ |
+| **FOR UPDATE**        | `SELECT ... FOR UPDATE`        | 独占锁，阻塞其他 FOR UPDATE 和修改   |
+| **FOR NO KEY UPDATE** | `SELECT ... FOR NO KEY UPDATE` | 允许并发外键检查                     |
+| **FOR SHARE**         | `SELECT ... FOR SHARE`         | 共享锁，阻塞修改但允许其他 FOR SHARE |
+| **FOR KEY SHARE**     | `SELECT ... FOR KEY SHARE`     | 最弱的锁，仅阻塞 FOR UPDATE          |
 
 ```sql
 -- FOR UPDATE示例（悲观锁）
@@ -600,8 +598,8 @@ SET deadlock_timeout = '500ms'; -- 更快检测
 
 1. **统一锁顺序**：所有事务按相同顺序获取锁
 2. **缩短事务时间**：避免长事务
-3. **使用NOWAIT**：快速失败并重试
-4. **降低隔离级别**：使用Read Committed代替Serializable
+3. **使用 NOWAIT**：快速失败并重试
+4. **降低隔离级别**：使用 Read Committed 代替 Serializable
 
 ```sql
 -- 统一锁顺序示例
@@ -645,7 +643,7 @@ SELECT
   blocked_activity.application_name AS blocked_app
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
   ON blocking_locks.locktype = blocked_locks.locktype
   AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
   AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -722,10 +720,10 @@ SET default_transaction_isolation = 'serializable';
 
 ### 6.1 长事务的危害
 
-1. **表膨胀**：VACUUM无法清理长事务期间的旧版本
-2. **XID回卷风险**：占用事务ID，加速XID耗尽
+1. **表膨胀**：VACUUM 无法清理长事务期间的旧版本
+2. **XID 回卷风险**：占用事务 ID，加速 XID 耗尽
 3. **锁等待**：持有锁时间长，阻塞其他事务
-4. **复制延迟**：备库需要保留快照，延迟应用WAL
+4. **复制延迟**：备库需要保留快照，延迟应用 WAL
 
 ### 6.2 监控长事务
 
@@ -769,7 +767,7 @@ SET statement_timeout = '5min';
 SET idle_in_transaction_session_timeout = '10min';
 
 -- 终止长事务（谨慎使用）
-SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity
 WHERE pid = 12345 AND state = 'idle in transaction';
 ```
 
@@ -777,51 +775,51 @@ WHERE pid = 12345 AND state = 'idle in transaction';
 
 1. **分批处理**：大批量操作分多个小事务
 
-    ```sql
-    -- ❌ 错误：一次性处理100万行
-    BEGIN;
-    DELETE FROM logs WHERE created_at < '2024-01-01';
-    COMMIT;
+   ```sql
+   -- ❌ 错误：一次性处理100万行
+   BEGIN;
+   DELETE FROM logs WHERE created_at < '2024-01-01';
+   COMMIT;
 
-    -- ✅ 正确：分批删除
-    DO $$
-    DECLARE
-    deleted_count INT;
-    BEGIN
-    LOOP
-        DELETE FROM logs 
-        WHERE created_at < '2024-01-01' 
-        AND ctid IN (SELECT ctid FROM logs WHERE created_at < '2024-01-01' LIMIT 10000);
-        GET DIAGNOSTICS deleted_count = ROW_COUNT;
-        EXIT WHEN deleted_count = 0;
-        COMMIT; -- 每批提交
-    END LOOP;
-    END $$;
-    ```
+   -- ✅ 正确：分批删除
+   DO $$
+   DECLARE
+   deleted_count INT;
+   BEGIN
+   LOOP
+       DELETE FROM logs
+       WHERE created_at < '2024-01-01'
+       AND ctid IN (SELECT ctid FROM logs WHERE created_at < '2024-01-01' LIMIT 10000);
+       GET DIAGNOSTICS deleted_count = ROW_COUNT;
+       EXIT WHEN deleted_count = 0;
+       COMMIT; -- 每批提交
+   END LOOP;
+   END $$;
+   ```
 
 2. **使用游标**：大结果集使用游标分批获取
 
-    ```sql
-    BEGIN;
-    DECLARE cur CURSOR FOR SELECT * FROM large_table;
-    LOOP
-    FETCH 1000 FROM cur;
-    -- 处理数据
-    EXIT WHEN NOT FOUND;
-    END LOOP;
-    CLOSE cur;
-    COMMIT;
-    ```
+   ```sql
+   BEGIN;
+   DECLARE cur CURSOR FOR SELECT * FROM large_table;
+   LOOP
+   FETCH 1000 FROM cur;
+   -- 处理数据
+   EXIT WHEN NOT FOUND;
+   END LOOP;
+   CLOSE cur;
+   COMMIT;
+   ```
 
-3. **避免IDLE IN TRANSACTION**：应用层及时提交/回滚
+3. **避免 IDLE IN TRANSACTION**：应用层及时提交/回滚
 
 ---
 
-## 7. PostgreSQL 17并发优化
+## 7. PostgreSQL 17 并发优化
 
 ### 7.1 高并发写入优化
 
-PostgreSQL 17在B-tree索引上进行了优化，提升了高并发INSERT/UPDATE性能：
+PostgreSQL 17 在 B-tree 索引上进行了优化，提升了高并发 INSERT/UPDATE 性能：
 
 ```sql
 -- 测试高并发写入性能（对比PG16 vs PG17）
@@ -835,9 +833,9 @@ CREATE TABLE test_concurrent_insert (
 -- pgbench -c 100 -j 10 -T 60 -f insert_test.sql
 ```
 
-### 7.2 VACUUM内存管理优化
+### 7.2 VACUUM 内存管理优化
 
-PostgreSQL 17改进了VACUUM的内存使用，减少了长时间VACUUM对并发事务的影响：
+PostgreSQL 17 改进了 VACUUM 的内存使用，减少了长时间 VACUUM 对并发事务的影响：
 
 ```sql
 -- 查看VACUUM进度（PostgreSQL 13+）
@@ -864,19 +862,19 @@ VACUUM (PARALLEL 4, INDEX_CLEANUP AUTO) table_name;
 
 ### 8.1 隔离级别选择
 
-| 场景 | 推荐隔离级别 | 理由 |
-|------|------------|------|
-| OLTP（在线交易） | Read Committed | 高并发，低锁冲突 |
-| 报表查询 | Repeatable Read | 一致性快照 |
-| 批量ETL | Read Committed | 避免锁等待 |
-| 金融交易 | Serializable | 严格一致性 |
-| 库存扣减 | Serializable + 重试 | 防止超卖 |
+| 场景             | 推荐隔离级别        | 理由             |
+| ---------------- | ------------------- | ---------------- |
+| OLTP（在线交易） | Read Committed      | 高并发，低锁冲突 |
+| 报表查询         | Repeatable Read     | 一致性快照       |
+| 批量 ETL         | Read Committed      | 避免锁等待       |
+| 金融交易         | Serializable        | 严格一致性       |
+| 库存扣减         | Serializable + 重试 | 防止超卖         |
 
 ### 8.2 锁优化策略
 
 1. **缩短事务时间**：事务内只包含必要操作
 2. **避免热点更新**：使用队列或分片
-3. **使用SKIP LOCKED**：任务队列场景
+3. **使用 SKIP LOCKED**：任务队列场景
 4. **批量操作**：减少事务数量
 
 ### 8.3 监控指标
@@ -910,21 +908,23 @@ LIMIT 10;
 
 ### 官方文档
 
-- **MVCC与并发控制**：<https://www.postgresql.org/docs/17/mvcc.html>
+- **MVCC 与并发控制**：<https://www.postgresql.org/docs/17/mvcc.html>
 - **事务隔离**：<https://www.postgresql.org/docs/17/transaction-iso.html>
 - **显式锁**：<https://www.postgresql.org/docs/17/explicit-locking.html>
-- **pg_locks视图**：<https://www.postgresql.org/docs/17/view-pg-locks.html>
-- **pg_stat_activity视图**：<https://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW>
+- **pg_locks 视图**：<https://www.postgresql.org/docs/17/view-pg-locks.html>
+- **pg_stat_activity 视
+  图**：<https://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW>
 
 ### 学术论文
 
-- **Serializable Snapshot Isolation论文**：<https://drkp.net/papers/ssi-vldb12.pdf>
-- **MVCC原理**：<https://en.wikipedia.org/wiki/Multiversion_concurrency_control>
+- **Serializable Snapshot Isolation 论文**：<https://drkp.net/papers/ssi-vldb12.pdf>
+- **MVCC 原理**：<https://en.wikipedia.org/wiki/Multiversion_concurrency_control>
 
 ### 扩展阅读
 
-- **PostgreSQL MVCC详解（中文）**：<https://www.interdb.jp/pg/pgsql02.html>
-- **事务隔离级别可视化**：<https://www.postgresql.org/docs/17/transaction-iso.html#XACT-READ-COMMITTED>
+- **PostgreSQL MVCC 详解（中文）**：<https://www.interdb.jp/pg/pgsql02.html>
+- **事务隔离级别可视
+  化**：<https://www.postgresql.org/docs/17/transaction-iso.html#XACT-READ-COMMITTED>
 
 ---
 
@@ -932,34 +932,34 @@ LIMIT 10;
 
 ### 事务设计检查清单
 
-- [ ] 隔离级别已根据业务需求选择（默认Read Committed）
-- [ ] 避免长事务（事务时间<5分钟）
-- [ ] 大批量操作已分批处理（每批<10秒）
+- [ ] 隔离级别已根据业务需求选择（默认 Read Committed）
+- [ ] 避免长事务（事务时间<5 分钟）
+- [ ] 大批量操作已分批处理（每批<10 秒）
 - [ ] 统一锁获取顺序，避免死锁
-- [ ] 使用NOWAIT/SKIP LOCKED处理锁冲突
+- [ ] 使用 NOWAIT/SKIP LOCKED 处理锁冲突
 
 ### 并发控制检查清单
 
 - [ ] 热点更新已优化（队列/分片/乐观锁）
-- [ ] 读多写少场景使用Repeatable Read
-- [ ] Serializable场景已实现重试逻辑
+- [ ] 读多写少场景使用 Repeatable Read
+- [ ] Serializable 场景已实现重试逻辑
 - [ ] 任务队列使用`FOR UPDATE SKIP LOCKED`
 
 ### 监控与诊断检查清单
 
 - [ ] 启用`log_lock_waits = on`（记录锁等待）
-- [ ] `deadlock_timeout`合理配置（默认1s）
-- [ ] `idle_in_transaction_session_timeout`已设置（如10min）
-- [ ] 监控长事务（xact_start超过阈值）
+- [ ] `deadlock_timeout`合理配置（默认 1s）
+- [ ] `idle_in_transaction_session_timeout`已设置（如 10min）
+- [ ] 监控长事务（xact_start 超过阈值）
 - [ ] 监控死锁频率（pg_stat_database.deadlocks）
 - [ ] 定期检查表膨胀（age(relfrozenxid)）
 
 ### 性能优化检查清单
 
 - [ ] 只读事务使用`BEGIN TRANSACTION READ ONLY`
-- [ ] 报表查询使用Repeatable Read获取一致性快照
+- [ ] 报表查询使用 Repeatable Read 获取一致性快照
 - [ ] 避免在事务内执行慢查询
-- [ ] 使用连接池管理连接（如pgBouncer）
+- [ ] 使用连接池管理连接（如 pgBouncer）
 - [ ] 监控事务回滚率（<5%为健康）
 
 ---

@@ -1,9 +1,9 @@
 # 03_storage_access 模块测试设计
 
 > **模块**：存储结构与访问路径  
-> **设计日期**：2025年10月3日  
+> **设计日期**：2025 年 10 月 3 日  
 > **目标测试数量**：30+场景  
-> **预计完成时间**：Week 4（2025-10-11至2025-10-17）
+> **预计完成时间**：Week 4（2025-10-11 至 2025-10-17）
 
 ---
 
@@ -13,16 +13,16 @@
 
 - 存储结构（堆表、TOAST、FILLFACTOR、表膨胀）
 - 索引类型（B-tree、Hash、GIN、GiST、BRIN、SP-GiST）
-- 执行计划分析（EXPLAIN、扫描方法、JOIN方法）
+- 执行计划分析（EXPLAIN、扫描方法、JOIN 方法）
 - 统计信息（ANALYZE、扩展统计）
 - 维护操作（VACUUM、Autovacuum、REINDEX、CLUSTER）
-- PostgreSQL 17存储优化（B-tree多值搜索、Streaming I/O、VACUUM内存管理）
+- PostgreSQL 17 存储优化（B-tree 多值搜索、Streaming I/O、VACUUM 内存管理）
 
 ---
 
 ## 🎯 测试场景设计
 
-### 1. 存储结构测试（6个测试）
+### 1. 存储结构测试（6 个测试）
 
 #### TEST-03-001: 堆表基本结构
 
@@ -59,7 +59,7 @@ DROP TABLE IF EXISTS test_heap_table CASCADE;
 
 #### TEST-03-002: TOAST - 超大字段存储
 
-**测试目的**：验证TOAST机制
+**测试目的**：验证 TOAST 机制
 
 ```sql
 -- TEST_BODY
@@ -70,11 +70,11 @@ CREATE TABLE test_toast (
 );
 
 -- 插入小文本（不会TOAST）
-INSERT INTO test_toast (small_text, large_text) VALUES 
+INSERT INTO test_toast (small_text, large_text) VALUES
 ('Small', repeat('A', 100));
 
 -- 插入大文本（会TOAST）
-INSERT INTO test_toast (small_text, large_text) VALUES 
+INSERT INTO test_toast (small_text, large_text) VALUES
 ('Small', repeat('B', 10000));
 
 -- 查看TOAST策略
@@ -100,9 +100,9 @@ DROP TABLE IF EXISTS test_toast CASCADE;
 
 ---
 
-#### TEST-03-003: FILLFACTOR与HOT更新
+#### TEST-03-003: FILLFACTOR 与 HOT 更新
 
-**测试目的**：验证FILLFACTOR和HOT更新机制
+**测试目的**：验证 FILLFACTOR 和 HOT 更新机制
 
 ```sql
 -- TEST_BODY
@@ -131,9 +131,9 @@ UPDATE test_fillfactor SET counter = counter + 1 WHERE id <= 500;
 SELECT
     n_tup_upd,
     n_tup_hot_upd,
-    CASE WHEN n_tup_upd > 0 
+    CASE WHEN n_tup_upd > 0
         THEN round(100.0 * n_tup_hot_upd / n_tup_upd, 2)
-        ELSE 0 
+        ELSE 0
     END AS hot_update_ratio
 FROM pg_stat_user_tables
 WHERE tablename = 'test_fillfactor';
@@ -224,9 +224,9 @@ DROP TABLE IF EXISTS test_page_inspect CASCADE;
 
 ---
 
-#### TEST-03-006: TOAST策略修改
+#### TEST-03-006: TOAST 策略修改
 
-**测试目的**：验证TOAST策略修改
+**测试目的**：验证 TOAST 策略修改
 
 ```sql
 -- TEST_BODY
@@ -260,11 +260,11 @@ DROP TABLE IF EXISTS test_toast_strategy CASCADE;
 
 ---
 
-### 2. 索引类型测试（8个测试）
+### 2. 索引类型测试（8 个测试）
 
-#### TEST-03-007: B-tree索引 - 基本功能
+#### TEST-03-007: B-tree 索引 - 基本功能
 
-**测试目的**：验证B-tree索引的基本功能
+**测试目的**：验证 B-tree 索引的基本功能
 
 ```sql
 -- SETUP
@@ -299,7 +299,7 @@ DROP TABLE IF EXISTS test_btree CASCADE;
 
 ---
 
-#### TEST-03-008: B-tree索引 - 复合索引与最左前缀
+#### TEST-03-008: B-tree 索引 - 复合索引与最左前缀
 
 **测试目的**：验证复合索引的最左前缀原则
 
@@ -326,11 +326,11 @@ CREATE INDEX idx_composite ON test_composite_index(user_id, created_at, status);
 EXPLAIN (FORMAT JSON) SELECT * FROM test_composite_index WHERE user_id = 50;
 
 -- 可以使用索引：user_id + created_at
-EXPLAIN (FORMAT JSON) SELECT * FROM test_composite_index 
+EXPLAIN (FORMAT JSON) SELECT * FROM test_composite_index
 WHERE user_id = 50 AND created_at > NOW() - interval '30 days';
 
 -- 不能使用索引：仅created_at（缺少user_id）
-EXPLAIN (FORMAT JSON) SELECT * FROM test_composite_index 
+EXPLAIN (FORMAT JSON) SELECT * FROM test_composite_index
 WHERE created_at > NOW() - interval '30 days';
 
 -- ASSERTIONS
@@ -342,9 +342,9 @@ DROP TABLE IF EXISTS test_composite_index CASCADE;
 
 ---
 
-#### TEST-03-009: Hash索引
+#### TEST-03-009: Hash 索引
 
-**测试目的**：验证Hash索引功能
+**测试目的**：验证 Hash 索引功能
 
 ```sql
 -- SETUP
@@ -379,9 +379,9 @@ DROP TABLE IF EXISTS test_hash CASCADE;
 
 ---
 
-#### TEST-03-010: GIN索引 - JSONB查询
+#### TEST-03-010: GIN 索引 - JSONB 查询
 
-**测试目的**：验证GIN索引用于JSONB
+**测试目的**：验证 GIN 索引用于 JSONB
 
 ```sql
 -- SETUP
@@ -399,7 +399,7 @@ INSERT INTO test_gin_jsonb (data) VALUES
 CREATE INDEX idx_gin_data ON test_gin_jsonb USING GIN (data);
 
 -- 包含查询
-EXPLAIN (ANALYZE, FORMAT JSON) 
+EXPLAIN (ANALYZE, FORMAT JSON)
 SELECT * FROM test_gin_jsonb WHERE data @> '{"tags": ["postgresql"]}'::jsonb;
 
 -- 键存在查询
@@ -414,9 +414,9 @@ DROP TABLE IF EXISTS test_gin_jsonb CASCADE;
 
 ---
 
-#### TEST-03-011: GIN索引 - 全文搜索
+#### TEST-03-011: GIN 索引 - 全文搜索
 
-**测试目的**：验证GIN索引用于全文搜索
+**测试目的**：验证 GIN 索引用于全文搜索
 
 ```sql
 -- SETUP
@@ -432,7 +432,7 @@ INSERT INTO test_gin_fts (title, content) VALUES
 ('Database Design', 'PostgreSQL and MySQL comparison');
 
 -- TEST_BODY
-CREATE INDEX idx_gin_fts ON test_gin_fts 
+CREATE INDEX idx_gin_fts ON test_gin_fts
 USING GIN (to_tsvector('english', title || ' ' || content));
 
 -- 全文搜索
@@ -449,9 +449,9 @@ DROP TABLE IF EXISTS test_gin_fts CASCADE;
 
 ---
 
-#### TEST-03-012: GiST索引 - 范围类型
+#### TEST-03-012: GiST 索引 - 范围类型
 
-**测试目的**：验证GiST索引用于范围类型
+**测试目的**：验证 GiST 索引用于范围类型
 
 ```sql
 -- TEST_BODY
@@ -483,9 +483,9 @@ DROP TABLE IF EXISTS test_gist_range CASCADE;
 
 ---
 
-#### TEST-03-013: BRIN索引 - 时序数据
+#### TEST-03-013: BRIN 索引 - 时序数据
 
-**测试目的**：验证BRIN索引用于时序数据
+**测试目的**：验证 BRIN 索引用于时序数据
 
 ```sql
 -- TEST_BODY
@@ -527,9 +527,9 @@ DROP TABLE IF EXISTS test_brin CASCADE;
 
 ---
 
-#### TEST-03-014: SP-GiST索引 - IP地址
+#### TEST-03-014: SP-GiST 索引 - IP 地址
 
-**测试目的**：验证SP-GiST索引用于IP地址
+**测试目的**：验证 SP-GiST 索引用于 IP 地址
 
 ```sql
 -- TEST_BODY
@@ -561,11 +561,11 @@ DROP TABLE IF EXISTS test_spgist_ip CASCADE;
 
 ---
 
-### 3. 执行计划分析（6个测试）
+### 3. 执行计划分析（6 个测试）
 
 #### TEST-03-015: EXPLAIN - 基本用法
 
-**测试目的**：验证EXPLAIN各种选项
+**测试目的**：验证 EXPLAIN 各种选项
 
 ```sql
 -- SETUP
@@ -650,7 +650,7 @@ DROP TABLE IF EXISTS test_scan_methods CASCADE;
 
 #### TEST-03-017: Index Only Scan（索引覆盖扫描）
 
-**测试目的**：验证Index Only Scan优化
+**测试目的**：验证 Index Only Scan 优化
 
 ```sql
 -- SETUP
@@ -674,7 +674,7 @@ CREATE INDEX idx_covering ON test_index_only(email, name);
 VACUUM test_index_only;
 
 -- 查询仅访问索引列（应该使用Index Only Scan）
-EXPLAIN (ANALYZE, BUFFERS) 
+EXPLAIN (ANALYZE, BUFFERS)
 SELECT email, name FROM test_index_only WHERE email = 'user5000@example.com';
 
 -- ASSERTIONS
@@ -688,7 +688,7 @@ DROP TABLE IF EXISTS test_index_only CASCADE;
 
 #### TEST-03-018: Bitmap Scan
 
-**测试目的**：验证Bitmap Scan机制
+**测试目的**：验证 Bitmap Scan 机制
 
 ```sql
 -- SETUP
@@ -724,9 +724,9 @@ DROP TABLE IF EXISTS test_bitmap CASCADE;
 
 ---
 
-#### TEST-03-019: JOIN方法 - Nested Loop vs Hash Join
+#### TEST-03-019: JOIN 方法 - Nested Loop vs Hash Join
 
-**测试目的**：验证不同JOIN方法
+**测试目的**：验证不同 JOIN 方法
 
 ```sql
 -- SETUP
@@ -784,7 +784,7 @@ DROP TABLE IF EXISTS test_join_large CASCADE;
 
 #### TEST-03-020: Merge Join
 
-**测试目的**：验证Merge Join
+**测试目的**：验证 Merge Join
 
 ```sql
 -- SETUP
@@ -824,11 +824,11 @@ DROP TABLE IF EXISTS test_merge_b CASCADE;
 
 ---
 
-### 4. 统计信息测试（4个测试）
+### 4. 统计信息测试（4 个测试）
 
 #### TEST-03-021: ANALYZE - 统计信息收集
 
-**测试目的**：验证ANALYZE功能
+**测试目的**：验证 ANALYZE 功能
 
 ```sql
 -- SETUP
@@ -893,7 +893,7 @@ SELECT 'Data ' || generate_series FROM generate_series(1, 10000);
 
 -- TEST_BODY
 -- 提高统计目标
-ALTER TABLE test_statistics_target 
+ALTER TABLE test_statistics_target
 ALTER COLUMN high_cardinality_col SET STATISTICS 1000;
 
 -- 执行ANALYZE
@@ -958,7 +958,7 @@ DROP TABLE IF EXISTS test_extended_stats CASCADE;
 
 ---
 
-#### TEST-03-024: pg_stats视图查询
+#### TEST-03-024: pg_stats 视图查询
 
 **测试目的**：验证统计信息视图查询
 
@@ -1000,11 +1000,11 @@ DROP TABLE IF EXISTS test_pg_stats CASCADE;
 
 ---
 
-### 5. 维护操作测试（4个测试)
+### 5. 维护操作测试（4 个测试)
 
 #### TEST-03-025: VACUUM - 死元组清理
 
-**测试目的**：验证VACUUM清理死元组
+**测试目的**：验证 VACUUM 清理死元组
 
 ```sql
 -- SETUP
@@ -1038,9 +1038,9 @@ DROP TABLE IF EXISTS test_vacuum CASCADE;
 
 ---
 
-#### TEST-03-026: Autovacuum配置
+#### TEST-03-026: Autovacuum 配置
 
-**测试目的**：验证表级Autovacuum配置
+**测试目的**：验证表级 Autovacuum 配置
 
 ```sql
 -- TEST_BODY
@@ -1123,7 +1123,7 @@ DROP TABLE IF EXISTS test_reindex CASCADE;
 
 #### TEST-03-028: CLUSTER - 表重组
 
-**测试目的**：验证CLUSTER表重组
+**测试目的**：验证 CLUSTER 表重组
 
 ```sql
 -- SETUP
@@ -1171,11 +1171,11 @@ DROP TABLE IF EXISTS test_cluster CASCADE;
 
 ---
 
-### 6. PostgreSQL 17存储优化（2个测试）
+### 6. PostgreSQL 17 存储优化（2 个测试）
 
-#### TEST-03-029: B-tree多值搜索优化（PG17）
+#### TEST-03-029: B-tree 多值搜索优化（PG17）
 
-**测试目的**：验证PG17 B-tree多值搜索优化
+**测试目的**：验证 PG17 B-tree 多值搜索优化
 
 ```sql
 -- SETUP
@@ -1210,9 +1210,9 @@ DROP TABLE IF EXISTS test_pg17_btree CASCADE;
 
 ---
 
-#### TEST-03-030: VACUUM内存管理改进（PG17）
+#### TEST-03-030: VACUUM 内存管理改进（PG17）
 
-**测试目的**：验证PG17 VACUUM内存管理改进
+**测试目的**：验证 PG17 VACUUM 内存管理改进
 
 ```sql
 -- SETUP
@@ -1265,24 +1265,24 @@ DROP TABLE IF EXISTS test_pg17_vacuum CASCADE;
 
 ### 测试数量
 
-| 类别 | 测试数量 |
-|------|---------|
-| **存储结构测试** | 6个 |
-| **索引类型测试** | 8个 |
-| **执行计划分析** | 6个 |
-| **统计信息测试** | 4个 |
-| **维护操作测试** | 4个 |
-| **PostgreSQL 17存储优化** | 2个 |
-| **总计** | **30个** |
+| 类别                       | 测试数量  |
+| -------------------------- | --------- |
+| **存储结构测试**           | 6 个      |
+| **索引类型测试**           | 8 个      |
+| **执行计划分析**           | 6 个      |
+| **统计信息测试**           | 4 个      |
+| **维护操作测试**           | 4 个      |
+| **PostgreSQL 17 存储优化** | 2 个      |
+| **总计**                   | **30 个** |
 
 ### 覆盖率
 
-- ✅ 存储结构（堆表、TOAST、FILLFACTOR、HOT更新、表膨胀、页结构）
+- ✅ 存储结构（堆表、TOAST、FILLFACTOR、HOT 更新、表膨胀、页结构）
 - ✅ 索引类型（B-tree、Hash、GIN、GiST、BRIN、SP-GiST）
-- ✅ 执行计划（EXPLAIN选项、扫描方法、JOIN方法）
+- ✅ 执行计划（EXPLAIN 选项、扫描方法、JOIN 方法）
 - ✅ 统计信息（ANALYZE、统计目标、扩展统计、pg_stats）
 - ✅ 维护操作（VACUUM、Autovacuum、REINDEX、CLUSTER）
-- ✅ PostgreSQL 17优化（B-tree多值搜索、VACUUM内存管理）
+- ✅ PostgreSQL 17 优化（B-tree 多值搜索、VACUUM 内存管理）
 
 ---
 
@@ -1290,12 +1290,14 @@ DROP TABLE IF EXISTS test_pg17_vacuum CASCADE;
 
 ### 测试框架增强需求
 
-1. **EXPLAIN解析支持**
-   - 解析EXPLAIN JSON输出
-   - 验证执行计划节点类型（Seq Scan、Index Scan等）
+1. **EXPLAIN 解析支持**
+
+   - 解析 EXPLAIN JSON 输出
+   - 验证执行计划节点类型（Seq Scan、Index Scan 等）
    - 验证索引是否被使用
 
 2. **性能断言**
+
    - `EXPECT_TIME`：验证执行时间
    - `EXPECT_BUFFERS`：验证缓冲区使用
    - `EXPECT_PLAN_NODE`：验证执行计划节点
@@ -1306,9 +1308,9 @@ DROP TABLE IF EXISTS test_pg17_vacuum CASCADE;
 
 ### 测试执行注意事项
 
-1. **数据量**：测试使用适中的数据量（1K-50K行），平衡覆盖度和执行速度
+1. **数据量**：测试使用适中的数据量（1K-50K 行），平衡覆盖度和执行速度
 2. **索引维护**：测试后正确清理索引和表
-3. **统计信息**：某些测试需要ANALYZE更新统计信息
+3. **统计信息**：某些测试需要 ANALYZE 更新统计信息
 
 ---
 
@@ -1316,19 +1318,19 @@ DROP TABLE IF EXISTS test_pg17_vacuum CASCADE;
 
 ### Week 4（2025-10-11 至 2025-10-17）
 
-**Day 1-3**：测试框架增强（8小时）
+**Day 1-3**：测试框架增强（8 小时）
 
-- 实现EXPLAIN解析支持
+- 实现 EXPLAIN 解析支持
 - 实现性能断言
 - 实现扩展自动安装
 
-**Day 4-6**：测试用例实现（12小时）
+**Day 4-6**：测试用例实现（12 小时）
 
-- 实现30个测试用例
+- 实现 30 个测试用例
 - 验证所有扩展可用
 - 测试执行计划验证
 
-**Day 7**：文档完善（2小时）
+**Day 7**：文档完善（2 小时）
 
 - 更新测试用例索引
 - 编写执行计划测试指南
@@ -1336,6 +1338,6 @@ DROP TABLE IF EXISTS test_pg17_vacuum CASCADE;
 ---
 
 **设计者**：PostgreSQL_modern Project Team  
-**设计日期**：2025年10月3日  
+**设计日期**：2025 年 10 月 3 日  
 **目标版本**：v1.0  
 **状态**：设计完成，待实现 ✅

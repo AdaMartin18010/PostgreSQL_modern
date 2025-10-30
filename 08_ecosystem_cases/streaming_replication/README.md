@@ -2,14 +2,14 @@
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐⭐ 专家级  
-> **预计时间**：90-120分钟  
+> **预计时间**：90-120 分钟  
 > **适合场景**：高可用架构、读写分离、灾难恢复、多地域部署
 
 ---
 
 ## 📋 案例目标
 
-构建一个生产级的PostgreSQL流式复制高可用系统，包括：
+构建一个生产级的 PostgreSQL 流式复制高可用系统，包括：
 
 1. ✅ 主从复制配置（Primary-Standby）
 2. ✅ 同步复制与异步复制
@@ -24,13 +24,13 @@
 **场景描述**：电商平台高可用数据库架构
 
 - **系统要求**：
-  - 99.99% 可用性（年停机时间<53分钟）
-  - RPO（Recovery Point Objective）< 5秒
-  - RTO（Recovery Time Objective）< 30秒
-  - 支持读写分离（读QPS 10K+）
+  - 99.99% 可用性（年停机时间<53 分钟）
+  - RPO（Recovery Point Objective）< 5 秒
+  - RTO（Recovery Time Objective）< 30 秒
+  - 支持读写分离（读 QPS 10K+）
 - **架构设计**：
-  - 1个Primary节点（写）
-  - 2个Standby节点（读+备份）
+  - 1 个 Primary 节点（写）
+  - 2 个 Standby 节点（读+备份）
   - 自动故障检测与切换
 
 ---
@@ -77,11 +77,11 @@
 # - 带宽 >= 100Mbps
 ```
 
-### 1.2 Docker Compose快速搭建
+### 1.2 Docker Compose 快速搭建
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   primary:
@@ -97,11 +97,8 @@ services:
       - primary_data:/var/lib/postgresql/data
       - ./init_primary.sh:/docker-entrypoint-initdb.d/init.sh
     command: >
-      postgres
-      -c wal_level=replica
-      -c max_wal_senders=10
-      -c max_replication_slots=10
-      -c hot_standby=on
+      postgres -c wal_level=replica -c max_wal_senders=10 -c max_replication_slots=10 -c
+      hot_standby=on
 
   standby1:
     image: postgres:17
@@ -137,9 +134,9 @@ volumes:
 
 ---
 
-## 🔧 2. Primary节点配置
+## 🔧 2. Primary 节点配置
 
-### 2.1 修改postgresql.conf
+### 2.1 修改 postgresql.conf
 
 ```ini
 # postgresql.conf (Primary节点)
@@ -169,7 +166,7 @@ log_destination = 'csvlog'
 log_replication_commands = on       # 记录复制命令（PG17新增）
 ```
 
-### 2.2 修改pg_hba.conf
+### 2.2 修改 pg_hba.conf
 
 ```conf
 # pg_hba.conf (Primary节点)
@@ -210,9 +207,9 @@ SELECT * FROM pg_replication_slots;
 
 ---
 
-## 🔄 3. Standby节点配置
+## 🔄 3. Standby 节点配置
 
-### 3.1 使用pg_basebackup创建备库
+### 3.1 使用 pg_basebackup 创建备库
 
 ```bash
 # 在Standby节点执行
@@ -244,7 +241,7 @@ pg_basebackup \
 # -S: 使用复制槽
 ```
 
-### 3.2 配置Standby连接信息
+### 3.2 配置 Standby 连接信息
 
 ```conf
 # postgresql.auto.conf (由pg_basebackup -R自动生成)
@@ -258,7 +255,7 @@ hot_standby_feedback = on          # 向主库反馈查询冲突
 max_standby_streaming_delay = 30s  # 最大查询延迟
 ```
 
-### 3.3 启动Standby
+### 3.3 启动 Standby
 
 ```bash
 # 启动Standby节点
@@ -272,11 +269,11 @@ psql -U postgres -c "SELECT pg_is_in_recovery();"  # 应返回 t (true)
 
 ## 📊 4. 复制监控
 
-### 4.1 Primary节点监控
+### 4.1 Primary 节点监控
 
 ```sql
 -- 查看复制连接状态
-SELECT 
+SELECT
     application_name,
     client_addr,
     state,
@@ -292,7 +289,7 @@ SELECT
 FROM pg_stat_replication;
 
 -- 查看复制槽状态
-SELECT 
+SELECT
     slot_name,
     slot_type,
     active,
@@ -301,7 +298,7 @@ SELECT
 FROM pg_replication_slots;
 
 -- 查看WAL发送进程
-SELECT 
+SELECT
     pid,
     usename,
     application_name,
@@ -312,11 +309,11 @@ SELECT
 FROM pg_stat_replication;
 ```
 
-### 4.2 Standby节点监控
+### 4.2 Standby 节点监控
 
 ```sql
 -- 查看复制接收状态
-SELECT 
+SELECT
     status,
     receive_start_lsn,
     receive_start_tli,
@@ -331,7 +328,7 @@ SELECT
 FROM pg_stat_wal_receiver;
 
 -- 查看复制延迟
-SELECT 
+SELECT
     now() - pg_last_xact_replay_timestamp() AS replication_delay;
 
 -- 查看最后接收的WAL位置
@@ -407,7 +404,7 @@ ALTER SYSTEM SET primary_conninfo = 'host=192.168.1.11 ...';
 SELECT pg_reload_conf();
 ```
 
-### 6.2 使用pg_rewind恢复旧Primary
+### 6.2 使用 pg_rewind 恢复旧 Primary
 
 ```bash
 # 将旧Primary恢复为Standby
@@ -470,7 +467,7 @@ def execute_read(sql, params=None):
         return cur.fetchall()
 ```
 
-### 7.2 使用PgBouncer
+### 7.2 使用 PgBouncer
 
 ```ini
 # pgbouncer.ini
@@ -501,7 +498,7 @@ PRIMARY_HOST="192.168.1.10"
 PRIMARY_PORT="5432"
 
 # 检查复制延迟
-QUERY="SELECT 
+QUERY="SELECT
     application_name,
     pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes,
     EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) AS lag_seconds
@@ -511,7 +508,7 @@ psql -h $PRIMARY_HOST -p $PRIMARY_PORT -U postgres -At -c "$QUERY" | while IFS='
     echo "Application: $app"
     echo "Lag (bytes): $lag_bytes"
     echo "Lag (seconds): $lag_seconds"
-    
+
     # 告警阈值
     if (( $(echo "$lag_seconds > 10" | bc -l) )); then
         echo "WARNING: Replication lag > 10 seconds!"
@@ -526,14 +523,14 @@ done
 
 ### 9.1 复制配置
 
-- ✅ 使用复制槽防止WAL过早删除
+- ✅ 使用复制槽防止 WAL 过早删除
 - ✅ 关键业务使用同步复制
 - ✅ 非关键业务使用异步复制
-- ✅ 配置合适的wal_keep_size
+- ✅ 配置合适的 wal_keep_size
 
 ### 9.2 监控告警
 
-- ✅ 监控复制延迟（< 5秒）
+- ✅ 监控复制延迟（< 5 秒）
 - ✅ 监控复制槽空间占用
 - ✅ 监控连接状态
 - ✅ 设置自动告警
@@ -543,31 +540,33 @@ done
 - ✅ 定期演练故障转移
 - ✅ 文档化切换流程
 - ✅ 使用自动化工具（Patroni、repmgr）
-- ✅ 保留足够的WAL归档
+- ✅ 保留足够的 WAL 归档
 
 ### 9.4 性能优化
 
 - ✅ 使用高速网络连接
-- ✅ 调整wal_compression
-- ✅ 优化checkpoint参数
-- ✅ 监控I/O性能
+- ✅ 调整 wal_compression
+- ✅ 优化 checkpoint 参数
+- ✅ 监控 I/O 性能
 
 ---
 
 ## 🎯 10. 练习任务
 
 1. **基础练习**：
-   - 搭建1主1从的复制环境
+
+   - 搭建 1 主 1 从的复制环境
    - 配置同步复制
    - 测试读写分离
 
 2. **进阶练习**：
+
    - 实现手动故障转移
-   - 使用pg_rewind恢复
+   - 使用 pg_rewind 恢复
    - 配置级联复制
 
 3. **挑战任务**：
-   - 使用Patroni实现自动HA
+   - 使用 Patroni 实现自动 HA
    - 构建多地域复制架构
    - 实现零停机升级
 
@@ -584,4 +583,5 @@ done
 
 **维护者**：PostgreSQL_modern Project Team  
 **最后更新**：2025-10-03  
-**相关案例**：[分布式锁](../distributed_locks/README.md) | [实时分析](../realtime_analytics/README.md)
+**相关案例**：[分布式锁](../distributed_locks/README.md) |
+[实时分析](../realtime_analytics/README.md)

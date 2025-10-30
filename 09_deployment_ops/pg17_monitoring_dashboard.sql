@@ -20,24 +20,24 @@ RETURNS TABLE (
 BEGIN
     -- 1. 连接和会话信息
     RETURN QUERY
-    SELECT 
+    SELECT
         '连接状态'::TEXT as metric_category,
         '当前连接数'::TEXT as metric_name,
         (SELECT count(*)::TEXT FROM pg_stat_activity) as metric_value,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_stat_activity) > (SELECT setting::int * 0.8 FROM pg_settings WHERE name = 'max_connections') 
+        CASE
+            WHEN (SELECT count(*) FROM pg_stat_activity) > (SELECT setting::int * 0.8 FROM pg_settings WHERE name = 'max_connections')
             THEN 'WARNING'::TEXT
             ELSE 'OK'::TEXT
         END as status,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_stat_activity) > (SELECT setting::int * 0.8 FROM pg_settings WHERE name = 'max_connections') 
+        CASE
+            WHEN (SELECT count(*) FROM pg_stat_activity) > (SELECT setting::int * 0.8 FROM pg_settings WHERE name = 'max_connections')
             THEN '连接数接近上限，考虑增加max_connections或优化连接池'::TEXT
             ELSE '连接数正常'::TEXT
         END as recommendation;
 
     -- 2. 数据库大小
     RETURN QUERY
-    SELECT 
+    SELECT
         '存储状态'::TEXT,
         '数据库总大小'::TEXT,
         pg_size_pretty(pg_database_size(current_database())) as metric_value,
@@ -46,11 +46,11 @@ BEGIN
 
     -- 3. WAL状态
     RETURN QUERY
-    SELECT 
+    SELECT
         'WAL状态'::TEXT,
         'WAL生成速率(MB/min)'::TEXT,
         ROUND(
-            (SELECT pg_walfile_name_offset(pg_current_wal_lsn())::text::bigint - 
+            (SELECT pg_walfile_name_offset(pg_current_wal_lsn())::text::bigint -
              (SELECT pg_walfile_name_offset(pg_last_wal_receive_lsn())::text::bigint)
             ) / 1024.0 / 1024.0 / 60.0, 2
         )::TEXT as metric_value,
@@ -60,20 +60,20 @@ BEGIN
     -- 4. 复制状态（如果有备用服务器）
     IF EXISTS (SELECT 1 FROM pg_stat_replication) THEN
         RETURN QUERY
-        SELECT 
+        SELECT
             '复制状态'::TEXT,
             '复制延迟(秒)'::TEXT,
             COALESCE(
                 EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))::TEXT,
                 'N/A'
             ) as metric_value,
-            CASE 
-                WHEN EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) > 60 
+            CASE
+                WHEN EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) > 60
                 THEN 'WARNING'::TEXT
                 ELSE 'OK'::TEXT
             END as status,
-            CASE 
-                WHEN EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) > 60 
+            CASE
+                WHEN EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) > 60
                 THEN '复制延迟过高，检查网络和备用服务器性能'::TEXT
                 ELSE '复制状态正常'::TEXT
             END as recommendation;
@@ -81,90 +81,90 @@ BEGIN
 
     -- 5. 缓存命中率
     RETURN QUERY
-    SELECT 
+    SELECT
         '缓存状态'::TEXT,
         '共享缓冲区命中率(%)'::TEXT,
         ROUND(
-            (SELECT (blks_hit::float / (blks_hit + blks_read) * 100) 
+            (SELECT (blks_hit::float / (blks_hit + blks_read) * 100)
              FROM pg_stat_database WHERE datname = current_database()), 2
         )::TEXT as metric_value,
-        CASE 
-            WHEN (SELECT (blks_hit::float / (blks_hit + blks_read) * 100) 
-                  FROM pg_stat_database WHERE datname = current_database()) < 95 
+        CASE
+            WHEN (SELECT (blks_hit::float / (blks_hit + blks_read) * 100)
+                  FROM pg_stat_database WHERE datname = current_database()) < 95
             THEN 'WARNING'::TEXT
             ELSE 'OK'::TEXT
         END as status,
-        CASE 
-            WHEN (SELECT (blks_hit::float / (blks_hit + blks_read) * 100) 
-                  FROM pg_stat_database WHERE datname = current_database()) < 95 
+        CASE
+            WHEN (SELECT (blks_hit::float / (blks_hit + blks_read) * 100)
+                  FROM pg_stat_database WHERE datname = current_database()) < 95
             THEN '缓存命中率偏低，考虑增加shared_buffers'::TEXT
             ELSE '缓存命中率正常'::TEXT
         END as recommendation;
 
     -- 6. 锁等待
     RETURN QUERY
-    SELECT 
+    SELECT
         '锁状态'::TEXT,
         '当前锁等待数'::TEXT,
         (SELECT count(*)::TEXT FROM pg_locks WHERE NOT granted) as metric_value,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_locks WHERE NOT granted) > 10 
+        CASE
+            WHEN (SELECT count(*) FROM pg_locks WHERE NOT granted) > 10
             THEN 'WARNING'::TEXT
             ELSE 'OK'::TEXT
         END as status,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_locks WHERE NOT granted) > 10 
+        CASE
+            WHEN (SELECT count(*) FROM pg_locks WHERE NOT granted) > 10
             THEN '存在锁等待，检查长时间运行的事务'::TEXT
             ELSE '锁状态正常'::TEXT
         END as recommendation;
 
     -- 7. 长时间运行的查询
     RETURN QUERY
-    SELECT 
+    SELECT
         '查询状态'::TEXT,
         '长时间运行查询数'::TEXT,
-        (SELECT count(*)::TEXT FROM pg_stat_activity 
+        (SELECT count(*)::TEXT FROM pg_stat_activity
          WHERE state = 'active' AND query_start < now() - interval '5 minutes') as metric_value,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_stat_activity 
-                  WHERE state = 'active' AND query_start < now() - interval '5 minutes') > 0 
+        CASE
+            WHEN (SELECT count(*) FROM pg_stat_activity
+                  WHERE state = 'active' AND query_start < now() - interval '5 minutes') > 0
             THEN 'WARNING'::TEXT
             ELSE 'OK'::TEXT
         END as status,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_stat_activity 
-                  WHERE state = 'active' AND query_start < now() - interval '5 minutes') > 0 
+        CASE
+            WHEN (SELECT count(*) FROM pg_stat_activity
+                  WHERE state = 'active' AND query_start < now() - interval '5 minutes') > 0
             THEN '存在长时间运行查询，检查查询性能'::TEXT
             ELSE '查询状态正常'::TEXT
         END as recommendation;
 
     -- 8. 表膨胀情况
     RETURN QUERY
-    SELECT 
+    SELECT
         '表健康'::TEXT,
         '高膨胀表数量'::TEXT,
-        (SELECT count(*)::TEXT FROM pg_stat_user_tables 
+        (SELECT count(*)::TEXT FROM pg_stat_user_tables
          WHERE n_dead_tup > n_live_tup * 0.1) as metric_value,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_stat_user_tables 
-                  WHERE n_dead_tup > n_live_tup * 0.1) > 0 
+        CASE
+            WHEN (SELECT count(*) FROM pg_stat_user_tables
+                  WHERE n_dead_tup > n_live_tup * 0.1) > 0
             THEN 'WARNING'::TEXT
             ELSE 'OK'::TEXT
         END as status,
-        CASE 
-            WHEN (SELECT count(*) FROM pg_stat_user_tables 
-                  WHERE n_dead_tup > n_live_tup * 0.1) > 0 
+        CASE
+            WHEN (SELECT count(*) FROM pg_stat_user_tables
+                  WHERE n_dead_tup > n_live_tup * 0.1) > 0
             THEN '存在表膨胀，考虑运行VACUUM'::TEXT
             ELSE '表健康状态良好'::TEXT
         END as recommendation;
 
     -- 9. PostgreSQL 17 特定监控
     RETURN QUERY
-    SELECT 
+    SELECT
         'PostgreSQL 17'::TEXT,
         'JSON_TABLE支持'::TEXT,
-        CASE 
-            WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'json_table') 
+        CASE
+            WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'json_table')
             THEN 'YES'::TEXT
             ELSE 'NO'::TEXT
         END as metric_value,
@@ -173,11 +173,11 @@ BEGIN
 
     -- 10. 系统资源使用
     RETURN QUERY
-    SELECT 
+    SELECT
         '系统资源'::TEXT,
         '内存使用率(%)'::TEXT,
         ROUND(
-            (SELECT (shared_buffers::bigint * 8192)::float / 
+            (SELECT (shared_buffers::bigint * 8192)::float /
              (SELECT setting::bigint * 8192 FROM pg_settings WHERE name = 'shared_buffers') * 100
             ), 2
         )::TEXT as metric_value,
@@ -194,32 +194,32 @@ $$ LANGUAGE plpgsql;
 
 -- 显示系统信息
 \echo '=== 系统信息 ==='
-SELECT 
+SELECT
     'PostgreSQL版本' as info_type,
     version() as value
 UNION ALL
-SELECT 
+SELECT
     '数据库名称',
     current_database()
 UNION ALL
-SELECT 
+SELECT
     '当前用户',
     current_user
 UNION ALL
-SELECT 
+SELECT
     '服务器时间',
     now()::text;
 
 \echo ''
 \echo '=== 关键指标监控 ==='
-SELECT 
+SELECT
     metric_category,
     metric_name,
     metric_value,
     status,
     recommendation
 FROM get_pg17_metrics()
-ORDER BY 
+ORDER BY
     CASE metric_category
         WHEN '连接状态' THEN 1
         WHEN '存储状态' THEN 2
@@ -238,7 +238,7 @@ ORDER BY
 -- 显示告警汇总
 \echo ''
 \echo '=== 告警汇总 ==='
-SELECT 
+SELECT
     status,
     count(*) as count,
     string_agg(metric_name, ', ') as affected_metrics
@@ -250,7 +250,7 @@ ORDER BY status;
 -- 显示Top 10 最活跃的表
 \echo ''
 \echo '=== Top 10 最活跃的表 ==='
-SELECT 
+SELECT
     schemaname,
     tablename,
     n_tup_ins as inserts,
@@ -265,7 +265,7 @@ LIMIT 10;
 -- 显示Top 10 最慢的查询
 \echo ''
 \echo '=== Top 10 最慢的查询 ==='
-SELECT 
+SELECT
     query,
     calls,
     total_time,
@@ -279,7 +279,7 @@ LIMIT 10;
 -- 显示复制状态详情（如果有）
 \echo ''
 \echo '=== 复制状态详情 ==='
-SELECT 
+SELECT
     client_addr,
     application_name,
     state,

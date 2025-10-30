@@ -1,14 +1,14 @@
-# Citus 分布式PostgreSQL演示
+# Citus 分布式 PostgreSQL 演示
 
 > Citus 12+ | PostgreSQL 17
 
 ## 📋 目标
 
-演示如何使用Citus将PostgreSQL扩展为分布式数据库，包括：
+演示如何使用 Citus 将 PostgreSQL 扩展为分布式数据库，包括：
 
 - 多节点集群部署
 - 分布式表和引用表
-- 分布式查询和跨分片JOIN
+- 分布式查询和跨分片 JOIN
 - 数据重平衡和故障恢复
 
 ---
@@ -18,10 +18,10 @@
 ### 前置要求
 
 - Docker 和 Docker Compose
-- 至少4GB可用内存
-- PostgreSQL客户端工具（psql）
+- 至少 4GB 可用内存
+- PostgreSQL 客户端工具（psql）
 
-### 步骤1：启动Citus集群
+### 步骤 1：启动 Citus 集群
 
 ```bash
 # 启动3节点集群（1协调节点 + 2工作节点）
@@ -36,28 +36,28 @@ docker compose ps
 # worker2      running
 ```
 
-**等待集群就绪**（约30秒）：
+**等待集群就绪**（约 30 秒）：
 
 ```bash
 # 查看日志，等待"Citus cluster ready"
 docker compose logs -f coordinator
 ```
 
-### 步骤2：初始化数据
+### 步骤 2：初始化数据
 
-**方式A：从容器内执行**:
+**方式 A：从容器内执行**:
 
 ```bash
 docker compose exec -T coordinator psql -U postgres < init.sql
 ```
 
-**方式B：从宿主机执行**:
+**方式 B：从宿主机执行**:
 
 ```bash
 psql postgresql://postgres:postgres@localhost:5432/postgres -f init.sql
 ```
 
-### 步骤3：验证集群
+### 步骤 3：验证集群
 
 ```bash
 # 连接到协调节点
@@ -99,7 +99,7 @@ SELECT * FROM citus_shards WHERE table_name::text = 'orders';
 
 -- 插入数据（自动路由到对应分片）
 INSERT INTO orders (customer_id, order_date, amount, status)
-VALUES 
+VALUES
     (1, '2025-01-01', 100.00, 'completed'),
     (2, '2025-01-02', 200.00, 'pending'),
     (1, '2025-01-03', 150.00, 'completed');
@@ -123,7 +123,7 @@ SELECT create_reference_table('customers');
 
 -- 插入数据（复制到所有节点）
 INSERT INTO customers (customer_id, customer_name, email)
-VALUES 
+VALUES
     (1, 'Alice', 'alice@example.com'),
     (2, 'Bob', 'bob@example.com'),
     (3, 'Charlie', 'charlie@example.com');
@@ -141,8 +141,8 @@ CREATE TABLE system_config (
 );
 
 -- 查看表类型
-SELECT table_name, citus_table_type 
-FROM citus_tables 
+SELECT table_name, citus_table_type
+FROM citus_tables
 ORDER BY table_name;
 ```
 
@@ -154,20 +154,20 @@ ORDER BY table_name;
 
 ```sql
 -- 查询单个customer的订单（路由到单个分片）
-EXPLAIN (ANALYZE, VERBOSE) 
-SELECT * FROM orders 
+EXPLAIN (ANALYZE, VERBOSE)
+SELECT * FROM orders
 WHERE customer_id = 1;
 
 -- 执行计划：Custom Scan (Citus Adaptive)
 -- → Task Count: 1（只访问1个分片）
 ```
 
-### 2. 跨分片JOIN（协同定位）
+### 2. 跨分片 JOIN（协同定位）
 
 ```sql
 -- 分布式表和引用表JOIN（本地JOIN）
 EXPLAIN (ANALYZE, VERBOSE)
-SELECT 
+SELECT
     c.customer_name,
     COUNT(*) as order_count,
     SUM(o.amount) as total_amount
@@ -185,7 +185,7 @@ LIMIT 10;
 ```sql
 -- 全表聚合（并行执行）
 EXPLAIN (ANALYZE, VERBOSE)
-SELECT 
+SELECT
     status,
     COUNT(*) as count,
     AVG(amount) as avg_amount
@@ -197,7 +197,7 @@ GROUP BY status;
 -- 2. 协调节点合并结果
 ```
 
-### 4. 分布式JOIN（重分布）
+### 4. 分布式 JOIN（重分布）
 
 ```sql
 -- 两个分布式表按不同键JOIN（需要重分布）
@@ -236,7 +236,7 @@ GROUP BY p.name;
 SELECT * FROM citus_tables ORDER BY table_name;
 
 -- 查看分片分布
-SELECT 
+SELECT
     table_name,
     COUNT(*) as shard_count,
     COUNT(DISTINCT node_name) as node_count
@@ -244,7 +244,7 @@ FROM citus_shards
 GROUP BY table_name;
 
 -- 查看分片详情
-SELECT 
+SELECT
     shardid,
     table_name,
     shard_size,
@@ -258,7 +258,7 @@ ORDER BY table_name, shardid;
 
 ```sql
 -- 查看分片分布不均衡情况
-SELECT 
+SELECT
     node_name,
     COUNT(*) as shard_count,
     pg_size_pretty(SUM(shard_size)) as total_size
@@ -279,8 +279,8 @@ ALTER TABLE orders SET (shard_replication_factor = 1);
 SELECT * FROM citus_stat_activity;
 
 -- 查看分布式查询统计
-SELECT * FROM citus_stat_statements 
-ORDER BY total_time DESC 
+SELECT * FROM citus_stat_statements
+ORDER BY total_time DESC
 LIMIT 10;
 
 -- 查看worker节点健康状态
@@ -322,7 +322,7 @@ SELECT citus_activate_node('worker2', 5432);
 -- - 自增ID（不均匀）
 
 -- 分析分片分布
-SELECT 
+SELECT
     hashtext(customer_id::text) % 32 as shard_id,
     COUNT(*) as row_count
 FROM orders
@@ -344,7 +344,7 @@ CREATE TABLE order_items (
 SELECT create_distributed_table('order_items', 'customer_id');
 
 -- 验证协同定位
-SELECT 
+SELECT
     colocationid,
     table_name
 FROM citus_tables
@@ -361,7 +361,7 @@ SET citus.executor_slow_start_interval = 10;
 
 -- 调整分片数量（在create_distributed_table时）
 SELECT create_distributed_table(
-    'large_table', 
+    'large_table',
     'user_id',
     shard_count := 64  -- 增加分片数以提高并行度
 );
@@ -383,7 +383,7 @@ CREATE INDEX idx_orders_date ON orders(order_date);
 
 ## 🧪 测试场景
 
-### 场景1：高并发写入
+### 场景 1：高并发写入
 
 ```sql
 -- 使用pgbench测试分布式写入
@@ -396,11 +396,11 @@ VALUES (:customer_id, CURRENT_DATE, random() * 1000, 'pending');
 -- pgbench -h localhost -p 5432 -U postgres -f insert_orders.sql -c 32 -j 4 -T 60
 ```
 
-### 场景2：分析查询
+### 场景 2：分析查询
 
 ```sql
 -- 客户订单汇总
-SELECT 
+SELECT
     c.customer_name,
     COUNT(DISTINCT o.order_id) as order_count,
     SUM(o.amount) as total_spent,
@@ -414,12 +414,12 @@ ORDER BY total_spent DESC
 LIMIT 100;
 ```
 
-### 场景3：实时仪表板
+### 场景 3：实时仪表板
 
 ```sql
 -- 创建实时统计视图
 CREATE MATERIALIZED VIEW daily_stats AS
-SELECT 
+SELECT
     order_date,
     status,
     COUNT(*) as order_count,
@@ -454,7 +454,7 @@ docker compose start worker1
 
 ```sql
 -- 检查分片复制状态
-SELECT * FROM citus_shard_placement 
+SELECT * FROM citus_shard_placement
 WHERE shardstate != 1;  -- 1表示健康
 
 -- 修复不一致的分片
@@ -469,25 +469,28 @@ SELECT citus_copy_shard_placement(
 
 ## 📚 目录说明
 
-- `docker-compose.yml` - 3节点集群配置
+- `docker-compose.yml` - 3 节点集群配置
 - `init.sql` - 初始化脚本（创建表、分布策略、示例数据）
-- `run.ps1` - Windows启动脚本
+- `run.ps1` - Windows 启动脚本
 
 ---
 
 ## ⚠️ 生产环境建议
 
 1. **高可用配置**：
+
    - 使用分片复制（shard_replication_factor >= 2）
    - 配置故障转移机制
    - 跨可用区部署工作节点
 
 2. **安全配置**：
-   - 启用SSL/TLS
+
+   - 启用 SSL/TLS
    - 配置防火墙规则
    - 使用强密码和证书认证
 
 3. **监控告警**：
+
    - 监控节点健康状态
    - 跟踪分片分布和数据倾斜
    - 设置查询延迟告警
@@ -501,7 +504,7 @@ SELECT citus_copy_shard_placement(
 
 ## 📖 参考资源
 
-- **Citus文档**: <https://docs.citusdata.com/>
+- **Citus 文档**: <https://docs.citusdata.com/>
 - **GitHub**: <https://github.com/citusdata/citus>
 - **相关章节**: `../../04_modern_features/distributed_db/`
 - **性能基准**: `../../../10_benchmarks/`

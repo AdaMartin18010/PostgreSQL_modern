@@ -440,6 +440,13 @@ grep "tps =" baseline.log optimized.log
 
 - **[报告模板目录](./report_templates/)** - 标准化报告模板
 
+### PG18 对齐新增模板
+
+- **[向量/混合搜索指标模板](./vector_hybrid_metrics_template.md)**
+- **[多模一体化基准模板](./multimodel_benchmark_template.md)**
+
+参考论证：`13_ai_alignment/00_论证总览_AI_View_对齐_PG18.md`
+
 ### 相关章节
 
 - **[09_deployment_ops/](../09_deployment_ops/)** - 运维和监控

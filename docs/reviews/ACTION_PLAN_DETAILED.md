@@ -1,7 +1,7 @@
 ﻿# PostgreSQL_modern 项目改进行动计划（详细版）
 
-> **计划制定日期**：2025年10月3日  
-> **计划执行期**：2025年10月 - 2026年1月（12周）  
+> **计划制定日期**：2025 年 10 月 3 日  
+> **计划执行期**：2025 年 10 月 - 2026 年 1 月（12 周）  
 > **计划类型**：分阶段、可中断、可恢复
 
 ---
@@ -10,20 +10,20 @@
 
 ### 执行原则
 
-1. **渐进式改进**：每个Phase独立可交付
+1. **渐进式改进**：每个 Phase 独立可交付
 2. **可中断恢复**：每个任务有明确起止点，可随时暂停/恢复
-3. **优先级驱动**：标注P0/P1/P2，资源不足时砍低优先级
+3. **优先级驱动**：标注 P0/P1/P2，资源不足时砍低优先级
 4. **度量驱动**：每个任务有可验证的完成标准
 
 ### 阶段概览
 
-| **阶段** | **周期** | **核心目标** | **交付物** | **优先级** |
-|---------|---------|------------|-----------|----------|
-| Phase 1 | W1-W2 | 紧急修复可信度 | 质量矩阵+基础扩充 | P0 |
-| Phase 2 | W3-W6 | 结构性改进 | 学习路径+对标表 | P1 |
-| Phase 3 | W7-W10 | 深度提升 | Level 3模块+案例 | P1 |
-| Phase 4 | W11-W12 | 工程化 | CI/CD+社区化 | P2 |
-| Phase 5 | W13+ | 持续演进 | 长期维护机制 | P2 |
+| **阶段** | **周期** | **核心目标**   | **交付物**        | **优先级** |
+| -------- | -------- | -------------- | ----------------- | ---------- |
+| Phase 1  | W1-W2    | 紧急修复可信度 | 质量矩阵+基础扩充 | P0         |
+| Phase 2  | W3-W6    | 结构性改进     | 学习路径+对标表   | P1         |
+| Phase 3  | W7-W10   | 深度提升       | Level 3 模块+案例 | P1         |
+| Phase 4  | W11-W12  | 工程化         | CI/CD+社区化      | P2         |
+| Phase 5  | W13+     | 持续演进       | 长期维护机制      | P2         |
 
 ---
 
@@ -38,65 +38,69 @@
 ### 任务 1.1：诚实的质量标注
 
 **优先级**：P0  
-**工作量**：4小时  
-**负责人**：项目Owner
+**工作量**：4 小时  
+**负责人**：项目 Owner
 
 #### 行动清单
 
-- [ ] **Step 1**：创建`QUALITY_MATRIX.md`（1小时）
+- [ ] **Step 1**：创建`QUALITY_MATRIX.md`（1 小时）
 
   ```markdown
   # 模块成熟度矩阵
-  
-  | 模块 | 当前等级 | 目标等级 | 差距说明 | 预计达成时间 |
-  |-----|---------|---------|---------|------------|
-  | 01_sql_ddl_dcl | Level 1 | Level 3 | 缺原理详解、案例 | 2025-10-20 |
-  | 02_transactions | Level 1 | Level 3 | 缺MVCC原理图 | 2025-10-25 |
-  | ... | ... | ... | ... | ... |
+
+  | 模块            | 当前等级 | 目标等级 | 差距说明         | 预计达成时间 |
+  | --------------- | -------- | -------- | ---------------- | ------------ |
+  | 01_sql_ddl_dcl  | Level 1  | Level 3  | 缺原理详解、案例 | 2025-10-20   |
+  | 02_transactions | Level 1  | Level 3  | 缺 MVCC 原理图   | 2025-10-25   |
+  | ...             | ...      | ...      | ...              | ...          |
   ```
 
-- [ ] **Step 2**：更新主README（1小时）
+- [ ] **Step 2**：更新主 README（1 小时）
+
   - 移除"100%完成"表述
   - 添加"项目现状"章节：
 
     ```markdown
     ## 📊 项目现状（2025-10-03）
-    
+
     ### 已完成部分
-    - ✅ 完整目录结构（16个一级目录）
-    - ✅ PostgreSQL 17核心特性覆盖
+
+    - ✅ 完整目录结构（16 个一级目录）
+    - ✅ PostgreSQL 17 核心特性覆盖
     - ✅ 分布式数据库深度内容（Level 3）
-    - ✅ 3个完整实战案例
-    
+    - ✅ 3 个完整实战案例
+
     ### 进行中部分
+
     - 🚧 基础模块深度内容（Level 1 → Level 3）
-    - 🚧 对标课程/Wiki落地（骨架已建）
+    - 🚧 对标课程/Wiki 落地（骨架已建）
     - 🚧 工程化体系建设（CI/测试）
-    
+
     ### 计划完成时间
-    - 基础模块：2025年10月底
-    - 对标落地：2025年11月底
-    - 完整体系：2025年12月底
+
+    - 基础模块：2025 年 10 月底
+    - 对标落地：2025 年 11 月底
+    - 完整体系：2025 年 12 月底
     ```
 
-- [ ] **Step 3**：在`PROJECT_COMPLETION_CHECKLIST.md`添加说明（30分钟）
+- [ ] **Step 3**：在`PROJECT_COMPLETION_CHECKLIST.md`添加说明（30 分钟）
 
   ```markdown
   ## ⚠️ 重要说明
-  
+
   本清单中的"100%完成"指的是**第一阶段目标**（结构搭建+高级特性）的完成度。
-  
+
   **未包含在此清单中的工作**：
-  - 基础模块深度扩充（01/02/03目录）
+
+  - 基础模块深度扩充（01/02/03 目录）
   - 对标课程详细对照表
-  - CI/CD自动化测试
+  - CI/CD 自动化测试
   - 社区外部评审
-  
+
   完整项目路线图见：`ACTION_PLAN_DETAILED.md`
   ```
 
-- [ ] **Step 4**：为每个README添加成熟度标签（1.5小时）
-  在每个目录的README顶部添加：
+- [ ] **Step 4**：为每个 README 添加成熟度标签（1.5 小时）在每个目录的 README 顶部添加：
 
   ```markdown
   > **成熟度**：Level 1（骨架级） | 目标：Level 3（教程级）  
@@ -105,31 +109,31 @@
 
 **完成标准**：
 
-- ✅ `QUALITY_MATRIX.md`已创建，16个模块全部标注
-- ✅ 主README无"100%完成"表述，新增"项目现状"章节
-- ✅ 至少10个README已添加成熟度标签
+- ✅ `QUALITY_MATRIX.md`已创建，16 个模块全部标注
+- ✅ 主 README 无"100%完成"表述，新增"项目现状"章节
+- ✅ 至少 10 个 README 已添加成熟度标签
 
 **输出文件**：
 
 - `QUALITY_MATRIX.md`（新建）
 - `README.md`（修改）
 - `PROJECT_COMPLETION_CHECKLIST.md`（修改）
-- 各目录README（修改）
+- 各目录 README（修改）
 
 ---
 
 ### 任务 1.2：基础模块紧急扩充
 
 **优先级**：P0  
-**工作量**：20-24小时（分3个子任务）  
+**工作量**：20-24 小时（分 3 个子任务）  
 **负责人**：技术内容负责人
 
 ---
 
 #### 子任务 1.2.1：扩充`01_sql_ddl_dcl/README.md`
 
-**目标行数**：62 → 500行  
-**工作量**：8小时
+**目标行数**：62 → 500 行  
+**工作量**：8 小时
 
 **内容大纲**（建议）：
 
@@ -137,107 +141,126 @@
 # 01_sql_ddl_dcl（扩充版）
 
 ## 📋 目录
+
 [现有内容保留]
 
-## 1. SQL语言基础（新增 ~100行）
+## 1. SQL 语言基础（新增 ~100 行）
+
 ### 1.1 数据类型详解
+
 - 数值类型：INT vs BIGINT vs NUMERIC（精度陷阱）
 - 字符类型：CHAR vs VARCHAR vs TEXT（性能对比）
 - 日期时间：TIMESTAMP vs TIMESTAMPTZ（时区陷阱）
-- JSON类型：JSON vs JSONB（存储与索引）
+- JSON 类型：JSON vs JSONB（存储与索引）
 
 [配表格对比、代码示例]
 
 ### 1.2 标识符与命名规范
+
 - 大小写敏感性（带引号 vs 不带引号）
 - 保留字冲突处理
-- Schema命名空间
+- Schema 命名空间
 - 命名最佳实践（团队规范模板）
 
-## 2. DDL深度实战（新增 ~150行）
+## 2. DDL 深度实战（新增 ~150 行）
+
 ### 2.1 表设计陷阱案例
-**案例1：主键选择的代价**
-- 自增ID vs UUID vs 雪花ID
-- 性能测试数据（插入TPS、表大小、索引大小）
+
+**案例 1：主键选择的代价**
+
+- 自增 ID vs UUID vs 雪花 ID
+- 性能测试数据（插入 TPS、表大小、索引大小）
 - 决策树
 
-**案例2：约束的性能影响**
+**案例 2：约束的性能影响**
+
 - 外键约束：何时用、何时不用
 - 检查约束：性能 vs 数据完整性
 - 延迟约束验证
 
-**案例3：分区表设计**
+**案例 3：分区表设计**
+
 - 分区键选择（范围 vs 列表 vs 哈希）
 - 子分区数量与查询性能
 - 分区表维护（ATTACH/DETACH）
 
-[每个案例：问题描述 → SQL代码 → 测试结果 → 最佳实践]
+[每个案例：问题描述 → SQL 代码 → 测试结果 → 最佳实践]
 
-### 2.2 在线DDL最佳实践
-- CREATE INDEX CONCURRENTLY原理与陷阱
-- ALTER TABLE的锁级别
+### 2.2 在线 DDL 最佳实践
+
+- CREATE INDEX CONCURRENTLY 原理与陷阱
+- ALTER TABLE 的锁级别
 - 大表结构变更策略（逻辑复制/双写）
 
-## 3. DML优化技巧（新增 ~100行）
+## 3. DML 优化技巧（新增 ~100 行）
+
 ### 3.1 批量操作
-- INSERT多行 vs 单行（性能对比）
-- COPY命令最佳实践
-- RETURNING子句的妙用
 
-### 3.2 CTE与窗口函数
-- WITH RECURSIVE实战案例（树形数据）
+- INSERT 多行 vs 单行（性能对比）
+- COPY 命令最佳实践
+- RETURNING 子句的妙用
+
+### 3.2 CTE 与窗口函数
+
+- WITH RECURSIVE 实战案例（树形数据）
 - 窗口函数性能陷阱
-- CTE物化 vs 内联
+- CTE 物化 vs 内联
 
-### 3.3 UPSERT模式
+### 3.3 UPSERT 模式
+
 - INSERT ... ON CONFLICT
 - 并发安全性分析
 - 性能优化建议
 
-## 4. DCL与权限模型（新增 ~80行）
+## 4. DCL 与权限模型（新增 ~80 行）
+
 ### 4.1 角色与权限最佳实践
+
 - 角色继承体系设计
 - 最小权限原则
 - 多租户权限隔离
 
 ### 4.2 行级安全（RLS）
+
 - 策略创建与性能影响
 - 与应用层鉴权对比
 - 使用场景
 
-## 5. PostgreSQL 17新特性（新增 ~50行）
-- MERGE命令增强（如适用）
-- SQL:2023新特性
-- [链接到04_modern_features/pg17_new_features.md]
+## 5. PostgreSQL 17 新特性（新增 ~50 行）
 
-## 6. 常见陷阱汇总（新增 ~20行）
-| 陷阱 | 表现 | 原因 | 解决方案 |
-|-----|-----|-----|---------|
-| 隐式类型转换导致索引失效 | Seq Scan | WHERE col::text | 修改列类型/表达式索引 |
-| 大小写混用 | 列名找不到 | 未加引号 | 统一小写或全程带引号 |
-| ... | ... | ... | ... |
+- MERGE 命令增强（如适用）
+- SQL:2023 新特性
+- [链接到 04_modern_features/pg17_new_features.md]
 
-[现有Checklist保留]
+## 6. 常见陷阱汇总（新增 ~20 行）
+
+| 陷阱                     | 表现       | 原因            | 解决方案              |
+| ------------------------ | ---------- | --------------- | --------------------- |
+| 隐式类型转换导致索引失效 | Seq Scan   | WHERE col::text | 修改列类型/表达式索引 |
+| 大小写混用               | 列名找不到 | 未加引号        | 统一小写或全程带引号  |
+| ...                      | ...        | ...             | ...                   |
+
+[现有 Checklist 保留]
 ```
 
 **完成标准**：
 
-- ✅ 行数≥500行
-- ✅ 代码示例≥15个
-- ✅ 对比表格≥3个
-- ✅ 实战案例≥3个
-- ✅ 外部链接≥5个（官方文档、Wiki）
+- ✅ 行数 ≥500 行
+- ✅ 代码示例 ≥15 个
+- ✅ 对比表格 ≥3 个
+- ✅ 实战案例 ≥3 个
+- ✅ 外部链接 ≥5 个（官方文档、Wiki）
 
 ---
 
 #### 子任务 1.2.2：扩充`02_transactions/README.md`
 
-**目标行数**：49 → 600行  
-**工作量**：10小时
+**目标行数**：49 → 600 行  
+**工作量**：10 小时
 
 **内容大纲**（建议）：
 
-```markdown
+````markdown
     # 02_transactions（扩充版）
 
     ## 1. ACID深度解析（新增 ~120行）
@@ -402,27 +425,26 @@
     - 主动监控与告警
 
     [现有Checklist保留并扩充]
-
-```
+````
 
 **完成标准**：
 
-- ✅ 行数≥600行
-- ✅ 原理图≥2个（MVCC可见性、锁冲突矩阵）
-- ✅ 代码示例≥20个
-- ✅ 对比表格≥2个
-- ✅ 实战案例≥5个
+- ✅ 行数 ≥600 行
+- ✅ 原理图 ≥2 个（MVCC 可见性、锁冲突矩阵）
+- ✅ 代码示例 ≥20 个
+- ✅ 对比表格 ≥2 个
+- ✅ 实战案例 ≥5 个
 
 ---
 
 #### 子任务 1.2.3：扩充`03_storage_access/README.md`
 
-**目标行数**：63 → 600行  
-**工作量**：10小时
+**目标行数**：63 → 600 行  
+**工作量**：10 小时
 
 **内容大纲**（建议）：
 
-```markdown
+````markdown
     # 03_storage_access（扩充版）
 
     ## 1. 存储结构详解（新增 ~100行）
@@ -535,10 +557,10 @@
     ### 3.1 EXPLAIN输出解读
 
     ```sql
-    EXPLAIN (ANALYZE, BUFFERS) 
-    SELECT * FROM orders 
-    WHERE user_id = 123 
-    ORDER BY created_at DESC 
+    EXPLAIN (ANALYZE, BUFFERS)
+    SELECT * FROM orders
+    WHERE user_id = 123
+    ORDER BY created_at DESC
     LIMIT 10;
     ```
 
@@ -547,7 +569,7 @@
     ```
     Limit  (cost=0.43..8.45 rows=10 width=120) (actual time=0.023..0.045 rows=10 loops=1)
     Buffers: shared hit=5
-    ->  Index Scan Backward using idx_orders_user_created on orders  
+    ->  Index Scan Backward using idx_orders_user_created on orders
         (cost=0.43..802.56 rows=1000 width=120) (actual time=0.022..0.042 rows=10 loops=1)
             Index Cond: (user_id = 123)
             Buffers: shared hit=5
@@ -588,8 +610,8 @@
     SELECT * FROM pg_stats WHERE tablename = 'orders';
 
     -- 扩展统计（多列相关性）
-    CREATE STATISTICS stats_orders_user_status 
-    ON user_id, status 
+    CREATE STATISTICS stats_orders_user_status
+    ON user_id, status
     FROM orders;
     ```
 
@@ -631,78 +653,77 @@
     - [链接到pg17_new_features.md]
 
     [现有Checklist保留并扩充]
-
-```
+````
 
 **完成标准**：
 
-- ✅ 行数≥600行
-- ✅ 架构图≥2个（页面结构、索引决策树）
-- ✅ 代码示例≥25个
-- ✅ 对比表格≥4个
-- ✅ 执行计划案例≥3个
+- ✅ 行数 ≥600 行
+- ✅ 架构图 ≥2 个（页面结构、索引决策树）
+- ✅ 代码示例 ≥25 个
+- ✅ 对比表格 ≥4 个
+- ✅ 执行计划案例 ≥3 个
 
 ---
 
 ### 任务 1.3：版本时效性检查
 
 **优先级**：P0  
-**工作量**：4小时  
+**工作量**：4 小时  
 **负责人**：项目维护者
 
-#### 行动清单1
+#### 行动清单 1
 
-- [ ] **Step 1**：检查扩展最新版本（2小时）
+- [ ] **Step 1**：检查扩展最新版本（2 小时）
 
   ```bash
   # 脚本：tools/check_versions.sh
   #!/bin/bash
-  
+
   # pgvector
   echo "=== pgvector ==="
   curl -s <https://api.github.com/repos/pgvector/pgvector/releases/latest> | jq -r '.tag_name'
-  
+
   # TimescaleDB
   echo "=== TimescaleDB ==="
   curl -s <https://api.github.com/repos/timescale/timescaledb/releases/latest> | jq -r '.tag_name'
-  
+
   # PostGIS
   echo "=== PostGIS ==="
   curl -s <https://api.github.com/repos/postgis/postgis/releases/latest> | jq -r '.tag_name'
-  
+
   # Citus
   echo "=== Citus ==="
   curl -s <https://api.github.com/repos/citusdata/citus/releases/latest> | jq -r '.tag_name'
   ```
 
-- [ ] **Step 2**：更新版本建议（1小时）
-  修改`04_modern_features/version_diff_16_to_17.md`：
+- [ ] **Step 2**：更新版本建议（1 小时）修改`04_modern_features/version_diff_16_to_17.md`：
 
-```markdown
+````markdown
     ### 扩展兼容性验证
-    
+
     **PostgreSQL 17兼容扩展版本**（更新于2025-10-03）：
-    
+
     | 扩展 | 最低版本 | 推荐版本 | 最新版本 | 验证状态 |
     |-----|---------|---------|---------|---------|
     | pgvector | 0.7.0 | 0.7.4 | [动态] | ✅ 已验证 |
     | TimescaleDB | 2.14.0 | 2.16.1 | [动态] | ✅ 已验证 |
     | PostGIS | 3.4.0 | 3.4.2 | [动态] | ✅ 已验证 |
     | Citus | 12.0.0 | 12.1.1 | [动态] | ✅ 已验证 |
-    
+
     **检查命令**：
     ```sql
-    SELECT * FROM pg_available_extensions 
+    SELECT * FROM pg_available_extensions
     WHERE name IN ('vector', 'timescaledb', 'postgis', 'citus');
     ```
-```
+````
 
-- [ ] **Step 3**：检查PostgreSQL 18状态（30分钟）
+- [ ] **Step 3**：检查 PostgreSQL 18 状态（30 分钟）
+
   - 访问：<https://www.postgresql.org/developer/roadmap/>
-  - 检查PostgreSQL 18 Beta发布状态
+  - 检查 PostgreSQL 18 Beta 发布状态
   - 如已发布，创建`04_modern_features/pg18_preview.md`
 
-- [ ] **Step 4**：创建版本监控Issue模板（30分钟）
+- [ ] **Step 4**：创建版本监控 Issue 模板（30 分钟）
 
 ```markdown
     # .github/ISSUE_TEMPLATE/version_update.md
@@ -738,9 +759,9 @@
 **完成标准**：
 
 - ✅ `tools/check_versions.sh`已创建并可运行
-- ✅ 至少4个扩展版本已验证更新
-- ✅ PostgreSQL 18状态已确认（如有Beta，已创建preview文档）
-- ✅ 版本监控Issue模板已创建
+- ✅ 至少 4 个扩展版本已验证更新
+- ✅ PostgreSQL 18 状态已确认（如有 Beta，已创建 preview 文档）
+- ✅ 版本监控 Issue 模板已创建
 
 **输出文件**：
 
@@ -753,23 +774,23 @@
 
 ### Phase 1 交付物检查清单
 
-**在Phase 1结束前，必须确认**：
+**在 Phase 1 结束前，必须确认**：
 
 - [ ] `QUALITY_MATRIX.md`已创建，所有模块已标注成熟度
-- [ ] 主README已移除过度承诺表述，添加"项目现状"章节
-- [ ] `01_sql_ddl_dcl/README.md`已达到500+行
-- [ ] `02_transactions/README.md`已达到600+行
-- [ ] `03_storage_access/README.md`已达到600+行
+- [ ] 主 README 已移除过度承诺表述，添加"项目现状"章节
+- [ ] `01_sql_ddl_dcl/README.md`已达到 500+行
+- [ ] `02_transactions/README.md`已达到 600+行
+- [ ] `03_storage_access/README.md`已达到 600+行
 - [ ] 版本检查脚本已创建并运行
-- [ ] 至少4个扩展版本信息已更新
-- [ ] 版本监控Issue模板已创建
+- [ ] 至少 4 个扩展版本信息已更新
+- [ ] 版本监控 Issue 模板已创建
 
 **验收标准**：
 
-- 总新增内容：~1,800行（高质量文档）
-- 代码示例：≥60个
-- 实战案例：≥10个
-- 外部评审：至少1人审查基础模块扩充内容
+- 总新增内容：~1,800 行（高质量文档）
+- 代码示例：≥60 个
+- 实战案例：≥10 个
+- 外部评审：至少 1 人审查基础模块扩充内容
 
 ---
 
@@ -779,17 +800,17 @@
 
 **关键任务**：
 
-1. 创建`00_overview/LEARNING_PATHS.md`（4条学习路径）
-2. 扩充`GLOSSARY.md`至200+行
-3. 完成`12_comparison_wiki_uni/mapping_table.md`（20个主题对照）
-4. 在3个核心README嵌入对标阅读链接
+1. 创建`00_overview/LEARNING_PATHS.md`（4 条学习路径）
+2. 扩充`GLOSSARY.md`至 200+行
+3. 完成`12_comparison_wiki_uni/mapping_table.md`（20 个主题对照）
+4. 在 3 个核心 README 嵌入对标阅读链接
 
 **交付物**：
 
 - 学习路径文档
 - 完整术语表
 - 对标映射表
-- 更新的README（嵌入对标链接）
+- 更新的 README（嵌入对标链接）
 
 ---
 
@@ -797,15 +818,15 @@
 
 **关键任务**：
 
-1. 3个基础模块达到Level 3（每个600-900行）
-2. 新增3个生产级案例（高并发OLTP、OLAP仓库、多租户SaaS）
-3. 创建`tools/`目录，添加3个工具脚本
+1. 3 个基础模块达到 Level 3（每个 600-900 行）
+2. 新增 3 个生产级案例（高并发 OLTP、OLAP 仓库、多租户 SaaS）
+3. 创建`tools/`目录，添加 3 个工具脚本
 
 **交付物**：
 
-- Level 3基础模块（3个）
-- 生产级案例（3个）
-- 实用工具脚本（3个）
+- Level 3 基础模块（3 个）
+- 生产级案例（3 个）
+- 实用工具脚本（3 个）
 
 ---
 
@@ -813,13 +834,13 @@
 
 **关键任务**：
 
-1. 搭建GitHub Actions CI（SQL测试、链接检查）
-2. 完善贡献者指南（100行）
-3. 邀请3-5名外部专家评审
+1. 搭建 GitHub Actions CI（SQL 测试、链接检查）
+2. 完善贡献者指南（100 行）
+3. 邀请 3-5 名外部专家评审
 
 **交付物**：
 
-- CI/CD配置文件
+- CI/CD 配置文件
 - 详细贡献指南
 - 外部评审报告
 
@@ -829,8 +850,8 @@
 
 **长期机制**：
 
-1. 月度版本巡检（自动化Issue）
-2. 季度深度案例（1个/季度）
+1. 月度版本巡检（自动化 Issue）
+2. 季度深度案例（1 个/季度）
 3. 年度对标课程更新
 4. 社区贡献者培养
 
@@ -840,19 +861,19 @@
 
 ### 使用方法
 
-**方式1：GitHub Issues**：
+**方式 1：GitHub Issues**：
 
-- 为每个Phase创建Milestone
-- 为每个任务创建Issue，关联Milestone
-- 使用Labels标注优先级（P0/P1/P2）
+- 为每个 Phase 创建 Milestone
+- 为每个任务创建 Issue，关联 Milestone
+- 使用 Labels 标注优先级（P0/P1/P2）
 
-**方式2：项目看板**：
+**方式 2：项目看板**：
 
 - 创建`PROJECT_BOARD.md`
-- 使用TODO/IN_PROGRESS/DONE列
+- 使用 TODO/IN_PROGRESS/DONE 列
 - 每周更新进度
 
-**方式3：周报**：
+**方式 3：周报**：
 
 - 每周五更新`WEEKLY_REPORT.md`
 - 记录完成任务、遇到问题、下周计划
@@ -865,17 +886,17 @@
 
 **优先级裁剪**：
 
-- **必保**（P0）：Phase 1全部任务
-- **重保**（P1）：Phase 2任务1-2，Phase 3任务1
-- **可砍**（P2）：Phase 4全部，Phase 2任务3-4
+- **必保**（P0）：Phase 1 全部任务
+- **重保**（P1）：Phase 2 任务 1-2，Phase 3 任务 1
+- **可砍**（P2）：Phase 4 全部，Phase 2 任务 3-4
 
 ### 如果人力不足
 
 **最小可行方案**：
 
-1. **只做Phase 1**（2周）→ 发布v0.2（基础夯实版）
-2. **Phase 1 + Phase 2任务1**（4周）→ 发布v0.3（可导航版）
-3. **完整Phase 1-3**（10周）→ 发布v1.0（教程级）
+1. **只做 Phase 1**（2 周）→ 发布 v0.2（基础夯实版）
+2. **Phase 1 + Phase 2 任务 1**（4 周）→ 发布 v0.3（可导航版）
+3. **完整 Phase 1-3**（10 周）→ 发布 v1.0（教程级）
 
 ### 如果需要外部帮助
 
@@ -884,7 +905,7 @@
 - 基础模块扩充：PostgreSQL DBA（内容审校）
 - 案例开发：后端工程师（场景设计）
 - 对标工作：高校教师/学生（课程对照）
-- 工程化：DevOps工程师（CI/CD搭建）
+- 工程化：DevOps 工程师（CI/CD 搭建）
 
 ---
 
@@ -897,8 +918,8 @@
 ---
 
 **最后更新**：2025-10-03  
-**下次评审**：2025-10-20（Phase 1结束后）
+**下次评审**：2025-10-20（Phase 1 结束后）
 
 ---
 
-*本计划是工作指南，而非教条。根据实际情况灵活调整，但必须保持透明沟通。*
+_本计划是工作指南，而非教条。根据实际情况灵活调整，但必须保持透明沟通。_

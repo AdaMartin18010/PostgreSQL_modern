@@ -10,7 +10,7 @@
 - **Hypertable**：自动分区的时序表
 - **压缩**：列式压缩降低存储成本
 - **连续聚合**：实时物化视图
-- **数据保留**：自动化TTL策略
+- **数据保留**：自动化 TTL 策略
 - **分布式**：多节点扩展（企业版）
 
 ---
@@ -19,7 +19,7 @@
 
 ### 1. Hypertable（超表）
 
-Hypertable是TimescaleDB的核心抽象，自动将时序数据按时间（和可选的空间维度）分区为Chunks。
+Hypertable 是 TimescaleDB 的核心抽象，自动将时序数据按时间（和可选的空间维度）分区为 Chunks。
 
 ```sql
 -- 创建普通表
@@ -34,17 +34,17 @@ CREATE TABLE sensor_data (
 SELECT create_hypertable('sensor_data', 'time');
 
 -- 带空间分区的Hypertable（按sensor_id分区）
-SELECT create_hypertable('sensor_data', 'time', 
+SELECT create_hypertable('sensor_data', 'time',
     partitioning_column => 'sensor_id',
     number_partitions => 4
 );
 ```
 
-**Chunk策略**：
+**Chunk 策略**：
 
 ```sql
 -- 查看Chunks
-SELECT * FROM timescaledb_information.chunks 
+SELECT * FROM timescaledb_information.chunks
 WHERE hypertable_name = 'sensor_data';
 
 -- 调整Chunk时间间隔（默认7天）
@@ -56,7 +56,7 @@ SELECT add_reorder_policy('sensor_data', 'sensor_data_time_idx');
 
 ### 2. 压缩（Compression）
 
-列式压缩可以显著降低存储成本（压缩比通常达到10-20倍）。
+列式压缩可以显著降低存储成本（压缩比通常达到 10-20 倍）。
 
 ```sql
 -- 启用压缩
@@ -73,12 +73,12 @@ SELECT add_compression_policy('sensor_data', INTERVAL '7 days');
 SELECT compress_chunk(i) FROM show_chunks('sensor_data', older_than => INTERVAL '7 days') i;
 
 -- 查看压缩状态
-SELECT 
+SELECT
     chunk_schema,
     chunk_name,
     pg_size_pretty(before_compression_total_bytes) as before,
     pg_size_pretty(after_compression_total_bytes) as after,
-    ROUND(100 - (after_compression_total_bytes::numeric / 
+    ROUND(100 - (after_compression_total_bytes::numeric /
                  before_compression_total_bytes::numeric * 100), 2) as compression_ratio
 FROM chunk_compression_stats('sensor_data');
 ```
@@ -91,7 +91,7 @@ FROM chunk_compression_stats('sensor_data');
 -- 创建连续聚合：每小时平均温度
 CREATE MATERIALIZED VIEW sensor_data_hourly
 WITH (timescaledb.continuous) AS
-SELECT 
+SELECT
     time_bucket('1 hour', time) AS bucket,
     sensor_id,
     AVG(temperature) as avg_temp,
@@ -109,7 +109,7 @@ SELECT add_continuous_aggregate_policy('sensor_data_hourly',
 );
 
 -- 手动刷新
-CALL refresh_continuous_aggregate('sensor_data_hourly', 
+CALL refresh_continuous_aggregate('sensor_data_hourly',
     '2025-01-01', '2025-01-02'
 );
 
@@ -140,13 +140,13 @@ WHERE proc_name = 'policy_retention';
 
 ---
 
-## 🚀 完整示例：IoT传感器监控系统
+## 🚀 完整示例：IoT 传感器监控系统
 
 ### 场景设计
 
-- 10,000个传感器
+- 10,000 个传感器
 - 每个传感器每分钟上报一次数据
-- 保留90天数据
+- 保留 90 天数据
 - 需要实时查询最近数据和历史聚合
 
 ### 1. 表结构设计
@@ -197,7 +197,7 @@ SELECT add_compression_policy('iot.sensor_readings', INTERVAL '3 days');
 -- 每5分钟聚合
 CREATE MATERIALIZED VIEW iot.sensor_readings_5min
 WITH (timescaledb.continuous) AS
-SELECT 
+SELECT
     time_bucket('5 minutes', time) AS bucket,
     sensor_id,
     location,
@@ -212,7 +212,7 @@ GROUP BY bucket, sensor_id, location;
 -- 每小时聚合
 CREATE MATERIALIZED VIEW iot.sensor_readings_hourly
 WITH (timescaledb.continuous) AS
-SELECT 
+SELECT
     time_bucket('1 hour', time) AS bucket,
     sensor_id,
     location,
@@ -228,7 +228,7 @@ GROUP BY bucket, sensor_id, location;
 -- 每天聚合
 CREATE MATERIALIZED VIEW iot.sensor_readings_daily
 WITH (timescaledb.continuous) AS
-SELECT 
+SELECT
     time_bucket('1 day', time) AS bucket,
     sensor_id,
     location,
@@ -285,7 +285,7 @@ WHERE time >= NOW() - INTERVAL '24 hours'
 ORDER BY time DESC;
 
 -- 2. 最近7天的小时级趋势
-SELECT 
+SELECT
     bucket,
     avg_temp,
     avg_humidity
@@ -295,7 +295,7 @@ WHERE bucket >= NOW() - INTERVAL '7 days'
 ORDER BY bucket;
 
 -- 3. 异常检测（温度超过阈值）
-SELECT 
+SELECT
     bucket,
     sensor_id,
     location,
@@ -306,7 +306,7 @@ WHERE bucket >= NOW() - INTERVAL '1 hour'
 ORDER BY bucket DESC;
 
 -- 4. 多传感器对比
-SELECT 
+SELECT
     bucket,
     sensor_id,
     avg_temp
@@ -316,7 +316,7 @@ WHERE bucket >= NOW() - INTERVAL '24 hours'
 ORDER BY bucket, sensor_id;
 
 -- 5. 按位置聚合
-SELECT 
+SELECT
     location,
     AVG(avg_temp) as avg_temp,
     COUNT(DISTINCT sensor_id) as sensor_count
@@ -334,7 +334,7 @@ ORDER BY avg_temp DESC;
 
 ```sql
 -- 批量写入（推荐）
-COPY iot.sensor_readings (time, sensor_id, location, temperature, humidity) 
+COPY iot.sensor_readings (time, sensor_id, location, temperature, humidity)
 FROM '/path/to/data.csv' CSV;
 
 -- 或使用事务批量INSERT
@@ -362,7 +362,7 @@ SELECT * FROM iot.sensor_readings WHERE sensor_id = 100;  -- 缺少时间过滤
 
 -- 2. 利用连续聚合
 -- 好：查询聚合视图
-SELECT * FROM iot.sensor_readings_hourly 
+SELECT * FROM iot.sensor_readings_hourly
 WHERE bucket >= NOW() - INTERVAL '30 days';
 
 -- 避免：实时聚合大量数据
@@ -400,13 +400,13 @@ SELECT alter_job(1000, scheduled => true);   -- 恢复
 
 ```sql
 -- 1. Hypertable大小
-SELECT 
+SELECT
     hypertable_name,
     pg_size_pretty(hypertable_size(format('%I.%I', hypertable_schema, hypertable_name)::regclass)) as size
 FROM timescaledb_information.hypertables;
 
 -- 2. Chunk数量和大小
-SELECT 
+SELECT
     hypertable_name,
     COUNT(*) as chunk_count,
     pg_size_pretty(SUM(total_bytes)) as total_size
@@ -414,7 +414,7 @@ FROM timescaledb_information.chunks
 GROUP BY hypertable_name;
 
 -- 3. 压缩效果
-SELECT 
+SELECT
     hypertable_name,
     compression_status,
     pg_size_pretty(uncompressed_total_bytes) as uncompressed,
@@ -424,7 +424,7 @@ FROM timescaledb_information.compression_settings cs
 JOIN timescaledb_information.hypertables h ON cs.hypertable_name = h.hypertable_name;
 
 -- 4. 连续聚合刷新延迟
-SELECT 
+SELECT
     view_name,
     completed_threshold,
     NOW() - completed_threshold as lag
@@ -437,31 +437,31 @@ FROM timescaledb_information.continuous_aggregates;
 
 ### 1. 设计原则
 
-- ✅ **时间列索引**：Hypertable自动按时间分区，确保时间列为NOT NULL
-- ✅ **选择合适的Chunk大小**：通常1天-1周，根据数据量调整
-- ✅ **合理使用空间分区**：高基数列（如设备ID）适合作为空间分区键
+- ✅ **时间列索引**：Hypertable 自动按时间分区，确保时间列为 NOT NULL
+- ✅ **选择合适的 Chunk 大小**：通常 1 天-1 周，根据数据量调整
+- ✅ **合理使用空间分区**：高基数列（如设备 ID）适合作为空间分区键
 - ✅ **延迟压缩**：保留近期热数据为行式存储，压缩历史数据
 
 ### 2. 压缩策略
 
-- ✅ **segmentby选择**：选择查询常用的过滤列（如sensor_id）
-- ✅ **orderby选择**：选择范围查询列（通常是time DESC）
-- ✅ **压缩延迟**：根据查询模式，通常延迟1-7天
-- ⚠️ **压缩后限制**：压缩Chunk不支持UPDATE/DELETE
+- ✅ **segmentby 选择**：选择查询常用的过滤列（如 sensor_id）
+- ✅ **orderby 选择**：选择范围查询列（通常是 time DESC）
+- ✅ **压缩延迟**：根据查询模式，通常延迟 1-7 天
+- ⚠️ **压缩后限制**：压缩 Chunk 不支持 UPDATE/DELETE
 
 ### 3. 连续聚合
 
-- ✅ **分层聚合**：5分钟 → 1小时 → 1天，逐级聚合
-- ✅ **适当延迟**：end_offset留出数据延迟缓冲
+- ✅ **分层聚合**：5 分钟 → 1 小时 → 1 天，逐级聚合
+- ✅ **适当延迟**：end_offset 留出数据延迟缓冲
 - ✅ **索引优化**：为连续聚合视图创建索引
 - ⚠️ **避免过度聚合**：不要创建太多不常用的聚合
 
 ### 4. 运维建议
 
-- 📊 **监控磁盘空间**：定期检查Chunk大小和压缩比
-- 🔧 **定期VACUUM**：压缩和删除操作后执行VACUUM
+- 📊 **监控磁盘空间**：定期检查 Chunk 大小和压缩比
+- 🔧 **定期 VACUUM**：压缩和删除操作后执行 VACUUM
 - 📈 **性能测试**：在生产环境前充分测试写入和查询性能
-- 🔄 **版本升级**：关注TimescaleDB更新，及时升级
+- 🔄 **版本升级**：关注 TimescaleDB 更新，及时升级
 
 ---
 
@@ -481,7 +481,7 @@ FROM timescaledb_information.continuous_aggregates;
 ### 相关章节
 
 - `../README.md` - 时序数据总览
-- `../../04_modern_features/` - PostgreSQL现代特性
+- `../../04_modern_features/` - PostgreSQL 现代特性
 - `../../09_deployment_ops/` - 部署运维指南
 
 ---
@@ -490,19 +490,19 @@ FROM timescaledb_information.continuous_aggregates;
 
 ### 性能指标
 
-| 指标 | 说明 | 目标值 |
-|------|------|--------|
-| 写入吞吐 | 每秒插入行数 | 100K+ rows/s |
-| 查询延迟 | P95查询延迟 | <100ms（热数据） |
-| 压缩比 | 压缩后/压缩前 | 10-20x |
-| 聚合延迟 | 连续聚合刷新延迟 | <5min |
-| 存储效率 | 单GB存储数据量 | 根据压缩比 |
+| 指标     | 说明             | 目标值           |
+| -------- | ---------------- | ---------------- |
+| 写入吞吐 | 每秒插入行数     | 100K+ rows/s     |
+| 查询延迟 | P95 查询延迟     | <100ms（热数据） |
+| 压缩比   | 压缩后/压缩前    | 10-20x           |
+| 聚合延迟 | 连续聚合刷新延迟 | <5min            |
+| 存储效率 | 单 GB 存储数据量 | 根据压缩比       |
 
 ### 测试场景
 
-- **批量写入**：使用COPY批量导入历史数据
+- **批量写入**：使用 COPY 批量导入历史数据
 - **乱序写入**：模拟延迟到达的数据
-- **时间范围查询**：查询最近N天/小时数据
+- **时间范围查询**：查询最近 N 天/小时数据
 - **聚合查询**：窗口函数、GROUP BY
 - **高并发**：多客户端同时读写
 
@@ -511,5 +511,5 @@ FROM timescaledb_information.continuous_aggregates;
 **版本兼容性**：
 
 - PostgreSQL 12-17
-- TimescaleDB 2.x推荐使用2.14+
-- 关注PostgreSQL 17新特性集成
+- TimescaleDB 2.x 推荐使用 2.14+
+- 关注 PostgreSQL 17 新特性集成

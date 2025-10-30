@@ -51,7 +51,7 @@
     "panels": [
       {
         "id": 1,
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
         "type": "stat",
         "title": "当前连接数",
         "datasource": "$datasource",
@@ -78,9 +78,9 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 80, "color": "yellow"},
-                {"value": 100, "color": "red"}
+                { "value": 0, "color": "green" },
+                { "value": 80, "color": "yellow" },
+                { "value": 100, "color": "red" }
               ]
             },
             "max": 200,
@@ -90,7 +90,7 @@
       },
       {
         "id": 2,
-        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
         "type": "stat",
         "title": "TPS (每秒事务数)",
         "datasource": "$datasource",
@@ -114,9 +114,9 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": 0, "color": "blue"},
-                {"value": 1000, "color": "green"},
-                {"value": 5000, "color": "yellow"}
+                { "value": 0, "color": "blue" },
+                { "value": 1000, "color": "green" },
+                { "value": 5000, "color": "yellow" }
               ]
             },
             "unit": "short"
@@ -125,7 +125,7 @@
       },
       {
         "id": 3,
-        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
         "type": "gauge",
         "title": "缓存命中率",
         "datasource": "$datasource",
@@ -145,9 +145,9 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": 0, "color": "red"},
-                {"value": 90, "color": "yellow"},
-                {"value": 95, "color": "green"}
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
               ]
             },
             "min": 0,
@@ -158,7 +158,7 @@
       },
       {
         "id": 4,
-        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
         "type": "stat",
         "title": "复制延迟 (秒)",
         "datasource": "$datasource",
@@ -178,9 +178,9 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 30, "color": "yellow"},
-                {"value": 60, "color": "red"}
+                { "value": 0, "color": "green" },
+                { "value": 30, "color": "yellow" },
+                { "value": 60, "color": "red" }
               ]
             },
             "unit": "s"
@@ -189,7 +189,7 @@
       },
       {
         "id": 5,
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
         "type": "piechart",
         "title": "连接状态分布",
         "datasource": "$datasource",
@@ -212,7 +212,7 @@
       },
       {
         "id": 6,
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
         "type": "barchart",
         "title": "数据库连接分布",
         "datasource": "$datasource",
@@ -230,13 +230,13 @@
         },
         "fieldConfig": {
           "defaults": {
-            "color": {"mode": "palette-classic"}
+            "color": { "mode": "palette-classic" }
           }
         }
       },
       {
         "id": 7,
-        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 12},
+        "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
         "type": "table",
         "title": "TOP 10 慢查询",
         "datasource": "$datasource",
@@ -249,14 +249,12 @@
         ],
         "options": {
           "showHeader": true,
-          "sortBy": [
-            {"displayName": "avg_time_ms", "desc": true}
-          ]
+          "sortBy": [{ "displayName": "avg_time_ms", "desc": true }]
         },
         "fieldConfig": {
           "overrides": [
             {
-              "matcher": {"id": "byName", "options": "avg_time_ms"},
+              "matcher": { "id": "byName", "options": "avg_time_ms" },
               "properties": [
                 {
                   "id": "custom.width",
@@ -267,9 +265,9 @@
                   "value": {
                     "mode": "absolute",
                     "steps": [
-                      {"value": 0, "color": "green"},
-                      {"value": 100, "color": "yellow"},
-                      {"value": 1000, "color": "red"}
+                      { "value": 0, "color": "green" },
+                      { "value": 100, "color": "yellow" },
+                      { "value": 1000, "color": "red" }
                     ]
                   }
                 }
@@ -280,7 +278,7 @@
       },
       {
         "id": 8,
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
         "type": "barchart",
         "title": "锁类型分布",
         "datasource": "$datasource",
@@ -297,7 +295,7 @@
       },
       {
         "id": 9,
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
         "type": "table",
         "title": "TOP 10 最大表",
         "datasource": "$datasource",
@@ -314,7 +312,7 @@
       },
       {
         "id": 10,
-        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 30},
+        "gridPos": { "h": 10, "w": 24, "x": 0, "y": 30 },
         "type": "timeseries",
         "title": "性能趋势（TPS / 缓存命中率 / 复制延迟）",
         "datasource": "$datasource",
@@ -359,7 +357,7 @@
       },
       {
         "id": 11,
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
         "type": "table",
         "title": "阻塞会话监控",
         "datasource": "$datasource",
@@ -380,4 +378,3 @@
   "folderId": 0,
   "folderUid": ""
 }
-

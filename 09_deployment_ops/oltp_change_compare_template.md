@@ -16,9 +16,9 @@
 
 - TPS/QPS：
 - 延迟：P50/P95/P99（读/写）
-- 热点 SQL（avg_time/calls/shared_blks_*）：
+- 热点 SQL（avg*time/calls/shared_blks*\*）：
 - 锁与等待（blocked/wait_event）：
-- WAL/Checkpoint：wal_bytes/checkpoint_*：
+- WAL/Checkpoint：wal*bytes/checkpoint*\*：
 - Autovacuum：运行与干扰：
 - 资源：CPU/内存/IO/网络：
 

@@ -1,0 +1,26 @@
+# Archives and generated outputs
+archive/
+archive_*/
+*.log
+*_output.txt
+link_check_output.txt
+validation_output.txt
+
+# Environments and dependencies
+node_modules/
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+
+# VCS/OS
+.git/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test outputs
+/tests/output/

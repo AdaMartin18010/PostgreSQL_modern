@@ -1,6 +1,6 @@
 ﻿# 分布式数据库核心概念与模型综述
 
-> 基于现代分布式系统理论，结合PostgreSQL生态实践
+> 基于现代分布式系统理论，结合 PostgreSQL 生态实践
 
 ## 📋 目录
 
@@ -12,18 +12,18 @@
   - [2. 数据模型与存储架构](#2-数据模型与存储架构)
     - [2.1 存储架构分类](#21-存储架构分类)
     - [2.2 数据分布策略](#22-数据分布策略)
-  - [3. 一致性模型与CAP定理](#3-一致性模型与cap定理)
-    - [3.1 CAP定理详解](#31-cap定理详解)
+  - [3. 一致性模型与 CAP 定理](#3-一致性模型与-cap-定理)
+    - [3.1 CAP 定理详解](#31-cap-定理详解)
     - [3.2 一致性模型层次](#32-一致性模型层次)
-    - [3.3 PACELC定理](#33-pacelc定理)
+    - [3.3 PACELC 定理](#33-pacelc-定理)
   - [4. 元数据管理与目录服务](#4-元数据管理与目录服务)
     - [4.1 元数据分类](#41-元数据分类)
     - [4.2 目录服务架构](#42-目录服务架构)
   - [5. 时间与因果关系](#5-时间与因果关系)
     - [5.1 物理时钟问题](#51-物理时钟问题)
     - [5.2 逻辑时钟](#52-逻辑时钟)
-  - [6. 与PostgreSQL生态的集成](#6-与postgresql生态的集成)
-    - [6.1 基于PostgreSQL的分布式方案](#61-基于postgresql的分布式方案)
+  - [6. 与 PostgreSQL 生态的集成](#6-与-postgresql-生态的集成)
+    - [6.1 基于 PostgreSQL 的分布式方案](#61-基于-postgresql-的分布式方案)
     - [6.2 工程实践要点](#62-工程实践要点)
   - [参考资源](#参考资源)
 
@@ -75,14 +75,14 @@
 
 ### 2.1 存储架构分类
 
-**Shared-Nothing架构**:
+**Shared-Nothing 架构**:
 
 - 特点：每个节点独立存储和处理数据
 - 优势：线性扩展、故障隔离
 - 挑战：跨节点查询复杂、数据分布不均
 - 代表：Citus、Greenplum、ClickHouse
 
-**Shared-Disk架构**:
+**Shared-Disk 架构**:
 
 - 特点：所有节点共享存储系统
 - 优势：数据一致性好、负载均衡容易
@@ -103,7 +103,7 @@
 - 原理：基于分片键的哈希值分布数据
 - 优势：负载均衡好、查询路由简单
 - 局限：范围查询困难、重分片复杂
-- 适用：OLTP场景，均匀分布的数据
+- 适用：OLTP 场景，均匀分布的数据
 
 **范围分片（Range Sharding）**:
 
@@ -119,9 +119,9 @@
 - 局限：元数据管理复杂、单点故障
 - 适用：多租户系统、复杂业务逻辑
 
-## 3. 一致性模型与CAP定理
+## 3. 一致性模型与 CAP 定理
 
-### 3.1 CAP定理详解
+### 3.1 CAP 定理详解
 
 **一致性（Consistency）**:
 
@@ -146,7 +146,7 @@
 **强一致性（Strong Consistency）**:
 
 - 特点：所有操作立即生效
-- 实现：两阶段提交、Raft协议
+- 实现：两阶段提交、Raft 协议
 - 适用：金融系统、关键业务
 
 **最终一致性（Eventual Consistency）**:
@@ -161,14 +161,14 @@
 - 实现：向量时钟、依赖追踪
 - 适用：协作系统、消息队列
 
-### 3.3 PACELC定理
+### 3.3 PACELC 定理
 
-**扩展CAP定理，考虑延迟和一致性**:
+**扩展 CAP 定理，考虑延迟和一致性**:
 
-- P：分区时选择A或C
+- P：分区时选择 A 或 C
 - A：可用性
 - C：一致性
-- E：否则选择L或C
+- E：否则选择 L 或 C
 - L：低延迟
 - C：一致性
 
@@ -215,7 +215,7 @@
 
 - 原因：硬件精度、温度影响
 - 影响：时间戳不准确、排序错误
-- 解决：NTP同步、时钟偏差检测
+- 解决：NTP 同步、时钟偏差检测
 
 **时钟同步**:
 
@@ -225,7 +225,7 @@
 
 ### 5.2 逻辑时钟
 
-**Lamport时钟**:
+**Lamport 时钟**:
 
 - 原理：基于事件顺序递增
 - 特点：保持因果关系
@@ -235,7 +235,7 @@
 
 - 原理：每个节点维护向量
 - 特点：可以区分并发事件
-- 局限：空间复杂度O(n)
+- 局限：空间复杂度 O(n)
 
 **混合逻辑时钟（HLC）**:
 
@@ -243,19 +243,19 @@
 - 特点：保持因果关系，支持物理时间
 - 优势：现代分布式系统广泛采用
 
-## 6. 与PostgreSQL生态的集成
+## 6. 与 PostgreSQL 生态的集成
 
-### 6.1 基于PostgreSQL的分布式方案
+### 6.1 基于 PostgreSQL 的分布式方案
 
-**Citus扩展**:
+**Citus 扩展**:
 
-- 架构：Shared-Nothing，PostgreSQL扩展
-- 特点：透明分片、SQL兼容
-- 适用：OLTP和OLAP混合负载
+- 架构：Shared-Nothing，PostgreSQL 扩展
+- 特点：透明分片、SQL 兼容
+- 适用：OLTP 和 OLAP 混合负载
 
 **逻辑复制**:
 
-- 原理：基于WAL的变更流
+- 原理：基于 WAL 的变更流
 - 特点：跨版本兼容、灵活配置
 - 适用：数据同步、多主复制
 
@@ -289,5 +289,5 @@
 
 - [Designing Data-Intensive Applications](<https://dataintensive.net>/) - Martin Kleppmann
 - [Distributed Systems: Concepts and Design](<https://www.cdk5.net>/) - George Coulouris
-- [PostgreSQL逻辑复制文档](<https://www.postgresql.org/docs/current/logical-replication.htm>l)
-- [Citus官方文档](<https://docs.citusdata.com>/)
+- [PostgreSQL 逻辑复制文档](<https://www.postgresql.org/docs/current/logical-replication.htm>l)
+- [Citus 官方文档](<https://docs.citusdata.com>/)

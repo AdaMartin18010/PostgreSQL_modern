@@ -2,7 +2,7 @@
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐⭐ 专家级  
-> **预计时间**：90-120分钟  
+> **预计时间**：90-120 分钟  
 > **适合场景**：实时大屏、监控告警、流式分析、业务指标实时计算
 
 ---
@@ -10,11 +10,12 @@
 ## 📋 案例目标
 
 构建一个生产级的实时分析系统，包括：
+
 1. ✅ 高频数据写入（10K+ TPS）
 2. ✅ 实时聚合查询（亚秒级响应）
-3. ✅ 滑动窗口分析（1分钟/5分钟/1小时）
+3. ✅ 滑动窗口分析（1 分钟/5 分钟/1 小时）
 4. ✅ 物化视图增量刷新
-5. ✅ 流式处理与OLAP优化
+5. ✅ 流式处理与 OLAP 优化
 
 ---
 
@@ -23,17 +24,17 @@
 **场景描述**：电商平台实时业务监控大屏
 
 - **数据源**：
-  - 订单事件（每秒1000+）
-  - 用户行为（每秒5000+）
-  - 支付事件（每秒500+）
+  - 订单事件（每秒 1000+）
+  - 用户行为（每秒 5000+）
+  - 支付事件（每秒 500+）
 - **分析需求**：
-  - 实时GMV（成交总额）
+  - 实时 GMV（成交总额）
   - 每分钟订单量/转化率
-  - 热门商品Top10
+  - 热门商品 Top10
   - 地区销售分布
 - **性能要求**：
   - 查询响应<100ms
-  - 数据延迟<1秒
+  - 数据延迟<1 秒
   - 支持高并发查询
 
 ---
@@ -146,7 +147,7 @@ VALUES
 SELECT * FROM order_events ORDER BY event_time DESC LIMIT 10;
 ```
 
-### 2.2 COPY批量导入（最快）
+### 2.2 COPY 批量导入（最快）
 
 ```sql
 -- 使用COPY导入CSV数据（百万级性能）
@@ -186,7 +187,7 @@ SELECT
 FROM generate_series(1, 100000) AS i;
 
 -- 查看数据量
-SELECT 
+SELECT
     COUNT(*) AS total_events,
     pg_size_pretty(pg_total_relation_size('order_events')) AS table_size
 FROM order_events;
@@ -196,11 +197,11 @@ FROM order_events;
 
 ## 🔍 3. 实时分析查询
 
-### 3.1 实时GMV（成交总额）
+### 3.1 实时 GMV（成交总额）
 
 ```sql
 -- 实时GMV（最近1小时）
-SELECT 
+SELECT
     COUNT(*) AS order_count,
     SUM(amount) AS gmv,
     AVG(amount) AS avg_order_value
@@ -209,7 +210,7 @@ WHERE status IN ('paid', 'completed')
   AND event_time > now() - interval '1 hour';
 
 -- 按时间段分组（每分钟）
-SELECT 
+SELECT
     DATE_TRUNC('minute', event_time) AS time_bucket,
     COUNT(*) AS order_count,
     SUM(amount) AS gmv
@@ -225,7 +226,7 @@ ORDER BY time_bucket DESC;
 ```sql
 -- 使用窗口函数计算移动平均
 WITH minute_stats AS (
-    SELECT 
+    SELECT
         DATE_TRUNC('minute', event_time) AS time_bucket,
         COUNT(*) AS order_count,
         SUM(amount) AS gmv
@@ -234,7 +235,7 @@ WITH minute_stats AS (
       AND event_time > now() - interval '6 hours'
     GROUP BY time_bucket
 )
-SELECT 
+SELECT
     time_bucket,
     order_count,
     gmv,
@@ -252,11 +253,11 @@ ORDER BY time_bucket DESC
 LIMIT 60;
 ```
 
-### 3.3 热门商品Top10
+### 3.3 热门商品 Top10
 
 ```sql
 -- 实时热门商品（最近1小时）
-SELECT 
+SELECT
     product_id,
     product_name,
     COUNT(*) AS sale_count,
@@ -274,7 +275,7 @@ LIMIT 10;
 
 ```sql
 -- 按地区统计
-SELECT 
+SELECT
     region,
     city,
     COUNT(*) AS order_count,
@@ -297,7 +298,7 @@ ORDER BY region NULLS LAST, gmv DESC;
 ```sql
 -- 创建每分钟聚合的物化视图
 CREATE MATERIALIZED VIEW order_metrics_1min AS
-SELECT 
+SELECT
     DATE_TRUNC('minute', event_time) AS time_bucket,
     status,
     region,
@@ -312,7 +313,7 @@ WHERE event_time > now() - interval '7 days'
 GROUP BY time_bucket, status, region;
 
 -- 创建唯一索引（支持CONCURRENTLY刷新）
-CREATE UNIQUE INDEX idx_order_metrics_1min_pk 
+CREATE UNIQUE INDEX idx_order_metrics_1min_pk
     ON order_metrics_1min(time_bucket, status, region);
 
 -- 创建其他索引
@@ -320,7 +321,7 @@ CREATE INDEX idx_order_metrics_1min_time ON order_metrics_1min(time_bucket DESC)
 CREATE INDEX idx_order_metrics_1min_status ON order_metrics_1min(status);
 
 -- 查询物化视图（快速）
-SELECT 
+SELECT
     time_bucket,
     SUM(gmv) AS total_gmv,
     SUM(order_count) AS total_orders
@@ -359,8 +360,8 @@ SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
 ```sql
 -- 5分钟聚合
 CREATE MATERIALIZED VIEW order_metrics_5min AS
-SELECT 
-    DATE_TRUNC('minute', time_bucket) - 
+SELECT
+    DATE_TRUNC('minute', time_bucket) -
         (EXTRACT(minute FROM time_bucket)::int % 5) * interval '1 minute' AS time_bucket,
     status,
     region,
@@ -370,12 +371,12 @@ SELECT
 FROM order_metrics_1min
 GROUP BY 1, status, region;
 
-CREATE UNIQUE INDEX idx_order_metrics_5min_pk 
+CREATE UNIQUE INDEX idx_order_metrics_5min_pk
     ON order_metrics_5min(time_bucket, status, region);
 
 -- 1小时聚合
 CREATE MATERIALIZED VIEW order_metrics_1hour AS
-SELECT 
+SELECT
     DATE_TRUNC('hour', time_bucket) AS time_bucket,
     status,
     region,
@@ -385,7 +386,7 @@ SELECT
 FROM order_metrics_1min
 GROUP BY 1, status, region;
 
-CREATE UNIQUE INDEX idx_order_metrics_1hour_pk 
+CREATE UNIQUE INDEX idx_order_metrics_1hour_pk
     ON order_metrics_1hour(time_bucket, status, region);
 ```
 
@@ -410,7 +411,7 @@ BEGIN
     partition_name := parent_table || '_' || to_char(partition_date, 'YYYY_MM_DD');
     start_date := partition_date::text;
     end_date := (partition_date + interval '1 day')::text;
-    
+
     -- 检查分区是否存在
     IF NOT EXISTS (
         SELECT 1 FROM pg_class WHERE relname = partition_name
@@ -450,7 +451,7 @@ DECLARE
     dropped_count int := 0;
 BEGIN
     FOR partition_record IN
-        SELECT 
+        SELECT
             c.relname AS partition_name,
             pg_get_expr(c.relpartbound, c.oid) AS partition_bound
         FROM pg_class c
@@ -467,7 +468,7 @@ BEGIN
             RAISE NOTICE 'Dropped partition: %', partition_record.partition_name;
         END IF;
     END LOOP;
-    
+
     RETURN dropped_count;
 END;
 $$ LANGUAGE plpgsql;
@@ -490,7 +491,7 @@ SET parallel_tuple_cost = 0.01;
 
 -- 测试并行聚合
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT 
+SELECT
     DATE_TRUNC('hour', event_time) AS hour,
     COUNT(*) AS order_count,
     SUM(amount) AS gmv
@@ -508,7 +509,7 @@ GROUP BY hour;
 
 ---
 
-## 🎨 6. 实时大屏API设计
+## 🎨 6. 实时大屏 API 设计
 
 ### 6.1 创建查询函数
 
@@ -525,7 +526,7 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     -- GMV
-    SELECT 
+    SELECT
         'gmv'::text,
         COALESCE(SUM(amount), 0),
         'CNY'::text
@@ -534,7 +535,7 @@ BEGIN
       AND event_time > now() - time_window
     UNION ALL
     -- 订单量
-    SELECT 
+    SELECT
         'order_count'::text,
         COALESCE(COUNT(*)::numeric, 0),
         'orders'::text
@@ -543,7 +544,7 @@ BEGIN
       AND event_time > now() - time_window
     UNION ALL
     -- 客单价
-    SELECT 
+    SELECT
         'avg_order_value'::text,
         COALESCE(AVG(amount), 0),
         'CNY'::text
@@ -552,7 +553,7 @@ BEGIN
       AND event_time > now() - time_window
     UNION ALL
     -- 活跃用户数
-    SELECT 
+    SELECT
         'active_users'::text,
         COALESCE(COUNT(DISTINCT user_id)::numeric, 0),
         'users'::text
@@ -565,7 +566,7 @@ $$ LANGUAGE plpgsql STABLE;
 SELECT * FROM get_realtime_metrics('1 hour');
 ```
 
-### 6.2 趋势图数据API
+### 6.2 趋势图数据 API
 
 ```sql
 -- 时序趋势数据
@@ -581,7 +582,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         DATE_TRUNC('hour', event_time) AS time_bucket,
         COUNT(*) AS order_count,
         SUM(amount) AS gmv,
@@ -606,7 +607,7 @@ FROM get_order_trend('24 hours', '1 hour') t;
 ```sql
 -- 综合实时监控查询（适合大屏刷新）
 WITH realtime_summary AS (
-    SELECT 
+    SELECT
         COUNT(*) AS order_count,
         SUM(amount) AS gmv,
         AVG(amount) AS avg_order_value,
@@ -616,7 +617,7 @@ WITH realtime_summary AS (
       AND event_time > now() - interval '1 hour'
 ),
 region_breakdown AS (
-    SELECT 
+    SELECT
         region,
         COUNT(*) AS order_count,
         SUM(amount) AS gmv
@@ -628,7 +629,7 @@ region_breakdown AS (
     LIMIT 5
 ),
 top_products AS (
-    SELECT 
+    SELECT
         product_name,
         COUNT(*) AS sale_count,
         SUM(amount) AS revenue
@@ -639,7 +640,7 @@ top_products AS (
     ORDER BY sale_count DESC
     LIMIT 10
 )
-SELECT 
+SELECT
     json_build_object(
         'summary', (SELECT row_to_json(rs) FROM realtime_summary rs),
         'region_breakdown', (SELECT json_agg(row_to_json(rb)) FROM region_breakdown rb),
@@ -653,27 +654,31 @@ SELECT
 ## 📚 8. 最佳实践
 
 ### 8.1 架构设计
+
 - ✅ 使用分区表存储时序数据
 - ✅ 物化视图预聚合热点指标
-- ✅ 多层级聚合（分钟→小时→天）
+- ✅ 多层级聚合（分钟 → 小时 → 天）
 - ✅ 读写分离（主库写入，从库查询）
 
 ### 8.2 性能优化
-- ✅ 批量写入（COPY/批量INSERT）
+
+- ✅ 批量写入（COPY/批量 INSERT）
 - ✅ 启用并行查询
 - ✅ 减少不必要的索引
-- ✅ 定期VACUUM和ANALYZE
+- ✅ 定期 VACUUM 和 ANALYZE
 
 ### 8.3 实时性保证
-- ✅ 使用pg_cron定时刷新
+
+- ✅ 使用 pg_cron 定时刷新
 - ✅ 增量刷新而非全量
 - ✅ 缓存热点查询结果
-- ✅ LISTEN/NOTIFY推送变更
+- ✅ LISTEN/NOTIFY 推送变更
 
 ### 8.4 扩展性
-- ✅ 考虑使用Citus分布式扩展
-- ✅ TimescaleDB时序数据优化
-- ✅ 集成ClickHouse做OLAP
+
+- ✅ 考虑使用 Citus 分布式扩展
+- ✅ TimescaleDB 时序数据优化
+- ✅ 集成 ClickHouse 做 OLAP
 - ✅ 使用连接池（PgBouncer）
 
 ---
@@ -681,27 +686,29 @@ SELECT
 ## 🎯 9. 练习任务
 
 1. **基础练习**：
-   - 创建分区表并插入10万条测试数据
-   - 实现实时GMV查询
-   - 创建热门商品Top10查询
+
+   - 创建分区表并插入 10 万条测试数据
+   - 实现实时 GMV 查询
+   - 创建热门商品 Top10 查询
 
 2. **进阶练习**：
+
    - 创建物化视图并设置定时刷新
    - 实现滑动窗口分析
-   - 设计实时监控API
+   - 设计实时监控 API
 
 3. **挑战任务**：
    - 构建完整的实时大屏系统
-   - 优化百万级TPS写入性能
+   - 优化百万级 TPS 写入性能
    - 实现跨数据中心实时同步
 
 ---
 
 ## 📖 10. 扩展阅读
 
-- PostgreSQL分区表：<https://www.postgresql.org/docs/17/ddl-partitioning.html>
+- PostgreSQL 分区表：<https://www.postgresql.org/docs/17/ddl-partitioning.html>
 - 物化视图：<https://www.postgresql.org/docs/17/sql-creatematerializedview.html>
-- pg_cron扩展：<https://github.com/citusdata/pg_cron>
+- pg_cron 扩展：<https://github.com/citusdata/pg_cron>
 - TimescaleDB：<https://docs.timescale.com/>
 - Apache Superset（可视化）：<https://superset.apache.org/>
 
@@ -709,5 +716,5 @@ SELECT
 
 **维护者**：PostgreSQL_modern Project Team  
 **最后更新**：2025-10-03  
-**相关案例**：[全文搜索](../full_text_search/README.md) | [CDC](../change_data_capture/README.md) | [地理围栏](../geofencing/README.md) | [联邦查询](../federated_queries/README.md)
-
+**相关案例**：[全文搜索](../full_text_search/README.md) | [CDC](../change_data_capture/README.md) |
+[地理围栏](../geofencing/README.md) | [联邦查询](../federated_queries/README.md)

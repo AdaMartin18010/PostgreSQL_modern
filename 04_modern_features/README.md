@@ -1,6 +1,6 @@
 ﻿# 04_modern_features
 
-> 版本对标（更新于 2025-10）- PostgreSQL 17
+> 版本对标（更新于 2025-10）- PostgreSQL 17（PG18 对齐入口见文末）
 
 ## 主题边界
 
@@ -87,3 +87,12 @@ SELECT * FROM pg_stat_subscription;
 - `topology_samples/delayed_standby.conf`
 - `topology_samples/cascading_standby.conf`
 - `topology_samples/citus_cluster.md`
+
+---
+
+## PG18 对齐 · 论证入口
+
+- 论证总览：`13_ai_alignment/00_论证总览_AI_View_对齐_PG18.md`
+- AI 自治：`13_ai_alignment/02_AI自治.md`
+- Serverless 与分支：`13_ai_alignment/03_Serverless与分支.md`
+- 合规与可信：`13_ai_alignment/05_合规与可信.md`

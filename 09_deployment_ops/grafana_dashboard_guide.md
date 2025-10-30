@@ -1,14 +1,15 @@
 ﻿# 📊 PostgreSQL 17 Grafana Dashboard 实施指南
 
 **文档版本**：v1.0  
-**创建日期**：2025年10月3日  
+**创建日期**：2025 年 10 月 3 日  
 **适用版本**：PostgreSQL 17.x + Grafana 10.x+
 
 ---
 
 ## 🎯 目标
 
-基于 `monitoring_queries.sql` 中的35+监控SQL，创建一个生产级的Grafana Dashboard，实现PostgreSQL 17集群的实时监控。
+基于 `monitoring_queries.sql` 中的 35+监控 SQL，创建一个生产级的 Grafana Dashboard，实现 PostgreSQL
+17 集群的实时监控。
 
 ---
 
@@ -18,7 +19,7 @@
 
 - ✅ PostgreSQL 17.x（已安装并运行）
 - ✅ Grafana 10.x+（推荐最新版本）
-- ✅ PostgreSQL数据源插件（Grafana内置）
+- ✅ PostgreSQL 数据源插件（Grafana 内置）
 - ✅ 监控用户权限（只读访问系统视图）
 
 ### 监控用户创建
@@ -41,7 +42,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_monitor;
 
 ## 🏗️ Dashboard 架构设计
 
-### 6大监控面板
+### 6 大监控面板
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
@@ -60,22 +61,21 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_monitor;
 
 ---
 
-## 📊 面板1：连接与会话监控
+## 📊 面板 1：连接与会话监控
 
 ### Panel 1.1：当前连接数
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     COUNT(*) as connections,
     NOW() as time
 FROM pg_stat_activity
 WHERE state IS NOT NULL;
 ```
 
-**可视化**：Stat（单一数值）
-**阈值**：
+**可视化**：Stat（单一数值） **阈值**：
 
 - 🟢 正常：< 80%
 - 🟡 警告：80-90%
@@ -120,10 +120,10 @@ WHERE state IS NOT NULL;
 
 ### Panel 1.2：连接状态分布
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     state,
     COUNT(*) as count,
     NOW() as time
@@ -138,10 +138,10 @@ GROUP BY state;
 
 ### Panel 1.3：数据库连接分布
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     COUNT(*) as connections,
     NOW() as time
@@ -157,11 +157,11 @@ ORDER BY connections DESC;
 
 ### Panel 1.4：活跃连接时间分布
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
-    CASE 
+SELECT
+    CASE
         WHEN state_change < NOW() - INTERVAL '5 minutes' THEN '> 5分钟'
         WHEN state_change < NOW() - INTERVAL '1 minute' THEN '1-5分钟'
         ELSE '< 1分钟'
@@ -177,14 +177,14 @@ GROUP BY duration_bucket;
 
 ---
 
-## 📊 面板2：性能与查询监控
+## 📊 面板 2：性能与查询监控
 
 ### Panel 2.1：TPS（每秒事务数）
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     (xact_commit + xact_rollback) as tps,
     NOW() as time
@@ -193,17 +193,16 @@ WHERE datname NOT IN ('template0', 'template1', 'postgres')
 ORDER BY tps DESC;
 ```
 
-**可视化**：Time series（时间序列图）
-**刷新率**：5s
+**可视化**：Time series（时间序列图） **刷新率**：5s
 
 ---
 
 ### Panel 2.2：TOP 10 慢查询
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     query,
     calls,
     ROUND(mean_exec_time::numeric, 2) as avg_time_ms,
@@ -215,17 +214,16 @@ ORDER BY mean_exec_time DESC
 LIMIT 10;
 ```
 
-**可视化**：Table（表格）
-**注意**：需要安装 `pg_stat_statements` 扩展
+**可视化**：Table（表格） **注意**：需要安装 `pg_stat_statements` 扩展
 
 ---
 
 ### Panel 2.3：缓存命中率
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     ROUND(
         100.0 * blks_hit / NULLIF(blks_hit + blks_read, 0), 2
@@ -237,18 +235,17 @@ WHERE datname NOT IN ('template0', 'template1', 'postgres')
 ORDER BY cache_hit_ratio DESC;
 ```
 
-**可视化**：Gauge（仪表盘）
-**目标**：> 95%
+**可视化**：Gauge（仪表盘） **目标**：> 95%
 
 ---
 
 ### Panel 2.4：查询执行时间分布
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
-    CASE 
+SELECT
+    CASE
         WHEN mean_exec_time < 1 THEN '< 1ms'
         WHEN mean_exec_time < 10 THEN '1-10ms'
         WHEN mean_exec_time < 100 THEN '10-100ms'
@@ -265,14 +262,14 @@ GROUP BY time_bucket;
 
 ---
 
-## 📊 面板3：锁与阻塞监控
+## 📊 面板 3：锁与阻塞监控
 
 ### Panel 3.1：当前锁数量
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     mode,
     COUNT(*) as lock_count,
     NOW() as time
@@ -288,10 +285,10 @@ ORDER BY lock_count DESC;
 
 ### Panel 3.2：阻塞会话
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -301,7 +298,7 @@ SELECT
     NOW() as time
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
     AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -317,17 +314,16 @@ JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_activity.pid = bl
 WHERE NOT blocked_locks.granted;
 ```
 
-**可视化**：Table（表格）
-**告警**：有阻塞时发送通知
+**可视化**：Table（表格） **告警**：有阻塞时发送通知
 
 ---
 
 ### Panel 3.3：死锁统计
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     deadlocks,
     NOW() as time
@@ -340,14 +336,14 @@ ORDER BY deadlocks DESC;
 
 ---
 
-## 📊 面板4：存储与表监控
+## 📊 面板 4：存储与表监控
 
 ### Panel 4.1：数据库大小
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     pg_size_pretty(pg_database_size(datname)) as size_pretty,
     pg_database_size(datname) as size_bytes,
@@ -363,10 +359,10 @@ ORDER BY size_bytes DESC;
 
 ### Panel 4.2：TOP 10 最大表
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     schemaname || '.' || tablename as table_name,
     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size_pretty,
     pg_total_relation_size(schemaname||'.'||tablename) as size_bytes,
@@ -383,10 +379,10 @@ LIMIT 10;
 
 ### Panel 4.3：表膨胀率
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     schemaname || '.' || tablename as table_name,
     ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2) as bloat_ratio,
     n_dead_tup,
@@ -398,17 +394,16 @@ ORDER BY bloat_ratio DESC
 LIMIT 10;
 ```
 
-**可视化**：Table（表格）
-**告警**：bloat_ratio > 20%
+**可视化**：Table（表格） **告警**：bloat_ratio > 20%
 
 ---
 
-### Panel 4.4：VACUUM活动
+### Panel 4.4：VACUUM 活动
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     schemaname || '.' || relname as table_name,
     last_vacuum,
     last_autovacuum,
@@ -424,14 +419,14 @@ LIMIT 20;
 
 ---
 
-## 📊 面板5：复制与备份监控
+## 📊 面板 5：复制与备份监控
 
 ### Panel 5.1：复制延迟
 
-**查询SQL**（主库执行）：
+**查询 SQL**（主库执行）：
 
 ```sql
-SELECT 
+SELECT
     application_name,
     client_addr,
     state,
@@ -442,17 +437,16 @@ SELECT
 FROM pg_stat_replication;
 ```
 
-**可视化**：Time series（时间序列图）
-**告警**：lag_seconds > 60
+**可视化**：Time series（时间序列图） **告警**：lag_seconds > 60
 
 ---
 
-### Panel 5.2：WAL生成速率
+### Panel 5.2：WAL 生成速率
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     (pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0') / 1024 / 1024) as wal_mb,
     NOW() as time;
 ```
@@ -463,10 +457,10 @@ SELECT
 
 ### Panel 5.3：备库状态
 
-**查询SQL**（备库执行）：
+**查询 SQL**（备库执行）：
 
 ```sql
-SELECT 
+SELECT
     CASE WHEN pg_is_in_recovery() THEN '备库' ELSE '主库' END as role,
     pg_last_wal_receive_lsn() as receive_lsn,
     pg_last_wal_replay_lsn() as replay_lsn,
@@ -479,22 +473,21 @@ WHERE pg_is_in_recovery();
 
 ---
 
-## 📊 面板6：资源与系统监控
+## 📊 面板 6：资源与系统监控
 
 ### Panel 6.1：数据库连接占用率
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
-    (SELECT COUNT(*) FROM pg_stat_activity)::float / 
-    (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') * 100 
+SELECT
+    (SELECT COUNT(*) FROM pg_stat_activity)::float /
+    (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') * 100
     as connection_usage_percent,
     NOW() as time;
 ```
 
-**可视化**：Gauge（仪表盘）
-**阈值**：
+**可视化**：Gauge（仪表盘） **阈值**：
 
 - 🟢 < 70%
 - 🟡 70-85%
@@ -504,10 +497,10 @@ SELECT
 
 ### Panel 6.2：临时文件使用
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     pg_size_pretty(temp_bytes) as temp_size,
     temp_files,
@@ -523,10 +516,10 @@ ORDER BY temp_bytes DESC;
 
 ### Panel 6.3：检查点统计
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     checkpoints_timed,
     checkpoints_req,
     checkpoint_write_time,
@@ -541,10 +534,10 @@ FROM pg_stat_bgwriter;
 
 ### Panel 6.4：后台写进程统计
 
-**查询SQL**：
+**查询 SQL**：
 
 ```sql
-SELECT 
+SELECT
     buffers_checkpoint,
     buffers_clean,
     buffers_backend,
@@ -557,7 +550,7 @@ FROM pg_stat_bgwriter;
 
 ---
 
-## 🔧 Dashboard JSON配置
+## 🔧 Dashboard JSON 配置
 
 ### 基础配置结构
 
@@ -585,7 +578,7 @@ FROM pg_stat_bgwriter;
 
 ## 📝 实施步骤
 
-### 步骤1：安装Grafana（如果未安装）
+### 步骤 1：安装 Grafana（如果未安装）
 
 ```bash
 # Ubuntu/Debian
@@ -605,47 +598,47 @@ sudo systemctl enable grafana-server
 
 ---
 
-### 步骤2：配置PostgreSQL数据源
+### 步骤 2：配置 PostgreSQL 数据源
 
-1. 登录Grafana（<http://localhost:3000）>
+1. 登录 Grafana（<http://localhost:3000）>
 2. 导航到：Configuration → Data Sources
 3. 点击 "Add data source"
 4. 选择 "PostgreSQL"
 5. 配置连接：
 
-    ```yaml
-    Name: PostgreSQL-Prod
-    Host: localhost:5432
-    Database: your_database
-    User: grafana_monitor
-    Password: your_secure_password
-    SSL Mode: disable  # 或根据需要配置
-    Version: 17.x
-    ```
+   ```yaml
+   Name: PostgreSQL-Prod
+   Host: localhost:5432
+   Database: your_database
+   User: grafana_monitor
+   Password: your_secure_password
+   SSL Mode: disable # 或根据需要配置
+   Version: 17.x
+   ```
 
 6. 点击 "Save & Test"
 
 ---
 
-### 步骤3：创建Dashboard
+### 步骤 3：创建 Dashboard
 
 1. 点击 "+" → "Dashboard"
 2. 点击 "Add new panel"
-3. 在Query编辑器中选择PostgreSQL数据源
-4. 输入上面定义的SQL查询
+3. 在 Query 编辑器中选择 PostgreSQL 数据源
+4. 输入上面定义的 SQL 查询
 5. 配置可视化类型和选项
 6. 重复以上步骤添加所有面板
 
 ---
 
-### 步骤4：配置告警（可选）
+### 步骤 4：配置告警（可选）
 
 **告警规则示例**：
 
 ```yaml
 # 连接数告警
 Alert Name: High Connection Usage
-Condition: 
+Condition:
   - When: last()
   - Of: A (connections query)
   - Is Above: 80
@@ -695,11 +688,12 @@ Message: PostgreSQL连接数超过80%
 ### 性能影响
 
 1. **监控查询优化**
+
    - 所有查询都应该很轻量（< 100ms）
    - 避免频繁查询大表
-   - 使用适当的刷新间隔（建议30s-1m）
+   - 使用适当的刷新间隔（建议 30s-1m）
 
-2. **pg_stat_statements配置**
+2. **pg_stat_statements 配置**
 
    ```sql
    -- postgresql.conf
@@ -716,7 +710,7 @@ Message: PostgreSQL连接数超过80%
 
 ## 🔐 安全建议
 
-1. **使用SSL连接**
+1. **使用 SSL 连接**
 
    ```yaml
    SSL Mode: require
@@ -726,12 +720,13 @@ Message: PostgreSQL连接数超过80%
    ```
 
 2. **密码管理**
+
    - 使用强密码
    - 定期轮换密码
    - 考虑使用密钥管理系统
 
 3. **网络隔离**
-   - Grafana和PostgreSQL在同一内网
+   - Grafana 和 PostgreSQL 在同一内网
    - 使用防火墙限制访问
 
 ---
@@ -740,26 +735,29 @@ Message: PostgreSQL连接数超过80%
 
 完成本指南后，您将拥有：
 
-- ✅ 完整的6大监控面板
-- ✅ 24个核心监控图表
+- ✅ 完整的 6 大监控面板
+- ✅ 24 个核心监控图表
 - ✅ 生产级告警规则
-- ✅ Dashboard JSON配置文件
+- ✅ Dashboard JSON 配置文件
 - ✅ 完整的使用文档
 
 ---
 
 ## 🚀 下一步
 
-1. **测试Dashboard**
+1. **测试 Dashboard**
+
    - 在测试环境验证所有面板
    - 调整刷新间隔和阈值
 
 2. **配置告警**
+
    - 设置关键指标告警
    - 测试告警通知
 
 3. **优化性能**
-   - 监控Dashboard自身的性能影响
+
+   - 监控 Dashboard 自身的性能影响
    - 优化慢查询
 
 4. **文档化**
@@ -769,7 +767,7 @@ Message: PostgreSQL连接数超过80%
 ---
 
 **文档维护者**：PostgreSQL_modern Project Team  
-**最后更新**：2025年10月3日  
+**最后更新**：2025 年 10 月 3 日  
 **相关文档**：
 
 - [monitoring_metrics.md](monitoring_metrics.md)

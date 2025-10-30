@@ -1,37 +1,37 @@
 ﻿# PostgreSQL_modern 版本追踪机制
 
 > **最后更新**：2025-10-03  
-> **追踪范围**：PostgreSQL 17 + 4大核心扩展  
-> **追踪周期**：每月1日自动检查
+> **追踪范围**：PostgreSQL 17 + 4 大核心扩展  
+> **追踪周期**：每月 1 日自动检查
 
 ---
 
 ## 📋 版本追踪概述
 
-本项目建立了自动化版本追踪机制，确保文档内容与PostgreSQL及其生态扩展的最新版本保持同步。
+本项目建立了自动化版本追踪机制，确保文档内容与 PostgreSQL 及其生态扩展的最新版本保持同步。
 
 ### 追踪内容
 
-| 组件 | 当前版本 | 发布日期 | 最后验证日期 |
-|------|---------|---------|-------------|
-| **PostgreSQL** | 17.0 | 2024-09-26 | 2025-10-03 |
-| **pgvector** | v0.8.0 | 2024-12 | 2025-10-03 |
-| **TimescaleDB** | 2.17.2 | 2024-10 | 2025-10-03 |
-| **PostGIS** | 3.5.0 | 2024-11 | 2025-10-03 |
-| **Citus** | 12.1.4 | 2024-08 | 2025-10-03 |
+| 组件            | 当前版本 | 发布日期   | 最后验证日期 |
+| --------------- | -------- | ---------- | ------------ |
+| **PostgreSQL**  | 17.0     | 2024-09-26 | 2025-10-03   |
+| **pgvector**    | v0.8.0   | 2024-12    | 2025-10-03   |
+| **TimescaleDB** | 2.17.2   | 2024-10    | 2025-10-03   |
+| **PostGIS**     | 3.5.0    | 2024-11    | 2025-10-03   |
+| **Citus**       | 12.1.4   | 2024-08    | 2025-10-03   |
 
 ---
 
 ## 🤖 自动化机制
 
-### 1. GitHub Actions工作流
+### 1. GitHub Actions 工作流
 
 **文件**：`.github/workflows/monthly-version-check.yml`
 
 **触发方式**：
 
-- ⏰ **自动触发**：每月1日 UTC 00:00（北京时间08:00）
-- 🖱️ **手动触发**：在GitHub Actions页面点击"Run workflow"
+- ⏰ **自动触发**：每月 1 日 UTC 00:00（北京时间 08:00）
+- 🖱️ **手动触发**：在 GitHub Actions 页面点击"Run workflow"
 
 **执行流程**：
 
@@ -48,8 +48,8 @@ graph LR
 
 **输出**：
 
-- 自动创建Issue：`[VERSION] 月度版本检查 2025-XX`
-- Issue包含：版本对比表、需要更新的文件清单、执行检查清单
+- 自动创建 Issue：`[VERSION] 月度版本检查 2025-XX`
+- Issue 包含：版本对比表、需要更新的文件清单、执行检查清单
 
 ---
 
@@ -59,11 +59,11 @@ graph LR
 
 **功能**：
 
-- ✅ 检查PostgreSQL核心版本
-- ✅ 检查pgvector最新Release
-- ✅ 检查TimescaleDB最新Release
-- ✅ 检查PostGIS最新Release
-- ✅ 检查Citus最新Release
+- ✅ 检查 PostgreSQL 核心版本
+- ✅ 检查 pgvector 最新 Release
+- ✅ 检查 TimescaleDB 最新 Release
+- ✅ 检查 PostGIS 最新 Release
+- ✅ 检查 Citus 最新 Release
 - ✅ 生成版本对比报告
 
 **使用方法**：
@@ -120,16 +120,16 @@ PostgreSQL_modern 版本检查工具
 
 ## 📝 手动触发版本检查
 
-### 方法1：通过GitHub Actions界面
+### 方法 1：通过 GitHub Actions 界面
 
-1. 访问项目的GitHub页面
+1. 访问项目的 GitHub 页面
 2. 点击顶部菜单栏的 `Actions`
 3. 在左侧选择 `月度版本检查 / Monthly Version Check`
 4. 点击右侧的 `Run workflow` 按钮
-5. 选择branch（通常是`main`）
+5. 选择 branch（通常是`main`）
 6. 点击绿色的 `Run workflow` 按钮
 
-### 方法2：本地运行脚本
+### 方法 2：本地运行脚本
 
 ```bash
 # 在项目根目录执行
@@ -144,9 +144,9 @@ bash tools/check_versions.sh
 
 ### Step 1：验证兼容性
 
-- [ ] 访问扩展的Release页面，查看Release Notes
-- [ ] 确认与PostgreSQL 17的兼容性
-- [ ] 识别Breaking Changes（不兼容变更）
+- [ ] 访问扩展的 Release 页面，查看 Release Notes
+- [ ] 确认与 PostgreSQL 17 的兼容性
+- [ ] 识别 Breaking Changes（不兼容变更）
 - [ ] 评估影响范围
 
 ### Step 2：更新文档
@@ -169,13 +169,13 @@ bash tools/check_versions.sh
 #### 实战案例
 
 - [ ] `08_ecosystem_cases/ai_vector/rag_minimal/README.md`（pgvector API）
-- [ ] `08_ecosystem_cases/distributed_db/citus_demo/README.md`（Citus配置）
-- [ ] `06_timeseries/timescaledb/continuous_aggregate_example.sql`（TimescaleDB语法）
+- [ ] `08_ecosystem_cases/distributed_db/citus_demo/README.md`（Citus 配置）
+- [ ] `06_timeseries/timescaledb/continuous_aggregate_example.sql`（TimescaleDB 语法）
 
 #### 版本追踪脚本
 
-- [ ] `tools/check_versions.sh`（更新current版本）
-- [ ] `.github/workflows/monthly-version-check.yml`（更新Issue模板版本）
+- [ ] `tools/check_versions.sh`（更新 current 版本）
+- [ ] `.github/workflows/monthly-version-check.yml`（更新 Issue 模板版本）
 
 #### 变更日志
 
@@ -192,7 +192,7 @@ bash tools/check_versions.sh
 - **最低版本**：<最低兼容版本>
 - **新特性**：<主要新特性列表>
 - **验证方法**：`<SQL验证命令>`
-- **下载地址**：<GitHub Release链接>
+- **下载地址**：<GitHub Release 链接>
 
 > **最后验证日期**：<验证日期>  
 > **下次验证计划**：<下次验证日期>
@@ -229,17 +229,17 @@ git push origin main
 
 ## 🔔 通知机制
 
-### GitHub Issue通知
+### GitHub Issue 通知
 
-- ✅ 自动创建Issue时，会通知所有Watch项目的成员
-- ✅ Issue标签：`version-check`
-- ✅ Issue自动分配：根据`.github/CODEOWNERS`文件
+- ✅ 自动创建 Issue 时，会通知所有 Watch 项目的成员
+- ✅ Issue 标签：`version-check`
+- ✅ Issue 自动分配：根据`.github/CODEOWNERS`文件
 
 ### 手动订阅
 
 如果您想第一时间收到版本更新通知：
 
-1. 访问项目GitHub页面
+1. 访问项目 GitHub 页面
 2. 点击右上角的 `Watch` 按钮
 3. 选择 `Custom` → 勾选 `Issues`
 4. 点击 `Apply`
@@ -248,19 +248,19 @@ git push origin main
 
 ## 📊 版本历史
 
-| 更新日期 | 组件 | 旧版本 | 新版本 | 备注 |
-|---------|------|--------|--------|------|
-| 2025-10-03 | pgvector | v0.5.1 | v0.8.0 | 修复版本滞后问题 |
-| 2025-10-03 | TimescaleDB | 2.13.0 | 2.17.2 | 修复版本滞后问题 |
-| 2025-10-03 | PostGIS | 3.4.0 | 3.5.0 | 修复版本滞后问题 |
-| 2025-10-03 | Citus | v12.1 | v12.1.4 | 精确小版本号 |
-| 2025-10-03 | PostgreSQL | 17（9月） | 17.0（9月26日） | 精确发布日期 |
+| 更新日期   | 组件        | 旧版本     | 新版本             | 备注             |
+| ---------- | ----------- | ---------- | ------------------ | ---------------- |
+| 2025-10-03 | pgvector    | v0.5.1     | v0.8.0             | 修复版本滞后问题 |
+| 2025-10-03 | TimescaleDB | 2.13.0     | 2.17.2             | 修复版本滞后问题 |
+| 2025-10-03 | PostGIS     | 3.4.0      | 3.5.0              | 修复版本滞后问题 |
+| 2025-10-03 | Citus       | v12.1      | v12.1.4            | 精确小版本号     |
+| 2025-10-03 | PostgreSQL  | 17（9 月） | 17.0（9 月 26 日） | 精确发布日期     |
 
 ---
 
 ## 🛠️ 故障排查
 
-### 问题1：GitHub Actions无法运行
+### 问题 1：GitHub Actions 无法运行
 
 **症状**：工作流显示失败，错误信息"Permission denied"
 
@@ -270,7 +270,7 @@ git push origin main
 2. 确保"Workflow permissions"设置为"Read and write permissions"
 3. 勾选"Allow GitHub Actions to create and approve pull requests"
 
-### 问题2：版本检查脚本报错"command not found: jq"
+### 问题 2：版本检查脚本报错"command not found: jq"
 
 **症状**：脚本执行失败，提示缺少依赖
 
@@ -288,7 +288,7 @@ brew install curl jq git
 # 下载jq：<https://stedolan.github.io/jq/download/>
 ```
 
-### 问题3：无法获取最新版本（显示"unknown"）
+### 问题 3：无法获取最新版本（显示"unknown"）
 
 **原因**：GitHub API rate limit（限流）
 
@@ -306,9 +306,9 @@ bash tools/check_versions.sh
 
 ## 📚 参考资源
 
-- **PostgreSQL版本策略**：<https://www.postgresql.org/support/versioning/>
-- **GitHub Actions文档**：<https://docs.github.com/en/actions>
-- **jq手册**：<https://stedolan.github.io/jq/manual/>
+- **PostgreSQL 版本策略**：<https://www.postgresql.org/support/versioning/>
+- **GitHub Actions 文档**：<https://docs.github.com/en/actions>
+- **jq 手册**：<https://stedolan.github.io/jq/manual/>
 
 ---
 

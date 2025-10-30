@@ -57,11 +57,11 @@ INSERT INTO test_orders (user_id, amount, status)
 VALUES (1, 100.00, 'pending');
 
 -- 验证INSERT被捕获
-SELECT COUNT(*) FROM test_audit_log 
+SELECT COUNT(*) FROM test_audit_log
 WHERE operation = 'INSERT';  -- EXPECT_VALUE: 1
 
 -- 验证捕获的数据正确
-SELECT 
+SELECT
     (new_values->>'user_id')::int = 1 AND
     (new_values->>'amount')::numeric = 100.00 AND
     (new_values->>'status') = 'pending'
@@ -72,12 +72,12 @@ WHERE operation = 'INSERT';  -- EXPECT_VALUE: true
 UPDATE test_orders SET status = 'paid' WHERE id = 1;
 
 -- 验证UPDATE被捕获
-SELECT COUNT(*) FROM test_audit_log 
+SELECT COUNT(*) FROM test_audit_log
 WHERE operation = 'UPDATE';  -- EXPECT_VALUE: 1
 
 -- 验证old和new值都被记录
-SELECT 
-    old_values IS NOT NULL AND 
+SELECT
+    old_values IS NOT NULL AND
     new_values IS NOT NULL AND
     (old_values->>'status') = 'pending' AND
     (new_values->>'status') = 'paid'
@@ -88,14 +88,14 @@ WHERE operation = 'UPDATE';  -- EXPECT_VALUE: true
 UPDATE test_orders SET amount = 150.00 WHERE id = 1;
 UPDATE test_orders SET status = 'completed' WHERE id = 1;
 
-SELECT COUNT(*) FROM test_audit_log 
+SELECT COUNT(*) FROM test_audit_log
 WHERE operation = 'UPDATE';  -- EXPECT_VALUE: 3
 
 -- 测试4：DELETE操作捕获
 DELETE FROM test_orders WHERE id = 1;
 
 -- 验证DELETE被捕获
-SELECT COUNT(*) FROM test_audit_log 
+SELECT COUNT(*) FROM test_audit_log
 WHERE operation = 'DELETE';  -- EXPECT_VALUE: 1
 
 -- 验证DELETE记录了old_values
@@ -109,7 +109,7 @@ INSERT INTO test_orders (user_id, amount, status) VALUES
     (3, 300.00, 'pending'),
     (4, 400.00, 'pending');
 
-SELECT COUNT(*) FROM test_audit_log 
+SELECT COUNT(*) FROM test_audit_log
 WHERE operation = 'INSERT';  -- EXPECT_VALUE: 4
 
 -- 测试6：审计日志完整性
@@ -118,7 +118,7 @@ SELECT COUNT(*) FROM test_audit_log
 WHERE changed_at IS NOT NULL AND changed_by IS NOT NULL;  -- EXPECT_VALUE: 8
 
 -- 测试7：查询变更历史
-SELECT 
+SELECT
     operation,
     COUNT(*) AS operation_count
 FROM test_audit_log
@@ -126,7 +126,7 @@ GROUP BY operation
 ORDER BY operation;  -- EXPECT_ROWS: 3
 
 -- 测试8：时间顺序验证
-SELECT 
+SELECT
     COUNT(*) = COUNT(DISTINCT changed_at) OR COUNT(*) > 1
 FROM test_audit_log;  -- 时间戳应该单调递增或相同
 

@@ -51,7 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_json_test_gin ON json_test_data USING GIN (log_da
 \timing on
 
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
-SELECT 
+SELECT
     u.user_id,
     u.action,
     u.response_time,
@@ -98,11 +98,11 @@ DECLARE
     i INTEGER;
 BEGIN
     FOR i IN 1..100000 LOOP
-        UPDATE vacuum_test 
+        UPDATE vacuum_test
         SET data = 'updated_' || i || '_' || md5(random()::text),
             updated_at = NOW()
         WHERE id = floor(random() * 1000000)::int + 1;
-        
+
         IF i % 10000 = 0 THEN
             RAISE NOTICE '已更新 % 条记录', i;
         END IF;
@@ -111,13 +111,13 @@ END $$;
 
 -- 检查膨胀情况
 \echo '检查表膨胀情况...'
-SELECT 
+SELECT
     schemaname,
     tablename,
     n_live_tup,
     n_dead_tup,
     ROUND((n_dead_tup::NUMERIC / (n_live_tup + n_dead_tup)::NUMERIC) * 100, 2) as bloat_ratio
-FROM pg_stat_user_tables 
+FROM pg_stat_user_tables
 WHERE tablename = 'vacuum_test';
 
 -- 测试VACUUM性能
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS sequential_scan_test (
 -- 插入大量数据
 \echo '插入测试数据...'
 INSERT INTO sequential_scan_test (data1, data2, data3, data4)
-SELECT 
+SELECT
     'data1_' || generate_series,
     'data2_' || generate_series,
     'data3_' || generate_series,
@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS multi_value_search_test (
 
 -- 插入测试数据
 INSERT INTO multi_value_search_test (status, age, city, salary)
-SELECT 
+SELECT
     (ARRAY['active', 'inactive', 'pending', 'suspended'])[floor(random() * 4) + 1],
     floor(random() * 50)::int + 18,
     (ARRAY['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Hangzhou', 'Nanjing', 'Wuhan', 'Chengdu'])[floor(random() * 8) + 1],
@@ -217,9 +217,9 @@ CREATE INDEX IF NOT EXISTS idx_multi_search ON multi_value_search_test (status, 
 
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
 SELECT COUNT(*), AVG(salary), MAX(created_at)
-FROM multi_value_search_test 
-WHERE status = 'active' 
-  AND age BETWEEN 25 AND 35 
+FROM multi_value_search_test
+WHERE status = 'active'
+  AND age BETWEEN 25 AND 35
   AND city IN ('Beijing', 'Shanghai', 'Guangzhou')
   AND salary > 50000;
 

@@ -9,7 +9,7 @@
 ## 📋 目录
 
 - [1. 监控指标概述](#1-监控指标概述)
-- [2. 核心监控指标（6大类）](#2-核心监控指标6大类)
+- [2. 核心监控指标（6 大类）](#2-核心监控指标6大类)
   - [2.1 连接与会话](#21-连接与会话)
   - [2.2 事务与性能](#22-事务与性能)
   - [2.3 锁与并发](#23-锁与并发)
@@ -17,7 +17,7 @@
   - [2.5 复制与高可用](#25-复制与高可用)
   - [2.6 资源使用](#26-资源使用)
 - [3. 告警阈值建议](#3-告警阈值建议)
-- [4. PostgreSQL 17新增监控点](#4-postgresql-17新增监控点)
+- [4. PostgreSQL 17 新增监控点](#4-postgresql-17新增监控点)
 - [5. 监控工具集成](#5-监控工具集成)
 
 ---
@@ -26,12 +26,12 @@
 
 ### 监控目标
 
-| 目标 | 说明 | 关键指标 |
-|------|------|---------|
-| **可用性** | 服务是否正常运行 | 连接成功率、主从状态 |
-| **性能** | 查询响应时间 | TPS/QPS、平均查询时间、P95/P99延迟 |
-| **容量** | 资源使用情况 | 连接数、表大小、WAL大小 |
-| **健康度** | 系统健康状况 | 锁等待、长事务、表膨胀率 |
+| 目标       | 说明             | 关键指标                            |
+| ---------- | ---------------- | ----------------------------------- |
+| **可用性** | 服务是否正常运行 | 连接成功率、主从状态                |
+| **性能**   | 查询响应时间     | TPS/QPS、平均查询时间、P95/P99 延迟 |
+| **容量**   | 资源使用情况     | 连接数、表大小、WAL 大小            |
+| **健康度** | 系统健康状况     | 锁等待、长事务、表膨胀率            |
 
 ### 监控数据来源
 
@@ -52,7 +52,7 @@ CREATE EXTENSION pgstattuple;        -- 表膨胀分析
 
 ---
 
-## 2. 核心监控指标（6大类）
+## 2. 核心监控指标（6 大类）
 
 ### 2.1 连接与会话
 
@@ -60,10 +60,10 @@ CREATE EXTENSION pgstattuple;        -- 表膨胀分析
 
 **指标名称**：`active_connections`  
 **数据源**：`pg_stat_activity`  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     COUNT(*) FILTER (WHERE state != 'idle') AS active_connections,
     COUNT(*) AS total_connections,
     (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') AS max_connections,
@@ -78,14 +78,14 @@ FROM pg_stat_activity;
 
 ---
 
-#### 2.1.2 IDLE IN TRANSACTION会话
+#### 2.1.2 IDLE IN TRANSACTION 会话
 
 **指标名称**：`idle_in_transaction_sessions`  
-**风险**：长时间持有锁，阻塞VACUUM，导致表膨胀  
-**SQL查询**：
+**风险**：长时间持有锁，阻塞 VACUUM，导致表膨胀  
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     pid,
     usename,
     application_name,
@@ -102,16 +102,16 @@ ORDER BY xact_start;
 
 **告警阈值**：
 
-- ⚠️ **警告**：存在超过5分钟的IDLE IN TRANSACTION会话
-- 🔴 **严重**：存在超过10分钟的IDLE IN TRANSACTION会话
+- ⚠️ **警告**：存在超过 5 分钟的 IDLE IN TRANSACTION 会话
+- 🔴 **严重**：存在超过 10 分钟的 IDLE IN TRANSACTION 会话
 
 **处理建议**：
 
 ```sql
 -- 终止长时间空闲的事务
-SELECT pg_terminate_backend(pid) 
-FROM pg_stat_activity 
-WHERE state = 'idle in transaction' 
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE state = 'idle in transaction'
   AND EXTRACT(EPOCH FROM (NOW() - xact_start)) > 600;
 ```
 
@@ -127,7 +127,7 @@ WHERE state = 'idle in transaction'
 - 等待连接的客户端
 - 活跃查询数
 
-**PgBouncer监控SQL**：
+**PgBouncer 监控 SQL**：
 
 ```sql
 -- 在PgBouncer admin数据库执行
@@ -144,10 +144,10 @@ SHOW CLIENTS;
 
 **指标名称**：`transactions_per_second`  
 **数据源**：`pg_stat_database`  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     xact_commit + xact_rollback AS total_transactions,
     xact_commit AS committed_transactions,
@@ -158,11 +158,11 @@ WHERE datname NOT IN ('template0', 'template1', 'postgres')
 ORDER BY total_transactions DESC;
 ```
 
-**计算TPS**：
+**计算 TPS**：
 
 ```sql
 -- 方法1：通过pg_stat_database计算增量
-SELECT 
+SELECT
     datname,
     (xact_commit + xact_rollback) AS current_txn,
     -- 需要与上一次采样对比计算TPS
@@ -175,8 +175,8 @@ FROM pg_stat_database;
 
 **告警阈值**：
 
-- ⚠️ **警告**：TPS突然下降50%
-- 🔴 **严重**：TPS下降80%或回滚率 > 10%
+- ⚠️ **警告**：TPS 突然下降 50%
+- 🔴 **严重**：TPS 下降 80%或回滚率 > 10%
 
 ---
 
@@ -184,11 +184,11 @@ FROM pg_stat_database;
 
 **指标名称**：`average_query_time_ms`  
 **数据源**：`pg_stat_statements`（需要安装扩展）  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
 -- TOP 10慢查询（按平均执行时间）
-SELECT 
+SELECT
     query,
     calls,
     ROUND(mean_exec_time::numeric, 2) AS avg_time_ms,
@@ -237,10 +237,10 @@ grep "duration:" /var/log/postgresql/postgresql-*.log | sort -t: -k3 -nr | head 
 #### 2.3.1 锁等待时间
 
 **指标名称**：`lock_wait_time`  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -252,7 +252,7 @@ SELECT
     EXTRACT(EPOCH FROM (NOW() - blocked_activity.query_start)) AS block_duration_seconds
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
     AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -271,18 +271,18 @@ ORDER BY block_duration_seconds DESC;
 
 **告警阈值**：
 
-- ⚠️ **警告**：锁等待 > 30秒
-- 🔴 **严重**：锁等待 > 60秒
+- ⚠️ **警告**：锁等待 > 30 秒
+- 🔴 **严重**：锁等待 > 60 秒
 
 ---
 
 #### 2.3.2 死锁频率
 
 **指标名称**：`deadlock_count`  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     datname,
     deadlocks,
     deadlocks - COALESCE(LAG(deadlocks) OVER (PARTITION BY datname ORDER BY stats_reset), 0) AS deadlocks_since_last_reset
@@ -293,19 +293,19 @@ ORDER BY deadlocks DESC;
 
 **告警阈值**：
 
-- ⚠️ **警告**：每小时死锁 > 10次
-- 🔴 **严重**：每小时死锁 > 50次
+- ⚠️ **警告**：每小时死锁 > 10 次
+- 🔴 **严重**：每小时死锁 > 50 次
 
 ---
 
 #### 2.3.3 长事务
 
 **指标名称**：`long_running_transactions`  
-**风险**：阻塞VACUUM，导致表膨胀；持有锁，影响并发  
-**SQL查询**：
+**风险**：阻塞 VACUUM，导致表膨胀；持有锁，影响并发  
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     pid,
     usename,
     application_name,
@@ -324,8 +324,8 @@ ORDER BY xact_start;
 
 **告警阈值**：
 
-- ⚠️ **警告**：存在超过5分钟的事务
-- 🔴 **严重**：存在超过10分钟的事务
+- ⚠️ **警告**：存在超过 5 分钟的事务
+- 🔴 **严重**：存在超过 10 分钟的事务
 
 ---
 
@@ -335,14 +335,14 @@ ORDER BY xact_start;
 
 **指标名称**：`table_bloat_ratio`  
 **数据源**：`pgstattuple`扩展  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
 -- 安装扩展
 CREATE EXTENSION IF NOT EXISTS pgstattuple;
 
 -- 检查TOP 10膨胀表
-SELECT 
+SELECT
     schemaname,
     tablename,
     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
@@ -374,14 +374,14 @@ VACUUM FULL schema.table_name;
 
 ---
 
-#### 2.4.2 VACUUM进度
+#### 2.4.2 VACUUM 进度
 
 **指标名称**：`vacuum_progress`  
 **数据源**：`pg_stat_progress_vacuum`（PostgreSQL 9.6+）  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     pid,
     datname,
     relid::regclass AS table_name,
@@ -398,14 +398,14 @@ FROM pg_stat_progress_vacuum;
 
 ---
 
-#### 2.4.3 WAL生成速度
+#### 2.4.3 WAL 生成速度
 
 **指标名称**：`wal_generation_rate`  
 **数据源**：`pg_stat_wal`（PostgreSQL 14+）  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     wal_records,
     wal_fpi,  -- Full Page Images
     wal_bytes,
@@ -421,8 +421,8 @@ FROM pg_stat_wal;
 
 **告警阈值**：
 
-- ⚠️ **警告**：WAL生成速度 > 100MB/s（持续5分钟）
-- 🔴 **严重**：WAL生成速度 > 500MB/s
+- ⚠️ **警告**：WAL 生成速度 > 100MB/s（持续 5 分钟）
+- 🔴 **严重**：WAL 生成速度 > 500MB/s
 
 ---
 
@@ -432,11 +432,11 @@ FROM pg_stat_wal;
 
 **指标名称**：`replication_lag`  
 **数据源**：`pg_stat_replication`（主库）  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
 -- 在主库执行
-SELECT 
+SELECT
     application_name,
     client_addr,
     client_hostname,
@@ -454,18 +454,18 @@ FROM pg_stat_replication;
 
 **告警阈值**：
 
-- ⚠️ **警告**：复制延迟 > 10MB 或 > 10秒
-- 🔴 **严重**：复制延迟 > 100MB 或 > 60秒
+- ⚠️ **警告**：复制延迟 > 10MB 或 > 10 秒
+- 🔴 **严重**：复制延迟 > 100MB 或 > 60 秒
 
 ---
 
 #### 2.5.2 复制槽使用
 
 **指标名称**：`replication_slot_status`  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     slot_name,
     slot_type,
     database,
@@ -481,8 +481,8 @@ FROM pg_replication_slots;
 
 **告警阈值**：
 
-- ⚠️ **警告**：复制槽保留WAL > 10GB
-- 🔴 **严重**：复制槽保留WAL > 50GB 或槽inactive
+- ⚠️ **警告**：复制槽保留 WAL > 10GB
+- 🔴 **严重**：复制槽保留 WAL > 50GB 或槽 inactive
 
 ---
 
@@ -491,10 +491,10 @@ FROM pg_replication_slots;
 #### 2.6.1 缓存命中率
 
 **指标名称**：`cache_hit_ratio`  
-**SQL查询**：
+**SQL 查询**：
 
 ```sql
-SELECT 
+SELECT
     sum(heap_blks_read) AS heap_read,
     sum(heap_blks_hit) AS heap_hit,
     sum(heap_blks_hit) / NULLIF(sum(heap_blks_hit) + sum(heap_blks_read), 0) AS cache_hit_ratio
@@ -507,28 +507,28 @@ FROM pg_statio_user_tables;
 
 ## 3. 告警阈值建议
 
-| 指标 | 警告阈值 | 严重阈值 | 说明 |
-|------|---------|---------|------|
-| **连接数使用率** | >80% | >95% | 接近max_connections限制 |
-| **复制延迟** | >10MB或>10s | >100MB或>60s | 主从数据不一致风险 |
-| **表膨胀率** | >30% | >50% | 需要VACUUM FULL |
-| **长事务** | >5分钟 | >10分钟 | 阻塞VACUUM，导致膨胀 |
-| **锁等待** | >30秒 | >60秒 | 影响用户体验 |
-| **死锁频率** | >10次/小时 | >50次/小时 | 应用逻辑问题 |
-| **IDLE IN TRANSACTION** | >5分钟 | >10分钟 | 持有锁，影响并发 |
-| **缓存命中率** | <95% | <90% | 内存不足或查询低效 |
-| **WAL保留** | >10GB | >50GB | 磁盘空间风险 |
-| **TPS下降** | -50% | -80% | 性能严重降级 |
+| 指标                    | 警告阈值     | 严重阈值      | 说明                      |
+| ----------------------- | ------------ | ------------- | ------------------------- |
+| **连接数使用率**        | >80%         | >95%          | 接近 max_connections 限制 |
+| **复制延迟**            | >10MB 或>10s | >100MB 或>60s | 主从数据不一致风险        |
+| **表膨胀率**            | >30%         | >50%          | 需要 VACUUM FULL          |
+| **长事务**              | >5 分钟      | >10 分钟      | 阻塞 VACUUM，导致膨胀     |
+| **锁等待**              | >30 秒       | >60 秒        | 影响用户体验              |
+| **死锁频率**            | >10 次/小时  | >50 次/小时   | 应用逻辑问题              |
+| **IDLE IN TRANSACTION** | >5 分钟      | >10 分钟      | 持有锁，影响并发          |
+| **缓存命中率**          | <95%         | <90%          | 内存不足或查询低效        |
+| **WAL 保留**            | >10GB        | >50GB         | 磁盘空间风险              |
+| **TPS 下降**            | -50%         | -80%          | 性能严重降级              |
 
 ---
 
-## 4. PostgreSQL 17新增监控点
+## 4. PostgreSQL 17 新增监控点
 
-### 4.1 JSON性能监控
+### 4.1 JSON 性能监控
 
 ```sql
 -- 监控JSON_TABLE函数使用情况
-SELECT 
+SELECT
     query,
     calls,
     mean_exec_time
@@ -538,7 +538,7 @@ ORDER BY mean_exec_time DESC
 LIMIT 10;
 ```
 
-### 4.2 VACUUM内存使用（PG 17优化）
+### 4.2 VACUUM 内存使用（PG 17 优化）
 
 ```sql
 -- 查看VACUUM内存配置
@@ -550,11 +550,11 @@ WHERE name LIKE '%vacuum%mem%';
 SELECT * FROM pg_stat_progress_vacuum;
 ```
 
-### 4.3 逻辑复制监控（PG 17增强）
+### 4.3 逻辑复制监控（PG 17 增强）
 
 ```sql
 -- 监控逻辑复制订阅状态
-SELECT 
+SELECT
     subname,
     pid,
     relid,
@@ -572,7 +572,7 @@ FROM pg_stat_subscription;
 
 ### 5.1 Prometheus + Grafana
 
-**安装postgres_exporter**：
+**安装 postgres_exporter**：
 
 ```bash
 # Docker方式
@@ -596,15 +596,25 @@ docker run -d \
 
 **启用统计信息**：
 
-1. 打开pgAdmin
+1. 打开 pgAdmin
 2. 右键数据库 → Properties → Statistics
-3. 查看Dashboard → Server Activity
+3. 查看 Dashboard → Server Activity
 
 ---
 
 ### 5.3 自定义监控脚本
 
-参见：[monitoring_queries.sql](monitoring_queries.sql)（30+监控SQL）
+参见：[monitoring_queries.sql](monitoring_queries.sql)（30+监控 SQL）
+
+---
+
+## PG18 对齐：指标口径与评测模板入口
+
+- 向量/混合搜索指标口径：`../10_benchmarks/vector_hybrid_metrics_template.md`
+- 多模一体化基准口径：`../10_benchmarks/multimodel_benchmark_template.md`
+- 对齐论证：`../13_ai_alignment/00_论证总览_AI_View_对齐_PG18.md`
+
+建议将上述指标纳入仪表板与告警，保证评测与生产观测一致的“口径”。
 
 ---
 
@@ -612,6 +622,6 @@ docker run -d \
 **最后更新**：2025-10-03  
 **相关文档**：
 
-- [监控SQL查询](monitoring_queries.sql)
+- [监控 SQL 查询](monitoring_queries.sql)
 - [告警规则](alerting_rules.yml)
 - [运维手册](README.md)

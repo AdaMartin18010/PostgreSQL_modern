@@ -4,16 +4,17 @@
 
 ## 主题边界
 
-- PostgreSQL扩展生态：pgvector（向量）、TimescaleDB（时序）、PostGIS（地理）、Citus（分布式）等核心扩展的安装、配置与最佳实践
+- PostgreSQL 扩展生态：pgvector（向量）、TimescaleDB（时序）、PostGIS（地理）、Citus（分布式）等核心
+  扩展的安装、配置与最佳实践
 
 ## 核心要点
 
 - **扩展机制**：`CREATE EXTENSION`、版本管理、依赖关系
 - **主流扩展**：
-  - pgvector：向量相似度检索、HNSW/IVFFlat索引
+  - pgvector：向量相似度检索、HNSW/IVFFlat 索引
   - TimescaleDB：时序数据、Hypertable、连续聚合、压缩
-  - PostGIS：地理空间数据、GIS查询、空间索引
-  - Citus：分布式PostgreSQL、分片、分布式查询
+  - PostGIS：地理空间数据、GIS 查询、空间索引
+  - Citus：分布式 PostgreSQL、分片、分布式查询
 - **集成实践**：扩展组合使用、性能优化、运维监控
 
 ## 知识地图
@@ -30,16 +31,16 @@
 
 ## 扩展对比
 
-| 扩展 | 用途 | 核心特性 | 适用场景 |
-|------|------|---------|---------|
-| **pgvector** | 向量检索 | HNSW/IVFFlat索引、多种距离度量 | AI/ML、推荐系统、RAG |
-| **TimescaleDB** | 时序数据 | Hypertable、连续聚合、压缩 | IoT、监控、金融数据 |
-| **PostGIS** | 地理空间 | Geometry/Geography类型、空间索引 | LBS、地图、空间分析 |
-| **Citus** | 分布式 | 分片、分布式查询、横向扩展 | 多租户SaaS、大数据 |
+| 扩展            | 用途     | 核心特性                          | 适用场景             |
+| --------------- | -------- | --------------------------------- | -------------------- |
+| **pgvector**    | 向量检索 | HNSW/IVFFlat 索引、多种距离度量   | AI/ML、推荐系统、RAG |
+| **TimescaleDB** | 时序数据 | Hypertable、连续聚合、压缩        | IoT、监控、金融数据  |
+| **PostGIS**     | 地理空间 | Geometry/Geography 类型、空间索引 | LBS、地图、空间分析  |
+| **Citus**       | 分布式   | 分片、分布式查询、横向扩展        | 多租户 SaaS、大数据  |
 
 ## 权威参考
 
-- PostgreSQL扩展机制：`<https://www.postgresql.org/docs/current/extend.html`>
+- PostgreSQL 扩展机制：`<https://www.postgresql.org/docs/current/extend.html`>
 - pgvector：`<https://github.com/pgvector/pgvector`>
 - TimescaleDB：`<https://docs.timescale.com/`>
 - PostGIS：`<https://postgis.net/`>
@@ -95,7 +96,7 @@ CREATE INDEX idx_embedding ON distributed_embeddings USING hnsw (embedding vecto
 ## Checklist（扩展选择与使用）
 
 - [ ] 评估扩展的活跃度和社区支持
-- [ ] 确认扩展与PostgreSQL版本兼容性
+- [ ] 确认扩展与 PostgreSQL 版本兼容性
 - [ ] 测试扩展对性能的影响
 - [ ] 规划扩展的升级和回滚策略
 - [ ] 监控扩展相关的资源使用
@@ -107,12 +108,12 @@ CREATE INDEX idx_embedding ON distributed_embeddings USING hnsw (embedding vecto
 
 - 检查扩展依赖：`SELECT * FROM pg_depend WHERE refclassid = 'pg_extension'::regclass;`
 - 避免功能重叠的扩展同时使用
-- 按需加载，不同schema隔离
+- 按需加载，不同 schema 隔离
 
 ### Q2: 扩展升级注意事项？
 
 - 在测试环境先验证
-- 检查CHANGELOG中的破坏性变更
+- 检查 CHANGELOG 中的破坏性变更
 - 做好数据备份
 - 准备回滚方案
 
@@ -121,7 +122,7 @@ CREATE INDEX idx_embedding ON distributed_embeddings USING hnsw (embedding vecto
 - 合理配置扩展参数
 - 针对扩展特性建立适当索引
 - 监控扩展相关指标
-- 定期ANALYZE扩展相关表
+- 定期 ANALYZE 扩展相关表
 
 ## 扩展评测
 
@@ -141,7 +142,7 @@ CREATE INDEX idx_embedding ON distributed_embeddings USING hnsw (embedding vecto
 
 ## 参考案例
 
-- AI向量检索：`../05_ai_vector/pgvector/`
+- AI 向量检索：`../05_ai_vector/pgvector/`
 - 时序数据处理：`../06_timeseries/timescaledb/`
 - 分布式数据库：`../08_ecosystem_cases/distributed_db/citus_demo/`
 

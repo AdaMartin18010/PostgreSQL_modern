@@ -1,0 +1,10 @@
+archive/
+archive_*/
+node_modules/
+.venv/
+venv/
+env/
+.git/
+/tests/output/
+**/dist/**
+**/build/**

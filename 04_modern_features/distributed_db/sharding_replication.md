@@ -1,6 +1,6 @@
 ﻿# 分片策略与复制拓扑
 
-> 分布式PostgreSQL的数据分片、复制策略与查询执行
+> 分布式 PostgreSQL 的数据分片、复制策略与查询执行
 
 ## 📋 目录
 
@@ -47,7 +47,7 @@
 
 **原理**：基于分片键的哈希值分配数据到不同分片
 
-**PostgreSQL + Citus实现**:
+**PostgreSQL + Citus 实现**:
 
 ```sql
 -- 创建哈希分片表
@@ -64,7 +64,7 @@ CREATE TABLE orders (
 SELECT create_distributed_table('orders', 'user_id');
 
 -- 查看分片分布
-SELECT 
+SELECT
     shardid,
     nodename,
     nodeport,
@@ -86,15 +86,15 @@ WHERE table_name = 'orders'::regclass;
 
 **适用场景**:
 
-- 高并发OLTP系统
-- 按用户ID分片的多租户应用
+- 高并发 OLTP 系统
+- 按用户 ID 分片的多租户应用
 - 数据分布均匀的场景
 
 ### 1.2 范围分片
 
 **原理**：基于数据范围分配到不同分片
 
-**PostgreSQL分区表实现**:
+**PostgreSQL 分区表实现**:
 
 ```sql
 -- 创建范围分区表
@@ -137,7 +137,7 @@ CREATE INDEX idx_events_2025_03_time ON events_2025_03 (event_time);
 **适用场景**:
 
 - 时序数据（按时间分片）
-- 有序数据（按ID范围分片）
+- 有序数据（按 ID 范围分片）
 - 需要定期归档的场景
 
 ### 1.3 目录分片
@@ -182,9 +182,9 @@ $$ LANGUAGE sql STABLE;
 
 **适用场景**:
 
-- 多租户SaaS系统
+- 多租户 SaaS 系统
 - 需要灵活调整分片的场景
-- VIP用户独立分片
+- VIP 用户独立分片
 
 ### 1.4 混合分片
 
@@ -227,7 +227,7 @@ SELECT create_distributed_table('user_events_eu', 'user_id');
 
 - 大部分查询都包含分片键
 - 避免频繁的跨分片查询
-- 示例：按user_id分片，查询条件包含user_id
+- 示例：按 user_id 分片，查询条件包含 user_id
 
 **数据分布均匀**:
 
@@ -241,7 +241,7 @@ SELECT create_distributed_table('user_events_eu', 'user_id');
 
 ```sql
 -- 查看分片大小分布
-SELECT 
+SELECT
     shardid,
     pg_size_pretty(shard_size) as size,
     estimated_rows,
@@ -252,13 +252,13 @@ ORDER BY shard_size DESC;
 
 -- 倾斜度分析
 WITH shard_stats AS (
-    SELECT 
+    SELECT
         AVG(shard_size) as avg_size,
         STDDEV(shard_size) as stddev_size
     FROM citus_shards
     WHERE table_name = 'orders'::regclass
 )
-SELECT 
+SELECT
     s.shardid,
     s.shard_size,
     ROUND((s.shard_size - ss.avg_size) / NULLIF(ss.stddev_size, 0), 2) as z_score
@@ -276,7 +276,7 @@ HAVING ABS((s.shard_size - ss.avg_size) / NULLIF(ss.stddev_size, 0)) > 2;
 
 ### 2.3 常见陷阱
 
-**陷阱1：使用自增ID作为分片键**:
+**陷阱 1：使用自增 ID 作为分片键**:
 
 ```sql
 -- 错误示例：自增ID导致新数据集中在最后的分片
@@ -297,7 +297,7 @@ CREATE TABLE good_example (
 SELECT create_distributed_table('good_example', 'user_id');
 ```
 
-**陷阱2：频繁跨分片查询**:
+**陷阱 2：频繁跨分片查询**:
 
 ```sql
 -- 低效查询：需要扫描所有分片
@@ -319,8 +319,8 @@ SELECT create_distributed_table('orders', 'user_id');
 SELECT create_distributed_table('orders', 'user_id', shard_count := 16);
 
 -- 指定副本数量
-SELECT create_distributed_table('orders', 'user_id', 
-                               shard_count := 16, 
+SELECT create_distributed_table('orders', 'user_id',
+                               shard_count := 16,
                                replication_factor := 2);
 ```
 
@@ -357,7 +357,7 @@ CREATE TABLE system_config (
 );
 
 -- 用于存储系统配置、元数据等
-INSERT INTO system_config (key, value) 
+INSERT INTO system_config (key, value)
 VALUES ('version', '1.0.0');
 ```
 
@@ -465,7 +465,7 @@ FROM pg_stat_replication;
 synchronous_commit = off
 
 -- 检查复制延迟
-SELECT 
+SELECT
     application_name,
     pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)) as lag
 FROM pg_stat_replication;
@@ -518,8 +518,8 @@ WITH (copy_data = false);  -- 避免初始全量复制
 
 **奇数投票原则**:
 
-- 3节点集群：允许1个节点失败
-- 5节点集群：允许2个节点失败
+- 3 节点集群：允许 1 个节点失败
+- 5 节点集群：允许 2 个节点失败
 - 避免脑裂：需要 (N/2)+1 个节点
 
 ### 7.2 见证节点
@@ -569,7 +569,7 @@ SET max_parallel_workers_per_gather = 4;
 SET citus.max_adaptive_executor_pool_size = 16;
 
 -- 分片内并行 + 跨分片并行
-SELECT 
+SELECT
     DATE(order_date) as date,
     COUNT(*),
     SUM(amount)
@@ -621,7 +621,7 @@ SELECT * FROM citus_rebalance_status();
 
 **复制配置建议**:
 
-- 生产环境：至少3个节点（1主2备）
+- 生产环境：至少 3 个节点（1 主 2 备）
 - 关键业务：同步复制 + 异步备份
 - 跨区域：逻辑复制 + 定期快照
 
@@ -637,4 +637,5 @@ SELECT * FROM citus_rebalance_status();
 - [Wikipedia: Database Shard](<https://en.wikipedia.org/wiki/Shard_(databas>e))
 - [Citus Distributed Tables](<https://docs.citusdata.com/en/stable/develop/reference_sql.htm>l)
 - [PostgreSQL Replication](<https://www.postgresql.org/docs/current/high-availability.htm>l)
-- [Citus Shard Rebalancing](<https://docs.citusdata.com/en/stable/admin_guide/cluster_management.htm>l)
+- [Citus Shard
+  Rebalancing](<https://docs.citusdata.com/en/stable/admin_guide/cluster_management.htm>l)

@@ -1,32 +1,32 @@
 # ⏳ 待执行任务完整指南
 
-**创建日期**：2025年10月4日  
+**创建日期**：2025 年 10 月 4 日  
 **状态**：所有工具已就绪，等待执行  
-**前提条件**：PostgreSQL 17已安装
+**前提条件**：PostgreSQL 17 已安装
 
 ---
 
 ## 📋 任务清单概览
 
-| 任务 | 状态 | 预计时间 | 依赖 |
-|------|------|----------|------|
-| 1. 启动PostgreSQL服务 | ⏳ 待执行 | 1分钟 | 无 |
-| 2. 验证监控SQL | ⏳ 待执行 | 5分钟 | 任务1 |
-| 3. 配置测试数据库 | ⏳ 待执行 | 3分钟 | 任务1 |
-| 4. 运行测试套件 | ⏳ 待执行 | 10分钟 | 任务1, 3 |
-| 5. 部署Grafana Dashboard | ⏳ 待执行 | 15分钟 | 任务1 |
+| 任务                      | 状态      | 预计时间 | 依赖      |
+| ------------------------- | --------- | -------- | --------- |
+| 1. 启动 PostgreSQL 服务   | ⏳ 待执行 | 1 分钟   | 无        |
+| 2. 验证监控 SQL           | ⏳ 待执行 | 5 分钟   | 任务 1    |
+| 3. 配置测试数据库         | ⏳ 待执行 | 3 分钟   | 任务 1    |
+| 4. 运行测试套件           | ⏳ 待执行 | 10 分钟  | 任务 1, 3 |
+| 5. 部署 Grafana Dashboard | ⏳ 待执行 | 15 分钟  | 任务 1    |
 
-**总计时间**：约30-40分钟
+**总计时间**：约 30-40 分钟
 
 ---
 
-## 🚀 任务1：启动PostgreSQL服务
+## 🚀 任务 1：启动 PostgreSQL 服务
 
 ### 目标
 
-启动PostgreSQL 17服务，使其可以接受连接
+启动 PostgreSQL 17 服务，使其可以接受连接
 
-### 方法A：使用Windows服务管理器（推荐）
+### 方法 A：使用 Windows 服务管理器（推荐）
 
 1. 打开服务管理器
 
@@ -35,11 +35,13 @@
    services.msc
    ```
 
-2. 找到PostgreSQL服务
+2. 找到 PostgreSQL 服务
+
    - 服务名称通常为：`postgresql-x64-17` 或 `PostgreSQL 17 Server`
    - 滚动查找以 "postgresql" 开头的服务
 
 3. 启动服务
+
    - 右键点击服务
    - 选择"启动"
    - 等待状态变为"正在运行"
@@ -49,7 +51,7 @@
    - 启动类型：选择"自动"
    - 点击"应用"和"确定"
 
-### 方法B：使用命令行
+### 方法 B：使用命令行
 
 ```powershell
 # 方法1：使用net命令（需要管理员权限）
@@ -82,9 +84,9 @@ Running  postgresql-x64-17  PostgreSQL 17 Server
 
 ### 常见问题
 
-**问题1**：找不到服务
+**问题 1**：找不到服务
 
-- **原因**：PostgreSQL未安装或服务名称不同
+- **原因**：PostgreSQL 未安装或服务名称不同
 - **解决**：
 
   ```powershell
@@ -92,35 +94,35 @@ Running  postgresql-x64-17  PostgreSQL 17 Server
   Get-Service | Where-Object {$_.Name -like "*postgres*"}
   ```
 
-**问题2**：服务启动失败
+**问题 2**：服务启动失败
 
-- **原因**：端口5432被占用或数据目录损坏
+- **原因**：端口 5432 被占用或数据目录损坏
 - **解决**：
 
   ```powershell
   # 检查端口占用
   netstat -ano | findstr :5432
-  
+
   # 查看PostgreSQL日志
   # 位置：C:\Program Files\PostgreSQL\17\data\log\
   ```
 
 ---
 
-## 🔍 任务2：验证监控SQL
+## 🔍 任务 2：验证监控 SQL
 
-### 目标1
+### 目标 1
 
-验证36+监控SQL查询是否能正常执行
+验证 36+监控 SQL 查询是否能正常执行
 
 ### 前提条件
 
-- ✅ PostgreSQL服务已启动（任务1）
-- ✅ 知道postgres用户密码（666110）
+- ✅ PostgreSQL 服务已启动（任务 1）
+- ✅ 知道 postgres 用户密码（666110）
 
 ### 执行步骤
 
-#### 步骤1：查找psql路径
+#### 步骤 1：查找 psql 路径
 
 ```powershell
 # 方法1：搜索psql.exe
@@ -131,7 +133,7 @@ Test-Path "C:\Program Files\PostgreSQL\17\bin\psql.exe"
 Test-Path "C:\Program Files\PostgreSQL\16\bin\psql.exe"
 ```
 
-#### 步骤2：添加psql到PATH（临时）
+#### 步骤 2：添加 psql 到 PATH（临时）
 
 ```powershell
 # 假设psql在以下路径（根据实际情况调整）
@@ -141,13 +143,13 @@ $env:PATH += ";C:\Program Files\PostgreSQL\17\bin"
 psql --version
 ```
 
-#### 步骤3：设置密码环境变量
+#### 步骤 3：设置密码环境变量
 
 ```powershell
 $env:PGPASSWORD = "666110"
 ```
 
-#### 步骤4：运行验证脚本
+#### 步骤 4：运行验证脚本
 
 ```powershell
 # 确保在项目根目录
@@ -157,7 +159,7 @@ cd E:\_src\PostgreSQL_modern
 .\validate_monitoring_sql.ps1
 ```
 
-### 预期输出1
+### 预期输出 1
 
 ```text
 🔍 PostgreSQL监控SQL验证工具
@@ -199,43 +201,43 @@ SELECT datname, numbackends FROM pg_stat_database;
 \q
 ```
 
-### 常见问题1
+### 常见问题 1
 
-**问题1**：psql命令找不到
+**问题 1**：psql 命令找不到
 
-- **解决**：确保已添加PostgreSQL bin目录到PATH
+- **解决**：确保已添加 PostgreSQL bin 目录到 PATH
 
-**问题2**：密码认证失败
+**问题 2**：密码认证失败
 
 - **解决**：
 
   ```powershell
   # 方法1：使用环境变量
   $env:PGPASSWORD = "666110"
-  
+
   # 方法2：创建.pgpass文件
   # 位置：C:\Users\<用户名>\AppData\Roaming\postgresql\pgpass.conf
   # 内容：localhost:5432:*:postgres:666110
   ```
 
-**问题3**：连接被拒绝
+**问题 3**：连接被拒绝
 
-- **解决**：检查PostgreSQL服务是否运行，检查pg_hba.conf配置
+- **解决**：检查 PostgreSQL 服务是否运行，检查 pg_hba.conf 配置
 
 ---
 
-## 🗄️ 任务3：配置测试数据库
+## 🗄️ 任务 3：配置测试数据库
 
-### 目标3
+### 目标 3
 
 创建测试数据库并生成配置文件
 
-### 前提条件3
+### 前提条件 3
 
-- ✅ PostgreSQL服务已启动（任务1）
-- ✅ psql已添加到PATH（任务2）
+- ✅ PostgreSQL 服务已启动（任务 1）
+- ✅ psql 已添加到 PATH（任务 2）
 
-### 方法A：使用自动化脚本（推荐）
+### 方法 A：使用自动化脚本（推荐）
 
 ```powershell
 # 确保在项目根目录
@@ -248,7 +250,7 @@ $env:PGPASSWORD = "666110"
 .\setup_test_environment.ps1
 ```
 
-### 预期输出4
+### 预期输出 4
 
 ```text
 🧪 PostgreSQL测试环境配置工具
@@ -273,9 +275,9 @@ $env:PGPASSWORD = "666110"
   python scripts/run_all_tests.py
 ```
 
-### 方法B：手动配置
+### 方法 B：手动配置
 
-#### 步骤1：创建测试数据库
+#### 步骤 1：创建测试数据库
 
 ```powershell
 # 连接到PostgreSQL
@@ -287,7 +289,7 @@ CREATE DATABASE postgres_modern_test;
 \q
 ```
 
-#### 步骤2：验证配置文件
+#### 步骤 2：验证配置文件
 
 ```powershell
 # 检查配置文件是否存在
@@ -322,21 +324,21 @@ python -c "import psycopg2; conn = psycopg2.connect(host='localhost', port=5432,
 
 ---
 
-## 🧪 任务4：运行测试套件
+## 🧪 任务 4：运行测试套件
 
-### 目标4
+### 目标 4
 
-运行所有SQL测试用例并生成报告
+运行所有 SQL 测试用例并生成报告
 
-### 前提条件4
+### 前提条件 4
 
-- ✅ PostgreSQL服务已启动（任务1）
-- ✅ 测试数据库已配置（任务3）
-- ✅ Python虚拟环境已配置
+- ✅ PostgreSQL 服务已启动（任务 1）
+- ✅ 测试数据库已配置（任务 3）
+- ✅ Python 虚拟环境已配置
 
-### 执行步骤4
+### 执行步骤 4
 
-#### 步骤1：激活Python虚拟环境
+#### 步骤 1：激活 Python 虚拟环境
 
 ```powershell
 # 确保在项目根目录
@@ -350,13 +352,13 @@ python --version
 python -c "import psycopg2; print('✅ psycopg2 可用')"
 ```
 
-#### 步骤2：进入测试目录
+#### 步骤 2：进入测试目录
 
 ```powershell
 cd tests
 ```
 
-#### 步骤3：运行所有测试
+#### 步骤 3：运行所有测试
 
 ```powershell
 # 运行所有测试（详细模式）
@@ -369,7 +371,7 @@ python scripts/run_all_tests.py --module 08_ecosystem_cases
 python scripts/run_single_test.py sql_tests/example_test.sql
 ```
 
-### 预期输出5
+### 预期输出 5
 
 ```text
 === PostgreSQL SQL Test Suite ===
@@ -393,7 +395,7 @@ python scripts/run_single_test.py sql_tests/example_test.sql
 详细报告已保存到: tests/reports/test_results.html
 ```
 
-#### 步骤4：查看测试报告
+#### 步骤 4：查看测试报告
 
 ```powershell
 # 在浏览器中打开HTML报告
@@ -419,16 +421,16 @@ python scripts/run_all_tests.py --tags smoke
 python scripts/generate_report.py
 ```
 
-### 常见问题6
+### 常见问题 6
 
-**问题1**：导入错误
+**问题 1**：导入错误
 
 ```powershell
 # 解决：安装缺失的依赖
 pip install psycopg2-binary pyyaml tabulate
 ```
 
-**问题2**：数据库连接失败
+**问题 2**：数据库连接失败
 
 ```powershell
 # 解决：检查配置文件
@@ -438,30 +440,30 @@ cat tests/config/database.yml
 python -c "import yaml; import psycopg2; config = yaml.safe_load(open('tests/config/database.yml'))['default']; conn = psycopg2.connect(**config); print('✅ 连接成功')"
 ```
 
-**问题3**：测试失败
+**问题 3**：测试失败
 
 - 查看详细错误信息
-- 检查SQL语法
+- 检查 SQL 语法
 - 确认数据库权限
 - 查看测试日志
 
 ---
 
-## 📊 任务5：部署Grafana Dashboard
+## 📊 任务 5：部署 Grafana Dashboard
 
-### 目标5
+### 目标 5
 
-部署生产级PostgreSQL监控Dashboard
+部署生产级 PostgreSQL 监控 Dashboard
 
-### 前提条件5
+### 前提条件 5
 
-- ✅ PostgreSQL服务已启动（任务1）
+- ✅ PostgreSQL 服务已启动（任务 1）
 
 ### 完整部署流程
 
-#### 步骤1：安装Grafana
+#### 步骤 1：安装 Grafana
 
-**Windows安装**：
+**Windows 安装**：
 
 ```powershell
 # 方法1：使用Chocolatey
@@ -483,7 +485,7 @@ Get-Service -Name "Grafana"
 Start-Service Grafana
 ```
 
-#### 步骤2：访问Grafana
+#### 步骤 2：访问 Grafana
 
 1. 打开浏览器
 2. 访问：`http://localhost:3000`
@@ -492,14 +494,15 @@ Start-Service Grafana
    - 密码：`admin`
 4. 首次登录会要求修改密码
 
-#### 步骤3：配置PostgreSQL数据源
+#### 步骤 3：配置 PostgreSQL 数据源
 
-1. 在Grafana界面中：
+1. 在 Grafana 界面中：
+
    - 点击左侧菜单 ⚙️ (Configuration)
    - 选择 "Data Sources"
    - 点击 "Add data source"
 
-2. 选择PostgreSQL
+2. 选择 PostgreSQL
 
 3. 配置连接信息：
 
@@ -516,33 +519,36 @@ Start-Service Grafana
 4. 点击 "Save & Test"
    - 应该看到 "✅ Database Connection OK"
 
-#### 步骤4：导入Dashboard
+#### 步骤 4：导入 Dashboard
 
-**方法A：使用JSON文件（推荐）**:
+**方法 A：使用 JSON 文件（推荐）**:
 
-1. 在Grafana界面中：
+1. 在 Grafana 界面中：
+
    - 点击左侧菜单 + (Create)
    - 选择 "Import"
 
-2. 导入Dashboard：
+2. 导入 Dashboard：
+
    - 点击 "Upload JSON file"
    - 选择文件：`E:\_src\PostgreSQL_modern\09_deployment_ops\grafana_dashboard.json`
    - 或直接拖拽文件到上传区域
 
-3. 配置Dashboard：
+3. 配置 Dashboard：
+
    - Name: PostgreSQL 17 Monitoring
    - Folder: General
    - PostgreSQL: 选择刚才创建的数据源
    - 点击 "Import"
 
 4. 完成！
-   - Dashboard会自动打开
-   - 显示6大监控面板
-   - 30秒自动刷新
+   - Dashboard 会自动打开
+   - 显示 6 大监控面板
+   - 30 秒自动刷新
 
-**方法B：手动创建（备选）**:
+**方法 B：手动创建（备选）**:
 
-如果JSON导入失败，可以参考：
+如果 JSON 导入失败，可以参考：
 
 ```powershell
 code 09_deployment_ops/grafana_dashboard_guide.md
@@ -550,35 +556,40 @@ code 09_deployment_ops/grafana_dashboard_guide.md
 
 按照指南手动创建每个面板。
 
-#### 步骤5：验证Dashboard
+#### 步骤 5：验证 Dashboard
 
 检查以下面板是否正常显示数据：
 
 1. ✅ **系统概览**
+
    - 数据库数量
    - 总连接数
    - 活动会话
    - 缓存命中率
 
 2. ✅ **连接监控**
+
    - 连接数趋势图
    - 各数据库连接分布
 
 3. ✅ **性能指标**
+
    - TPS（每秒事务数）
    - QPS（每秒查询数）
    - 响应时间
 
 4. ✅ **锁与等待**
+
    - 锁等待数量
    - 死锁统计
 
 5. ✅ **复制状态**
+
    - 复制延迟
-   - WAL位置
+   - WAL 位置
 
 6. ✅ **慢查询**
-   - Top 10慢查询
+   - Top 10 慢查询
    - 执行时间分布
 
 ### 配置告警（可选）
@@ -588,11 +599,11 @@ code 09_deployment_ops/grafana_dashboard_guide.md
 code 09_deployment_ops/grafana_dashboard_guide.md
 ```
 
-在Dashboard中配置告警规则：
+在 Dashboard 中配置告警规则：
 
 1. 连接数 > 80% 最大连接数
 2. 缓存命中率 < 90%
-3. 复制延迟 > 10秒
+3. 复制延迟 > 10 秒
 4. 慢查询数量 > 100/分钟
 
 ### 快速参考文档
@@ -753,7 +764,7 @@ Write-Host "🎉 所有任务执行完成！" -ForegroundColor Green
    ```powershell
    # PostgreSQL日志
    Get-Content "C:\Program Files\PostgreSQL\17\data\log\*.log" -Tail 50
-   
+
    # Grafana日志
    Get-Content "C:\Program Files\GrafanaLabs\grafana\data\log\grafana.log" -Tail 50
    ```
@@ -777,17 +788,17 @@ Write-Host "🎉 所有任务执行完成！" -ForegroundColor Green
 
 当所有任务完成后，您应该能够：
 
-- ✅ PostgreSQL服务正常运行
-- ✅ 36+监控SQL查询全部通过验证
+- ✅ PostgreSQL 服务正常运行
+- ✅ 36+监控 SQL 查询全部通过验证
 - ✅ 测试数据库配置完成
-- ✅ 测试套件运行成功，生成HTML报告
-- ✅ Grafana Dashboard显示实时监控数据
+- ✅ 测试套件运行成功，生成 HTML 报告
+- ✅ Grafana Dashboard 显示实时监控数据
 
 **恭喜！所有待执行任务已完成！** 🎉
 
 ---
 
 **文档版本**：v1.0  
-**创建日期**：2025年10月4日  
+**创建日期**：2025 年 10 月 4 日  
 **适用项目**：PostgreSQL_modern v1.0  
-**预计总时间**：30-40分钟
+**预计总时间**：30-40 分钟

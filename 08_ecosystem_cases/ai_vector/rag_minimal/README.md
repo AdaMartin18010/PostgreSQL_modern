@@ -4,10 +4,11 @@
 
 ## 📋 目标
 
-演示如何使用 PostgreSQL + pgvector 构建最小可用的 RAG（Retrieval-Augmented Generation）检索系统，包括：
+演示如何使用 PostgreSQL + pgvector 构建最小可用的 RAG（Retrieval-Augmented Generation）检索系统，包
+括：
 
 - 向量数据存储
-- HNSW索引构建
+- HNSW 索引构建
 - 向量相似度检索
 - 元数据过滤
 
@@ -23,7 +24,7 @@ psql -c "SELECT * FROM pg_available_extensions WHERE name = 'vector';"
 psql -c "SELECT version();"
 ```
 
-### 步骤1：创建数据结构
+### 步骤 1：创建数据结构
 
 ```bash
 psql -U postgres -d your_database -f schema.sql
@@ -32,44 +33,44 @@ psql -U postgres -d your_database -f schema.sql
 这将创建：
 
 - `rag` schema
-- `rag.docs` 表（存储文档和embedding）
-- HNSW索引（用于快速向量检索）
+- `rag.docs` 表（存储文档和 embedding）
+- HNSW 索引（用于快速向量检索）
 
-### 步骤2：准备数据
+### 步骤 2：准备数据
 
-**方式A：使用示例数据**:
+**方式 A：使用示例数据**:
 
-  ```bash
-  # 使用提供的sample.jsonl
-  psql -U postgres -d your_database -f import_example.sql
-  ```
+```bash
+# 使用提供的sample.jsonl
+psql -U postgres -d your_database -f import_example.sql
+```
 
-**方式B：导入自己的数据**:
+**方式 B：导入自己的数据**:
 
-1. 生成embedding（使用OpenAI、HuggingFace等）
-2. 准备JSONL格式数据：
+1. 生成 embedding（使用 OpenAI、HuggingFace 等）
+2. 准备 JSONL 格式数据：
 
-    ```json
-    {"id":1,"meta":{"title":"文档1","source":"test"},"embedding":[0.01,0.02,...]}
-    {"id":2,"meta":{"title":"文档2","source":"test"},"embedding":[0.05,0.02,...]}
-    ```
+   ```json
+   {"id":1,"meta":{"title":"文档1","source":"test"},"embedding":[0.01,0.02,...]}
+   {"id":2,"meta":{"title":"文档2","source":"test"},"embedding":[0.05,0.02,...]}
+   ```
 
-3. 导入数据（修改load.sql中的路径）
+3. 导入数据（修改 load.sql 中的路径）
 
-### 步骤3：执行检索查询
+### 步骤 3：执行检索查询
 
-  ```bash
-  # 在psql中执行查询
-  psql -U postgres -d your_database
+```bash
+# 在psql中执行查询
+psql -U postgres -d your_database
 
-  # 设置查询向量（384维）
-  \set q '[0.01,0.02,0.03,...]'
+# 设置查询向量（384维）
+\set q '[0.01,0.02,0.03,...]'
 
-  # 执行相似度检索
-  \i query.sql
-  ```
+# 执行相似度检索
+\i query.sql
+```
 
-**Python应用示例**：
+**Python 应用示例**：
 
 ```python
 import psycopg2
@@ -110,8 +111,8 @@ conn.close()
 
 -- 创建优化的索引
 DROP INDEX IF EXISTS rag.idx_docs_hnsw;
-CREATE INDEX idx_docs_hnsw ON rag.docs 
-USING hnsw (embedding vector_l2_ops) 
+CREATE INDEX idx_docs_hnsw ON rag.docs
+USING hnsw (embedding vector_l2_ops)
 WITH (m = 16, ef_construction = 200);
 
 -- 查询时调整ef_search
@@ -128,8 +129,8 @@ DROP INDEX IF EXISTS rag.idx_docs_hnsw;
 COPY rag.docs (meta, embedding) FROM '/path/to/data.csv' CSV;
 
 -- 3. 导入完成后重建索引
-CREATE INDEX idx_docs_hnsw ON rag.docs 
-USING hnsw (embedding vector_l2_ops) 
+CREATE INDEX idx_docs_hnsw ON rag.docs
+USING hnsw (embedding vector_l2_ops)
 WITH (m = 16, ef_construction = 200);
 
 -- 4. 更新统计信息
@@ -156,18 +157,18 @@ LIMIT 10; -- 只取Top 10
 
 ## 🔧 故障排查
 
-### 问题1：索引构建失败
+### 问题 1：索引构建失败
 
 ```sql
 -- 检查向量维度一致性
-SELECT id, array_length(embedding::float[], 1) as dim 
-FROM rag.docs 
+SELECT id, array_length(embedding::float[], 1) as dim
+FROM rag.docs
 GROUP BY array_length(embedding::float[], 1);
 
 -- 确保所有向量维度相同
 ```
 
-### 问题2：查询性能慢
+### 问题 2：查询性能慢
 
 ```sql
 -- 检查是否使用了索引
@@ -179,7 +180,7 @@ LIMIT 5;
 -- 应该看到 "Index Scan using idx_docs_hnsw"
 ```
 
-### 问题3：内存不足
+### 问题 3：内存不足
 
 ```sql
 -- 调整维护内存
@@ -193,34 +194,36 @@ SET work_mem = '256MB'; -- 查询时使用
 
 在标准配置下（PostgreSQL 17 + pgvector 0.7.0）：
 
-| 数据量 | 维度 | 索引大小 | 构建时间 | P95延迟 |
-|--------|------|----------|----------|---------|
-| 10K | 384 | 15MB | 2s | 5ms |
-| 100K | 384 | 150MB | 25s | 8ms |
-| 1M | 384 | 1.5GB | 5min | 15ms |
+| 数据量 | 维度 | 索引大小 | 构建时间 | P95 延迟 |
+| ------ | ---- | -------- | -------- | -------- |
+| 10K    | 384  | 15MB     | 2s       | 5ms      |
+| 100K   | 384  | 150MB    | 25s      | 8ms      |
+| 1M     | 384  | 1.5GB    | 5min     | 15ms     |
 
-*测试环境：8核CPU，32GB内存，SSD存储*-
+_测试环境：8 核 CPU，32GB 内存，SSD 存储_-
 
 ## 📚 扩展阅读
 
-- pgvector文档：`<https://github.com/pgvector/pgvector`>
-- HNSW算法论文：`<https://arxiv.org/abs/1603.09320`>
-- RAG架构指南：`../../05_ai_vector/README.md`
+- pgvector 文档：`<https://github.com/pgvector/pgvector`>
+- HNSW 算法论文：`<https://arxiv.org/abs/1603.09320`>
+- RAG 架构指南：`../../05_ai_vector/README.md`
 
 ## ⚠️ 注意事项
 
 1. **生产环境建议**：
-   - 使用连接池（如pgbouncer）
-   - 定期VACUUM和ANALYZE
+
+   - 使用连接池（如 pgbouncer）
+   - 定期 VACUUM 和 ANALYZE
    - 监控索引大小和查询性能
-   - 备份embedding数据
+   - 备份 embedding 数据
 
 2. **数据安全**：
-   - embedding包含敏感信息，注意访问控制
+
+   - embedding 包含敏感信息，注意访问控制
    - 定期备份向量数据
-   - 使用SSL/TLS加密连接
+   - 使用 SSL/TLS 加密连接
 
 3. **可扩展性**：
-   - 单表建议不超过1000万向量
-   - 更大规模考虑分区或Citus分布式
+   - 单表建议不超过 1000 万向量
+   - 更大规模考虑分区或 Citus 分布式
    - 监控磁盘空间使用

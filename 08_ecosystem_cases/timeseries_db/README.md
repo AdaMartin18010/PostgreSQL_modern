@@ -2,8 +2,8 @@
 
 > **版本对标**：PostgreSQL 17 + TimescaleDB 2.13+（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐ 高级  
-> **预计时间**：60-90分钟  
-> **适合场景**：IoT数据、监控指标、金融行情、日志分析
+> **预计时间**：60-90 分钟  
+> **适合场景**：IoT 数据、监控指标、金融行情、日志分析
 
 ---
 
@@ -11,7 +11,7 @@
 
 构建一个生产级的时序数据库系统，包括：
 
-1. ✅ TimescaleDB超表（Hypertable）设计
+1. ✅ TimescaleDB 超表（Hypertable）设计
 2. ✅ 高频数据写入优化（10K+ TPS）
 3. ✅ 连续聚合（Continuous Aggregate）
 4. ✅ 数据压缩与保留策略
@@ -21,18 +21,18 @@
 
 ## 🎯 业务场景
 
-**场景描述**：IoT设备监控数据采集与分析
+**场景描述**：IoT 设备监控数据采集与分析
 
 - **数据来源**：
-  - 10,000个IoT设备
-  - 每个设备每10秒上报一次数据
+  - 10,000 个 IoT 设备
+  - 每个设备每 10 秒上报一次数据
   - 指标包括：温度、湿度、电量、状态
 - **数据量**：
-  - 每秒1,000条数据
-  - 每天8,640万条数据
-  - 每月约26亿条数据
+  - 每秒 1,000 条数据
+  - 每天 8,640 万条数据
+  - 每月约 26 亿条数据
 - **查询需求**：
-  - 实时监控（最近1小时数据）
+  - 实时监控（最近 1 小时数据）
   - 历史趋势分析（按小时/天/月聚合）
   - 异常检测（超出阈值告警）
   - 设备健康分析
@@ -59,7 +59,7 @@ TimescaleDB超表 (按时间自动分区)
 
 ## 📦 1. 环境准备
 
-### 1.1 安装TimescaleDB
+### 1.1 安装 TimescaleDB
 
 ```bash
 # Ubuntu/Debian
@@ -72,15 +72,15 @@ docker run -d --name timescaledb \
   timescale/timescaledb:latest-pg17
 ```
 
-### 1.2 启用TimescaleDB扩展
+### 1.2 启用 TimescaleDB 扩展
 
 ```sql
 -- 创建扩展
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
 -- 验证版本
-SELECT default_version, installed_version 
-FROM pg_available_extensions 
+SELECT default_version, installed_version
+FROM pg_available_extensions
 WHERE name = 'timescaledb';
 ```
 
@@ -112,12 +112,12 @@ SELECT create_hypertable(
 
 -- 创建索引
 CREATE INDEX idx_iot_device_time ON iot_sensor_data (device_id, time DESC);
-CREATE INDEX idx_iot_status ON iot_sensor_data (status, time DESC) 
+CREATE INDEX idx_iot_status ON iot_sensor_data (status, time DESC)
     WHERE status != 'normal';
 
 -- 添加约束
 ALTER TABLE iot_sensor_data
-    ADD CONSTRAINT iot_battery_level_check 
+    ADD CONSTRAINT iot_battery_level_check
     CHECK (battery_level BETWEEN 0 AND 100);
 ```
 
@@ -166,13 +166,13 @@ SELECT
 FROM generate_series(1, 60000000) i;
 
 -- 查看数据量和表大小
-SELECT 
+SELECT
     COUNT(*) AS total_rows,
     pg_size_pretty(pg_total_relation_size('iot_sensor_data')) AS total_size
 FROM iot_sensor_data;
 ```
 
-### 3.2 查看超表chunks
+### 3.2 查看超表 chunks
 
 ```sql
 -- 查看时间分区（chunks）
@@ -247,7 +247,7 @@ LIMIT 100;
 
 ## 📊 5. 连续聚合（Continuous Aggregates）
 
-### 5.1 创建1分钟聚合视图
+### 5.1 创建 1 分钟聚合视图
 
 ```sql
 -- 创建连续聚合视图（每分钟）
@@ -274,11 +274,11 @@ SELECT add_continuous_aggregate_policy(
 );
 
 -- 创建索引
-CREATE INDEX idx_iot_1min_device_time 
+CREATE INDEX idx_iot_1min_device_time
     ON iot_sensor_data_1min (device_id, bucket DESC);
 ```
 
-### 5.2 创建1小时聚合视图
+### 5.2 创建 1 小时聚合视图
 
 ```sql
 -- 创建连续聚合视图（每小时）
@@ -343,7 +343,7 @@ GROUP BY bucket;
 
 ```sql
 -- 添加压缩策略（7天后压缩）
-ALTER TABLE iot_sensor_data 
+ALTER TABLE iot_sensor_data
 SET (timescaledb.compress,
      timescaledb.compress_segmentby = 'device_id',
      timescaledb.compress_orderby = 'time DESC');
@@ -370,7 +370,7 @@ FROM show_chunks('iot_sensor_data', older_than => INTERVAL '7 days') i;
 SELECT
     pg_size_pretty(before_compression_total_bytes) AS before_compression,
     pg_size_pretty(after_compression_total_bytes) AS after_compression,
-    round(100.0 * (before_compression_total_bytes - after_compression_total_bytes) 
+    round(100.0 * (before_compression_total_bytes - after_compression_total_bytes)
           / before_compression_total_bytes, 2) AS compression_ratio
 FROM timescaledb_information.compression_settings
 WHERE hypertable_name = 'iot_sensor_data';
@@ -507,16 +507,16 @@ RETURNS trigger AS $$
 BEGIN
     IF NEW.temperature > 35 THEN
         INSERT INTO device_alerts (device_id, alert_type, alert_message)
-        VALUES (NEW.device_id, 'HIGH_TEMP', 
+        VALUES (NEW.device_id, 'HIGH_TEMP',
                 'Temperature exceeded 35°C: ' || NEW.temperature);
     END IF;
-    
+
     IF NEW.battery_level < 20 THEN
         INSERT INTO device_alerts (device_id, alert_type, alert_message)
-        VALUES (NEW.device_id, 'LOW_BATTERY', 
+        VALUES (NEW.device_id, 'LOW_BATTERY',
                 'Battery level below 20%: ' || NEW.battery_level);
     END IF;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -579,48 +579,50 @@ LIMIT 50;
 
 ### 11.1 数据模型设计
 
-- ✅ 使用time作为第一分区键
-- ✅ chunk_time_interval选择1天或1周
+- ✅ 使用 time 作为第一分区键
+- ✅ chunk_time_interval 选择 1 天或 1 周
 - ✅ 在高基数列上创建索引（device_id）
 - ✅ 避免过多的索引（影响写入性能）
 
 ### 11.2 写入优化
 
-- ✅ 使用批量INSERT（1000-10000行/批）
-- ✅ 使用COPY协议（最快）
+- ✅ 使用批量 INSERT（1000-10000 行/批）
+- ✅ 使用 COPY 协议（最快）
 - ✅ 避免在写入路径上使用触发器
-- ✅ 调整autovacuum参数
+- ✅ 调整 autovacuum 参数
 
 ### 11.3 查询优化
 
 - ✅ 优先使用连续聚合视图
-- ✅ 利用chunk排除（时间范围过滤）
-- ✅ 使用time_bucket聚合
+- ✅ 利用 chunk 排除（时间范围过滤）
+- ✅ 使用 time_bucket 聚合
 - ✅ 启用并行查询
 
 ### 11.4 运维管理
 
-- ✅ 配置自动压缩（7天后）
-- ✅ 配置数据保留（90天）
-- ✅ 监控chunk数量和大小
-- ✅ 定期VACUUM和ANALYZE
+- ✅ 配置自动压缩（7 天后）
+- ✅ 配置数据保留（90 天）
+- ✅ 监控 chunk 数量和大小
+- ✅ 定期 VACUUM 和 ANALYZE
 
 ---
 
 ## 🎯 12. 练习任务
 
 1. **基础练习**：
-   - 创建超表并插入10万条测试数据
-   - 创建连续聚合视图（5分钟粒度）
-   - 查询最近1小时的数据趋势
+
+   - 创建超表并插入 10 万条测试数据
+   - 创建连续聚合视图（5 分钟粒度）
+   - 查询最近 1 小时的数据趋势
 
 2. **进阶练习**：
+
    - 实现自动压缩和保留策略
    - 创建异常检测查询
    - 优化高频查询性能
 
 3. **挑战任务**：
-   - 构建完整的IoT监控平台
+   - 构建完整的 IoT 监控平台
    - 实现实时告警系统
    - 处理千万级数据的查询优化
 
@@ -628,7 +630,7 @@ LIMIT 50;
 
 ## 📖 13. 参考资源
 
-- TimescaleDB官方文档: <https://docs.timescale.com/>
+- TimescaleDB 官方文档: <https://docs.timescale.com/>
 - Time-Series Best Practices: <https://docs.timescale.com/timescaledb/latest/how-to-guides/>
 - PostgreSQL Performance Tuning: <https://wiki.postgresql.org/wiki/Performance_Optimization>
 

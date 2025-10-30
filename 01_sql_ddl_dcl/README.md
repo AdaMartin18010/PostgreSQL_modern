@@ -1,84 +1,84 @@
-﻿# 01_sql_ddl_dcl — SQL语言基础与进阶
+﻿# 01_sql_ddl_dcl — SQL 语言基础与进阶
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **模块完整度**：⭐⭐⭐⭐ 85%（已深化，持续完善）  
-> **适合人群**：从入门到进阶，涵盖标准SQL、PostgreSQL特性、生产实践
+> **适合人群**：从入门到进阶，涵盖标准 SQL、PostgreSQL 特性、生产实践
 
 ---
 
 ## 📋 目录
 
-- [01\_sql\_ddl\_dcl — SQL语言基础与进阶](#01_sql_ddl_dcl--sql语言基础与进阶)
+- [01\_sql\_ddl\_dcl — SQL 语言基础与进阶](#01_sql_ddl_dcl--sql-语言基础与进阶)
   - [📋 目录](#-目录)
   - [模块定位与边界](#模块定位与边界)
     - [主题边界](#主题边界)
     - [知识地图](#知识地图)
-  - [1. SQL语言元素](#1-sql语言元素)
+  - [1. SQL 语言元素](#1-sql-语言元素)
     - [1.1 数据类型全览](#11-数据类型全览)
       - [基础类型](#基础类型)
-      - [PostgreSQL 17 JSON增强](#postgresql-17-json增强)
+      - [PostgreSQL 17 JSON 增强](#postgresql-17-json-增强)
     - [1.2 标识符与命名规范](#12-标识符与命名规范)
       - [大小写规则](#大小写规则)
       - [命名约定](#命名约定)
     - [1.3 字面量与常量](#13-字面量与常量)
-      - [SQL-2023新特性（PG17已支持部分）](#sql-2023新特性pg17已支持部分)
-  - [2. DDL数据定义](#2-ddl数据定义)
+      - [SQL-2023 新特性（PG17 已支持部分）](#sql-2023-新特性pg17-已支持部分)
+  - [2. DDL 数据定义](#2-ddl-数据定义)
     - [2.1 模式管理](#21-模式管理)
       - [模式（Schema）的作用](#模式schema的作用)
     - [2.2 表设计与约束](#22-表设计与约束)
       - [完整表定义示例](#完整表定义示例)
       - [约束类型详解](#约束类型详解)
     - [2.3 分区表](#23-分区表)
-      - [Range分区（按时间范围）](#range分区按时间范围)
-      - [List分区（按离散值）](#list分区按离散值)
-      - [Hash分区（均匀分布）](#hash分区均匀分布)
+      - [Range 分区（按时间范围）](#range-分区按时间范围)
+      - [List 分区（按离散值）](#list-分区按离散值)
+      - [Hash 分区（均匀分布）](#hash-分区均匀分布)
     - [2.4 索引管理](#24-索引管理)
       - [索引类型选择](#索引类型选择)
       - [并发索引创建（生产必备）](#并发索引创建生产必备)
       - [部分索引（Partial Index）](#部分索引partial-index)
       - [表达式索引](#表达式索引)
-    - [2.5 在线DDL陷阱](#25-在线ddl陷阱)
+    - [2.5 在线 DDL 陷阱](#25-在线-ddl-陷阱)
       - [锁级别对照表](#锁级别对照表)
       - [大表变更最佳实践](#大表变更最佳实践)
       - [查询当前锁等待](#查询当前锁等待)
-  - [3. DML数据操纵](#3-dml数据操纵)
+  - [3. DML 数据操纵](#3-dml-数据操纵)
     - [3.1 查询基础](#31-查询基础)
-      - [JOIN类型完整示例](#join类型完整示例)
-      - [子查询与EXISTS](#子查询与exists)
+      - [JOIN 类型完整示例](#join-类型完整示例)
+      - [子查询与 EXISTS](#子查询与-exists)
     - [3.2 INSERT/UPDATE/DELETE](#32-insertupdatedelete)
-      - [INSERT多种形式](#insert多种形式)
-      - [UPDATE与DELETE](#update与delete)
-      - [RETURNING子句（PostgreSQL特色）](#returning子句postgresql特色)
-    - [3.3 CTE与递归查询](#33-cte与递归查询)
-      - [基本CTE（Common Table Expression）](#基本ctecommon-table-expression)
-      - [递归CTE（树形结构）](#递归cte树形结构)
-    - [3.4 PostgreSQL 17新特性](#34-postgresql-17新特性)
-      - [MERGE语句增强（SQL-2023标准）](#merge语句增强sql-2023标准)
+      - [INSERT 多种形式](#insert-多种形式)
+      - [UPDATE 与 DELETE](#update-与-delete)
+      - [RETURNING 子句（PostgreSQL 特色）](#returning-子句postgresql-特色)
+    - [3.3 CTE 与递归查询](#33-cte-与递归查询)
+      - [基本 CTE（Common Table Expression）](#基本-ctecommon-table-expression)
+      - [递归 CTE（树形结构）](#递归-cte树形结构)
+    - [3.4 PostgreSQL 17 新特性](#34-postgresql-17-新特性)
+      - [MERGE 语句增强（SQL-2023 标准）](#merge-语句增强sql-2023-标准)
       - [聚合函数新增](#聚合函数新增)
-  - [4. DCL数据控制](#4-dcl数据控制)
+  - [4. DCL 数据控制](#4-dcl-数据控制)
     - [4.1 角色与权限模型](#41-角色与权限模型)
       - [角色层次结构](#角色层次结构)
       - [权限授予与撤销](#权限授予与撤销)
       - [权限查询](#权限查询)
     - [4.2 行级安全策略（RLS）](#42-行级安全策略rls)
-      - [启用RLS](#启用rls)
-      - [RLS策略类型](#rls策略类型)
-  - [5. TCL事务控制](#5-tcl事务控制)
+      - [启用 RLS](#启用-rls)
+      - [RLS 策略类型](#rls-策略类型)
+  - [5. TCL 事务控制](#5-tcl-事务控制)
   - [6. 常见陷阱与最佳实践](#6-常见陷阱与最佳实践)
     - [6.1 隐式类型转换陷阱](#61-隐式类型转换陷阱)
-    - [6.2 NULL语义陷阱](#62-null语义陷阱)
+    - [6.2 NULL 语义陷阱](#62-null-语义陷阱)
     - [6.3 时区陷阱](#63-时区陷阱)
-    - [6.4 大批量DML最佳实践](#64-大批量dml最佳实践)
+    - [6.4 大批量 DML 最佳实践](#64-大批量-dml-最佳实践)
     - [6.5 索引失效场景](#65-索引失效场景)
   - [7. 权威参考](#7-权威参考)
     - [官方文档](#官方文档)
-    - [SQL标准](#sql标准)
+    - [SQL 标准](#sql-标准)
     - [扩展阅读](#扩展阅读)
   - [8. Checklist（执行前/提交前）](#8-checklist执行前提交前)
-    - [DDL操作检查清单](#ddl操作检查清单)
-    - [DML操作检查清单](#dml操作检查清单)
-    - [DCL操作检查清单](#dcl操作检查清单)
-    - [TCL操作检查清单](#tcl操作检查清单)
+    - [DDL 操作检查清单](#ddl-操作检查清单)
+    - [DML 操作检查清单](#dml-操作检查清单)
+    - [DCL 操作检查清单](#dcl-操作检查清单)
+    - [TCL 操作检查清单](#tcl-操作检查清单)
 
 ---
 
@@ -86,9 +86,9 @@
 
 ### 主题边界
 
-- **核心内容**：SQL语言基础与进阶，涵盖DDL、DML、DCL、TCL四大类
-- **标准对齐**：SQL标准（SQL:2023）+ PostgreSQL 17特性实现
-- **深度定位**：从语法基础到生产级实践（约束设计、在线DDL、权限模型、性能陷阱）
+- **核心内容**：SQL 语言基础与进阶，涵盖 DDL、DML、DCL、TCL 四大类
+- **标准对齐**：SQL 标准（SQL:2023）+ PostgreSQL 17 特性实现
+- **深度定位**：从语法基础到生产级实践（约束设计、在线 DDL、权限模型、性能陷阱）
 
 ### 知识地图
 
@@ -121,27 +121,27 @@ TCL事务控制
 
 ---
 
-## 1. SQL语言元素
+## 1. SQL 语言元素
 
 ### 1.1 数据类型全览
 
 #### 基础类型
 
-| 类型类别 | PostgreSQL类型 | 说明 | PG17特性 |
-|---------|---------------|------|----------|
-| **数值** | `integer`, `bigint`, `numeric`, `real`, `double precision` | 整数、高精度小数、浮点数 | - |
-| **字符** | `text`, `varchar(n)`, `char(n)` | 可变长文本、定长字符 | 推荐使用`text` |
-| **布尔** | `boolean` | `TRUE`, `FALSE`, `NULL` | - |
-| **日期时间** | `date`, `time`, `timestamp`, `timestamptz`, `interval` | 时区感知的`timestamptz`是最佳实践 | - |
-| **JSON** | `json`, `jsonb` | `jsonb`支持索引和高效查询 | **PG17: JSON_TABLE()** |
-| **数组** | `integer[]`, `text[]` | 多维数组支持 | - |
-| **UUID** | `uuid` | 全局唯一标识符 | - |
-| **二进制** | `bytea` | 二进制数据 | - |
-| **枚举** | `CREATE TYPE mood AS ENUM (...)` | 自定义枚举类型 | - |
-| **几何** | `point`, `line`, `polygon` | 几何类型（PostGIS更强大） | - |
-| **网络** | `inet`, `cidr`, `macaddr` | IP地址、MAC地址 | - |
+| 类型类别     | PostgreSQL 类型                                            | 说明                              | PG17 特性              |
+| ------------ | ---------------------------------------------------------- | --------------------------------- | ---------------------- |
+| **数值**     | `integer`, `bigint`, `numeric`, `real`, `double precision` | 整数、高精度小数、浮点数          | -                      |
+| **字符**     | `text`, `varchar(n)`, `char(n)`                            | 可变长文本、定长字符              | 推荐使用`text`         |
+| **布尔**     | `boolean`                                                  | `TRUE`, `FALSE`, `NULL`           | -                      |
+| **日期时间** | `date`, `time`, `timestamp`, `timestamptz`, `interval`     | 时区感知的`timestamptz`是最佳实践 | -                      |
+| **JSON**     | `json`, `jsonb`                                            | `jsonb`支持索引和高效查询         | **PG17: JSON_TABLE()** |
+| **数组**     | `integer[]`, `text[]`                                      | 多维数组支持                      | -                      |
+| **UUID**     | `uuid`                                                     | 全局唯一标识符                    | -                      |
+| **二进制**   | `bytea`                                                    | 二进制数据                        | -                      |
+| **枚举**     | `CREATE TYPE mood AS ENUM (...)`                           | 自定义枚举类型                    | -                      |
+| **几何**     | `point`, `line`, `polygon`                                 | 几何类型（PostGIS 更强大）        | -                      |
+| **网络**     | `inet`, `cidr`, `macaddr`                                  | IP 地址、MAC 地址                 | -                      |
 
-#### PostgreSQL 17 JSON增强
+#### PostgreSQL 17 JSON 增强
 
 ```sql
 -- JSON_TABLE(): 将JSON转为关系表（SQL:2023标准）
@@ -175,18 +175,18 @@ CREATE TABLE user_profiles (user_id bigint, created_at timestamptz);
 
 #### 命名约定
 
-| 对象类型 | 命名格式 | 示例 |
-|---------|---------|------|
-| 表 | `snake_case` | `user_orders` |
-| 索引 | `idx_{table}_{columns}` | `idx_users_email` |
-| 主键约束 | `pk_{table}` | `pk_users` |
-| 外键约束 | `fk_{table}_{ref_table}` | `fk_orders_users` |
-| 唯一约束 | `uq_{table}_{columns}` | `uq_users_email` |
+| 对象类型 | 命名格式                 | 示例                    |
+| -------- | ------------------------ | ----------------------- |
+| 表       | `snake_case`             | `user_orders`           |
+| 索引     | `idx_{table}_{columns}`  | `idx_users_email`       |
+| 主键约束 | `pk_{table}`             | `pk_users`              |
+| 外键约束 | `fk_{table}_{ref_table}` | `fk_orders_users`       |
+| 唯一约束 | `uq_{table}_{columns}`   | `uq_users_email`        |
 | 检查约束 | `ck_{table}_{condition}` | `ck_users_age_positive` |
 
 ### 1.3 字面量与常量
 
-#### SQL-2023新特性（PG17已支持部分）
+#### SQL-2023 新特性（PG17 已支持部分）
 
 ```sql
 -- 数值字面量下划线分隔（可读性）
@@ -208,7 +208,7 @@ SELECT TIMESTAMPTZ '2025-10-03 10:30:00+08';
 
 ---
 
-## 2. DDL数据定义
+## 2. DDL 数据定义
 
 ### 2.1 模式管理
 
@@ -235,25 +235,25 @@ DROP SCHEMA IF EXISTS old_schema CASCADE;
 CREATE TABLE app.users (
   -- 主键：自增序列
   id bigserial PRIMARY KEY,
-  
+
   -- 唯一约束
   email text NOT NULL,
   CONSTRAINT uq_users_email UNIQUE (email),
-  
+
   -- 检查约束
   age integer,
   CONSTRAINT ck_users_age CHECK (age >= 0 AND age <= 150),
-  
+
   -- 默认值
   status text DEFAULT 'active',
   created_at timestamptz DEFAULT now(),
-  
+
   -- 生成列（PostgreSQL 12+）
   full_name text GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED,
-  
+
   -- 外键
   company_id bigint,
-  CONSTRAINT fk_users_company FOREIGN KEY (company_id) 
+  CONSTRAINT fk_users_company FOREIGN KEY (company_id)
     REFERENCES app.companies(id) ON DELETE CASCADE
 );
 
@@ -264,18 +264,18 @@ COMMENT ON COLUMN app.users.email IS '用户邮箱（唯一）';
 
 #### 约束类型详解
 
-| 约束类型 | 语法 | 说明 |
-|---------|------|------|
-| **NOT NULL** | `column_name TYPE NOT NULL` | 禁止NULL值 |
-| **UNIQUE** | `UNIQUE (column)` | 唯一约束（允许多个NULL） |
-| **PRIMARY KEY** | `PRIMARY KEY (column)` | 主键（自动NOT NULL + UNIQUE） |
-| **FOREIGN KEY** | `REFERENCES table(column)` | 外键约束 |
-| **CHECK** | `CHECK (condition)` | 自定义条件 |
-| **EXCLUDE** | `EXCLUDE USING gist (...)` | 排斥约束（如时间区间不重叠） |
+| 约束类型        | 语法                        | 说明                           |
+| --------------- | --------------------------- | ------------------------------ |
+| **NOT NULL**    | `column_name TYPE NOT NULL` | 禁止 NULL 值                   |
+| **UNIQUE**      | `UNIQUE (column)`           | 唯一约束（允许多个 NULL）      |
+| **PRIMARY KEY** | `PRIMARY KEY (column)`      | 主键（自动 NOT NULL + UNIQUE） |
+| **FOREIGN KEY** | `REFERENCES table(column)`  | 外键约束                       |
+| **CHECK**       | `CHECK (condition)`         | 自定义条件                     |
+| **EXCLUDE**     | `EXCLUDE USING gist (...)`  | 排斥约束（如时间区间不重叠）   |
 
 ### 2.3 分区表
 
-#### Range分区（按时间范围）
+#### Range 分区（按时间范围）
 
 ```sql
 CREATE TABLE measurements (
@@ -295,7 +295,7 @@ CREATE TABLE measurements_2025_11 PARTITION OF measurements
 -- 自动分区管理（使用pg_partman扩展）
 ```
 
-#### List分区（按离散值）
+#### List 分区（按离散值）
 
 ```sql
 CREATE TABLE orders (
@@ -311,7 +311,7 @@ CREATE TABLE orders_europe PARTITION OF orders
   FOR VALUES IN ('UK', 'DE', 'FR');
 ```
 
-#### Hash分区（均匀分布）
+#### Hash 分区（均匀分布）
 
 ```sql
 CREATE TABLE events (
@@ -331,14 +331,14 @@ CREATE TABLE events_p1 PARTITION OF events
 
 #### 索引类型选择
 
-| 索引类型 | 适用场景 | 示例 |
-|---------|---------|------|
-| **B-tree** | 等值查询、范围查询、排序 | `CREATE INDEX idx_users_email ON users(email);` |
-| **Hash** | 仅等值查询（PG10+可用于查询） | `CREATE INDEX idx_users_id_hash ON users USING hash(id);` |
-| **GIN** | 全文搜索、JSON、数组 | `CREATE INDEX idx_docs_content ON docs USING gin(content);` |
-| **GiST** | 几何数据、全文搜索、范围类型 | `CREATE INDEX idx_locations ON places USING gist(location);` |
-| **BRIN** | 大表按序存储（如时序数据） | `CREATE INDEX idx_logs_time ON logs USING brin(created_at);` |
-| **SP-GiST** | 非平衡数据结构（如IP地址） | `CREATE INDEX idx_ips ON connections USING spgist(ip_address);` |
+| 索引类型    | 适用场景                      | 示例                                                            |
+| ----------- | ----------------------------- | --------------------------------------------------------------- |
+| **B-tree**  | 等值查询、范围查询、排序      | `CREATE INDEX idx_users_email ON users(email);`                 |
+| **Hash**    | 仅等值查询（PG10+可用于查询） | `CREATE INDEX idx_users_id_hash ON users USING hash(id);`       |
+| **GIN**     | 全文搜索、JSON、数组          | `CREATE INDEX idx_docs_content ON docs USING gin(content);`     |
+| **GiST**    | 几何数据、全文搜索、范围类型  | `CREATE INDEX idx_locations ON places USING gist(location);`    |
+| **BRIN**    | 大表按序存储（如时序数据）    | `CREATE INDEX idx_logs_time ON logs USING brin(created_at);`    |
+| **SP-GiST** | 非平衡数据结构（如 IP 地址）  | `CREATE INDEX idx_ips ON connections USING spgist(ip_address);` |
 
 #### 并发索引创建（生产必备）
 
@@ -357,11 +357,11 @@ DROP INDEX CONCURRENTLY IF EXISTS idx_users_email;
 
 ```sql
 -- 仅索引活跃用户
-CREATE INDEX idx_users_active ON users(email) 
+CREATE INDEX idx_users_active ON users(email)
 WHERE status = 'active';
 
 -- 仅索引非空值
-CREATE INDEX idx_users_phone ON users(phone) 
+CREATE INDEX idx_users_phone ON users(phone)
 WHERE phone IS NOT NULL;
 ```
 
@@ -375,19 +375,19 @@ CREATE INDEX idx_users_lower_email ON users(lower(email));
 CREATE INDEX idx_users_settings_theme ON users((settings->>'theme'));
 ```
 
-### 2.5 在线DDL陷阱
+### 2.5 在线 DDL 陷阱
 
 #### 锁级别对照表
 
-| 操作 | 锁级别 | 阻塞读 | 阻塞写 | 安全性 |
-|------|--------|--------|--------|--------|
-| `SELECT` | AccessShareLock | ❌ | ❌ | ✅ 安全 |
-| `CREATE INDEX` | ShareLock | ❌ | ✅ | ⚠️ 阻塞写入 |
-| `CREATE INDEX CONCURRENTLY` | ShareUpdateExclusiveLock | ❌ | ❌ | ✅ 推荐 |
-| `ALTER TABLE ADD COLUMN (无默认值)` | AccessExclusiveLock | ✅ | ✅ | ❌ 危险 |
-| `ALTER TABLE ADD COLUMN DEFAULT` | AccessExclusiveLock | ✅ | ✅ | ❌ 危险 |
-| `ALTER TABLE DROP COLUMN` | AccessExclusiveLock | ✅ | ✅ | ❌ 危险 |
-| `VACUUM` | ShareUpdateExclusiveLock | ❌ | ❌ | ✅ 安全 |
+| 操作                                | 锁级别                   | 阻塞读 | 阻塞写 | 安全性      |
+| ----------------------------------- | ------------------------ | ------ | ------ | ----------- |
+| `SELECT`                            | AccessShareLock          | ❌     | ❌     | ✅ 安全     |
+| `CREATE INDEX`                      | ShareLock                | ❌     | ✅     | ⚠️ 阻塞写入 |
+| `CREATE INDEX CONCURRENTLY`         | ShareUpdateExclusiveLock | ❌     | ❌     | ✅ 推荐     |
+| `ALTER TABLE ADD COLUMN (无默认值)` | AccessExclusiveLock      | ✅     | ✅     | ❌ 危险     |
+| `ALTER TABLE ADD COLUMN DEFAULT`    | AccessExclusiveLock      | ✅     | ✅     | ❌ 危险     |
+| `ALTER TABLE DROP COLUMN`           | AccessExclusiveLock      | ✅     | ✅     | ❌ 危险     |
+| `VACUUM`                            | ShareUpdateExclusiveLock | ❌     | ❌     | ✅ 安全     |
 
 #### 大表变更最佳实践
 
@@ -421,7 +421,7 @@ SELECT
   blocking_activity.query AS blocking_query
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
   ON blocking_locks.locktype = blocked_locks.locktype
   AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
   AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -439,11 +439,11 @@ WHERE NOT blocked_locks.granted;
 
 ---
 
-## 3. DML数据操纵
+## 3. DML 数据操纵
 
 ### 3.1 查询基础
 
-#### JOIN类型完整示例
+#### JOIN 类型完整示例
 
 ```sql
 -- INNER JOIN：仅返回匹配行
@@ -472,7 +472,7 @@ FROM users u
 CROSS JOIN products p;
 ```
 
-#### 子查询与EXISTS
+#### 子查询与 EXISTS
 
 ```sql
 -- 标量子查询
@@ -491,7 +491,7 @@ SELECT name FROM users u WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_i
 
 ### 3.2 INSERT/UPDATE/DELETE
 
-#### INSERT多种形式
+#### INSERT 多种形式
 
 ```sql
 -- 基本插入
@@ -506,19 +506,19 @@ INSERT INTO users (name, email) VALUES
 INSERT INTO users_archive SELECT * FROM users WHERE created_at < '2020-01-01';
 
 -- ON CONFLICT（UPSERT）
-INSERT INTO users (id, name, email) 
+INSERT INTO users (id, name, email)
 VALUES (1, 'Alice', 'alice@example.com')
-ON CONFLICT (id) DO UPDATE SET 
+ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   email = EXCLUDED.email;
 
 -- ON CONFLICT DO NOTHING
-INSERT INTO users (email, name) 
+INSERT INTO users (email, name)
 VALUES ('alice@example.com', 'Alice')
 ON CONFLICT (email) DO NOTHING;
 ```
 
-#### UPDATE与DELETE
+#### UPDATE 与 DELETE
 
 ```sql
 -- 基本更新
@@ -537,7 +537,7 @@ DELETE FROM logs WHERE created_at < '2024-01-01' LIMIT 10000;
 TRUNCATE TABLE temp_table;
 ```
 
-#### RETURNING子句（PostgreSQL特色）
+#### RETURNING 子句（PostgreSQL 特色）
 
 ```sql
 -- 插入后返回生成的ID
@@ -553,9 +553,9 @@ UPDATE users SET status = 'active' WHERE id = 1 RETURNING *;
 DELETE FROM users WHERE status = 'inactive' RETURNING id, name;
 ```
 
-### 3.3 CTE与递归查询
+### 3.3 CTE 与递归查询
 
-#### 基本CTE（Common Table Expression）
+#### 基本 CTE（Common Table Expression）
 
 ```sql
 -- 提高可读性
@@ -571,7 +571,7 @@ LEFT JOIN recent_orders o ON u.id = o.user_id
 GROUP BY u.name;
 ```
 
-#### 递归CTE（树形结构）
+#### 递归 CTE（树形结构）
 
 ```sql
 -- 组织架构树
@@ -580,9 +580,9 @@ WITH RECURSIVE org_tree AS (
   SELECT id, name, parent_id, 1 AS level
   FROM departments
   WHERE parent_id IS NULL
-  
+
   UNION ALL
-  
+
   -- 递归查询：子节点
   SELECT d.id, d.name, d.parent_id, ot.level + 1
   FROM departments d
@@ -595,9 +595,9 @@ WITH RECURSIVE graph_traversal AS (
   SELECT id, ARRAY[id] AS path
   FROM nodes
   WHERE id = 1  -- 起始节点
-  
+
   UNION ALL
-  
+
   SELECT e.target_id, gt.path || e.target_id
   FROM edges e
   INNER JOIN graph_traversal gt ON e.source_id = gt.id
@@ -606,9 +606,9 @@ WITH RECURSIVE graph_traversal AS (
 SELECT * FROM graph_traversal;
 ```
 
-### 3.4 PostgreSQL 17新特性
+### 3.4 PostgreSQL 17 新特性
 
-#### MERGE语句增强（SQL-2023标准）
+#### MERGE 语句增强（SQL-2023 标准）
 
 ```sql
 -- MERGE（类似UPSERT，但更强大）
@@ -631,7 +631,7 @@ GROUP BY category;
 
 ---
 
-## 4. DCL数据控制
+## 4. DCL 数据控制
 
 ### 4.1 角色与权限模型
 
@@ -669,10 +669,10 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA app TO app_readwrite;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO app_readwrite;
 
 -- 默认权限（新创建对象自动授权）
-ALTER DEFAULT PRIVILEGES IN SCHEMA app 
+ALTER DEFAULT PRIVILEGES IN SCHEMA app
   GRANT SELECT ON TABLES TO app_readonly;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA app 
+ALTER DEFAULT PRIVILEGES IN SCHEMA app
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_readwrite;
 
 -- 撤销权限
@@ -686,8 +686,8 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;
 
 ```sql
 -- 查看表权限
-SELECT grantee, privilege_type 
-FROM information_schema.table_privileges 
+SELECT grantee, privilege_type
+FROM information_schema.table_privileges
 WHERE table_schema = 'app' AND table_name = 'users';
 
 -- 查看当前用户权限
@@ -696,7 +696,7 @@ SELECT * FROM information_schema.role_table_grants WHERE grantee = current_user;
 
 ### 4.2 行级安全策略（RLS）
 
-#### 启用RLS
+#### 启用 RLS
 
 ```sql
 -- 创建多租户表
@@ -729,7 +729,7 @@ SET app.current_tenant_id = '123';
 SELECT * FROM documents;  -- 只返回tenant_id=123的行
 ```
 
-#### RLS策略类型
+#### RLS 策略类型
 
 ```sql
 -- SELECT策略
@@ -753,7 +753,7 @@ ALTER TABLE documents FORCE ROW LEVEL SECURITY;
 
 ---
 
-## 5. TCL事务控制
+## 5. TCL 事务控制
 
 ```sql
 -- 开始事务
@@ -800,7 +800,7 @@ SELECT * FROM users WHERE id = '123';  -- id是bigint，'123'是text，可能不
 SELECT * FROM users WHERE id = 123;
 ```
 
-### 6.2 NULL语义陷阱
+### 6.2 NULL 语义陷阱
 
 ```sql
 -- ❌ 错误：NULL不等于NULL
@@ -838,7 +838,7 @@ SELECT now() AT TIME ZONE 'UTC';
 SELECT created_at AT TIME ZONE 'Asia/Shanghai' FROM events;
 ```
 
-### 6.4 大批量DML最佳实践
+### 6.4 大批量 DML 最佳实践
 
 ```sql
 -- ✅ 分批删除
@@ -897,53 +897,54 @@ SELECT * FROM users WHERE email LIKE '%@example.com';  -- 可使用GIN索引
 
 ### 官方文档
 
-- **PostgreSQL 17 SQL命令**：<https://www.postgresql.org/docs/17/sql-commands.html>
-- **SQL语法参考**：<https://www.postgresql.org/docs/17/sql-syntax.html>
+- **PostgreSQL 17 SQL 命令**：<https://www.postgresql.org/docs/17/sql-commands.html>
+- **SQL 语法参考**：<https://www.postgresql.org/docs/17/sql-syntax.html>
 - **数据类型**：<https://www.postgresql.org/docs/17/datatype.html>
-- **DDL语句**：<https://www.postgresql.org/docs/17/ddl.html>
-- **DML语句**：<https://www.postgresql.org/docs/17/dml.html>
+- **DDL 语句**：<https://www.postgresql.org/docs/17/ddl.html>
+- **DML 语句**：<https://www.postgresql.org/docs/17/dml.html>
 - **权限系统**：<https://www.postgresql.org/docs/17/user-manag.html>
 
-### SQL标准
+### SQL 标准
 
-- **SQL:2023标准**：ISO/IEC 9075-2:2023（PostgreSQL 17部分实现）
-- **Wikipedia SQL页面**：<https://en.wikipedia.org/wiki/SQL>
+- **SQL:2023 标准**：ISO/IEC 9075-2:2023（PostgreSQL 17 部分实现）
+- **Wikipedia SQL 页面**：<https://en.wikipedia.org/wiki/SQL>
 
 ### 扩展阅读
 
-- **PostgreSQL Wiki - Don't Do This**：<https://wiki.postgresql.org/wiki/Don't_Do_This>（反模式集合）
+- **PostgreSQL Wiki - Don't Do This**：<https://wiki.postgresql.org/wiki/Don't_Do_This>（反模式集合
+  ）
 - **Use The Index, Luke!**：<https://use-the-index-luke.com/>（索引优化指南）
 
 ---
 
 ## 8. Checklist（执行前/提交前）
 
-### DDL操作检查清单
+### DDL 操作检查清单
 
 - [ ] 表/索引/约束命名符合规范（全小写+下划线）
-- [ ] 所有DDL已评估锁影响（生产环境优先使用`CONCURRENTLY`）
+- [ ] 所有 DDL 已评估锁影响（生产环境优先使用`CONCURRENTLY`）
 - [ ] 大表变更已拆分为多步骤，避免长时间锁表
 - [ ] 索引类型选择合理（B-tree/GIN/GiST/BRIN）
 - [ ] 外键约束已评估性能影响（高并发场景需谨慎）
 - [ ] 分区表策略已规划（自动分区管理/分区裁剪）
 
-### DML操作检查清单
+### DML 操作检查清单
 
-- [ ] 大批量DML已分批执行，避免长事务
+- [ ] 大批量 DML 已分批执行，避免长事务
 - [ ] 使用`RETURNING`子句代替额外查询
-- [ ] JOIN顺序已优化（小表在前/驱动表选择）
+- [ ] JOIN 顺序已优化（小表在前/驱动表选择）
 - [ ] 子查询已考虑用`EXISTS`代替`IN`（性能更好）
 - [ ] 避免`SELECT *`，明确指定需要的列
 
-### DCL操作检查清单
+### DCL 操作检查清单
 
 - [ ] 权限最小化原则（按角色授予最小权限）
 - [ ] 避免使用超级用户执行应用操作
 - [ ] 生产环境已撤销`PUBLIC`模式的默认权限
-- [ ] RLS策略已测试边界条件（NULL/空集合）
+- [ ] RLS 策略已测试边界条件（NULL/空集合）
 - [ ] 默认权限（`ALTER DEFAULT PRIVILEGES`）已配置
 
-### TCL操作检查清单
+### TCL 操作检查清单
 
 - [ ] 事务边界明确（避免隐式提交/自动提交）
 - [ ] 长事务已拆分或使用游标

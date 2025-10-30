@@ -1,45 +1,45 @@
-# Python环境安装与配置指南
+# Python 环境安装与配置指南
 
 ## 问题说明
 
-在 `tests/scripts/run_single_test.py` 第12行出现错误:
+在 `tests/scripts/run_single_test.py` 第 12 行出现错误:
 
 ```text
 Import "psycopg2" could not be resolved from source
 ```
 
-这是因为Python包 `psycopg2-binary` 未安装在您的系统中。
+这是因为 Python 包 `psycopg2-binary` 未安装在您的系统中。
 
 ---
 
 ## 解决方案
 
-### 方案1: 安装Python（如果未安装）
+### 方案 1: 安装 Python（如果未安装）
 
-#### Windows系统推荐方法
+#### Windows 系统推荐方法
 
-**选项A: 从Microsoft Store安装 (最简单)**:
+**选项 A: 从 Microsoft Store 安装 (最简单)**:
 
-1. 打开Microsoft Store
+1. 打开 Microsoft Store
 2. 搜索 "Python 3.12" 或 "Python 3.11"
 3. 点击"获取"并安装
-4. 安装完成后，在PowerShell中验证:
+4. 安装完成后，在 PowerShell 中验证:
 
    ```powershell
    python --version
    ```
 
-**选项B: 从Python官网安装**:
+**选项 B: 从 Python 官网安装**:
 
 1. 访问 <https://www.python.org/downloads/>
-2. 下载最新的Python 3.x版本（推荐3.11或3.12）
+2. 下载最新的 Python 3.x 版本（推荐 3.11 或 3.12）
 3. 运行安装程序
 4. **重要**: 勾选 "Add Python to PATH" 选项
-5. 完成安装后重启PowerShell
+5. 完成安装后重启 PowerShell
 
-### 方案2: 安装依赖包
+### 方案 2: 安装依赖包
 
-安装Python后，在项目根目录执行:
+安装 Python 后，在项目根目录执行:
 
 ```powershell
 # 方法1: 使用requirements.txt（推荐）
@@ -52,7 +52,7 @@ python -m pip install psycopg2-binary pytest pyyaml tabulate
 python -m pip install psycopg2-binary
 ```
 
-### 方案3: 使用虚拟环境（最佳实践）
+### 方案 3: 使用虚拟环境（最佳实践）
 
 ```powershell
 # 1. 在项目根目录创建虚拟环境
@@ -74,15 +74,15 @@ python -c "import psycopg2; print('psycopg2 安装成功!')"
 
 ---
 
-## IDE配置（重要）
+## IDE 配置（重要）
 
 ### Cursor / VS Code
 
-如果使用虚拟环境，需要让IDE识别它:
+如果使用虚拟环境，需要让 IDE 识别它:
 
 1. **按 `Ctrl+Shift+P`** 打开命令面板
 2. 输入 **"Python: Select Interpreter"**
-3. 选择虚拟环境中的Python解释器:
+3. 选择虚拟环境中的 Python 解释器:
 
    ```text
    .\venv\Scripts\python.exe
@@ -94,9 +94,7 @@ python -c "import psycopg2; print('psycopg2 安装成功!')"
 {
   "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe",
   "python.terminal.activateEnvironment": true,
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/tests/scripts"
-  ],
+  "python.analysis.extraPaths": ["${workspaceFolder}/tests/scripts"],
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": false,
   "python.linting.pycodestyleEnabled": true
@@ -149,9 +147,9 @@ if __name__ == '__main__':
     print("="*60)
     print("PostgreSQL_modern 环境验证")
     print("="*60 + "\n")
-    
+
     test_python_version()
-    
+
     if test_psycopg2():
         print("\n✓ 所有必需依赖已正确安装")
         print("您可以运行测试了:")
@@ -159,7 +157,7 @@ if __name__ == '__main__':
     else:
         print("\n✗ 请先安装psycopg2-binary:")
         print("  python -m pip install psycopg2-binary")
-    
+
     print("\n检查可选依赖:")
     test_other_deps()
 ```
@@ -174,22 +172,22 @@ python test_setup.py
 
 ## 常见错误及解决方案
 
-### 错误1: "python不是内部或外部命令"
+### 错误 1: "python 不是内部或外部命令"
 
-**原因**: Python未安装或未添加到PATH
+**原因**: Python 未安装或未添加到 PATH
 
 **解决**:
 
-- 按照"方案1"安装Python
-- 重启PowerShell终端
-- 如果仍然失败，手动添加到PATH:
+- 按照"方案 1"安装 Python
+- 重启 PowerShell 终端
+- 如果仍然失败，手动添加到 PATH:
   1. 搜索"环境变量"
-  2. 编辑系统变量PATH
-  3. 添加Python安装路径（如 `C:\Users\YourName\AppData\Local\Programs\Python\Python311`）
+  2. 编辑系统变量 PATH
+  3. 添加 Python 安装路径（如 `C:\Users\YourName\AppData\Local\Programs\Python\Python311`）
 
-### 错误2: "无法加载文件，因为在此系统上禁止运行脚本"
+### 错误 2: "无法加载文件，因为在此系统上禁止运行脚本"
 
-**原因**: PowerShell执行策略限制
+**原因**: PowerShell 执行策略限制
 
 **解决**:
 
@@ -197,9 +195,9 @@ python test_setup.py
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-### 错误3: "ModuleNotFoundError: No module named 'psycopg2'"
+### 错误 3: "ModuleNotFoundError: No module named 'psycopg2'"
 
-**原因**: 包未安装或安装到了错误的Python环境
+**原因**: 包未安装或安装到了错误的 Python 环境
 
 **解决**:
 
@@ -211,26 +209,26 @@ python -m pip list | Select-String psycopg2
 python -m pip install --force-reinstall psycopg2-binary
 ```
 
-### 错误4: IDE中仍然显示导入错误
+### 错误 4: IDE 中仍然显示导入错误
 
-**原因**: IDE使用了错误的Python解释器
+**原因**: IDE 使用了错误的 Python 解释器
 
 **解决**:
 
-- 重启IDE
-- 按照"IDE配置"部分重新选择解释器
+- 重启 IDE
+- 按照"IDE 配置"部分重新选择解释器
 - 重新加载窗口（Ctrl+Shift+P → "Developer: Reload Window"）
 
 ---
 
 ## 依赖说明
 
-| 包名 | 版本要求 | 用途 | 必需性 |
-|------|---------|------|--------|
-| psycopg2-binary | >=2.9.9 | PostgreSQL数据库连接 | **必需** |
-| pytest | >=7.4.0 | 测试框架 | 推荐 |
-| pyyaml | >=6.0.1 | 配置文件解析 | 推荐 |
-| tabulate | >=0.9.0 | 表格格式化输出 | 可选 |
+| 包名            | 版本要求 | 用途                  | 必需性   |
+| --------------- | -------- | --------------------- | -------- |
+| psycopg2-binary | >=2.9.9  | PostgreSQL 数据库连接 | **必需** |
+| pytest          | >=7.4.0  | 测试框架              | 推荐     |
+| pyyaml          | >=6.0.1  | 配置文件解析          | 推荐     |
+| tabulate        | >=0.9.0  | 表格格式化输出        | 可选     |
 
 ---
 
@@ -271,4 +269,4 @@ deactivate
 
 **创建日期**: 2025-10-03  
 **适用系统**: Windows 10/11  
-**Python版本**: 3.8+
+**Python 版本**: 3.8+

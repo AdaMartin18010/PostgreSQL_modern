@@ -1,36 +1,49 @@
 # ⚡ PostgreSQL_modern 快速使用指南
 
-**5分钟快速上手 PostgreSQL 17 全栈知识库**:
+**5 分钟快速上手 PostgreSQL 17 全栈知识库**:
 
 ---
 
 ## 🎯 你想做什么？
 
-### 📖 学习PostgreSQL 17
+### 📖 学习 PostgreSQL 17
 
 **新手入门**：
 
-1. 📘 [PostgreSQL 17概览](00_overview/README.md) - 了解核心特性
-2. 📘 [SQL基础](01_sql_ddl_dcl/README.md) - DDL/DCL语法
+1. 📘 [PostgreSQL 17 概览](00_overview/README.md) - 了解核心特性
+2. 📘 [SQL 基础](01_sql_ddl_dcl/README.md) - DDL/DCL 语法
 3. 📘 [事务管理](02_transactions/README.md) - ACID/MVCC/隔离级别
 
 **进阶学习**：
 
 1. 📗 [存储与索引](03_storage_access/README.md) - 深入存储结构
-2. 📗 [现代特性](04_modern_features/README.md) - PG17新特性
+2. 📗 [现代特性](04_modern_features/README.md) - PG17 新特性
 3. 📗 [分布式数据库](04_modern_features/distributed_db/README.md) - 分布式架构
 
 **专题学习**：
 
-1. 🧠 [AI与向量](05_ai_vector/README.md) - pgvector/RAG
+1. 🧠 [AI 与向量](05_ai_vector/README.md) - pgvector/RAG
 2. ⏰ [时序数据](06_timeseries/README.md) - TimescaleDB
 3. 🌍 [地理空间](07_extensions/postgis/README.md) - PostGIS
+
+**AI 时代对齐入口（PG18）**：
+
+- 📊 快速导航：`13_ai_alignment/README.md` - 总览与索引
+- 📋 论证总览：`13_ai_alignment/00_论证总览_AI_View_对齐_PG18.md` - 核心结论与影响
+- 🎯 知识矩阵总览：`13_ai_alignment/07_知识矩阵总览.md` - 技术选型对比与决策框架
+- 📝 主题论证（深度分析）：
+  - 向量与混合搜索：`13_ai_alignment/01_向量与混合搜索.md`（论证分析+场景+决策+思维导图+矩阵）
+  - AI 自治：`13_ai_alignment/02_AI自治.md`（论证分析+场景+决策+思维导图+矩阵）
+  - Serverless 与分支：`13_ai_alignment/03_Serverless与分支.md`（论证分析+场景+决策+思维导图+矩阵）
+  - 多模一体化：`13_ai_alignment/04_多模一体化.md`（论证分析+场景+决策+思维导图+矩阵）
+  - 合规与可信：`13_ai_alignment/05_合规与可信.md`（论证分析+场景+决策+思维导图+矩阵）
+- 📋 改进计划：`13_ai_alignment/06_改进与完善计划.md` - 实施路径与交付物清单
 
 ---
 
 ### 🚀 部署生产环境
 
-**快速部署（10分钟）**：
+**快速部署（10 分钟）**：
 
 ```powershell
 # 1. 查看部署检查清单
@@ -45,7 +58,7 @@ code 09_deployment_ops/GRAFANA_QUICK_START.md
 
 **详细指南**：
 
-1. 📋 [部署检查清单](09_deployment_ops/production_deployment_checklist.md) - 10阶段完整流程
+1. 📋 [部署检查清单](09_deployment_ops/production_deployment_checklist.md) - 10 阶段完整流程
 2. ⚡ [性能优化指南](09_deployment_ops/performance_tuning_guide.md) - 系统化调优
 3. 📊 [监控指标](09_deployment_ops/monitoring_metrics.md) - 50+核心指标
 
@@ -53,7 +66,7 @@ code 09_deployment_ops/GRAFANA_QUICK_START.md
 
 ### 📊 配置监控
 
-**一键部署Grafana Dashboard**：
+**一键部署 Grafana Dashboard**：
 
 ```powershell
 # 1. 安装Grafana（如未安装）
@@ -70,15 +83,20 @@ code 09_deployment_ops/GRAFANA_QUICK_START.md
 
 **监控资源**：
 
-1. 📈 [Grafana快速启动](09_deployment_ops/GRAFANA_QUICK_START.md) - 10分钟部署
+1. 📈 [Grafana 快速启动](09_deployment_ops/GRAFANA_QUICK_START.md) - 10 分钟部署
 2. 📊 [监控指标体系](09_deployment_ops/monitoring_metrics.md) - 完整指标
-3. 📝 [监控SQL查询](09_deployment_ops/monitoring_queries.sql) - 35+查询
+3. 📝 [监控 SQL 查询](09_deployment_ops/monitoring_queries.sql) - 35+查询
+
+PG18 指标口径与模板：
+
+- 向量/混合搜索指标模板：`10_benchmarks/vector_hybrid_metrics_template.md`
+- 多模一体化基准模板：`10_benchmarks/multimodel_benchmark_template.md`
 
 ---
 
 ### 🧪 运行测试
 
-**配置测试环境（5分钟）**：
+**配置测试环境（5 分钟）**：
 
 ```powershell
 # 1. 配置测试数据库
@@ -95,14 +113,14 @@ start reports/test_results.html
 
 **测试资源**：
 
-1. 🧪 [测试设计文档](tests/test_design/README.md) - 166个测试场景
+1. 🧪 [测试设计文档](tests/test_design/README.md) - 166 个测试场景
 2. 🔧 [测试环境配置脚本](setup_test_environment.ps1) - 自动配置
 
 ---
 
-### 🔍 验证监控SQL
+### 🔍 验证监控 SQL
 
-**验证35+监控SQL（10分钟）**：
+**验证 35+监控 SQL（10 分钟）**：
 
 ```powershell
 # 运行验证脚本
@@ -121,13 +139,13 @@ start reports/test_results.html
 
 **可用工具清单**：
 
-| 工具 | 功能 | 使用 |
-|------|------|------|
-| validate_quality.py | 质量验证 | `python tools/validate_quality.py --all` |
-| validate_monitoring_sql.ps1 | 监控SQL验证 | `.\validate_monitoring_sql.ps1` |
-| setup_test_environment.ps1 | 测试环境配置 | `.\setup_test_environment.ps1` |
-| fix_markdown_links.ps1 | 链接格式修复 | `.\fix_markdown_links.ps1` |
-| check_versions.sh | 版本检查 | `bash tools/check_versions.sh` |
+| 工具                        | 功能          | 使用                                     |
+| --------------------------- | ------------- | ---------------------------------------- |
+| validate_quality.py         | 质量验证      | `python tools/validate_quality.py --all` |
+| validate_monitoring_sql.ps1 | 监控 SQL 验证 | `.\validate_monitoring_sql.ps1`          |
+| setup_test_environment.ps1  | 测试环境配置  | `.\setup_test_environment.ps1`           |
+| fix_markdown_links.ps1      | 链接格式修复  | `.\fix_markdown_links.ps1`               |
+| check_versions.sh           | 版本检查      | `bash tools/check_versions.sh`           |
 
 **详细说明**：[tools/README.md](tools/README.md)
 
@@ -152,13 +170,13 @@ start reports/test_results.html
 
 **实战案例**：
 
-- [Citus集群部署](08_ecosystem_cases/distributed_db/citus_demo/README.md)
-- [RAG最小化实现](08_ecosystem_cases/ai_vector/rag_minimal/README.md)
+- [Citus 集群部署](08_ecosystem_cases/distributed_db/citus_demo/README.md)
+- [RAG 最小化实现](08_ecosystem_cases/ai_vector/rag_minimal/README.md)
 - [两阶段提交](08_ecosystem_cases/distributed_db/two_phase_commit_min.sql)
 
 **性能基准**：
 
-- [pgbench实战](10_benchmarks/pgbench_oltp_playbook.md)
+- [pgbench 实战](10_benchmarks/pgbench_oltp_playbook.md)
 - [分布式基准测试](10_benchmarks/distributed_benchmarks.md)
 
 ---
@@ -169,7 +187,7 @@ start reports/test_results.html
 
 **新用户必读**：
 
-1. 🚀 [START_HERE.md](START_HERE.md) - 1分钟快速启动
+1. 🚀 [START_HERE.md](START_HERE.md) - 1 分钟快速启动
 2. ⚡ [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - 一页纸参考
 3. 📖 [README.md](README.md) - 项目主页
 
@@ -177,29 +195,27 @@ start reports/test_results.html
 
 1. 🏆 [卓越徽章](PROJECT_EXCELLENCE_BADGE.md) - 项目成就
 2. 📊 [状态仪表板](PROJECT_STATUS_DASHBOARD.md) - 实时状态
-3. 🎊 [第10轮完成报告](CONTINUOUS_PROGRESS_ROUND_10_COMPLETE.md) - 最新进展
+3. 🎊 [第 10 轮完成报告](CONTINUOUS_PROGRESS_ROUND_10_COMPLETE.md) - 最新进展
 
 **深入了解**：
 
 1. 📋 [完整评审报告](docs/reviews/2025_10_critical_review.md) - 深度分析
-2. 📚 [术语表](GLOSSARY.md) - 52个核心术语
+2. 📚 [术语表](GLOSSARY.md) - 52 个核心术语
 3. 📝 [变更日志](CHANGELOG.md) - 改进历史
 
 ---
 
 ### 按角色导航
 
-**DBA/运维工程师**：
-→ [09_deployment_ops/README.md](09_deployment_ops/README.md) - 运维完整指南
+**DBA/运维工程师**： → [09_deployment_ops/README.md](09_deployment_ops/README.md) - 运维完整指南
 
-**开发者**：
-→ [08_ecosystem_cases/README.md](08_ecosystem_cases/README.md) - 实战案例集
+**开发者**： → [08_ecosystem_cases/README.md](08_ecosystem_cases/README.md) - 实战案例集
 
-**架构师**：
-→ [04_modern_features/distributed_db/README.md](04_modern_features/distributed_db/README.md) - 分布式架构
+**架构师**： →
+[04_modern_features/distributed_db/README.md](04_modern_features/distributed_db/README.md) - 分布式
+架构
 
-**数据科学家**：
-→ [05_ai_vector/README.md](05_ai_vector/README.md) - AI与向量数据库
+**数据科学家**： → [05_ai_vector/README.md](05_ai_vector/README.md) - AI 与向量数据库
 
 ---
 
@@ -209,14 +225,15 @@ start reports/test_results.html
 
 **答**：根据你的目标选择：
 
-- 学习PG17：[00_overview/README.md](00_overview/README.md)
-- 生产部署：[09_deployment_ops/production_deployment_checklist.md](09_deployment_ops/production_deployment_checklist.md)
+- 学习 PG17：[00_overview/README.md](00_overview/README.md)
+- 生产部署
+  ：[09_deployment_ops/production_deployment_checklist.md](09_deployment_ops/production_deployment_checklist.md)
 - 监控配置：[09_deployment_ops/GRAFANA_QUICK_START.md](09_deployment_ops/GRAFANA_QUICK_START.md)
 - 实战案例：[08_ecosystem_cases/README.md](08_ecosystem_cases/README.md)
 
 ---
 
-### Q2: 如何部署Grafana Dashboard？
+### Q2: 如何部署 Grafana Dashboard？
 
 **答**：
 
@@ -235,7 +252,7 @@ choco install grafana  # 或访问官网下载
 
 ---
 
-### Q3: 如何验证监控SQL？
+### Q3: 如何验证监控 SQL？
 
 **答**：
 
@@ -264,7 +281,7 @@ choco install grafana  # 或访问官网下载
 **答**：
 
 1. 查看 [CONTRIBUTING.md](CONTRIBUTING.md)
-2. 提交Issue或PR到GitHub仓库
+2. 提交 Issue 或 PR 到 GitHub 仓库
 3. 参考 [项目路线图](PROJECT_ROADMAP.md)
 
 ---
@@ -309,4 +326,4 @@ code README.md
 
 **项目状态**：🟢 卓越（97/100）| 生产就绪：✅ 100% | 推荐：🚀 立即使用
 
-**最后更新**：2025年10月4日
+**最后更新**：2025 年 10 月 4 日

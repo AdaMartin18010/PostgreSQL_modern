@@ -2,7 +2,7 @@
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **模块完整度**：⭐⭐⭐⭐ 85%（已深化，持续完善）  
-> **适合人群**：理解PostgreSQL存储原理、索引选型、执行计划优化、维护操作
+> **适合人群**：理解 PostgreSQL 存储原理、索引选型、执行计划优化、维护操作
 
 ---
 
@@ -16,44 +16,44 @@
   - [1. 存储结构](#1-存储结构)
     - [1.1 堆表（Heap Table）](#11-堆表heap-table)
     - [1.2 TOAST（超大字段）](#12-toast超大字段)
-    - [1.3 FILLFACTOR与页填充](#13-fillfactor与页填充)
+    - [1.3 FILLFACTOR 与页填充](#13-fillfactor-与页填充)
     - [1.4 表膨胀（Bloat）](#14-表膨胀bloat)
   - [2. 索引类型详解](#2-索引类型详解)
-    - [2.1 B-tree索引](#21-b-tree索引)
-    - [2.2 Hash索引](#22-hash索引)
-    - [2.3 GIN索引](#23-gin索引)
-    - [2.4 GiST索引](#24-gist索引)
-    - [2.5 BRIN索引](#25-brin索引)
-    - [2.6 SP-GiST索引](#26-sp-gist索引)
+    - [2.1 B-tree 索引](#21-b-tree-索引)
+    - [2.2 Hash 索引](#22-hash-索引)
+    - [2.3 GIN 索引](#23-gin-索引)
+    - [2.4 GiST 索引](#24-gist-索引)
+    - [2.5 BRIN 索引](#25-brin-索引)
+    - [2.6 SP-GiST 索引](#26-sp-gist-索引)
     - [2.7 索引选型决策树](#27-索引选型决策树)
   - [3. 执行计划分析](#3-执行计划分析)
-    - [3.1 EXPLAIN基础](#31-explain基础)
+    - [3.1 EXPLAIN 基础](#31-explain-基础)
     - [3.2 扫描方法](#32-扫描方法)
       - [Seq Scan（顺序扫描）](#seq-scan顺序扫描)
       - [Index Scan（索引扫描）](#index-scan索引扫描)
       - [Index Only Scan（索引覆盖扫描）](#index-only-scan索引覆盖扫描)
       - [Bitmap Scan（位图扫描）](#bitmap-scan位图扫描)
-    - [3.3 JOIN方法](#33-join方法)
+    - [3.3 JOIN 方法](#33-join-方法)
       - [Nested Loop Join（嵌套循环）](#nested-loop-join嵌套循环)
       - [Hash Join（哈希连接）](#hash-join哈希连接)
       - [Merge Join（归并连接）](#merge-join归并连接)
     - [3.4 执行计划优化案例](#34-执行计划优化案例)
-      - [案例1：索引失效导致全表扫描](#案例1索引失效导致全表扫描)
-      - [案例2：Bitmap Recheck过多](#案例2bitmap-recheck过多)
-      - [案例3：不必要的排序](#案例3不必要的排序)
+      - [案例 1：索引失效导致全表扫描](#案例-1索引失效导致全表扫描)
+      - [案例 2：Bitmap Recheck 过多](#案例-2bitmap-recheck-过多)
+      - [案例 3：不必要的排序](#案例-3不必要的排序)
   - [4. 统计信息](#4-统计信息)
-    - [4.1 ANALYZE原理](#41-analyze原理)
+    - [4.1 ANALYZE 原理](#41-analyze-原理)
     - [4.2 扩展统计](#42-扩展统计)
     - [4.3 统计信息查看](#43-统计信息查看)
   - [5. 维护操作](#5-维护操作)
-    - [5.1 VACUUM详解](#51-vacuum详解)
-    - [5.2 Autovacuum配置](#52-autovacuum配置)
-    - [5.3 REINDEX索引维护](#53-reindex索引维护)
-    - [5.4 CLUSTER表重组](#54-cluster表重组)
-  - [6. PostgreSQL 17存储优化](#6-postgresql-17存储优化)
-    - [6.1 B-tree多值搜索优化](#61-b-tree多值搜索优化)
+    - [5.1 VACUUM 详解](#51-vacuum-详解)
+    - [5.2 Autovacuum 配置](#52-autovacuum-配置)
+    - [5.3 REINDEX 索引维护](#53-reindex-索引维护)
+    - [5.4 CLUSTER 表重组](#54-cluster-表重组)
+  - [6. PostgreSQL 17 存储优化](#6-postgresql-17-存储优化)
+    - [6.1 B-tree 多值搜索优化](#61-b-tree-多值搜索优化)
     - [6.2 Streaming I/O（顺序读取优化）](#62-streaming-io顺序读取优化)
-    - [6.3 VACUUM内存管理改进](#63-vacuum内存管理改进)
+    - [6.3 VACUUM 内存管理改进](#63-vacuum-内存管理改进)
   - [7. 性能调优实践](#7-性能调优实践)
     - [7.1 索引优化清单](#71-索引优化清单)
     - [7.2 执行计划诊断清单](#72-执行计划诊断清单)
@@ -75,8 +75,8 @@
 ### 主题边界
 
 - **核心内容**：存储结构、索引类型、执行计划、统计信息、维护操作
-- **深度定位**：从底层存储到查询优化，涵盖6种索引选型、执行计划诊断、Autovacuum调优
-- **PostgreSQL 17对齐**：B-tree多值搜索优化、streaming I/O、VACUUM内存管理改进
+- **深度定位**：从底层存储到查询优化，涵盖 6 种索引选型、执行计划诊断、Autovacuum 调优
+- **PostgreSQL 17 对齐**：B-tree 多值搜索优化、streaming I/O、VACUUM 内存管理改进
 
 ### 知识地图
 
@@ -122,8 +122,8 @@
 **堆表特点**：
 
 - 无序存储（插入顺序，非物理排序）
-- 每行（元组）有隐藏的系统列（xmin、xmax、ctid等）
-- 以8KB页（Page/Block）为单位管理
+- 每行（元组）有隐藏的系统列（xmin、xmax、ctid 等）
+- 以 8KB 页（Page/Block）为单位管理
 
 **页结构**：
 
@@ -164,17 +164,17 @@ FROM heap_page_items(get_raw_page('table_name', 0));
 
 **TOAST（The Oversized-Attribute Storage Technique）**：
 
-- 当行大小超过约2KB（页的1/4），PostgreSQL自动使用TOAST
-- 大字段被压缩或移到专门的TOAST表
+- 当行大小超过约 2KB（页的 1/4），PostgreSQL 自动使用 TOAST
+- 大字段被压缩或移到专门的 TOAST 表
 
-**TOAST策略**：
+**TOAST 策略**：
 
-| 策略 | 说明 | 适用场景 |
-|------|------|---------|
-| **PLAIN** | 不压缩、不TOAST | 小字段（如int、date） |
-| **EXTENDED** | 先压缩再TOAST | **默认策略**，适用text、jsonb |
-| **EXTERNAL** | 不压缩但TOAST | 已压缩数据（如图片、视频） |
-| **MAIN** | 先压缩，尽量不TOAST | 经常访问的中等大小字段 |
+| 策略         | 说明                 | 适用场景                       |
+| ------------ | -------------------- | ------------------------------ |
+| **PLAIN**    | 不压缩、不 TOAST     | 小字段（如 int、date）         |
+| **EXTENDED** | 先压缩再 TOAST       | **默认策略**，适用 text、jsonb |
+| **EXTERNAL** | 不压缩但 TOAST       | 已压缩数据（如图片、视频）     |
+| **MAIN**     | 先压缩，尽量不 TOAST | 经常访问的中等大小字段         |
 
 ```sql
 -- 查看列的TOAST策略
@@ -198,23 +198,23 @@ FROM pg_tables
 WHERE tablename = 'your_table';
 ```
 
-**TOAST优化建议**：
+**TOAST 优化建议**：
 
 1. **大字段分离**：将大字段（如文件内容）拆到独立表
-2. **使用EXTERNAL**：已压缩数据（JPEG、MP4）避免重复压缩
-3. **避免SELECT \***：减少TOAST字段的不必要读取
+2. **使用 EXTERNAL**：已压缩数据（JPEG、MP4）避免重复压缩
+3. **避免 SELECT \***：减少 TOAST 字段的不必要读取
 
-### 1.3 FILLFACTOR与页填充
+### 1.3 FILLFACTOR 与页填充
 
 **FILLFACTOR（填充因子）**：
 
-- 控制页的填充百分比（默认100%）
-- 预留空间用于HOT（Heap-Only Tuple）更新
+- 控制页的填充百分比（默认 100%）
+- 预留空间用于 HOT（Heap-Only Tuple）更新
 
-**HOT更新**：
+**HOT 更新**：
 
-- 如果更新后的行能放在同一页，且不修改索引列，则为HOT更新
-- HOT更新不需要更新索引，性能更好
+- 如果更新后的行能放在同一页，且不修改索引列，则为 HOT 更新
+- HOT 更新不需要更新索引，性能更好
 
 ```sql
 -- 创建表时设置FILLFACTOR
@@ -235,28 +235,28 @@ SELECT
   tablename,
   n_tup_upd AS updates,
   n_tup_hot_upd AS hot_updates,
-  CASE WHEN n_tup_upd > 0 
-    THEN round(100.0 * n_tup_hot_upd / n_tup_upd, 2) 
-    ELSE 0 
+  CASE WHEN n_tup_upd > 0
+    THEN round(100.0 * n_tup_hot_upd / n_tup_upd, 2)
+    ELSE 0
   END AS hot_update_ratio
 FROM pg_stat_user_tables
 WHERE schemaname = 'public'
 ORDER BY n_tup_upd DESC;
 ```
 
-**FILLFACTOR设置建议**：
+**FILLFACTOR 设置建议**：
 
-- **高频UPDATE表**：70-80（预留空间给HOT更新）
+- **高频 UPDATE 表**：70-80（预留空间给 HOT 更新）
 - **只读/少更新表**：100（默认，充分利用空间）
-- **索引**：90（B-tree默认90，平衡空间与分裂）
+- **索引**：90（B-tree 默认 90，平衡空间与分裂）
 
 ### 1.4 表膨胀（Bloat）
 
 **膨胀原因**：
 
-1. VACUUM未及时清理死元组
-2. 长事务阻止VACUUM清理
-3. 高频UPDATE/DELETE操作
+1. VACUUM 未及时清理死元组
+2. 长事务阻止 VACUUM 清理
+3. 高频 UPDATE/DELETE 操作
 
 **监控表膨胀**：
 
@@ -266,8 +266,8 @@ SELECT
   schemaname,
   tablename,
   pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
-  round(100 * (pg_total_relation_size(schemaname||'.'||tablename)::numeric - 
-    pg_relation_size(schemaname||'.'||tablename)::numeric) / 
+  round(100 * (pg_total_relation_size(schemaname||'.'||tablename)::numeric -
+    pg_relation_size(schemaname||'.'||tablename)::numeric) /
     NULLIF(pg_total_relation_size(schemaname||'.'||tablename), 0), 2) AS bloat_ratio
 FROM pg_tables
 WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
@@ -305,13 +305,13 @@ VACUUM FULL table_name; -- ⚠️ 锁表，生产慎用
 
 ## 2. 索引类型详解
 
-### 2.1 B-tree索引
+### 2.1 B-tree 索引
 
 **特性**：
 
-- PostgreSQL默认索引类型
+- PostgreSQL 默认索引类型
 - 支持等值查询、范围查询、排序
-- 叶子节点有序，适合ORDER BY
+- 叶子节点有序，适合 ORDER BY
 
 **适用场景**：
 
@@ -320,10 +320,10 @@ VACUUM FULL table_name; -- ⚠️ 锁表，生产慎用
 - `LIKE 'prefix%'`（前缀匹配）
 - `ORDER BY`
 
-**PostgreSQL 17优化**：
+**PostgreSQL 17 优化**：
 
 - **多值搜索优化**：`WHERE id IN (1,2,3,...)` 性能提升
-- **更高效的并发插入**：减少B-tree页分裂锁竞争
+- **更高效的并发插入**：减少 B-tree 页分裂锁竞争
 
 ```sql
 -- 创建B-tree索引
@@ -344,18 +344,18 @@ CREATE INDEX idx_orders_pending ON orders(created_at) WHERE status = 'pending';
 SELECT * FROM orders WHERE status = 'pending' AND created_at < now() - interval '1 day';
 ```
 
-### 2.2 Hash索引
+### 2.2 Hash 索引
 
 **特性**：
 
 - 仅支持等值查询（`=`）
-- PostgreSQL 10+支持WAL日志（可用于复制和恢复）
-- 通常比B-tree略快，但功能受限
+- PostgreSQL 10+支持 WAL 日志（可用于复制和恢复）
+- 通常比 B-tree 略快，但功能受限
 
 **适用场景**：
 
 - 纯等值查询（无范围、排序需求）
-- 高基数列（如UUID）
+- 高基数列（如 UUID）
 
 ```sql
 -- 创建Hash索引
@@ -365,9 +365,9 @@ CREATE INDEX idx_users_uuid_hash ON users USING hash(uuid);
 SELECT * FROM users WHERE uuid = 'xxx-xxx-xxx';
 ```
 
-**注意**：大多数场景B-tree足够好，Hash索引优势不明显。
+**注意**：大多数场景 B-tree 足够好，Hash 索引优势不明显。
 
-### 2.3 GIN索引
+### 2.3 GIN 索引
 
 **GIN（Generalized Inverted Index，通用倒排索引）**：
 
@@ -377,7 +377,7 @@ SELECT * FROM users WHERE uuid = 'xxx-xxx-xxx';
 **适用场景**：
 
 - 数组包含查询（`@>`, `<@`, `&&`）
-- JSON查询（`@>`, `?`, `?&`, `?|`）
+- JSON 查询（`@>`, `?`, `?&`, `?|`）
 - 全文搜索（`@@`）
 - 三元组模糊搜索（pg_trgm）
 
@@ -400,19 +400,19 @@ CREATE INDEX idx_users_name_trgm ON users USING gin(name gin_trgm_ops);
 SELECT * FROM users WHERE name ILIKE '%alice%'; -- 可以使用索引
 ```
 
-### 2.4 GiST索引
+### 2.4 GiST 索引
 
 **GiST（Generalized Search Tree，通用搜索树）**：
 
 - 平衡树结构，支持多种数据类型
-- 比GIN更通用，但通常性能稍慢
+- 比 GIN 更通用，但通常性能稍慢
 
 **适用场景**：
 
 - 几何数据（PostGIS）
 - 范围类型（`&&`, `@>`, `<@`）
-- 全文搜索（替代GIN）
-- K近邻搜索（KNN）
+- 全文搜索（替代 GIN）
+- K 近邻搜索（KNN）
 
 ```sql
 -- 几何GiST索引（PostGIS）
@@ -432,7 +432,7 @@ SELECT * FROM reservations WHERE period && tstzrange('2025-10-03', '2025-10-05')
 SELECT * FROM locations ORDER BY geom <-> ST_MakePoint(120, 30) LIMIT 10;
 ```
 
-### 2.5 BRIN索引
+### 2.5 BRIN 索引
 
 **BRIN（Block Range Index，块范围索引）**：
 
@@ -461,16 +461,16 @@ CREATE INDEX idx_logs_created_brin ON logs USING brin(created_at) WITH (pages_pe
 -- pages_per_range: 每个范围的页数（默认128），越小索引越大但精度越高
 ```
 
-**BRIN vs B-tree对比**：
+**BRIN vs B-tree 对比**：
 
-| 维度 | BRIN | B-tree |
-|------|------|--------|
+| 维度     | BRIN               | B-tree             |
+| -------- | ------------------ | ------------------ |
 | 索引大小 | 极小（<1% 表大小） | 大（5-20% 表大小） |
-| 构建速度 | 快 | 慢 |
-| 查询性能 | 需要扫描多个块 | 精确定位 |
-| 适用场景 | 大表+物理有序 | 通用 |
+| 构建速度 | 快                 | 慢                 |
+| 查询性能 | 需要扫描多个块     | 精确定位           |
+| 适用场景 | 大表+物理有序      | 通用               |
 
-### 2.6 SP-GiST索引
+### 2.6 SP-GiST 索引
 
 **SP-GiST（Space-Partitioned GiST）**：
 
@@ -479,7 +479,7 @@ CREATE INDEX idx_logs_created_brin ON logs USING brin(created_at) WITH (pages_pe
 
 **适用场景**：
 
-- IP地址（inet、cidr）
+- IP 地址（inet、cidr）
 - 电话号码
 - 文本前缀搜索
 
@@ -534,9 +534,9 @@ SELECT * FROM words WHERE word ^@ 'post'; -- 前缀匹配
 
 ## 3. 执行计划分析
 
-### 3.1 EXPLAIN基础
+### 3.1 EXPLAIN 基础
 
-**EXPLAIN选项**：
+**EXPLAIN 选项**：
 
 ```sql
 -- 基本执行计划（不实际执行）
@@ -607,7 +607,7 @@ SELECT * FROM users WHERE email = 'alice@example.com';
 #### Index Only Scan（索引覆盖扫描）
 
 - 所有需要的列都在索引中，无需回表
-- 最快的扫描方式（需要VACUUM维护可见性映射）
+- 最快的扫描方式（需要 VACUUM 维护可见性映射）
 
 ```sql
 CREATE INDEX idx_users_email_name ON users(email, name);
@@ -632,12 +632,12 @@ SELECT * FROM orders WHERE user_id IN (1,2,3,4,5);
 --         Index Cond: (user_id = ANY ('{1,2,3,4,5}'::integer[]))
 ```
 
-### 3.3 JOIN方法
+### 3.3 JOIN 方法
 
 #### Nested Loop Join（嵌套循环）
 
 - 外表每行与内表所有匹配行连接
-- 适合：小表JOIN小表、有索引
+- 适合：小表 JOIN 小表、有索引
 
 ```sql
 EXPLAIN ANALYZE
@@ -649,7 +649,7 @@ JOIN another_small_table b ON a.id = b.ref_id;
 #### Hash Join（哈希连接）
 
 - 构建哈希表，再探测匹配
-- 适合：中大表JOIN、等值连接
+- 适合：中大表 JOIN、等值连接
 
 ```sql
 EXPLAIN ANALYZE
@@ -665,7 +665,7 @@ JOIN orders o ON u.id = o.user_id;
 #### Merge Join（归并连接）
 
 - 两表都已排序，按序合并
-- 适合：大表JOIN大表、有序数据
+- 适合：大表 JOIN 大表、有序数据
 
 ```sql
 EXPLAIN ANALYZE
@@ -680,7 +680,7 @@ ORDER BY a.sorted_col;
 
 ### 3.4 执行计划优化案例
 
-#### 案例1：索引失效导致全表扫描
+#### 案例 1：索引失效导致全表扫描
 
 ```sql
 -- ❌ 问题：函数调用导致索引失效
@@ -700,7 +700,7 @@ SELECT * FROM users WHERE email = lower('ALICE@EXAMPLE.COM');
 -- Index Scan using idx_users_email (cost=0.29..8.30 rows=1 width=100)
 ```
 
-#### 案例2：Bitmap Recheck过多
+#### 案例 2：Bitmap Recheck 过多
 
 ```sql
 -- ❌ 问题：Bitmap Recheck消耗大量CPU
@@ -718,7 +718,7 @@ SELECT * FROM large_table WHERE status = 'active' AND score > 80;
 -- Index Scan using idx_large_table_status_score (cost=0.42..1523.50 rows=50000 width=100)
 ```
 
-#### 案例3：不必要的排序
+#### 案例 3：不必要的排序
 
 ```sql
 -- ❌ 问题：额外的Sort节点
@@ -741,17 +741,17 @@ SELECT * FROM orders WHERE user_id = 123 ORDER BY created_at DESC LIMIT 10;
 
 ## 4. 统计信息
 
-### 4.1 ANALYZE原理
+### 4.1 ANALYZE 原理
 
-**ANALYZE工作原理**：
+**ANALYZE 工作原理**：
 
-1. 随机采样表的一部分行（默认300 * default_statistics_target）
+1. 随机采样表的一部分行（默认 300 \* default_statistics_target）
 2. 计算统计信息：
    - **n_distinct**：唯一值数量
    - **histogram_bounds**：柱状图（数据分布）
    - **most_common_vals**：最常见值（MCV）
    - **most_common_freqs**：最常见值频率
-3. 存储到pg_statistic（通过pg_stats视图查看）
+3. 存储到 pg_statistic（通过 pg_stats 视图查看）
 
 ```sql
 -- 手动执行ANALYZE
@@ -850,16 +850,16 @@ WHERE tablename = 'orders' AND attname = 'status';
 
 ## 5. 维护操作
 
-### 5.1 VACUUM详解
+### 5.1 VACUUM 详解
 
-**VACUUM的作用**：
+**VACUUM 的作用**：
 
 1. 清理死元组，回收空间（不归还给操作系统）
-2. 更新统计信息（仅fsm和vm）
-3. 冻结旧事务ID，防止XID回卷
-4. 更新可见性映射（Visibility Map），支持Index Only Scan
+2. 更新统计信息（仅 fsm 和 vm）
+3. 冻结旧事务 ID，防止 XID 回卷
+4. 更新可见性映射（Visibility Map），支持 Index Only Scan
 
-**VACUUM变体**：
+**VACUUM 变体**：
 
 ```sql
 -- 常规VACUUM（不锁表，可并发）
@@ -881,7 +881,7 @@ VACUUM (PARALLEL 4) large_table;
 VACUUM (INDEX_CLEANUP AUTO, TRUNCATE ON) table_name;
 ```
 
-**VACUUM监控**：
+**VACUUM 监控**：
 
 ```sql
 -- 查看VACUUM进度（PostgreSQL 13+）
@@ -900,9 +900,9 @@ SELECT
 FROM pg_stat_progress_vacuum;
 ```
 
-### 5.2 Autovacuum配置
+### 5.2 Autovacuum 配置
 
-**Autovacuum触发条件**：
+**Autovacuum 触发条件**：
 
 ```text
 触发VACUUM：dead_tuples > autovacuum_vacuum_threshold + autovacuum_vacuum_scale_factor * reltuples
@@ -948,7 +948,7 @@ ALTER TABLE large_table SET (
 ALTER TABLE temp_table SET (autovacuum_enabled = false);
 ```
 
-**Autovacuum监控**：
+**Autovacuum 监控**：
 
 ```sql
 -- 查看Autovacuum历史
@@ -977,13 +977,13 @@ WHERE last_autovacuum IS NULL AND n_dead_tup > 0
 ORDER BY n_dead_tup DESC;
 ```
 
-### 5.3 REINDEX索引维护
+### 5.3 REINDEX 索引维护
 
-**何时需要REINDEX**：
+**何时需要 REINDEX**：
 
-1. 索引膨胀（大量UPDATE/DELETE后）
+1. 索引膨胀（大量 UPDATE/DELETE 后）
 2. 索引损坏（极少发生）
-3. 修改索引FILLFACTOR后
+3. 修改索引 FILLFACTOR 后
 
 ```sql
 -- 重建单个索引
@@ -1018,7 +1018,7 @@ WHERE schemaname = 'public'
 ORDER BY pg_relation_size(indexrelid) DESC;
 ```
 
-### 5.4 CLUSTER表重组
+### 5.4 CLUSTER 表重组
 
 **CLUSTER**：按索引物理排序表，提升缓存局部性。
 
@@ -1040,17 +1040,17 @@ WHERE schemaname = 'public';
 
 **CLUSTER vs VACUUM FULL**：
 
-| 操作 | 锁 | 空间回收 | 物理排序 | 推荐场景 |
-|------|-----|---------|---------|---------|
-| CLUSTER | AccessExclusiveLock | ✅ | ✅ | 时序数据（按时间排序） |
-| VACUUM FULL | AccessExclusiveLock | ✅ | ❌ | 严重膨胀的表 |
-| pg_repack | ShareUpdateExclusiveLock | ✅ | ✅ | 在线重组（推荐） |
+| 操作        | 锁                       | 空间回收 | 物理排序 | 推荐场景               |
+| ----------- | ------------------------ | -------- | -------- | ---------------------- |
+| CLUSTER     | AccessExclusiveLock      | ✅       | ✅       | 时序数据（按时间排序） |
+| VACUUM FULL | AccessExclusiveLock      | ✅       | ❌       | 严重膨胀的表           |
+| pg_repack   | ShareUpdateExclusiveLock | ✅       | ✅       | 在线重组（推荐）       |
 
 ---
 
-## 6. PostgreSQL 17存储优化
+## 6. PostgreSQL 17 存储优化
 
-### 6.1 B-tree多值搜索优化
+### 6.1 B-tree 多值搜索优化
 
 ```sql
 -- PostgreSQL 17优化了IN查询
@@ -1070,7 +1070,7 @@ SELECT * FROM large_table WHERE created_at > '2025-01-01';
 --   Buffers: shared read=50000  ← PG17: streaming I/O减少I/O调用
 ```
 
-### 6.3 VACUUM内存管理改进
+### 6.3 VACUUM 内存管理改进
 
 ```sql
 -- PostgreSQL 17允许VACUUM使用更多内存
@@ -1087,30 +1087,30 @@ VACUUM large_table;
 
 ### 7.1 索引优化清单
 
-- [ ] 查询的WHERE/JOIN/ORDER BY列有索引
+- [ ] 查询的 WHERE/JOIN/ORDER BY 列有索引
 - [ ] 多列索引遵循最左前缀原则
 - [ ] 避免过多索引（每个索引都有写入代价）
 - [ ] 使用部分索引减小索引大小
-- [ ] 高基数列提高statistics_target
-- [ ] 定期REINDEX CONCURRENTLY清理膨胀
+- [ ] 高基数列提高 statistics_target
+- [ ] 定期 REINDEX CONCURRENTLY 清理膨胀
 
 ### 7.2 执行计划诊断清单
 
-- [ ] 使用`EXPLAIN (ANALYZE, BUFFERS)`而非仅EXPLAIN
-- [ ] 关注actual time vs estimated rows差异
-- [ ] 查找Seq Scan（应该Index Scan的场景）
-- [ ] 检查Rows Removed by Filter数量
-- [ ] 监控Buffers: shared read（磁盘I/O）
-- [ ] 避免嵌套循环JOIN大表
+- [ ] 使用`EXPLAIN (ANALYZE, BUFFERS)`而非仅 EXPLAIN
+- [ ] 关注 actual time vs estimated rows 差异
+- [ ] 查找 Seq Scan（应该 Index Scan 的场景）
+- [ ] 检查 Rows Removed by Filter 数量
+- [ ] 监控 Buffers: shared read（磁盘 I/O）
+- [ ] 避免嵌套循环 JOIN 大表
 
 ### 7.3 维护操作清单
 
-- [ ] Autovacuum已启用且配置合理
-- [ ] 监控long-running事务（阻碍VACUUM）
-- [ ] 大表配置表级Autovacuum参数
+- [ ] Autovacuum 已启用且配置合理
+- [ ] 监控 long-running 事务（阻碍 VACUUM）
+- [ ] 大表配置表级 Autovacuum 参数
 - [ ] 定期检查表膨胀（dead_tuple_ratio < 10%）
-- [ ] 时序数据考虑BRIN索引
-- [ ] 生产环境避免VACUUM FULL（使用pg_repack）
+- [ ] 时序数据考虑 BRIN 索引
+- [ ] 生产环境避免 VACUUM FULL（使用 pg_repack）
 
 ---
 
@@ -1143,39 +1143,39 @@ VACUUM large_table;
 
 ### 存储设计检查清单
 
-- [ ] 大字段（>2KB）考虑TOAST策略或拆表
-- [ ] 高频UPDATE表设置FILLFACTOR=80
+- [ ] 大字段（>2KB）考虑 TOAST 策略或拆表
+- [ ] 高频 UPDATE 表设置 FILLFACTOR=80
 - [ ] 时序数据按时间分区
-- [ ] 监控表膨胀（定期检查dead_tuple_ratio）
+- [ ] 监控表膨胀（定期检查 dead_tuple_ratio）
 
 ### 索引设计检查清单
 
-- [ ] 每个查询的WHERE条件有对应索引
+- [ ] 每个查询的 WHERE 条件有对应索引
 - [ ] 多列索引顺序：等值>范围>排序
 - [ ] 避免函数破坏索引（或创建表达式索引）
 - [ ] 部分索引用于过滤条件固定的场景
-- [ ] LIKE '%...%'使用GIN + pg_trgm
-- [ ] JSON/数组查询使用GIN索引
-- [ ] 大表+物理有序数据考虑BRIN
+- [ ] LIKE '%...%'使用 GIN + pg_trgm
+- [ ] JSON/数组查询使用 GIN 索引
+- [ ] 大表+物理有序数据考虑 BRIN
 
 ### 执行计划诊断检查清单
 
 - [ ] 使用`EXPLAIN (ANALYZE, BUFFERS)`
 - [ ] 检查是否使用正确的索引
-- [ ] 确认JOIN方法合理（小表Nested Loop，大表Hash Join）
+- [ ] 确认 JOIN 方法合理（小表 Nested Loop，大表 Hash Join）
 - [ ] 避免不必要的排序（索引已排序）
-- [ ] 监控Buffers: shared read（磁盘I/O）
-- [ ] 对比estimated rows vs actual rows（统计信息准确性）
+- [ ] 监控 Buffers: shared read（磁盘 I/O）
+- [ ] 对比 estimated rows vs actual rows（统计信息准确性）
 
 ### 维护操作检查清单
 
-- [ ] Autovacuum已启用（autovacuum = on）
-- [ ] 高频更新表降低autovacuum_vacuum_scale_factor
-- [ ] 大表提高autovacuum_vacuum_cost_limit
-- [ ] 定期执行ANALYZE（尤其数据分布变化后）
-- [ ] 监控vacuum_count和autovacuum_count
-- [ ] 长事务监控（阻碍VACUUM/XID冻结）
-- [ ] 索引膨胀>30%时REINDEX CONCURRENTLY
+- [ ] Autovacuum 已启用（autovacuum = on）
+- [ ] 高频更新表降低 autovacuum_vacuum_scale_factor
+- [ ] 大表提高 autovacuum_vacuum_cost_limit
+- [ ] 定期执行 ANALYZE（尤其数据分布变化后）
+- [ ] 监控 vacuum_count 和 autovacuum_count
+- [ ] 长事务监控（阻碍 VACUUM/XID 冻结）
+- [ ] 索引膨胀>30%时 REINDEX CONCURRENTLY
 
 ---
 

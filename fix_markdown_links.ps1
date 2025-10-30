@@ -42,12 +42,12 @@ Write-Host ""
 foreach ($file in $mdFiles) {
     $processedFiles++
     $relativePath = $file.FullName.Replace((Get-Location).Path + "\", "")
-    
+
     try {
         $content = Get-Content $file.FullName -Raw -ErrorAction Stop
         $originalContent = $content
         $fileChanges = 0
-        
+
         # 应用所有修复规则
         foreach ($rule in $linkPatterns) {
             $matches = [regex]::Matches($content, $rule.Pattern)
@@ -56,7 +56,7 @@ foreach ($file in $mdFiles) {
                 $fileChanges += $matches.Count
             }
         }
-        
+
         # 如果内容有变化，保存文件
         if ($content -ne $originalContent) {
             Set-Content -Path $file.FullName -Value $content -NoNewline -Encoding UTF8 -ErrorAction Stop
@@ -68,7 +68,7 @@ foreach ($file in $mdFiles) {
     catch {
         Write-Host "  ⚠️  跳过: $relativePath (错误: $_)" -ForegroundColor Yellow
     }
-    
+
     # 显示进度
     if ($processedFiles % 10 -eq 0) {
         $percent = [math]::Round(($processedFiles / $totalFiles) * 100)
@@ -95,7 +95,7 @@ if ($modifiedFiles -eq 0) {
 
 Write-Host ""
 Write-Host "💡 提示：修复的主要问题包括：" -ForegroundColor Yellow
-Write-Host "  - 为裸URL添加尖括号" 
+Write-Host "  - 为裸URL添加尖括号"
 Write-Host "  - 移除链接中的多余空格"
 Write-Host "  - 清理不必要的尖括号"
 

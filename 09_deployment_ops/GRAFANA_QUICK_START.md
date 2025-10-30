@@ -1,6 +1,6 @@
 ﻿# 🚀 Grafana Dashboard 快速启动指南
 
-**目标**：10分钟内完成PostgreSQL 17 Grafana Dashboard部署
+**目标**：10 分钟内完成 PostgreSQL 17 Grafana Dashboard 部署
 
 **前置要求**：
 
@@ -9,9 +9,9 @@
 
 ---
 
-## ⚡ 快速部署（3步）
+## ⚡ 快速部署（3 步）
 
-### Step 1：安装Grafana（5分钟）
+### Step 1：安装 Grafana（5 分钟）
 
 ```bash
 # Windows（使用Chocolatey）
@@ -36,11 +36,12 @@ sudo systemctl start grafana-server
 
 ---
 
-### Step 2：配置数据源（2分钟）
+### Step 2：配置数据源（2 分钟）
 
-1. **登录Grafana**: <http://localhost:3000（admin/admin）>
+1. **登录 Grafana**: <http://localhost:3000（admin/admin）>
 
-2. **添加PostgreSQL数据源**:
+2. **添加 PostgreSQL 数据源**:
+
    - 点击左侧菜单 ⚙️ Configuration → Data Sources
    - 点击 "Add data source"
    - 选择 "PostgreSQL"
@@ -51,9 +52,9 @@ sudo systemctl start grafana-server
    Name: PostgreSQL-Prod
    Host: localhost:5432
    Database: your_database_name
-   User: postgres  # 或您的数据库用户
+   User: postgres # 或您的数据库用户
    Password: your_password
-   SSL Mode: disable  # 本地测试可以disable
+   SSL Mode: disable # 本地测试可以disable
    Version: 17.x
    ```
 
@@ -61,27 +62,29 @@ sudo systemctl start grafana-server
 
 ---
 
-### Step 3：导入Dashboard（3分钟）
+### Step 3：导入 Dashboard（3 分钟）
 
-1. **导入Dashboard JSON**:
+1. **导入 Dashboard JSON**:
+
    - 点击左侧菜单 + → Import
    - 点击 "Upload JSON file"
    - 选择: `09_deployment_ops/grafana_dashboard.json`
    - 点击 "Load"
 
 2. **选择数据源**:
+
    - Datasource: 选择 "PostgreSQL-Prod"
    - 点击 "Import"
 
-3. **查看Dashboard**:
-   - Dashboard将自动打开
-   - 您应该看到6大监控面板和24个图表
+3. **查看 Dashboard**:
+   - Dashboard 将自动打开
+   - 您应该看到 6 大监控面板和 24 个图表
 
 ---
 
 ## ✅ 验证
 
-访问Dashboard后，您应该看到：
+访问 Dashboard 后，您应该看到：
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
@@ -103,7 +106,7 @@ sudo systemctl start grafana-server
 
 ## 🛠️ 故障排除
 
-### 问题1：数据源测试失败
+### 问题 1：数据源测试失败
 
 **解决方案**：
 
@@ -121,7 +124,7 @@ GRANT pg_monitor TO your_user;
 
 ---
 
-### 问题2：面板显示"No Data"
+### 问题 2：面板显示"No Data"
 
 **原因**：可能需要 `pg_stat_statements` 扩展
 
@@ -140,7 +143,7 @@ sudo systemctl restart postgresql
 
 ---
 
-### 问题3：复制监控面板为空
+### 问题 3：复制监控面板为空
 
 **原因**：当前是单机环境，没有配置复制
 
@@ -151,11 +154,11 @@ sudo systemctl restart postgresql
 
 ---
 
-## 📊 Dashboard功能说明
+## 📊 Dashboard 功能说明
 
 ### 刷新设置
 
-默认：30秒自动刷新
+默认：30 秒自动刷新
 
 修改：
 
@@ -210,18 +213,20 @@ sudo systemctl restart postgresql
 
 - 完整实施指南: [grafana_dashboard_guide.md](grafana_dashboard_guide.md)
 - 监控指标说明: [monitoring_metrics.md](monitoring_metrics.md)
-- 监控SQL查询: [monitoring_queries.sql](monitoring_queries.sql)
+- 监控 SQL 查询: [monitoring_queries.sql](monitoring_queries.sql)
 
 ---
 
 ## ✨ 提示
 
 1. **性能优化**：
-   - 如果Dashboard很慢，增加刷新间隔到1分钟
-   - 检查PostgreSQL的 `pg_stat_statements.max` 设置
+
+   - 如果 Dashboard 很慢，增加刷新间隔到 1 分钟
+   - 检查 PostgreSQL 的 `pg_stat_statements.max` 设置
 
 2. **安全**：
-   - 生产环境建议配置SSL
+
+   - 生产环境建议配置 SSL
    - 使用只读监控用户
 
 3. **定制**：
@@ -230,7 +235,7 @@ sudo systemctl restart postgresql
 
 ---
 
-**完成！现在您已经有了一个功能完整的PostgreSQL 17监控Dashboard！** 🎉
+**完成！现在您已经有了一个功能完整的 PostgreSQL 17 监控 Dashboard！** 🎉
 
 **下一步**：
 

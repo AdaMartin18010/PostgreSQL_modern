@@ -1,9 +1,9 @@
 # 01_sql_ddl_dcl 模块测试设计
 
-> **模块**：SQL DDL/DCL基础  
-> **设计日期**：2025年10月3日  
+> **模块**：SQL DDL/DCL 基础  
+> **设计日期**：2025 年 10 月 3 日  
 > **目标测试数量**：20+场景  
-> **预计完成时间**：Week 4（2025-10-11至2025-10-17）
+> **预计完成时间**：Week 4（2025-10-11 至 2025-10-17）
 
 ---
 
@@ -11,22 +11,22 @@
 
 ### 模块内容回顾
 
-- DDL操作（CREATE/ALTER/DROP）
-- DCL操作（GRANT/REVOKE）
+- DDL 操作（CREATE/ALTER/DROP）
+- DCL 操作（GRANT/REVOKE）
 - 约束管理（PRIMARY KEY、FOREIGN KEY、CHECK、UNIQUE）
 - 索引创建与管理
 - 模式（Schema）操作
-- PostgreSQL 17新特性
+- PostgreSQL 17 新特性
 
 ---
 
 ## 🎯 测试场景设计
 
-### 1. DDL基础操作（8个测试）
+### 1. DDL 基础操作（8 个测试）
 
 #### TEST-01-001: 创建表（基本类型）
 
-**测试目的**：验证CREATE TABLE基本功能
+**测试目的**：验证 CREATE TABLE 基本功能
 
 ```sql
 -- SETUP
@@ -50,9 +50,9 @@ DROP TABLE IF EXISTS test_basic_table CASCADE;
 
 ---
 
-#### TEST-01-002: 创建表（PostgreSQL 17特性 - JSON增强）
+#### TEST-01-002: 创建表（PostgreSQL 17 特性 - JSON 增强）
 
-**测试目的**：验证JSON/JSONB类型和PG17新增JSON函数
+**测试目的**：验证 JSON/JSONB 类型和 PG17 新增 JSON 函数
 
 ```sql
 -- TEST_BODY
@@ -62,7 +62,7 @@ CREATE TABLE test_json_table (
     metadata JSON
 );
 
-INSERT INTO test_json_table (data, metadata) VALUES 
+INSERT INTO test_json_table (data, metadata) VALUES
 ('{"name": "Alice", "age": 30, "tags": ["dev", "senior"]}'::jsonb, '{"version": 1}'::json);
 
 -- 测试PG17 JSON_TABLE功能（如果环境支持）
@@ -178,7 +178,7 @@ DROP TABLE IF EXISTS test_parent CASCADE;
 
 #### TEST-01-006: 约束 - CHECK
 
-**测试目的**：验证CHECK约束
+**测试目的**：验证 CHECK 约束
 
 ```sql
 -- TEST_BODY
@@ -267,11 +267,11 @@ EXPECT_ROWS: SELECT COUNT(*) FROM pg_tables WHERE tablename = 'test_drop_child';
 
 ---
 
-### 2. 索引操作（4个测试）
+### 2. 索引操作（4 个测试）
 
-#### TEST-01-009: CREATE INDEX - B-tree索引
+#### TEST-01-009: CREATE INDEX - B-tree 索引
 
-**测试目的**：验证B-tree索引创建
+**测试目的**：验证 B-tree 索引创建
 
 ```sql
 -- SETUP
@@ -281,7 +281,7 @@ CREATE TABLE test_index_btree (
     age INT
 );
 
-INSERT INTO test_index_btree (name, age) 
+INSERT INTO test_index_btree (name, age)
 SELECT 'User' || generate_series, generate_series % 100
 FROM generate_series(1, 1000);
 
@@ -302,9 +302,9 @@ DROP TABLE IF EXISTS test_index_btree CASCADE;
 
 ---
 
-#### TEST-01-010: CREATE INDEX - GIN索引（JSONB）
+#### TEST-01-010: CREATE INDEX - GIN 索引（JSONB）
 
-**测试目的**：验证GIN索引用于JSONB
+**测试目的**：验证 GIN 索引用于 JSONB
 
 ```sql
 -- SETUP
@@ -313,7 +313,7 @@ CREATE TABLE test_index_gin (
     data JSONB
 );
 
-INSERT INTO test_index_gin (data) VALUES 
+INSERT INTO test_index_gin (data) VALUES
 ('{"tags": ["postgresql", "database", "sql"]}'::jsonb),
 ('{"tags": ["python", "programming"]}'::jsonb);
 
@@ -343,7 +343,7 @@ CREATE TABLE test_reindex (
 
 CREATE INDEX idx_reindex_name ON test_reindex(name);
 
-INSERT INTO test_reindex (name) 
+INSERT INTO test_reindex (name)
 SELECT 'Name' || generate_series FROM generate_series(1, 100);
 
 -- TEST_BODY
@@ -387,7 +387,7 @@ DROP TABLE IF EXISTS test_unique_index CASCADE;
 
 ---
 
-### 3. DCL操作（4个测试）
+### 3. DCL 操作（4 个测试）
 
 #### TEST-01-013: GRANT/REVOKE - 表权限
 
@@ -420,9 +420,9 @@ DROP ROLE IF EXISTS test_user_read;
 
 ---
 
-#### TEST-01-014: GRANT/REVOKE - Schema权限
+#### TEST-01-014: GRANT/REVOKE - Schema 权限
 
-**测试目的**：验证Schema级别权限
+**测试目的**：验证 Schema 级别权限
 
 ```sql
 -- SETUP
@@ -504,11 +504,11 @@ DROP ROLE IF EXISTS test_parent_role;
 
 ---
 
-### 4. Schema操作（2个测试）
+### 4. Schema 操作（2 个测试）
 
 #### TEST-01-017: CREATE/DROP SCHEMA
 
-**测试目的**：验证Schema创建和删除
+**测试目的**：验证 Schema 创建和删除
 
 ```sql
 -- TEST_BODY
@@ -533,9 +533,9 @@ DROP SCHEMA IF EXISTS test_schema_2 CASCADE;
 
 ---
 
-#### TEST-01-018: Schema搜索路径
+#### TEST-01-018: Schema 搜索路径
 
-**测试目的**：验证search_path机制
+**测试目的**：验证 search_path 机制
 
 ```sql
 -- SETUP
@@ -564,11 +564,11 @@ RESET search_path;
 
 ---
 
-### 5. PostgreSQL 17特性（2个测试）
+### 5. PostgreSQL 17 特性（2 个测试）
 
-#### TEST-01-019: MERGE语句（PG15+，PG17增强）
+#### TEST-01-019: MERGE 语句（PG15+，PG17 增强）
 
-**测试目的**：验证MERGE语句
+**测试目的**：验证 MERGE 语句
 
 ```sql
 -- SETUP
@@ -583,11 +583,11 @@ CREATE TABLE test_merge_source (
     value VARCHAR(100)
 );
 
-INSERT INTO test_merge_target (id, value, updated_at) VALUES 
+INSERT INTO test_merge_target (id, value, updated_at) VALUES
 (1, 'Old Value 1', NOW()),
 (2, 'Old Value 2', NOW());
 
-INSERT INTO test_merge_source (id, value) VALUES 
+INSERT INTO test_merge_source (id, value) VALUES
 (2, 'Updated Value 2'),
 (3, 'New Value 3');
 
@@ -612,9 +612,9 @@ DROP TABLE IF EXISTS test_merge_source CASCADE;
 
 ---
 
-#### TEST-01-020: 增量备份相关DDL（PG17新增）
+#### TEST-01-020: 增量备份相关 DDL（PG17 新增）
 
-**测试目的**：验证PG17增量备份支持
+**测试目的**：验证 PG17 增量备份支持
 
 ```sql
 -- TEST_BODY
@@ -645,26 +645,26 @@ DROP TABLE IF EXISTS test_incremental CASCADE;
 
 ### 测试数量
 
-| 类别 | 测试数量 |
-|------|---------|
-| **DDL基础操作** | 8个 |
-| **索引操作** | 4个 |
-| **DCL操作** | 4个 |
-| **Schema操作** | 2个 |
-| **PostgreSQL 17特性** | 2个 |
-| **总计** | **20个** |
+| 类别                   | 测试数量  |
+| ---------------------- | --------- |
+| **DDL 基础操作**       | 8 个      |
+| **索引操作**           | 4 个      |
+| **DCL 操作**           | 4 个      |
+| **Schema 操作**        | 2 个      |
+| **PostgreSQL 17 特性** | 2 个      |
+| **总计**               | **20 个** |
 
 ### 覆盖率
 
-- ✅ CREATE TABLE（基本类型、约束、PG17特性）
+- ✅ CREATE TABLE（基本类型、约束、PG17 特性）
 - ✅ ALTER TABLE（列操作、类型修改）
 - ✅ DROP TABLE（CASCADE）
 - ✅ 约束（PK、FK、CHECK、UNIQUE）
 - ✅ 索引（B-tree、GIN、UNIQUE、REINDEX）
-- ✅ GRANT/REVOKE（表权限、Schema权限）
+- ✅ GRANT/REVOKE（表权限、Schema 权限）
 - ✅ 角色管理（CREATE/ALTER/DROP、继承）
-- ✅ Schema操作（创建/删除、搜索路径）
-- ✅ PostgreSQL 17特性（MERGE、增量备份）
+- ✅ Schema 操作（创建/删除、搜索路径）
+- ✅ PostgreSQL 17 特性（MERGE、增量备份）
 
 ---
 
@@ -672,22 +672,24 @@ DROP TABLE IF EXISTS test_incremental CASCADE;
 
 ### 测试框架增强需求
 
-1. **DDL测试支持**
+1. **DDL 测试支持**
+
    - 扩展`EXPECT_ERROR`断言，支持特定错误代码验证
    - 增加`EXPECT_TABLE_EXISTS`、`EXPECT_INDEX_EXISTS`宏
 
 2. **权限测试支持**
-   - 增加`EXPECT_PRIVILEGE`断言
-   - 支持切换用户执行SQL（`SET ROLE`）
 
-3. **EXPLAIN验证支持**
-   - 解析EXPLAIN输出（JSON格式）
+   - 增加`EXPECT_PRIVILEGE`断言
+   - 支持切换用户执行 SQL（`SET ROLE`）
+
+3. **EXPLAIN 验证支持**
+   - 解析 EXPLAIN 输出（JSON 格式）
    - 验证索引是否被使用
 
 ### 测试执行顺序
 
 1. **隔离性**：每个测试独立，使用唯一的表名/角色名
-2. **清理**：确保TEARDOWN完整清理资源
+2. **清理**：确保 TEARDOWN 完整清理资源
 3. **并发**：测试可并行执行（无依赖）
 
 ---
@@ -696,22 +698,24 @@ DROP TABLE IF EXISTS test_incremental CASCADE;
 
 ### Week 4（2025-10-11 至 2025-10-17）
 
-**Day 1-2**：测试框架增强（4小时）
-- 实现DDL测试支持
-- 实现DCL测试支持
+**Day 1-2**：测试框架增强（4 小时）
 
-**Day 3-5**：测试用例实现（6小时）
-- 实现20个测试用例
+- 实现 DDL 测试支持
+- 实现 DCL 测试支持
+
+**Day 3-5**：测试用例实现（6 小时）
+
+- 实现 20 个测试用例
 - 验证测试通过
 
-**Day 6-7**：文档完善（2小时）
+**Day 6-7**：文档完善（2 小时）
+
 - 更新测试用例索引
 - 编写测试运行指南
 
 ---
 
 **设计者**：PostgreSQL_modern Project Team  
-**设计日期**：2025年10月3日  
+**设计日期**：2025 年 10 月 3 日  
 **目标版本**：v1.0  
 **状态**：设计完成，待实现 ✅
-

@@ -14,10 +14,10 @@
 
 ## 恢复流程（PITR 概要）
 
-1) 准备基础备份与 WAL 归档可用性
-2) 清理数据目录，恢复基础备份
-3) 配置 `restore_command` 与目标（`recovery_target_time/lsn`）
-4) 启动并验证（校验点、业务校验）
+1. 准备基础备份与 WAL 归档可用性
+2. 清理数据目录，恢复基础备份
+3. 配置 `restore_command` 与目标（`recovery_target_time/lsn`）
+4. 启动并验证（校验点、业务校验）
 
 ## 主从互换（计划演练）
 

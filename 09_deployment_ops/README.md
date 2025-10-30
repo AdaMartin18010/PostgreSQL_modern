@@ -8,7 +8,8 @@
 
 ## 核心要点
 
-- 部署与配置：版本选择、参数基线（`shared_buffers`, `work_mem`, `maintenance_work_mem`, `max_connections` 等）
+- 部署与配置：版本选择、参数基线（`shared_buffers`, `work_mem`, `maintenance_work_mem`,
+  `max_connections` 等）
 - 备份恢复：`pg_basebackup`、`pg_dump/pg_restore`、归档与 PITR、校验与演练
 - 高可用：物理复制/逻辑复制、复制槽、故障切换、同步/异步策略
 - 监控与告警：`pg_stat_*`、`pg_stat_statements`、WAL/复制延迟、膨胀指标、OS 资源

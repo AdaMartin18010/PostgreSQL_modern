@@ -1,20 +1,20 @@
-# CDC变更数据捕获实战案例 — Change Data Capture with PostgreSQL
+# CDC 变更数据捕获实战案例 — Change Data Capture with PostgreSQL
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐ 高级  
-> **预计时间**：60-90分钟  
-> **适合场景**：数据同步、审计日志、实时ETL、事件驱动架构
+> **预计时间**：60-90 分钟  
+> **适合场景**：数据同步、审计日志、实时 ETL、事件驱动架构
 
 ---
 
 ## 📋 案例目标
 
-构建一个生产级的CDC（Change Data Capture）系统，包括：
+构建一个生产级的 CDC（Change Data Capture）系统，包括：
 
-1. ✅ 捕获表的INSERT/UPDATE/DELETE操作
-2. ✅ 基于逻辑复制的CDC实现
-3. ✅ 基于触发器的CDC实现
-4. ✅ 变更数据流式输出（JSON格式）
+1. ✅ 捕获表的 INSERT/UPDATE/DELETE 操作
+2. ✅ 基于逻辑复制的 CDC 实现
+3. ✅ 基于触发器的 CDC 实现
+4. ✅ 变更数据流式输出（JSON 格式）
 5. ✅ 性能优化与监控
 
 ---
@@ -23,17 +23,17 @@
 
 **场景描述**：电商订单数据实时同步
 
-- **源系统**：PostgreSQL OLTP数据库（订单表）
+- **源系统**：PostgreSQL OLTP 数据库（订单表）
 - **目标系统**：
   - 数据仓库（用于分析）
   - 搜索引擎（Elasticsearch）
   - 缓存系统（Redis）
   - 消息队列（Kafka）
 - **需求**：
-  - 实时捕获订单变更（延迟<1秒）
+  - 实时捕获订单变更（延迟<1 秒）
   - 保证数据一致性
   - 支持历史变更追溯
-  - 性能影响小于5%
+  - 性能影响小于 5%
 
 ---
 
@@ -53,7 +53,7 @@ CDC捕获层（逻辑复制 / 触发器）
 
 ---
 
-## 📦 1. 方案一：基于逻辑复制的CDC
+## 📦 1. 方案一：基于逻辑复制的 CDC
 
 ### 1.1 配置逻辑复制
 
@@ -114,7 +114,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         t.lsn,
         t.xid,
         t.data::text
@@ -159,14 +159,14 @@ DECLARE
     change_record RECORD;
     changes_processed int := 0;
 BEGIN
-    FOR change_record IN 
+    FOR change_record IN
         SELECT * FROM pg_logical_slot_get_changes('cdc_slot', NULL, NULL)
     LOOP
         -- 这里需要解析change_record.data
         -- 实际生产中，建议使用wal2json扩展
         changes_processed := changes_processed + 1;
     END LOOP;
-    
+
     RETURN changes_processed;
 END;
 $$ LANGUAGE plpgsql;
@@ -174,7 +174,7 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-## 📦 2. 方案二：基于触发器的CDC（推荐）
+## 📦 2. 方案二：基于触发器的 CDC（推荐）
 
 ### 2.1 创建审计表结构
 
@@ -189,7 +189,7 @@ CREATE TABLE audit_log (
     new_values jsonb,
     changed_by text DEFAULT current_user,
     changed_at timestamptz DEFAULT now(),
-    
+
     -- 索引优化
     CONSTRAINT audit_log_operation_check CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE'))
 );
@@ -221,7 +221,7 @@ CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
 CREATE INDEX idx_audit_log_changed_by ON audit_log(changed_by);
 ```
 
-### 2.2 创建通用CDC触发器
+### 2.2 创建通用 CDC 触发器
 
 ```sql
 -- 创建通用审计触发器函数
@@ -238,34 +238,34 @@ BEGIN
         INSERT INTO audit_log (table_name, record_id, operation, old_values)
         VALUES (TG_TABLE_NAME, OLD.id, 'DELETE', old_data);
         RETURN OLD;
-    
+
     -- 处理INSERT操作
     ELSIF (TG_OP = 'INSERT') THEN
         new_data := to_jsonb(NEW);
         INSERT INTO audit_log (table_name, record_id, operation, new_values)
         VALUES (TG_TABLE_NAME, NEW.id, 'INSERT', new_data);
         RETURN NEW;
-    
+
     -- 处理UPDATE操作
     ELSIF (TG_OP = 'UPDATE') THEN
         old_data := to_jsonb(OLD);
         new_data := to_jsonb(NEW);
-        
+
         -- 只记录变化的字段
         SELECT jsonb_object_agg(key, value)
         INTO changed_fields
         FROM jsonb_each(new_data)
         WHERE value IS DISTINCT FROM (old_data->key);
-        
+
         -- 如果有变化才记录
         IF changed_fields IS NOT NULL AND changed_fields != '{}'::jsonb THEN
             INSERT INTO audit_log (table_name, record_id, operation, old_values, new_values)
             VALUES (TG_TABLE_NAME, NEW.id, 'UPDATE', old_data, new_data);
         END IF;
-        
+
         RETURN NEW;
     END IF;
-    
+
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -277,7 +277,7 @@ CREATE TRIGGER orders_audit_trigger
     EXECUTE FUNCTION audit_trigger_function();
 ```
 
-### 2.3 测试CDC捕获
+### 2.3 测试 CDC 捕获
 
 ```sql
 -- 测试INSERT
@@ -291,7 +291,7 @@ UPDATE orders SET status = 'processing' WHERE id = 1;
 DELETE FROM orders WHERE id = 2;
 
 -- 查看审计日志
-SELECT 
+SELECT
     id,
     table_name,
     record_id,
@@ -304,7 +304,7 @@ FROM audit_log
 ORDER BY changed_at DESC;
 
 -- 查看具体变更字段（UPDATE）
-SELECT 
+SELECT
     id,
     record_id,
     operation,
@@ -325,7 +325,7 @@ ORDER BY changed_at DESC;
 ```sql
 -- 创建变更流视图
 CREATE OR REPLACE VIEW change_stream AS
-SELECT 
+SELECT
     id,
     table_name,
     record_id,
@@ -366,16 +366,16 @@ BEGIN
         INSERT INTO audit_log (table_name, record_id, operation, old_values)
         VALUES (TG_TABLE_NAME, OLD.id, 'DELETE', to_jsonb(OLD));
         RETURN OLD;
-    
+
     ELSIF (TG_OP = 'INSERT') THEN
         INSERT INTO audit_log (table_name, record_id, operation, new_values)
         VALUES (TG_TABLE_NAME, NEW.id, 'INSERT', to_jsonb(NEW));
         RETURN NEW;
-    
+
     ELSIF (TG_OP = 'UPDATE') THEN
         old_data := to_jsonb(OLD);
         new_data := to_jsonb(NEW);
-        
+
         -- 计算差异
         FOR key, new_val IN SELECT * FROM jsonb_each(new_data)
         LOOP
@@ -389,22 +389,22 @@ BEGIN
                 );
             END IF;
         END LOOP;
-        
+
         -- 只有有变化时才记录
         IF diff != '{}'::jsonb THEN
             INSERT INTO audit_log (table_name, record_id, operation, old_values, new_values)
             VALUES (TG_TABLE_NAME, NEW.id, 'UPDATE', diff, diff);
         END IF;
-        
+
         RETURN NEW;
     END IF;
-    
+
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 ```
 
-### 3.3 选择性CDC（只捕获特定列）
+### 3.3 选择性 CDC（只捕获特定列）
 
 ```sql
 -- 创建配置表（指定要监控的表和列）
@@ -431,24 +431,24 @@ BEGIN
     SELECT * INTO config_record
     FROM cdc_config
     WHERE table_name = TG_TABLE_NAME AND enabled = true;
-    
+
     -- 如果未配置或未启用，直接返回
     IF NOT FOUND THEN
         RETURN COALESCE(NEW, OLD);
     END IF;
-    
+
     -- 只捕获配置的列
     FOREACH col IN ARRAY config_record.tracked_columns
     LOOP
         IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
             old_data := old_data || jsonb_build_object(col, to_jsonb(OLD)->>col);
         END IF;
-        
+
         IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
             new_data := new_data || jsonb_build_object(col, to_jsonb(NEW)->>col);
         END IF;
     END LOOP;
-    
+
     -- 插入审计日志
     INSERT INTO audit_log (table_name, record_id, operation, old_values, new_values)
     VALUES (
@@ -458,7 +458,7 @@ BEGIN
         NULLIF(old_data, '{}'::jsonb),
         NULLIF(new_data, '{}'::jsonb)
     );
-    
+
     RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
@@ -468,12 +468,12 @@ $$ LANGUAGE plpgsql;
 
 ## 📊 4. 监控与性能优化
 
-### 4.1 CDC性能监控
+### 4.1 CDC 性能监控
 
 ```sql
 -- 创建监控视图
 CREATE OR REPLACE VIEW cdc_statistics AS
-SELECT 
+SELECT
     table_name,
     operation,
     COUNT(*) AS event_count,
@@ -488,7 +488,7 @@ ORDER BY event_count DESC;
 SELECT * FROM cdc_statistics;
 
 -- 查看触发器性能影响
-SELECT 
+SELECT
     schemaname,
     tablename,
     n_tup_ins AS inserts,
@@ -510,9 +510,9 @@ DECLARE
 BEGIN
     DELETE FROM audit_log
     WHERE changed_at < now() - (retention_days || ' days')::interval;
-    
+
     GET DIAGNOSTICS deleted_count = ROW_COUNT;
-    
+
     RAISE NOTICE 'Deleted % old audit log records', deleted_count;
     RETURN deleted_count;
 END;
@@ -534,14 +534,14 @@ DECLARE
     inserted_count int;
 BEGIN
     INSERT INTO audit_log (table_name, record_id, operation, old_values, new_values)
-    SELECT 
+    SELECT
         (log->>'table_name')::text,
         (log->>'record_id')::bigint,
         (log->>'operation')::text,
         (log->'old_values')::jsonb,
         (log->'new_values')::jsonb
     FROM unnest(logs) AS log;
-    
+
     GET DIAGNOSTICS inserted_count = ROW_COUNT;
     RETURN inserted_count;
 END;
@@ -550,9 +550,9 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-## 🎨 5. CDC数据消费示例
+## 🎨 5. CDC 数据消费示例
 
-### 5.1 轮询消费（Python示例）
+### 5.1 轮询消费（Python 示例）
 
 ```python
 import psycopg2
@@ -562,22 +562,22 @@ import time
 def consume_changes(conn, last_id=0):
     """消费CDC变更数据"""
     cursor = conn.cursor()
-    
+
     # 查询新的变更
     cursor.execute("""
-        SELECT id, table_name, record_id, operation, 
+        SELECT id, table_name, record_id, operation,
                old_values, new_values, changed_at
         FROM audit_log
         WHERE id > %s
         ORDER BY id
         LIMIT 100
     """, (last_id,))
-    
+
     changes = cursor.fetchall()
-    
+
     for change in changes:
         change_id, table_name, record_id, operation, old_vals, new_vals, changed_at = change
-        
+
         event = {
             'id': change_id,
             'table': table_name,
@@ -587,12 +587,12 @@ def consume_changes(conn, last_id=0):
             'new_data': new_vals,
             'timestamp': changed_at.isoformat()
         }
-        
+
         # 处理事件（如发送到Kafka）
         process_event(event)
-        
+
         last_id = change_id
-    
+
     return last_id
 
 def process_event(event):
@@ -603,7 +603,7 @@ def process_event(event):
     # 2. 更新Elasticsearch
     # 3. 清除Redis缓存
     # 4. 同步到数据仓库
-    
+
 # 主循环
 conn = psycopg2.connect("dbname=mydb user=postgres")
 last_id = 0
@@ -621,7 +621,7 @@ while True:
 conn.close()
 ```
 
-### 5.2 LISTEN/NOTIFY实时推送
+### 5.2 LISTEN/NOTIFY 实时推送
 
 ```sql
 -- 修改触发器，添加NOTIFY
@@ -632,7 +632,7 @@ DECLARE
 BEGIN
     -- 记录审计日志（复用之前的逻辑）
     -- ...
-    
+
     -- 构建通知消息
     notification := jsonb_build_object(
         'table', TG_TABLE_NAME,
@@ -640,10 +640,10 @@ BEGIN
         'record_id', COALESCE(NEW.id, OLD.id),
         'timestamp', extract(epoch from now())
     );
-    
+
     -- 发送通知
     PERFORM pg_notify('cdc_channel', notification::text);
-    
+
     RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
@@ -708,7 +708,7 @@ CREATE TRIGGER orders_audit_trigger
 
 -- 4. 创建监控视图
 CREATE OR REPLACE VIEW cdc_statistics AS
-SELECT 
+SELECT
     table_name,
     operation,
     COUNT(*) AS event_count,
@@ -730,13 +730,13 @@ SELECT * FROM cdc_statistics;
 
 - ✅ 使用分区表存储审计日志
 - ✅ 定期清理历史数据
-- ✅ 选择性CDC（只监控关键列）
+- ✅ 选择性 CDC（只监控关键列）
 - ✅ 批量消费而非单条轮询
 
 ### 7.2 数据一致性
 
 - ✅ 使用事务保证原子性
-- ✅ 记录完整的old/new值
+- ✅ 记录完整的 old/new 值
 - ✅ 包含时间戳和操作人
 - ✅ 避免循环触发
 
@@ -745,26 +745,28 @@ SELECT * FROM cdc_statistics;
 - ✅ 监控审计日志增长速度
 - ✅ 设置合理的保留期
 - ✅ 定期备份审计数据
-- ✅ 测试CDC对性能的影响
+- ✅ 测试 CDC 对性能的影响
 
 ---
 
 ## 🎯 8. 练习任务
 
 1. **基础练习**：
-   - 为orders表实现基础CDC
-   - 测试INSERT/UPDATE/DELETE捕获
+
+   - 为 orders 表实现基础 CDC
+   - 测试 INSERT/UPDATE/DELETE 捕获
    - 查询最近的变更记录
 
 2. **进阶练习**：
-   - 实现选择性CDC（只监控status和price）
+
+   - 实现选择性 CDC（只监控 status 和 price）
    - 创建数据消费程序（Python/Node.js）
-   - 实现变更数据到Kafka
+   - 实现变更数据到 Kafka
 
 3. **挑战任务**：
-   - 构建完整的ETL流程（CDC→转换→加载）
-   - 实现跨库CDC（从PostgreSQL到MySQL）
-   - 优化百万级TPS场景下的CDC性能
+   - 构建完整的 ETL 流程（CDC→ 转换 → 加载）
+   - 实现跨库 CDC（从 PostgreSQL 到 MySQL）
+   - 优化百万级 TPS 场景下的 CDC 性能
 
 ---
 

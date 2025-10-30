@@ -1,7 +1,7 @@
 # PostgreSQL_modern 测试设计文档
 
 > **目的**：为基础模块（01/02/03）设计完整的测试用例  
-> **目标**：测试覆盖率达到100%  
+> **目标**：测试覆盖率达到 100%  
 > **预计新增测试**：45+场景
 
 ---
@@ -10,12 +10,12 @@
 
 ### 设计状态
 
-| 模块 | 测试数量 | 状态 | 完成日期 | 文档链接 |
-|------|---------|------|---------|---------|
-| **01_sql_ddl_dcl** | 20+ | ✅ 设计完成 | 2025-10-03 | [设计文档](01_sql_ddl_dcl_test_design.md) |
-| **02_transactions** | 15+ | 📋 计划中 | 2025-10-04 | TBD |
-| **03_storage_access** | 10+ | 📋 计划中 | 2025-10-04 | TBD |
-| **总计** | **45+** | - | - | - |
+| 模块                  | 测试数量 | 状态        | 完成日期   | 文档链接                                  |
+| --------------------- | -------- | ----------- | ---------- | ----------------------------------------- |
+| **01_sql_ddl_dcl**    | 20+      | ✅ 设计完成 | 2025-10-03 | [设计文档](01_sql_ddl_dcl_test_design.md) |
+| **02_transactions**   | 15+      | 📋 计划中   | 2025-10-04 | TBD                                       |
+| **03_storage_access** | 10+      | 📋 计划中   | 2025-10-04 | TBD                                       |
+| **总计**              | **45+**  | -           | -          | -                                         |
 
 ---
 
@@ -25,7 +25,7 @@
 
 - 每个测试用例独立运行
 - 使用唯一的对象名称（表、索引、角色）
-- 完整的SETUP和TEARDOWN
+- 完整的 SETUP 和 TEARDOWN
 
 ### 2. 可重复性
 
@@ -35,9 +35,9 @@
 
 ### 3. 覆盖率
 
-- 核心功能100%覆盖
+- 核心功能 100%覆盖
 - 边界条件测试
-- PostgreSQL 17新特性
+- PostgreSQL 17 新特性
 
 ### 4. 可维护性
 
@@ -49,26 +49,26 @@
 
 ## 📚 测试设计文档
 
-### 01_sql_ddl_dcl - SQL DDL/DCL基础（20+测试）
+### 01_sql_ddl_dcl - SQL DDL/DCL 基础（20+测试）
 
 **文档**：[01_sql_ddl_dcl_test_design.md](01_sql_ddl_dcl_test_design.md)
 
 **测试覆盖**：
 
-- **DDL操作**（8个）：CREATE/ALTER/DROP TABLE、约束管理
-- **索引操作**（4个）：B-tree、GIN、UNIQUE、REINDEX
-- **DCL操作**（4个）：GRANT/REVOKE、角色管理
-- **Schema操作**（2个）：CREATE/DROP SCHEMA、搜索路径
-- **PG17特性**（2个）：MERGE语句、增量备份
+- **DDL 操作**（8 个）：CREATE/ALTER/DROP TABLE、约束管理
+- **索引操作**（4 个）：B-tree、GIN、UNIQUE、REINDEX
+- **DCL 操作**（4 个）：GRANT/REVOKE、角色管理
+- **Schema 操作**（2 个）：CREATE/DROP SCHEMA、搜索路径
+- **PG17 特性**（2 个）：MERGE 语句、增量备份
 
 **关键测试**：
 
-- ✅ 主键、外键、CHECK、UNIQUE约束
+- ✅ 主键、外键、CHECK、UNIQUE 约束
 - ✅ 级联删除（CASCADE）
-- ✅ B-tree和GIN索引创建
-- ✅ 权限管理（表级、Schema级）
+- ✅ B-tree 和 GIN 索引创建
+- ✅ 权限管理（表级、Schema 级）
 - ✅ 角色继承
-- ✅ MERGE语句（PG17增强）
+- ✅ MERGE 语句（PG17 增强）
 
 ---
 
@@ -80,19 +80,19 @@
 
 **测试覆盖**：
 
-- **ACID特性**（4个）：原子性、一致性、隔离性、持久性
-- **MVCC多版本并发控制**（4个）：读写不冲突、事务ID、可见性规则、XID冻结
-- **事务隔离级别**（6个）：Read Committed、Repeatable Read、Serializable
-- **锁机制**（6个）：表级锁、行级锁、NOWAIT、SKIP LOCKED、死锁检测
-- **长事务管理**（3个）：监控、idle in transaction、超时设置
-- **PostgreSQL 17并发优化**（2个）：高并发写入、VACUUM内存管理
+- **ACID 特性**（4 个）：原子性、一致性、隔离性、持久性
+- **MVCC 多版本并发控制**（4 个）：读写不冲突、事务 ID、可见性规则、XID 冻结
+- **事务隔离级别**（6 个）：Read Committed、Repeatable Read、Serializable
+- **锁机制**（6 个）：表级锁、行级锁、NOWAIT、SKIP LOCKED、死锁检测
+- **长事务管理**（3 个）：监控、idle in transaction、超时设置
+- **PostgreSQL 17 并发优化**（2 个）：高并发写入、VACUUM 内存管理
 
 **关键测试**：
 
 - ✅ 事务回滚与约束检查
-- ✅ MVCC可见性规则验证
+- ✅ MVCC 可见性规则验证
 - ✅ 不可重复读、幻读现象
-- ✅ Serializable串行化验证
+- ✅ Serializable 串行化验证
 - ✅ FOR UPDATE SKIP LOCKED（任务队列）
 - ✅ 死锁检测机制
 
@@ -106,21 +106,21 @@
 
 **测试覆盖**：
 
-- **存储结构测试**（6个）：堆表、TOAST、FILLFACTOR、HOT更新、表膨胀、页结构
-- **索引类型测试**（8个）：B-tree、Hash、GIN、GiST、BRIN、SP-GiST
-- **执行计划分析**（6个）：EXPLAIN选项、扫描方法、JOIN方法
-- **统计信息测试**（4个）：ANALYZE、统计目标、扩展统计、pg_stats
-- **维护操作测试**（4个）：VACUUM、Autovacuum、REINDEX、CLUSTER
-- **PostgreSQL 17存储优化**（2个）：B-tree多值搜索、VACUUM内存管理
+- **存储结构测试**（6 个）：堆表、TOAST、FILLFACTOR、HOT 更新、表膨胀、页结构
+- **索引类型测试**（8 个）：B-tree、Hash、GIN、GiST、BRIN、SP-GiST
+- **执行计划分析**（6 个）：EXPLAIN 选项、扫描方法、JOIN 方法
+- **统计信息测试**（4 个）：ANALYZE、统计目标、扩展统计、pg_stats
+- **维护操作测试**（4 个）：VACUUM、Autovacuum、REINDEX、CLUSTER
+- **PostgreSQL 17 存储优化**（2 个）：B-tree 多值搜索、VACUUM 内存管理
 
 **关键测试**：
 
-- ✅ TOAST策略验证
-- ✅ 6种索引类型性能对比
-- ✅ Index Only Scan优化
-- ✅ EXPLAIN解析和验证
-- ✅ Bitmap Scan机制
-- ✅ BRIN vs B-tree索引大小对比
+- ✅ TOAST 策略验证
+- ✅ 6 种索引类型性能对比
+- ✅ Index Only Scan 优化
+- ✅ EXPLAIN 解析和验证
+- ✅ Bitmap Scan 机制
+- ✅ BRIN vs B-tree 索引大小对比
 
 ---
 
@@ -132,11 +132,11 @@
 - ✅ 错误检测：`EXPECT_ERROR`
 - ✅ 时间验证：`EXPECT_TIME`
 - ✅ 结果集验证：`EXPECT_RESULT`
-- ✅ HTML报告生成
+- ✅ HTML 报告生成
 
 ### 需要增强的功能
 
-#### 1. DDL测试支持
+#### 1. DDL 测试支持
 
 ```python
 # 新增宏
@@ -146,7 +146,7 @@ EXPECT_CONSTRAINT_EXISTS(constraint_name) -> bool
 EXPECT_SCHEMA_EXISTS(schema_name) -> bool
 ```
 
-#### 2. DCL测试支持
+#### 2. DCL 测试支持
 
 ```python
 # 新增宏
@@ -155,7 +155,7 @@ EXPECT_ROLE_EXISTS(role_name) -> bool
 SET_ROLE(role_name)  # 切换执行用户
 ```
 
-#### 3. EXPLAIN验证支持
+#### 3. EXPLAIN 验证支持
 
 ```python
 # 新增宏
@@ -179,31 +179,31 @@ WAIT_FOR_LOCK(timeout)          # 等待锁释放
 
 ### 当前状态（Phase 1-5）
 
-- **测试场景数**：91个
-- **覆盖模块**：04-12模块
-- **覆盖率**：高级特性100%，基础模块0%
+- **测试场景数**：91 个
+- **覆盖模块**：04-12 模块
+- **覆盖率**：高级特性 100%，基础模块 0%
 
 ### 目标状态（v1.0）
 
 - **测试场景数**：136+个（91 + 45+）
-- **覆盖模块**：01-12模块（全部）
+- **覆盖模块**：01-12 模块（全部）
 - **覆盖率**：100%
 
 ### 模块测试分布
 
-| 模块 | 当前测试数 | 新增测试数 | 目标测试数 |
-|------|-----------|-----------|-----------|
-| 01_sql_ddl_dcl | 0 | 20 | 20 ✅ |
-| 02_transactions | 0 | 25 | 25 ✅ |
-| 03_storage_access | 0 | 30 | 30 ✅ |
-| 04_modern_features | 25 | 0 | 25 |
-| 05_ai_vector | 12 | 0 | 12 |
-| 06_timeseries | 8 | 0 | 8 |
-| 07_extensions | 15 | 0 | 15 |
-| 08_ecosystem_cases | 20 | 0 | 20 |
-| 09_deployment_ops | 6 | 0 | 6 |
-| 10_benchmarks | 5 | 0 | 5 |
-| **总计** | **91** | **75** | **166** |
+| 模块               | 当前测试数 | 新增测试数 | 目标测试数 |
+| ------------------ | ---------- | ---------- | ---------- |
+| 01_sql_ddl_dcl     | 0          | 20         | 20 ✅      |
+| 02_transactions    | 0          | 25         | 25 ✅      |
+| 03_storage_access  | 0          | 30         | 30 ✅      |
+| 04_modern_features | 25         | 0          | 25         |
+| 05_ai_vector       | 12         | 0          | 12         |
+| 06_timeseries      | 8          | 0          | 8          |
+| 07_extensions      | 15         | 0          | 15         |
+| 08_ecosystem_cases | 20         | 0          | 20         |
+| 09_deployment_ops  | 6          | 0          | 6          |
+| 10_benchmarks      | 5          | 0          | 5          |
+| **总计**           | **91**     | **75**     | **166**    |
 
 ---
 
@@ -211,37 +211,37 @@ WAIT_FOR_LOCK(timeout)          # 等待锁释放
 
 ### Week 4（2025-10-11 至 2025-10-17）
 
-**任务1**：测试框架增强（4小时）
+**任务 1**：测试框架增强（4 小时）
 
-- 实现DDL测试支持
-- 实现DCL测试支持
-- 实现EXPLAIN验证支持
+- 实现 DDL 测试支持
+- 实现 DCL 测试支持
+- 实现 EXPLAIN 验证支持
 
-**任务2**：01模块测试实现（3小时）
+**任务 2**：01 模块测试实现（3 小时）
 
-- 实现20个测试用例
+- 实现 20 个测试用例
 - 运行并验证测试
 
-**任务3**：测试设计文档（3小时）
+**任务 3**：测试设计文档（3 小时）
 
-- 完成02_transactions测试设计
-- 完成03_storage_access测试设计
+- 完成 02_transactions 测试设计
+- 完成 03_storage_access 测试设计
 
 ### Week 5-8（2025-10-18 至 2025-11-14）
 
-**任务4**：02模块测试实现（5小时）
+**任务 4**：02 模块测试实现（5 小时）
 
-- 实现15个事务测试用例
+- 实现 15 个事务测试用例
 - 实现并发测试场景
 
-**任务5**：03模块测试实现（3小时）
+**任务 5**：03 模块测试实现（3 小时）
 
-- 实现10个存储测试用例
-- 实现EXPLAIN验证
+- 实现 10 个存储测试用例
+- 实现 EXPLAIN 验证
 
-**任务6**：测试集成与验证（2小时）
+**任务 6**：测试集成与验证（2 小时）
 
-- 运行全部136+测试
+- 运行全部 136+测试
 - 生成测试报告
 - 修复失败测试
 
@@ -281,13 +281,13 @@ python tests/scripts/show_test_stats.py
 - ✅ 测试场景数：91 → 136+（+49%）
 - ✅ 模块覆盖率：70% → 100%
 - ✅ 测试通过率：100%（136/136）
-- ✅ 测试执行时间：<5分钟（全部测试）
+- ✅ 测试执行时间：<5 分钟（全部测试）
 
 ### 定性指标
 
 - ✅ 所有核心功能有测试覆盖
 - ✅ 边界条件测试完整
-- ✅ PostgreSQL 17新特性测试
+- ✅ PostgreSQL 17 新特性测试
 - ✅ 测试文档清晰详细
 
 ---
@@ -295,16 +295,16 @@ python tests/scripts/show_test_stats.py
 ## 📚 相关文档
 
 - 📋 [测试框架说明](../README.md)
-- 🚀 [Week 4行动计划](../../WEEK_3_ACTION_PLAN.md)
+- 🚀 [Week 4 行动计划](../../WEEK_3_ACTION_PLAN.md)
 - 🎯 [项目路线图](../../PROJECT_ROADMAP.md)
-- 📊 [v1.0里程碑](../../PROJECT_ROADMAP.md#-v10测试覆盖100)
+- 📊 [v1.0 里程碑](../../PROJECT_ROADMAP.md#-v10测试覆盖100)
 
 ---
 
 **维护者**：PostgreSQL_modern Project Team  
-**最后更新**：2025年10月3日  
-**下次更新**：2025年10月4日（完成02/03模块设计）
+**最后更新**：2025 年 10 月 3 日  
+**下次更新**：2025 年 10 月 4 日（完成 02/03 模块设计）
 
 ---
 
-🎯 **测试设计就绪，Week 4即可开始实施！** 🎯
+🎯 **测试设计就绪，Week 4 即可开始实施！** 🎯

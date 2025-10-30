@@ -1,9 +1,9 @@
 # 02_transactions 模块测试设计
 
 > **模块**：事务管理与并发控制  
-> **设计日期**：2025年10月3日  
+> **设计日期**：2025 年 10 月 3 日  
 > **目标测试数量**：25+场景  
-> **预计完成时间**：Week 4（2025-10-11至2025-10-17）
+> **预计完成时间**：Week 4（2025-10-11 至 2025-10-17）
 
 ---
 
@@ -11,18 +11,18 @@
 
 ### 模块内容回顾
 
-- ACID特性实现
-- MVCC多版本并发控制
+- ACID 特性实现
+- MVCC 多版本并发控制
 - 事务隔离级别（Read Committed、Repeatable Read、Serializable）
 - 锁机制（表级锁、行级锁、死锁处理）
 - 长事务管理
-- PostgreSQL 17并发优化（高并发写入、VACUUM内存管理）
+- PostgreSQL 17 并发优化（高并发写入、VACUUM 内存管理）
 
 ---
 
 ## 🎯 测试场景设计
 
-### 1. ACID特性测试（4个测试）
+### 1. ACID 特性测试（4 个测试）
 
 #### TEST-02-001: 原子性（Atomicity）- 事务回滚
 
@@ -142,9 +142,9 @@ DROP TABLE IF EXISTS test_isolation CASCADE;
 
 ---
 
-#### TEST-02-004: 持久性（Durability）- WAL日志
+#### TEST-02-004: 持久性（Durability）- WAL 日志
 
-**测试目的**：验证事务持久性（通过WAL）
+**测试目的**：验证事务持久性（通过 WAL）
 
 ```sql
 -- SETUP
@@ -176,11 +176,11 @@ DROP TABLE IF EXISTS test_durability CASCADE;
 
 ---
 
-### 2. MVCC多版本并发控制（4个测试）
+### 2. MVCC 多版本并发控制（4 个测试）
 
 #### TEST-02-005: MVCC - 读不阻塞写
 
-**测试目的**：验证MVCC机制下读写不冲突
+**测试目的**：验证 MVCC 机制下读写不冲突
 
 ```sql
 -- SETUP
@@ -214,9 +214,9 @@ DROP TABLE IF EXISTS test_mvcc_read_write CASCADE;
 
 ---
 
-#### TEST-02-006: MVCC - 事务ID与快照
+#### TEST-02-006: MVCC - 事务 ID 与快照
 
-**测试目的**：验证事务ID和快照机制
+**测试目的**：验证事务 ID 和快照机制
 
 ```sql
 -- TEST_BODY
@@ -279,9 +279,9 @@ DROP TABLE IF EXISTS test_mvcc_visibility CASCADE;
 
 ---
 
-#### TEST-02-008: XID回卷与冻结
+#### TEST-02-008: XID 回卷与冻结
 
-**测试目的**：验证XID冻结机制
+**测试目的**：验证 XID 冻结机制
 
 ```sql
 -- TEST_BODY
@@ -290,7 +290,7 @@ CREATE TABLE test_xid_freeze (
     data TEXT
 );
 
-INSERT INTO test_xid_freeze (data) 
+INSERT INTO test_xid_freeze (data)
 SELECT 'Data ' || generate_series FROM generate_series(1, 1000);
 
 -- 查看表的XID年龄
@@ -312,11 +312,11 @@ DROP TABLE IF EXISTS test_xid_freeze CASCADE;
 
 ---
 
-### 3. 事务隔离级别（6个测试）
+### 3. 事务隔离级别（6 个测试）
 
 #### TEST-02-009: Read Committed - 不可重复读
 
-**测试目的**：验证Read Committed隔离级别的不可重复读现象
+**测试目的**：验证 Read Committed 隔离级别的不可重复读现象
 
 ```sql
 -- SETUP
@@ -352,7 +352,7 @@ DROP TABLE IF EXISTS test_read_committed CASCADE;
 
 #### TEST-02-010: Read Committed - 幻读
 
-**测试目的**：验证Read Committed隔离级别的幻读现象
+**测试目的**：验证 Read Committed 隔离级别的幻读现象
 
 ```sql
 -- SETUP
@@ -362,7 +362,7 @@ CREATE TABLE test_phantom_read (
     value INT
 );
 
-INSERT INTO test_phantom_read (category, value) VALUES 
+INSERT INTO test_phantom_read (category, value) VALUES
 ('A', 100), ('A', 200);
 
 -- TEST_BODY
@@ -389,7 +389,7 @@ DROP TABLE IF EXISTS test_phantom_read CASCADE;
 
 #### TEST-02-011: Repeatable Read - 防止不可重复读
 
-**测试目的**：验证Repeatable Read隔离级别防止不可重复读
+**测试目的**：验证 Repeatable Read 隔离级别防止不可重复读
 
 ```sql
 -- SETUP
@@ -425,9 +425,9 @@ DROP TABLE IF EXISTS test_repeatable_read CASCADE;
 
 ---
 
-#### TEST-02-012: Repeatable Read - 防止幻读（PostgreSQL特性）
+#### TEST-02-012: Repeatable Read - 防止幻读（PostgreSQL 特性）
 
-**测试目的**：验证PostgreSQL的Repeatable Read防止幻读
+**测试目的**：验证 PostgreSQL 的 Repeatable Read 防止幻读
 
 ```sql
 -- SETUP
@@ -462,7 +462,7 @@ DROP TABLE IF EXISTS test_rr_phantom CASCADE;
 
 #### TEST-02-013: Serializable - 串行化执行
 
-**测试目的**：验证Serializable隔离级别完全串行化
+**测试目的**：验证 Serializable 隔离级别完全串行化
 
 ```sql
 -- SETUP
@@ -527,7 +527,7 @@ EXPECT_VALUE: SHOW default_transaction_isolation; => 'read committed'
 
 ---
 
-### 4. 锁机制（6个测试）
+### 4. 锁机制（6 个测试）
 
 #### TEST-02-015: 表级锁 - AccessShareLock vs AccessExclusiveLock
 
@@ -546,7 +546,7 @@ BEGIN;
 SELECT * FROM test_table_lock;
 
 -- 查看当前锁
-SELECT locktype, mode, granted FROM pg_locks 
+SELECT locktype, mode, granted FROM pg_locks
 WHERE relation = 'test_table_lock'::regclass;
 
 -- Session 2: 尝试AccessExclusiveLock（应该被阻塞）
@@ -604,7 +604,7 @@ DROP TABLE IF EXISTS test_row_lock CASCADE;
 
 #### TEST-02-017: FOR UPDATE NOWAIT
 
-**测试目的**：验证NOWAIT快速失败
+**测试目的**：验证 NOWAIT 快速失败
 
 ```sql
 -- SETUP
@@ -638,7 +638,7 @@ DROP TABLE IF EXISTS test_nowait CASCADE;
 
 #### TEST-02-018: FOR UPDATE SKIP LOCKED（任务队列）
 
-**测试目的**：验证SKIP LOCKED机制
+**测试目的**：验证 SKIP LOCKED 机制
 
 ```sql
 -- SETUP
@@ -648,7 +648,7 @@ CREATE TABLE test_job_queue (
     data TEXT
 );
 
-INSERT INTO test_job_queue (status, data) VALUES 
+INSERT INTO test_job_queue (status, data) VALUES
 ('pending', 'Job 1'),
 ('pending', 'Job 2'),
 ('pending', 'Job 3');
@@ -656,18 +656,18 @@ INSERT INTO test_job_queue (status, data) VALUES
 -- TEST_BODY
 -- Worker 1: 获取待处理任务
 BEGIN;
-SELECT * FROM test_job_queue 
-WHERE status = 'pending' 
-ORDER BY id 
-LIMIT 1 
+SELECT * FROM test_job_queue
+WHERE status = 'pending'
+ORDER BY id
+LIMIT 1
 FOR UPDATE SKIP LOCKED;
 
 -- Worker 2: 获取下一个任务（跳过已锁定的）
 -- BEGIN;
--- SELECT * FROM test_job_queue 
--- WHERE status = 'pending' 
--- ORDER BY id 
--- LIMIT 1 
+-- SELECT * FROM test_job_queue
+-- WHERE status = 'pending'
+-- ORDER BY id
+-- LIMIT 1
 -- FOR UPDATE SKIP LOCKED; -- 应该返回Job 2
 
 -- Worker 1完成任务
@@ -723,7 +723,7 @@ DROP TABLE IF EXISTS test_deadlock CASCADE;
 
 ---
 
-#### TEST-02-020: 锁诊断 - pg_locks视图
+#### TEST-02-020: 锁诊断 - pg_locks 视图
 
 **测试目的**：验证锁监控查询
 
@@ -759,7 +759,7 @@ DROP TABLE IF EXISTS test_lock_monitoring CASCADE;
 
 ---
 
-### 5. 长事务管理（3个测试）
+### 5. 长事务管理（3 个测试）
 
 #### TEST-02-021: 长事务监控
 
@@ -800,9 +800,9 @@ DROP TABLE IF EXISTS test_long_transaction CASCADE;
 
 ---
 
-#### TEST-02-022: IDLE IN TRANSACTION检测
+#### TEST-02-022: IDLE IN TRANSACTION 检测
 
-**测试目的**：验证idle in transaction状态检测
+**测试目的**：验证 idle in transaction 状态检测
 
 ```sql
 -- TEST_BODY
@@ -830,7 +830,7 @@ COMMIT;
 
 ---
 
-#### TEST-02-023: statement_timeout设置
+#### TEST-02-023: statement_timeout 设置
 
 **测试目的**：验证语句超时机制
 
@@ -856,11 +856,11 @@ EXPECT_VALUE: SHOW statement_timeout; => '0'
 
 ---
 
-### 6. PostgreSQL 17并发优化（2个测试）
+### 6. PostgreSQL 17 并发优化（2 个测试）
 
-#### TEST-02-024: 高并发写入性能（B-tree优化）
+#### TEST-02-024: 高并发写入性能（B-tree 优化）
 
-**测试目的**：验证PG17高并发写入优化
+**测试目的**：验证 PG17 高并发写入优化
 
 ```sql
 -- TEST_BODY
@@ -894,9 +894,9 @@ DROP TABLE IF EXISTS test_concurrent_insert CASCADE;
 
 ---
 
-#### TEST-02-025: VACUUM内存管理优化
+#### TEST-02-025: VACUUM 内存管理优化
 
-**测试目的**：验证PG17 VACUUM内存管理改进
+**测试目的**：验证 PG17 VACUUM 内存管理改进
 
 ```sql
 -- SETUP
@@ -935,24 +935,24 @@ DROP TABLE IF EXISTS test_vacuum_memory CASCADE;
 
 ### 测试数量
 
-| 类别 | 测试数量 |
-|------|---------|
-| **ACID特性测试** | 4个 |
-| **MVCC多版本并发控制** | 4个 |
-| **事务隔离级别** | 6个 |
-| **锁机制** | 6个 |
-| **长事务管理** | 3个 |
-| **PostgreSQL 17并发优化** | 2个 |
-| **总计** | **25个** |
+| 类别                       | 测试数量  |
+| -------------------------- | --------- |
+| **ACID 特性测试**          | 4 个      |
+| **MVCC 多版本并发控制**    | 4 个      |
+| **事务隔离级别**           | 6 个      |
+| **锁机制**                 | 6 个      |
+| **长事务管理**             | 3 个      |
+| **PostgreSQL 17 并发优化** | 2 个      |
+| **总计**                   | **25 个** |
 
 ### 覆盖率
 
-- ✅ ACID特性（原子性、一致性、隔离性、持久性）
-- ✅ MVCC（读写不冲突、事务ID、可见性规则、XID冻结）
+- ✅ ACID 特性（原子性、一致性、隔离性、持久性）
+- ✅ MVCC（读写不冲突、事务 ID、可见性规则、XID 冻结）
 - ✅ 隔离级别（Read Committed、Repeatable Read、Serializable）
 - ✅ 锁机制（表级锁、行级锁、NOWAIT、SKIP LOCKED、死锁检测）
 - ✅ 长事务管理（监控、idle in transaction、超时设置）
-- ✅ PostgreSQL 17优化（高并发写入、VACUUM内存管理）
+- ✅ PostgreSQL 17 优化（高并发写入、VACUUM 内存管理）
 
 ---
 
@@ -961,16 +961,18 @@ DROP TABLE IF EXISTS test_vacuum_memory CASCADE;
 ### 测试框架增强需求
 
 1. **并发测试支持**
+
    - 实现多会话并发测试框架
    - 支持会话间的同步机制
    - 增加`EXPECT_TIMEOUT`断言（锁等待验证）
 
 2. **事务隔离级别支持**
-   - 支持在TEST_BODY中设置隔离级别
-   - 验证serialization错误
+
+   - 支持在 TEST_BODY 中设置隔离级别
+   - 验证 serialization 错误
 
 3. **锁监控支持**
-   - 查询pg_locks视图
+   - 查询 pg_locks 视图
    - 验证锁的模式和授予状态
 
 ### 测试执行注意事项
@@ -985,19 +987,19 @@ DROP TABLE IF EXISTS test_vacuum_memory CASCADE;
 
 ### Week 4（2025-10-11 至 2025-10-17）
 
-**Day 1-2**：测试框架增强（6小时）
+**Day 1-2**：测试框架增强（6 小时）
 
 - 实现并发测试框架
 - 实现事务隔离级别支持
 - 实现锁监控断言
 
-**Day 3-6**：测试用例实现（10小时）
+**Day 3-6**：测试用例实现（10 小时）
 
-- 实现25个测试用例
+- 实现 25 个测试用例
 - 编写并发测试场景
 - 验证测试通过
 
-**Day 7**：文档完善（2小时）
+**Day 7**：文档完善（2 小时）
 
 - 更新测试用例索引
 - 编写并发测试指南
@@ -1005,6 +1007,6 @@ DROP TABLE IF EXISTS test_vacuum_memory CASCADE;
 ---
 
 **设计者**：PostgreSQL_modern Project Team  
-**设计日期**：2025年10月3日  
+**设计日期**：2025 年 10 月 3 日  
 **目标版本**：v1.0  
 **状态**：设计完成，待实现 ✅

@@ -2,7 +2,7 @@
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **难度等级**：⭐⭐⭐⭐ 高级  
-> **预计时间**：60-90分钟  
+> **预计时间**：60-90 分钟  
 > **适合场景**：跨库查询、异构数据源集成、数据湖查询、遗留系统集成
 
 ---
@@ -11,9 +11,9 @@
 
 构建一个生产级的联邦查询系统，包括：
 
-1. ✅ 跨PostgreSQL数据库查询（postgres_fdw）
-2. ✅ 查询MySQL/MongoDB/CSV/API等外部数据源
-3. ✅ 分布式JOIN与查询优化
+1. ✅ 跨 PostgreSQL 数据库查询（postgres_fdw）
+2. ✅ 查询 MySQL/MongoDB/CSV/API 等外部数据源
+3. ✅ 分布式 JOIN 与查询优化
 4. ✅ 数据虚拟化与联邦视图
 5. ✅ 跨库事务与一致性保证
 
@@ -24,14 +24,14 @@
 **场景描述**：多数据源统一查询平台
 
 - **数据源**：
-  - PostgreSQL OLTP库（订单数据）
-  - MySQL遗留系统（用户数据）
+  - PostgreSQL OLTP 库（订单数据）
+  - MySQL 遗留系统（用户数据）
   - MongoDB（日志数据）
-  - CSV文件（外部数据）
+  - CSV 文件（外部数据）
   - REST API（第三方服务）
 - **需求**：
-  - 统一SQL接口查询所有数据源
-  - 支持跨库JOIN
+  - 统一 SQL 接口查询所有数据源
+  - 支持跨库 JOIN
   - 最小化数据迁移成本
   - 实时数据访问
 
@@ -52,7 +52,7 @@ PostgreSQL（联邦查询中心）
 
 ---
 
-## 📦 1. 方案一：postgres_fdw（跨PostgreSQL查询）
+## 📦 1. 方案一：postgres_fdw（跨 PostgreSQL 查询）
 
 ### 1.1 安装与配置
 
@@ -121,7 +121,7 @@ IMPORT FOREIGN SCHEMA public
     INTO public;
 
 -- 查看外部表
-SELECT 
+SELECT
     foreign_table_schema,
     foreign_table_name,
     foreign_server_name
@@ -148,21 +148,21 @@ INSERT INTO local_users VALUES
 (3, 'charlie', 'charlie@example.com', now());
 
 -- 联邦JOIN查询
-SELECT 
+SELECT
     u.username,
     u.email,
     o.id AS order_id,
     o.product_name,
     o.price,
     o.created_at
-FROM 
+FROM
     local_users u
-JOIN 
+JOIN
     remote_orders o ON u.id = o.user_id
-WHERE 
+WHERE
     o.status = 'completed'
     AND o.created_at > now() - interval '30 days'
-ORDER BY 
+ORDER BY
     o.created_at DESC
 LIMIT 100;
 ```
@@ -191,9 +191,9 @@ SELECT COUNT(*) FROM remote_orders WHERE created_at > '2025-01-01';
 
 ---
 
-## 📦 2. 方案二：file_fdw（查询CSV文件）
+## 📦 2. 方案二：file_fdw（查询 CSV 文件）
 
-### 2.1 配置file_fdw
+### 2.1 配置 file_fdw
 
 ```sql
 -- file_fdw通常已预装
@@ -204,7 +204,7 @@ CREATE SERVER csv_server
     FOREIGN DATA WRAPPER file_fdw;
 ```
 
-### 2.2 创建CSV外部表
+### 2.2 创建 CSV 外部表
 
 ```sql
 -- 准备CSV文件（放在服务器可访问位置）
@@ -234,21 +234,21 @@ OPTIONS (
 SELECT * FROM sales_data_csv;
 
 -- 与本地数据JOIN
-SELECT 
+SELECT
     p.name AS product_name,
     p.category,
     s.sales AS csv_sales,
     s.revenue AS csv_revenue,
     s.sale_date
-FROM 
+FROM
     local_products p
-JOIN 
+JOIN
     sales_data_csv s ON p.id = s.product_id
-ORDER BY 
+ORDER BY
     s.revenue DESC;
 ```
 
-### 2.3 导入CSV数据到本地表
+### 2.3 导入 CSV 数据到本地表
 
 ```sql
 -- 将CSV数据导入到本地表（物化）
@@ -263,9 +263,9 @@ WHERE sale_date > '2025-01-01';
 
 ---
 
-## 📦 3. 方案三：mysql_fdw（查询MySQL）
+## 📦 3. 方案三：mysql_fdw（查询 MySQL）
 
-### 3.1 安装mysql_fdw
+### 3.1 安装 mysql_fdw
 
 ```bash
 -- 注意：mysql_fdw需要单独安装
@@ -303,7 +303,7 @@ CREATE USER MAPPING FOR current_user
     );
 ```
 
-### 3.2 创建MySQL外部表
+### 3.2 创建 MySQL 外部表
 
 ```sql
 -- 手动创建外部表
@@ -323,27 +323,27 @@ OPTIONS (
 SELECT * FROM mysql_legacy_users LIMIT 10;
 
 -- 跨数据库JOIN（PostgreSQL + MySQL）
-SELECT 
+SELECT
     mu.username AS mysql_user,
     mu.email,
     o.id AS pg_order_id,
     o.product_name,
     o.created_at
-FROM 
+FROM
     mysql_legacy_users mu
-JOIN 
+JOIN
     local_orders o ON mu.id = o.user_id
-WHERE 
+WHERE
     o.status = 'completed'
-ORDER BY 
+ORDER BY
     o.created_at DESC;
 ```
 
 ---
 
-## 📦 4. 方案四：mongodb_fdw（查询MongoDB）
+## 📦 4. 方案四：mongodb_fdw（查询 MongoDB）
 
-### 4.1 安装mongodb_fdw
+### 4.1 安装 mongodb_fdw
 
 ```bash
 -- 编译安装
@@ -374,7 +374,7 @@ CREATE USER MAPPING FOR current_user
     );
 ```
 
-### 4.2 创建MongoDB外部表
+### 4.2 创建 MongoDB 外部表
 
 ```sql
 -- 创建外部表（映射MongoDB集合）
@@ -392,17 +392,17 @@ OPTIONS (
 );
 
 -- 查询MongoDB数据
-SELECT 
+SELECT
     level,
     message,
     timestamp,
     metadata->>'user_id' AS user_id
-FROM 
+FROM
     mongo_logs
-WHERE 
+WHERE
     level = 'ERROR'
     AND timestamp > now() - interval '1 hour'
-ORDER BY 
+ORDER BY
     timestamp DESC
 LIMIT 100;
 ```
@@ -417,7 +417,7 @@ LIMIT 100;
 -- 创建联邦视图：统一用户数据
 CREATE VIEW unified_users AS
 -- PostgreSQL本地用户
-SELECT 
+SELECT
     'pg' AS source,
     id,
     username,
@@ -426,7 +426,7 @@ SELECT
 FROM local_users
 UNION ALL
 -- MySQL遗留用户
-SELECT 
+SELECT
     'mysql' AS source,
     id,
     username,
@@ -435,7 +435,7 @@ SELECT
 FROM mysql_legacy_users;
 
 -- 查询所有来源的用户
-SELECT 
+SELECT
     source,
     COUNT(*) AS user_count,
     MAX(created_at) AS latest_created_at
@@ -464,27 +464,27 @@ COMMIT;
 -- 生产环境建议使用应用层事务协调或消息队列
 ```
 
-### 5.3 数据聚合与ETL
+### 5.3 数据聚合与 ETL
 
 ```sql
 -- 创建物化视图：定期聚合远程数据
 CREATE MATERIALIZED VIEW order_summary_materialized AS
-SELECT 
+SELECT
     DATE_TRUNC('day', o.created_at) AS order_date,
     u.username,
     COUNT(*) AS order_count,
     SUM(o.price * o.quantity) AS total_revenue
-FROM 
+FROM
     remote_orders o
-JOIN 
+JOIN
     local_users u ON o.user_id = u.id
-WHERE 
+WHERE
     o.status = 'completed'
-GROUP BY 
+GROUP BY
     order_date, u.username;
 
 -- 创建唯一索引
-CREATE UNIQUE INDEX idx_order_summary_date_user 
+CREATE UNIQUE INDEX idx_order_summary_date_user
     ON order_summary_materialized(order_date, username);
 
 -- 定期刷新（可使用pg_cron定时任务）
@@ -512,8 +512,8 @@ WHERE status = 'completed'
 
 -- 输出：
 -- Foreign Scan on remote_orders
---   Remote SQL: SELECT ... FROM orders 
---                WHERE status = 'completed' 
+--   Remote SQL: SELECT ... FROM orders
+--                WHERE status = 'completed'
 --                  AND created_at > '2025-01-01'
 --                  AND price > 100
 
@@ -531,7 +531,7 @@ ALTER FOREIGN TABLE remote_orders
     OPTIONS (ADD fetch_size '10000');
 
 -- 查看当前配置
-SELECT 
+SELECT
     foreign_table_name,
     option_name,
     option_value
@@ -539,14 +539,14 @@ FROM information_schema.foreign_table_options
 WHERE foreign_table_name = 'remote_orders';
 ```
 
-### 6.3 异步执行（PG 17优化）
+### 6.3 异步执行（PG 17 优化）
 
 ```sql
 -- PostgreSQL 17改进了FDW并行查询
 SET max_parallel_workers_per_gather = 4;
 
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT 
+SELECT
     o.status,
     COUNT(*) AS order_count,
     AVG(o.price) AS avg_price
@@ -567,7 +567,7 @@ GROUP BY o.status;
 
 ```sql
 -- 查看活动的FDW连接
-SELECT 
+SELECT
     srvname AS server_name,
     usename AS user_name,
     COUNT(*) AS connection_count
@@ -577,7 +577,7 @@ WHERE backend_type = 'client backend'
 GROUP BY srvname, usename;
 
 -- 查看FDW查询统计
-SELECT 
+SELECT
     schemaname,
     tablename,
     seq_scan,
@@ -639,7 +639,7 @@ CREATE FOREIGN TABLE pg_orders (
 
 -- 2. 创建统一查询视图
 CREATE VIEW user_order_report AS
-SELECT 
+SELECT
     u.id AS user_id,
     u.username,
     u.email,
@@ -647,17 +647,17 @@ SELECT
     SUM(o.total) AS total_spent,
     MAX(o.created_at) AS last_order_date,
     ARRAY_AGG(o.status) AS order_statuses
-FROM 
+FROM
     local_users u
-LEFT JOIN 
+LEFT JOIN
     pg_orders o ON u.id = o.user_id
-WHERE 
+WHERE
     o.created_at > now() - interval '90 days'
-GROUP BY 
+GROUP BY
     u.id, u.username, u.email;
 
 -- 3. 查询报表
-SELECT 
+SELECT
     username,
     email,
     total_orders,
@@ -676,7 +676,7 @@ LIMIT 20;
 ### 9.1 架构设计
 
 - ✅ 集中式联邦查询中心（单点查询）
-- ✅ 最小化跨库JOIN（优先本地计算）
+- ✅ 最小化跨库 JOIN（优先本地计算）
 - ✅ 使用物化视图缓存远程数据
 - ✅ 定期刷新而非实时查询
 
@@ -684,13 +684,13 @@ LIMIT 20;
 
 - ✅ 在远程表上创建索引
 - ✅ 利用谓词下推
-- ✅ 配置合理的fetch_size
-- ✅ 避免SELECT *
+- ✅ 配置合理的 fetch_size
+- ✅ 避免 SELECT \*
 
 ### 9.3 安全与权限
 
 - ✅ 使用只读账号访问远程数据
-- ✅ 在pgpass中存储密码
+- ✅ 在 pgpass 中存储密码
 - ✅ 限制外部表访问权限
 - ✅ 记录审计日志
 
@@ -706,34 +706,36 @@ LIMIT 20;
 ## 🎯 10. 练习任务
 
 1. **基础练习**：
-   - 创建跨PostgreSQL数据库的联邦查询
-   - 查询CSV文件数据
-   - 实现本地表与远程表JOIN
+
+   - 创建跨 PostgreSQL 数据库的联邦查询
+   - 查询 CSV 文件数据
+   - 实现本地表与远程表 JOIN
 
 2. **进阶练习**：
-   - 配置MySQL FDW并查询遗留系统
+
+   - 配置 MySQL FDW 并查询遗留系统
    - 创建统一的联邦视图
    - 实现物化视图定期刷新
 
 3. **挑战任务**：
-   - 构建多数据源ETL流程
-   - 优化跨库JOIN性能（10万+数据）
+   - 构建多数据源 ETL 流程
+   - 优化跨库 JOIN 性能（10 万+数据）
    - 实现跨数据库的事务一致性保证
 
 ---
 
-## 📖 11. FDW扩展列表
+## 📖 11. FDW 扩展列表
 
-| FDW | 数据源 | 用途 | 官方支持 |
-|-----|--------|------|---------|
-| **postgres_fdw** | PostgreSQL | 跨PG查询 | ✅ 官方 |
-| **file_fdw** | CSV/文本文件 | 文件数据 | ✅ 官方 |
-| **mysql_fdw** | MySQL/MariaDB | MySQL集成 | ❌ 第三方 |
-| **mongo_fdw** | MongoDB | NoSQL集成 | ❌ 第三方 |
-| **oracle_fdw** | Oracle | Oracle集成 | ❌ 第三方 |
-| **redis_fdw** | Redis | 缓存查询 | ❌ 第三方 |
-| **clickhouse_fdw** | ClickHouse | OLAP查询 | ❌ 第三方 |
-| **http_fdw** | REST API | API数据 | ❌ 第三方 |
+| FDW                | 数据源        | 用途        | 官方支持  |
+| ------------------ | ------------- | ----------- | --------- |
+| **postgres_fdw**   | PostgreSQL    | 跨 PG 查询  | ✅ 官方   |
+| **file_fdw**       | CSV/文本文件  | 文件数据    | ✅ 官方   |
+| **mysql_fdw**      | MySQL/MariaDB | MySQL 集成  | ❌ 第三方 |
+| **mongo_fdw**      | MongoDB       | NoSQL 集成  | ❌ 第三方 |
+| **oracle_fdw**     | Oracle        | Oracle 集成 | ❌ 第三方 |
+| **redis_fdw**      | Redis         | 缓存查询    | ❌ 第三方 |
+| **clickhouse_fdw** | ClickHouse    | OLAP 查询   | ❌ 第三方 |
+| **http_fdw**       | REST API      | API 数据    | ❌ 第三方 |
 
 ---
 

@@ -1,22 +1,22 @@
-﻿# HTAP混合负载架构
+﻿# HTAP 混合负载架构
 
 > Hybrid Transaction/Analytical Processing - 事务与分析混合处理架构
 
 ## 📋 目录
 
-- [HTAP混合负载架构](#htap混合负载架构)
+- [HTAP 混合负载架构](#htap-混合负载架构)
   - [📋 目录](#-目录)
-  - [1. HTAP概述](#1-htap概述)
-    - [1.1 什么是HTAP](#11-什么是htap)
-    - [1.2 HTAP的挑战](#12-htap的挑战)
+  - [1. HTAP 概述](#1-htap-概述)
+    - [1.1 什么是 HTAP](#11-什么是-htap)
+    - [1.2 HTAP 的挑战](#12-htap-的挑战)
   - [2. 行列混合存储](#2-行列混合存储)
-    - [2.1 行存储vs列存储](#21-行存储vs列存储)
-    - [2.2 PostgreSQL列存储方案](#22-postgresql列存储方案)
+    - [2.1 行存储 vs 列存储](#21-行存储-vs-列存储)
+    - [2.2 PostgreSQL 列存储方案](#22-postgresql-列存储方案)
     - [2.3 混合存储策略](#23-混合存储策略)
   - [3. 实时物化视图](#3-实时物化视图)
     - [3.1 标准物化视图](#31-标准物化视图)
     - [3.2 增量刷新物化视图](#32-增量刷新物化视图)
-    - [3.3 TimescaleDB连续聚合](#33-timescaledb连续聚合)
+    - [3.3 TimescaleDB 连续聚合](#33-timescaledb-连续聚合)
   - [4. 冷热分层](#4-冷热分层)
     - [4.1 时间分区策略](#41-时间分区策略)
     - [4.2 自动分层管理](#42-自动分层管理)
@@ -26,29 +26,29 @@
     - [5.2 资源组管理](#52-资源组管理)
     - [5.3 查询优先级](#53-查询优先级)
     - [5.4 语句超时](#54-语句超时)
-  - [6. PostgreSQL HTAP实现](#6-postgresql-htap实现)
+  - [6. PostgreSQL HTAP 实现](#6-postgresql-htap-实现)
     - [6.1 读写分离](#61-读写分离)
     - [6.2 智能路由](#62-智能路由)
-  - [7. Citus HTAP方案](#7-citus-htap方案)
-    - [7.1 Citus混合部署](#71-citus混合部署)
-    - [7.2 Citus实时分析](#72-citus实时分析)
+  - [7. Citus HTAP 方案](#7-citus-htap-方案)
+    - [7.1 Citus 混合部署](#71-citus-混合部署)
+    - [7.2 Citus 实时分析](#72-citus-实时分析)
   - [8. 工程实践](#8-工程实践)
     - [8.1 监控指标](#81-监控指标)
     - [8.2 性能优化建议](#82-性能优化建议)
     - [8.3 容量规划](#83-容量规划)
   - [参考资源](#参考资源)
 
-## 1. HTAP概述
+## 1. HTAP 概述
 
-### 1.1 什么是HTAP
+### 1.1 什么是 HTAP
 
-**HTAP定义**:
+**HTAP 定义**:
 
 - 在同一个数据库中同时支持事务处理（OLTP）和分析处理（OLAP）
-- 避免传统ETL流程的延迟
+- 避免传统 ETL 流程的延迟
 - 提供实时分析能力
 
-**传统架构vs HTAP**:
+**传统架构 vs HTAP**:
 
 传统架构：
 
@@ -57,25 +57,25 @@ OLTP数据库 --ETL--> 数据仓库 --查询--> 分析报表
 延迟：小时级到天级
 ```
 
-HTAP架构：
+HTAP 架构：
 
 ```text
 HTAP数据库 --实时--> 事务+分析
 延迟：秒级到分钟级
 ```
 
-### 1.2 HTAP的挑战
+### 1.2 HTAP 的挑战
 
 **资源竞争**:
 
-- OLTP需要低延迟、高并发
-- OLAP需要高吞吐、大扫描
+- OLTP 需要低延迟、高并发
+- OLAP 需要高吞吐、大扫描
 - 两者共享资源导致相互影响
 
 **数据一致性**:
 
-- OLTP强一致性
-- OLAP可以容忍一定延迟
+- OLTP 强一致性
+- OLAP 可以容忍一定延迟
 - 需要平衡新鲜度和性能
 
 **查询优化**:
@@ -86,25 +86,25 @@ HTAP数据库 --实时--> 事务+分析
 
 ## 2. 行列混合存储
 
-### 2.1 行存储vs列存储
+### 2.1 行存储 vs 列存储
 
 **行存储（Row-Store）**:
 
 - 特点：按行存储，适合事务处理
 - 优势：写入快速，点查询高效
-- 适用：OLTP场景
-- PostgreSQL默认存储格式
+- 适用：OLTP 场景
+- PostgreSQL 默认存储格式
 
 **列存储（Column-Store）**:
 
 - 特点：按列存储，适合分析处理
 - 优势：压缩率高，列扫描快速
-- 适用：OLAP场景
+- 适用：OLAP 场景
 - 需要扩展支持
 
-### 2.2 PostgreSQL列存储方案
+### 2.2 PostgreSQL 列存储方案
 
-**使用Cstore_fdw扩展**:
+**使用 Cstore_fdw 扩展**:
 
 ```sql
 -- 安装cstore_fdw扩展
@@ -141,7 +141,7 @@ WHERE event_time > NOW() - INTERVAL '7 days'
 GROUP BY event_type;
 ```
 
-**使用TimescaleDB压缩**:
+**使用 TimescaleDB 压缩**:
 
 ```sql
 -- 启用压缩（类似列存储）
@@ -155,10 +155,10 @@ ALTER TABLE metrics SET (
 SELECT add_compression_policy('metrics', INTERVAL '7 days');
 
 -- 查看压缩效果
-SELECT 
+SELECT
     pg_size_pretty(before_compression_total_bytes) as before,
     pg_size_pretty(after_compression_total_bytes) as after,
-    ROUND(100 - (after_compression_total_bytes::numeric / 
+    ROUND(100 - (after_compression_total_bytes::numeric /
                  before_compression_total_bytes::numeric * 100), 2) as compression_ratio
 FROM hypertable_compression_stats('metrics');
 ```
@@ -195,7 +195,7 @@ OPTIONS (compression 'pglz');
 ```sql
 -- 创建物化视图
 CREATE MATERIALIZED VIEW daily_sales_summary AS
-SELECT 
+SELECT
     DATE(order_date) as sale_date,
     COUNT(*) as order_count,
     SUM(amount) as total_amount,
@@ -233,13 +233,13 @@ FOR EACH STATEMENT
 EXECUTE FUNCTION refresh_daily_sales();
 ```
 
-### 3.3 TimescaleDB连续聚合
+### 3.3 TimescaleDB 连续聚合
 
 ```sql
 -- 创建连续聚合（实时物化视图）
 CREATE MATERIALIZED VIEW hourly_metrics
 WITH (timescaledb.continuous) AS
-SELECT 
+SELECT
     time_bucket('1 hour', time) AS hour,
     device_id,
     AVG(temperature) as avg_temp,
@@ -302,7 +302,7 @@ DECLARE
 BEGIN
     -- 将90天前的分区移动到归档表空间
     FOR partition_name, tablespace_name IN
-        SELECT 
+        SELECT
             c.relname,
             t.spcname
         FROM pg_class c
@@ -315,7 +315,7 @@ BEGIN
     LOOP
         -- 移动到冷存储
         IF tablespace_name != 'archive_storage' THEN
-            EXECUTE format('ALTER TABLE %I SET TABLESPACE archive_storage', 
+            EXECUTE format('ALTER TABLE %I SET TABLESPACE archive_storage',
                           partition_name);
             RAISE NOTICE '已归档分区: %', partition_name;
         END IF;
@@ -324,7 +324,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 定期执行归档
-SELECT cron.schedule('archive-old-data', '0 2 * * *', 
+SELECT cron.schedule('archive-old-data', '0 2 * * *',
                      'SELECT archive_old_partitions()');
 ```
 
@@ -391,7 +391,7 @@ SELECT * FROM orders WHERE order_id = 12345;
 
 -- OLAP查询（高内存）
 SET work_mem = '256MB';
-SELECT 
+SELECT
     DATE(order_date) as date,
     COUNT(*),
     SUM(amount)
@@ -412,7 +412,7 @@ ALTER ROLE analyst_user SET statement_timeout = '600s';
 ALTER ROLE analyst_user SET lock_timeout = '30s';
 ```
 
-## 6. PostgreSQL HTAP实现
+## 6. PostgreSQL HTAP 实现
 
 ### 6.1 读写分离
 
@@ -455,15 +455,15 @@ result = execute_query("SELECT * FROM orders WHERE id = 123", 'oltp')
 
 # 分析查询路由到副本
 result = execute_query("""
-    SELECT DATE(created_at), COUNT(*) 
-    FROM orders 
+    SELECT DATE(created_at), COUNT(*)
+    FROM orders
     GROUP BY DATE(created_at)
 """, 'olap')
 ```
 
-## 7. Citus HTAP方案
+## 7. Citus HTAP 方案
 
-### 7.1 Citus混合部署
+### 7.1 Citus 混合部署
 
 ```sql
 -- 创建分布式表（OLTP）
@@ -481,16 +481,16 @@ CREATE FOREIGN TABLE orders_analytics (
 ) SERVER cstore_server;
 
 -- 定期同步到列存储
-INSERT INTO orders_analytics 
-SELECT * FROM orders 
+INSERT INTO orders_analytics
+SELECT * FROM orders
 WHERE order_date = CURRENT_DATE - 1;
 ```
 
-### 7.2 Citus实时分析
+### 7.2 Citus 实时分析
 
 ```sql
 -- 跨分片实时聚合
-SELECT 
+SELECT
     DATE(order_date) as date,
     COUNT(*) as order_count,
     SUM(amount) as total_amount
@@ -509,7 +509,7 @@ ORDER BY date DESC;
 ```sql
 -- 创建监控视图
 CREATE VIEW htap_monitoring AS
-SELECT 
+SELECT
     'OLTP' as workload_type,
     COUNT(*) as query_count,
     AVG(total_time) as avg_time_ms,
@@ -521,7 +521,7 @@ WHERE query NOT LIKE '%SELECT COUNT%'
 
 UNION ALL
 
-SELECT 
+SELECT
     'OLAP' as workload_type,
     COUNT(*) as query_count,
     AVG(total_time) as avg_time_ms,
@@ -538,32 +538,33 @@ WHERE (query LIKE '%SELECT COUNT%' OR query LIKE '%GROUP BY%')
 3. **物化视图**：为常用聚合查询创建物化视图
 4. **分区策略**：使用时间分区实现冷热分层
 5. **资源隔离**：配置不同的资源组和超时时间
-6. **索引优化**：OLTP使用B-tree，OLAP使用BRIN
-7. **并行查询**：为OLAP查询启用并行执行
-8. **定期维护**：定期VACUUM、ANALYZE和重建索引
+6. **索引优化**：OLTP 使用 B-tree，OLAP 使用 BRIN
+7. **并行查询**：为 OLAP 查询启用并行执行
+8. **定期维护**：定期 VACUUM、ANALYZE 和重建索引
 
 ### 8.3 容量规划
 
 **存储规划**:
 
-- 热数据：SSD存储，保留30天
-- 温数据：标准存储，保留90天
-- 冷数据：归档存储，保留1年+
+- 热数据：SSD 存储，保留 30 天
+- 温数据：标准存储，保留 90 天
+- 冷数据：归档存储，保留 1 年+
 
 **内存规划**:
 
-- shared_buffers：总内存的25%
-- effective_cache_size：总内存的75%
+- shared_buffers：总内存的 25%
+- effective_cache_size：总内存的 75%
 - work_mem：OLTP 4-16MB，OLAP 256MB-1GB
 
-**CPU规划**:
+**CPU 规划**:
 
-- OLTP：高频CPU，多核心
+- OLTP：高频 CPU，多核心
 - OLAP：启用并行查询（max_parallel_workers）
 
 ## 参考资源
 
-- [TimescaleDB连续聚合](<https://docs.timescale.com/timescaledb/latest/how-to-guides/continuous-aggregates>/)
+- [TimescaleDB
+  连续聚合](<https://docs.timescale.com/timescaledb/latest/how-to-guides/continuous-aggregates>/)
 - [Citus HTAP](<https://docs.citusdata.com/en/stable/use_cases/realtime_analytics.htm>l)
-- [PostgreSQL并行查询](<https://www.postgresql.org/docs/current/parallel-query.htm>l)
+- [PostgreSQL 并行查询](<https://www.postgresql.org/docs/current/parallel-query.htm>l)
 - [列存储扩展](<https://github.com/citusdata/cstore_fd>w)

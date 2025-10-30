@@ -22,9 +22,8 @@ CREATE TABLE outbox (
 
 ## 执行流程（示意）
 
-1) 业务事务：插入业务表 + 插入 outbox
-2) 轮询 outbox：取未投递记录，投递成功后置 delivered=true
-3) 异常：写入 compensations 表，后续定时补偿/重放
+1. 业务事务：插入业务表 + 插入 outbox
+2. 轮询 outbox：取未投递记录，投递成功后置 delivered=true
+3. 异常：写入 compensations 表，后续定时补偿/重放
 
 可结合 `two_phase_commit_min.sql` 观察 2PC 与补偿的取舍与组合。
-

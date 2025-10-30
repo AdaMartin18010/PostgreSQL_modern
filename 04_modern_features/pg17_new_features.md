@@ -1,6 +1,6 @@
 ﻿# PostgreSQL 17 新特性详解
 
-> 基于 PostgreSQL 17 官方发行说明（2024年9月26日发布）
+> 基于 PostgreSQL 17 官方发行说明（2024 年 9 月 26 日发布）
 
 ## 1. JSON 数据处理革命性提升
 
@@ -30,7 +30,7 @@ CREATE TABLE api_logs (
     log_data JSONB
 );
 
-INSERT INTO api_logs (log_data) VALUES 
+INSERT INTO api_logs (log_data) VALUES
 ('{"users": [{"id": 1, "name": "Alice", "age": 30}, {"id": 2, "name": "Bob", "age": 25}]}');
 
 -- 使用 JSON_TABLE 查询
@@ -66,7 +66,7 @@ JSON_TABLE(
 
 ```sql
 -- JSON 构造函数示例
-SELECT 
+SELECT
     JSON('{"key": "value"}') as json_obj,
     JSON_SCALAR(42) as json_scalar,
     JSON_SERIALIZE('{"nested": {"data": true}}'::jsonb) as serialized;
@@ -84,7 +84,7 @@ SELECT
 
 ```sql
 -- JSON 查询函数示例
-SELECT 
+SELECT
     JSON_EXISTS(log_data, '$.users[0].name') as has_name,
     JSON_QUERY(log_data, '$.users[*].name') as all_names,
     JSON_VALUE(log_data, '$.users[0].age') as first_age
@@ -116,7 +116,7 @@ SET vacuum_cost_page_dirty = 0;
 
 ```sql
 -- 监控 VACUUM 活动
-SELECT 
+SELECT
     schemaname,
     tablename,
     last_vacuum,
@@ -179,9 +179,9 @@ CREATE TABLE concurrent_test (
 CREATE INDEX idx_multi_search ON users (status, age, city);
 
 -- 多值搜索查询
-SELECT * FROM users 
-WHERE status = 'active' 
-  AND age BETWEEN 25 AND 35 
+SELECT * FROM users
+WHERE status = 'active'
+  AND age BETWEEN 25 AND 35
   AND city IN ('Beijing', 'Shanghai', 'Guangzhou');
 ```
 
@@ -202,7 +202,7 @@ WHERE status = 'active'
 CREATE PUBLICATION pub_ha FOR ALL TABLES;
 
 -- 订阅端配置
-CREATE SUBSCRIPTION sub_ha 
+CREATE SUBSCRIPTION sub_ha
 CONNECTION 'host=primary_host dbname=mydb user=repl_user password=repl_pass'
 PUBLICATION pub_ha
 WITH (
@@ -289,8 +289,8 @@ pg_combinebackup /backup/base /backup/incr -o /backup/combined
 
 ```sql
 -- 容错数据导入
-COPY users (id, name, email) 
-FROM '/path/to/users.csv' 
+COPY users (id, name, email)
+FROM '/path/to/users.csv'
 WITH (FORMAT csv, HEADER true, ON_ERROR ignore);
 
 -- 检查导入结果
@@ -386,5 +386,6 @@ postgresql://user:password@host:port/database?sslmode=require&sslnegotiation=dir
 
 - [PostgreSQL 17 官方发行说明](<https://www.postgresql.org/docs/17/release-17.htm>l)
 - [PostgreSQL 17 新特性文档](<https://www.postgresql.org/docs/17/release-17.html#id-1.11.6.>5)
-- [JSON_TABLE 函数文档](<https://www.postgresql.org/docs/17/functions-json.html#FUNCTIONS-JSON-TABL>E)
+- [JSON_TABLE
+  函数文档](<https://www.postgresql.org/docs/17/functions-json.html#FUNCTIONS-JSON-TABL>E)
 - [逻辑复制文档](<https://www.postgresql.org/docs/17/logical-replication.htm>l)

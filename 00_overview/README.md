@@ -4,24 +4,29 @@
 
 ## 项目定位
 
-知识 + 软件工程梳理：系统化对标 PostgreSQL 核心与现代生态（向量/时序/地理/分布式），结合工程方法（CMMI、PMBOK、敏捷/DevOps）形成“主题 → 知识地图 → 工程实践 → 案例”的结构化内容。
+知识 + 软件工程梳理：系统化对标 PostgreSQL 核心与现代生态（向量/时序/地理/分布式），结合工程方法
+（CMMI、PMBOK、敏捷/DevOps）形成“主题 → 知识地图 → 工程实践 → 案例”的结构化内容。
 
 ## 版本对标（核心与生态）
 
 - PostgreSQL（官方下载/文档）
+
   - 官方下载页（始终为最新稳定版）：`<https://www.postgresql.org/download/`>
   - 官方文档总览：`<https://www.postgresql.org/docs/`>
   - 发行说明总览：`<https://www.postgresql.org/docs/release/`>
 
 - 向量检索扩展 pgvector（GitHub Releases）
+
   - Releases：`<https://github.com/pgvector/pgvector/releases`>
   - 文档：`<https://github.com/pgvector/pgvector`>
 
 - 时序扩展 TimescaleDB（GitHub Releases）
+
   - Releases：`<https://github.com/timescale/timescaledb/releases`>
   - 文档：`<https://docs.timescale.com/`>
 
 - 地理空间扩展 PostGIS（官方/安装文档）
+
   - 官网：`<https://postgis.net/`>
   - 安装与文档：`<https://postgis.net/install/`>
 
@@ -65,7 +70,7 @@
 ## PostgreSQL 17 核心特性概览
 
 > **版本**：PostgreSQL 17.0  
-> **发布日期**：2024年9月26日  
+> **发布日期**：2024 年 9 月 26 日  
 > **最后验证**：2025-10-03
 
 ### JSON 数据处理革命性提升
@@ -102,8 +107,9 @@
 
 ## 更新记录
 
-- 2025-10：全面更新至PostgreSQL 17，详细梳理17版本新特性与迁移指南
-- 2025-01：更新至PostgreSQL 17，补充17版本新特性（JSON_TABLE、逻辑复制增强、增量备份、VACUUM优化等）
+- 2025-10：全面更新至 PostgreSQL 17，详细梳理 17 版本新特性与迁移指南
+- 2025-01：更新至 PostgreSQL 17，补充 17 版本新特性（JSON_TABLE、逻辑复制增强、增量备份、VACUUM 优化
+  等）
 - 2025-09：初始化目录、核心/扩展/运维/基准/案例骨架；补充 RAG 最小案例与运维脚本
 
 ## 月度巡检看板与定时任务

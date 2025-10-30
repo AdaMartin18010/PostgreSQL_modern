@@ -5,27 +5,27 @@
 - ✅ Windows 10
 - ✅ PostgreSQL 17 运行中
 - ✅ uv 0.8.17 已安装
-- ✅ postgres用户（密码：666110）
+- ✅ postgres 用户（密码：666110）
 
 ---
 
-## ⚡ 立即可执行（3步，10分钟）
+## ⚡ 立即可执行（3 步，10 分钟）
 
-### Step 1：部署Grafana Dashboard（推荐）
+### Step 1：部署 Grafana Dashboard（推荐）
 
-**这个不需要Python，可以立即执行！**
+**这个不需要 Python，可以立即执行！**
 
-1. **下载Grafana**：
+1. **下载 Grafana**：
 
    ```powershell
    # 访问
    <https://grafana.com/grafana/download?platform=windows>
-   
+
    # 或使用chocolatey
    choco install grafana
    ```
 
-2. **启动Grafana**：
+2. **启动 Grafana**：
 
    ```powershell
    # 如果用安装包，服务会自动启动
@@ -34,6 +34,7 @@
    ```
 
 3. **配置数据源**：
+
    - 登录 Grafana
    - Configuration → Data Sources → Add PostgreSQL
    - Host: localhost:5432
@@ -42,7 +43,7 @@
    - Password: 666110
    - SSL Mode: disable
 
-4. **导入Dashboard**：
+4. **导入 Dashboard**：
    - - → Import
    - Upload: `09_deployment_ops/grafana_dashboard.json`
    - 完成！
@@ -51,7 +52,7 @@
 
 ---
 
-### Step 2：添加psql到PATH
+### Step 2：添加 psql 到 PATH
 
 ```powershell
 # 1. 找到PostgreSQL安装目录
@@ -85,9 +86,9 @@ code PROJECT_STATUS_DASHBOARD.md
 
 ---
 
-## 🔧 修复Python环境（可选，15分钟）
+## 🔧 修复 Python 环境（可选，15 分钟）
 
-### 选项A：使用uv创建Python环境（推荐）
+### 选项 A：使用 uv 创建 Python 环境（推荐）
 
 ```powershell
 # 进入项目目录
@@ -109,7 +110,7 @@ python -c "import requests; print('requests OK')"
 
 ---
 
-### 选项B：使用conda（如果已安装）
+### 选项 B：使用 conda（如果已安装）
 
 ```powershell
 # 创建环境
@@ -124,9 +125,9 @@ pip install requests psycopg2-binary pyyaml
 
 ---
 
-## ✅ 执行验证（Python环境就绪后）
+## ✅ 执行验证（Python 环境就绪后）
 
-### 1. 质量验证（5分钟）
+### 1. 质量验证（5 分钟）
 
 ```powershell
 cd E:\_src\PostgreSQL_modern
@@ -143,12 +144,12 @@ python tools/validate_quality.py --references # 检查引用
 **预期输出**：
 
 - 生成 `QUALITY_VALIDATION_REPORT.md`
-- 链接有效率≥95%
-- 版本一致性100%
+- 链接有效率 ≥95%
+- 版本一致性 100%
 
 ---
 
-### 2. 配置测试数据库（5分钟）
+### 2. 配置测试数据库（5 分钟）
 
 ```powershell
 # 1. 创建测试数据库
@@ -170,7 +171,7 @@ copy config\database.yml.example config\database.yml
 
 ---
 
-### 3. 运行测试（30分钟）
+### 3. 运行测试（30 分钟）
 
 ```powershell
 cd E:\_src\PostgreSQL_modern\tests
@@ -205,43 +206,48 @@ start reports/test_results.html
 
 ## 🎯 推荐执行顺序
 
-### 今天（30分钟）
+### 今天（30 分钟）
 
-1. ✅ **部署Grafana Dashboard**（10分钟）
-   - 立即可用，无需Python
-   - 实时监控PostgreSQL
+1. ✅ **部署 Grafana Dashboard**（10 分钟）
 
-2. ✅ **添加psql到PATH**（5分钟）
+   - 立即可用，无需 Python
+   - 实时监控 PostgreSQL
+
+2. ✅ **添加 psql 到 PATH**（5 分钟）
+
    - 方便后续使用
 
-3. ✅ **查看验证报告**（5分钟）
+3. ✅ **查看验证报告**（5 分钟）
+
    - VALIDATION_REPORT_2025_10_03.md
    - 了解项目状态
 
-4. ✅ **修复Python环境**（10分钟）
-   - 使用uv创建虚拟环境
+4. ✅ **修复 Python 环境**（10 分钟）
+   - 使用 uv 创建虚拟环境
    - 安装依赖
 
-### 明天（1小时）
+### 明天（1 小时）
 
- 1. ⏳ **运行质量验证**（10分钟）
+1.  ⏳ **运行质量验证**（10 分钟）
+
     - python tools/validate_quality.py --all
 
- 2. ⏳ **配置测试数据库**（10分钟）
-    - 创建testdb
-    - 配置database.yml
+2.  ⏳ **配置测试数据库**（10 分钟）
 
- 3. ⏳ **运行测试用例**（40分钟）
-    - 91个测试
-    - 生成HTML报告
+    - 创建 testdb
+    - 配置 database.yml
+
+3.  ⏳ **运行测试用例**（40 分钟）
+    - 91 个测试
+    - 生成 HTML 报告
 
 ---
 
 ## 🆘 常见问题
 
-### Q1: Python环境配置失败？
+### Q1: Python 环境配置失败？
 
-**方案1**：使用uv venv（推荐）
+**方案 1**：使用 uv venv（推荐）
 
 ```powershell
 cd E:\_src\PostgreSQL_modern
@@ -250,7 +256,7 @@ uv venv
 uv pip install requests psycopg2-binary pyyaml
 ```
 
-**方案2**：使用系统Python
+**方案 2**：使用系统 Python
 
 ```powershell
 # 重新安装Python 3.11
@@ -260,7 +266,7 @@ uv pip install requests psycopg2-binary pyyaml
 
 ---
 
-### Q2: psql找不到？
+### Q2: psql 找不到？
 
 ```powershell
 # 找到PostgreSQL安装位置
@@ -272,9 +278,9 @@ $env:PATH += ";C:\Program Files\PostgreSQL\17\bin"
 
 ---
 
-### Q3: Grafana Dashboard显示"No Data"？
+### Q3: Grafana Dashboard 显示"No Data"？
 
-**原因**：可能需要pg_stat_statements扩展
+**原因**：可能需要 pg_stat_statements 扩展
 
 ```sql
 -- 连接数据库
@@ -292,9 +298,9 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 **快速开始**：
 
-- [START_HERE.md](START_HERE.md) - 1分钟
-- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - 5分钟
-- 本文档 - 10分钟
+- [START_HERE.md](START_HERE.md) - 1 分钟
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - 5 分钟
+- 本文档 - 10 分钟
 
 **验证报告**：
 

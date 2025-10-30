@@ -2,7 +2,7 @@
 
 > **版本对标**：PostgreSQL 17（更新于 2025-10）  
 > **难度范围**：⭐⭐⭐ 中级 ~ ⭐⭐⭐⭐⭐ 专家级  
-> **目标**：通过完整的生产级案例展示PostgreSQL扩展生态的强大能力
+> **目标**：通过完整的生产级案例展示 PostgreSQL 扩展生态的强大能力
 
 ---
 
@@ -18,22 +18,22 @@
 
 - ✅ 中英文混合全文搜索
 - ✅ 相关性排序与高亮显示
-- ✅ GIN索引性能优化
+- ✅ GIN 索引性能优化
 - ✅ 搜索建议与自动补全
 
 ---
 
-### 🔄 2. CDC变更数据捕获（Change Data Capture）
+### 🔄 2. CDC 变更数据捕获（Change Data Capture）
 
 **路径**：[change_data_capture/](./change_data_capture/README.md)  
 **难度**：⭐⭐⭐⭐ 高级  
-**适合场景**：数据同步、审计日志、实时ETL、事件驱动架构
+**适合场景**：数据同步、审计日志、实时 ETL、事件驱动架构
 
 **核心特性**：
 
-- ✅ 基于逻辑复制的CDC实现
-- ✅ 基于触发器的CDC实现
-- ✅ 变更数据流式输出（JSON格式）
+- ✅ 基于逻辑复制的 CDC 实现
+- ✅ 基于触发器的 CDC 实现
+- ✅ 变更数据流式输出（JSON 格式）
 - ✅ 性能优化与监控
 
 ---
@@ -42,13 +42,13 @@
 
 **路径**：[geofencing/](./geofencing/README.md)  
 **难度**：⭐⭐⭐⭐ 高级  
-**适合场景**：外卖配送、共享出行、物流跟踪、LBS营销
+**适合场景**：外卖配送、共享出行、物流跟踪、LBS 营销
 
 **核心特性**：
 
 - ✅ 点在多边形内判断（Point-in-Polygon）
 - ✅ 实时位置追踪与告警
-- ✅ 高性能空间索引（GiST索引）
+- ✅ 高性能空间索引（GiST 索引）
 - ✅ 地理围栏进出事件触发
 
 ---
@@ -61,9 +61,9 @@
 
 **核心特性**：
 
-- ✅ 跨PostgreSQL数据库查询（postgres_fdw）
-- ✅ 查询MySQL/MongoDB/CSV/API等外部数据源
-- ✅ 分布式JOIN与查询优化
+- ✅ 跨 PostgreSQL 数据库查询（postgres_fdw）
+- ✅ 查询 MySQL/MongoDB/CSV/API 等外部数据源
+- ✅ 分布式 JOIN 与查询优化
 - ✅ 数据虚拟化与联邦视图
 
 ---
@@ -78,7 +78,7 @@
 
 - ✅ 高频数据写入（10K+ TPS）
 - ✅ 实时聚合查询（亚秒级响应）
-- ✅ 滑动窗口分析（1分钟/5分钟/1小时）
+- ✅ 滑动窗口分析（1 分钟/5 分钟/1 小时）
 - ✅ 物化视图增量刷新
 
 ---
@@ -87,13 +87,13 @@
 
 **路径**：[timeseries_db/](./timeseries_db/README.md)  
 **难度**：⭐⭐⭐⭐ 高级  
-**适合场景**：IoT监控、金融行情、系统指标、日志分析
+**适合场景**：IoT 监控、金融行情、系统指标、日志分析
 
 **核心特性**：
 
 - ✅ 超表（Hypertable）自动分区
 - ✅ 连续聚合（Continuous Aggregates）
-- ✅ 自动数据压缩（7天后压缩70%+）
+- ✅ 自动数据压缩（7 天后压缩 70%+）
 - ✅ 数据保留策略（自动清理历史数据）
 
 ---
@@ -106,7 +106,7 @@
 
 **核心特性**：
 
-- ✅ Session级和Transaction级锁
+- ✅ Session 级和 Transaction 级锁
 - ✅ 分布式任务调度队列
 - ✅ 锁超时自动恢复
 - ✅ 死锁检测与处理
@@ -122,19 +122,19 @@
 **核心特性**：
 
 - ✅ 主从复制配置（Primary-Standby）
-- ✅ 同步/异步复制（RPO < 5秒）
-- ✅ 自动故障转移（RTO < 30秒）
+- ✅ 同步/异步复制（RPO < 5 秒）
+- ✅ 自动故障转移（RTO < 30 秒）
 - ✅ 读写分离负载均衡
 
 ---
 
 ## 🎯 已有案例（专题目录）
 
-### 🤖 AI向量检索
+### 🤖 AI 向量检索
 
 **路径**：[ai_vector/rag_minimal/](./ai_vector/rag_minimal/README.md)  
 **扩展**：pgvector  
-**场景**：RAG系统、语义搜索、相似度查询
+**场景**：RAG 系统、语义搜索、相似度查询
 
 ### 🌐 分布式数据库
 
@@ -152,36 +152,34 @@
 
 1. **业务场景**：明确的业务背景和需求
 2. **架构设计**：清晰的技术架构图
-3. **完整代码**：可直接运行的SQL脚本
+3. **完整代码**：可直接运行的 SQL 脚本
 4. **性能优化**：生产级优化技巧
 5. **练习任务**：分级练习（基础/进阶/挑战）
 
 ### 学习路径
 
-**初级用户**（了解PostgreSQL基础）：
+**初级用户**（了解 PostgreSQL 基础）：
 
-1. 全文搜索 → 地理围栏 → RAG向量检索
+1. 全文搜索 → 地理围栏 → RAG 向量检索
 
-**中级用户**（熟悉索引和查询优化）：
-2. CDC变更捕获 → 联邦查询 → 时序数据管理
+**中级用户**（熟悉索引和查询优化）： 2. CDC 变更捕获 → 联邦查询 → 时序数据管理
 
-**高级用户**（需要高性能和扩展性）：
-3. 实时分析 → 分布式锁 → 流式复制 → Citus分布式
+**高级用户**（需要高性能和扩展性）： 3. 实时分析 → 分布式锁 → 流式复制 → Citus 分布式
 
 ### 技术栈对照
 
-| 案例 | 核心扩展 | 索引类型 | 适合数据量 | 复杂度 |
-|------|---------|---------|-----------|--------|
-| 全文搜索 | 内置tsvector | GIN | 百万级 | ⭐⭐⭐ |
-| CDC | 逻辑复制/触发器 | - | 千万级 | ⭐⭐⭐⭐ |
-| 地理围栏 | PostGIS | GiST | 百万级 | ⭐⭐⭐⭐ |
-| 联邦查询 | postgres_fdw等 | - | 取决于源 | ⭐⭐⭐⭐ |
-| 实时分析 | pg_cron/分区表 | B-tree | 亿级+ | ⭐⭐⭐⭐⭐ |
-| 时序数据 | TimescaleDB | B-tree | 10亿级+ | ⭐⭐⭐⭐ |
-| 分布式锁 | Advisory Locks | - | - | ⭐⭐⭐⭐ |
-| 流式复制 | 物理复制 | - | - | ⭐⭐⭐⭐⭐ |
-| RAG向量 | pgvector | HNSW/IVFFlat | 千万级 | ⭐⭐⭐ |
-| Citus分布式 | Citus | 分布式索引 | 10亿级+ | ⭐⭐⭐⭐⭐ |
+| 案例         | 核心扩展        | 索引类型     | 适合数据量 | 复杂度     |
+| ------------ | --------------- | ------------ | ---------- | ---------- |
+| 全文搜索     | 内置 tsvector   | GIN          | 百万级     | ⭐⭐⭐     |
+| CDC          | 逻辑复制/触发器 | -            | 千万级     | ⭐⭐⭐⭐   |
+| 地理围栏     | PostGIS         | GiST         | 百万级     | ⭐⭐⭐⭐   |
+| 联邦查询     | postgres_fdw 等 | -            | 取决于源   | ⭐⭐⭐⭐   |
+| 实时分析     | pg_cron/分区表  | B-tree       | 亿级+      | ⭐⭐⭐⭐⭐ |
+| 时序数据     | TimescaleDB     | B-tree       | 10 亿级+   | ⭐⭐⭐⭐   |
+| 分布式锁     | Advisory Locks  | -            | -          | ⭐⭐⭐⭐   |
+| 流式复制     | 物理复制        | -            | -          | ⭐⭐⭐⭐⭐ |
+| RAG 向量     | pgvector        | HNSW/IVFFlat | 千万级     | ⭐⭐⭐     |
+| Citus 分布式 | Citus           | 分布式索引   | 10 亿级+   | ⭐⭐⭐⭐⭐ |
 
 ---
 
@@ -222,13 +220,27 @@ CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 ## 📚 更多资源
 
 - **官方文档**：<https://www.postgresql.org/docs/17/>
-- **PostGIS文档**：<https://postgis.net/documentation/>
+- **PostGIS 文档**：<https://postgis.net/documentation/>
 - **pgvector GitHub**：<https://github.com/pgvector/pgvector>
-- **Citus文档**：<https://docs.citusdata.com/>
+- **Citus 文档**：<https://docs.citusdata.com/>
 - **本项目主页**：[../README.md](../README.md)
 
 ---
 
 **维护者**：PostgreSQL_modern Project Team  
 **最后更新**：2025-10-03  
-**反馈建议**：欢迎提交Issue或Pull Request
+**反馈建议**：欢迎提交 Issue 或 Pull Request
+
+---
+
+## 对齐与论证入口（PG18）
+
+- 论证总览：`13_ai_alignment/00_论证总览_AI_View_对齐_PG18.md`
+- 主题链接：
+  - 向量与混合搜索：`13_ai_alignment/01_向量与混合搜索.md`
+  - AI 自治：`13_ai_alignment/02_AI自治.md`
+  - Serverless 与分支：`13_ai_alignment/03_Serverless与分支.md`
+  - 多模一体化：`13_ai_alignment/04_多模一体化.md`
+  - 合规与可信：`13_ai_alignment/05_合规与可信.md`
+
+建议先阅读上述论证文件，明确指标、边界与验证方法，再选择或扩展相应案例。
