@@ -1,7 +1,0 @@
--- EXPLAIN 示例
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT *
-FROM demo.events
-WHERE user_id = 42
-ORDER BY ts DESC
-LIMIT 10;
