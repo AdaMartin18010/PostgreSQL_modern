@@ -1157,6 +1157,7 @@ def search_documents_safe(query_vector, top_k=10):
    ```
 
 2. **pgvector 扩展未安装**:
+
    ```sql
    CREATE EXTENSION IF NOT EXISTS vector;
    ```

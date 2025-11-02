@@ -492,7 +492,7 @@ dependencies {
 
 **推荐项目结构**:
 
-```
+```text
 src/
 ├── main/
 │   ├── java/
@@ -1481,6 +1481,7 @@ public class OptimizedSearchService {
    - OpenAI text-embedding-3-large: **3072**
 
 3. **连接池配置**:
+
    ```yaml
    spring:
      datasource:
@@ -1522,6 +1523,7 @@ public class OptimizedSearchService {
    ```
 
 2. **缺少依赖**:
+
    ```xml
    <!-- 确保添加了所有必需的依赖 -->
    <dependency>

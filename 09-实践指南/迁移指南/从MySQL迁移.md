@@ -1640,7 +1640,7 @@ SELECT setval('users_id_seq', 1, false);
 ### 9.3 相关资源
 
 - [PostgreSQL 数据类型文档](https://www.postgresql.org/docs/current/datatype.html) - Data Types
-- [MySQL 到 PostgreSQL 迁移工具对比](https://wiki.postgresql.org/wiki/Converting_from_other_Databases_to_PostgreSQL) -
+- [MySQL 到 PostgreSQL 迁移工具对比](https://wiki.postgresql.org/wiki/Converting_from_other_Databases_to_PostgreSQL)
   Migration Tools
 
 ---
