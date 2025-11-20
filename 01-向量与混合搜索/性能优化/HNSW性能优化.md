@@ -6,23 +6,25 @@
 
 ## 📑 目录
 
-- [1. 概述](#1-概述)
-  - [1.1 技术背景](#11-技术背景)
-  - [1.2 优化目标](#12-优化目标)
-- [2. HNSW 参数优化](#2-hnsw-参数优化)
-  - [2.1 m 参数优化](#21-m-参数优化)
-  - [2.2 ef_construction 优化](#22-ef_construction-优化)
-  - [2.3 ef_search 优化](#23-ef_search-优化)
-- [3. 索引构建优化](#3-索引构建优化)
-  - [3.1 并行构建](#31-并行构建)
-  - [3.2 增量构建](#32-增量构建)
-- [4. 查询性能优化](#4-查询性能优化)
-  - [4.1 查询参数调优](#41-查询参数调优)
-  - [4.2 批量查询优化](#42-批量查询优化)
-- [5. 内存优化](#5-内存优化)
-- [6. 性能分析](#6-性能分析)
-- [7. 最佳实践](#7-最佳实践)
-- [8. 参考资料](#8-参考资料)
+- [HNSW 性能优化](#hnsw-性能优化)
+  - [📑 目录](#-目录)
+  - [1. 概述](#1-概述)
+    - [1.1 技术背景](#11-技术背景)
+    - [1.2 优化目标](#12-优化目标)
+  - [2. HNSW 参数优化](#2-hnsw-参数优化)
+    - [2.1 m 参数优化](#21-m-参数优化)
+    - [2.2 ef\_construction 优化](#22-ef_construction-优化)
+    - [2.3 ef\_search 优化](#23-ef_search-优化)
+  - [3. 索引构建优化](#3-索引构建优化)
+    - [3.1 并行构建](#31-并行构建)
+    - [3.2 增量构建](#32-增量构建)
+  - [4. 查询性能优化](#4-查询性能优化)
+    - [4.1 查询参数调优](#41-查询参数调优)
+    - [4.2 批量查询优化](#42-批量查询优化)
+  - [5. 内存优化](#5-内存优化)
+  - [6. 性能分析](#6-性能分析)
+  - [7. 最佳实践](#7-最佳实践)
+  - [8. 参考资料](#8-参考资料)
 
 ---
 
@@ -30,7 +32,8 @@
 
 ### 1.1 技术背景
 
-HNSW (Hierarchical Navigable Small World) 是 pgvector 中最常用的向量索引算法，但在大规模场景下需要精细调优才能达到最佳性能。
+HNSW (Hierarchical Navigable Small World) 是 pgvector 中最常用的向量索引算法，但在大规模场景下需要精
+细调优才能达到最佳性能。
 
 ### 1.2 优化目标
 
@@ -101,7 +104,7 @@ SELECT * FROM documents ORDER BY embedding <=> $1 LIMIT 10;
 ```sql
 -- 启用并行构建
 SET max_parallel_maintenance_workers = 4;
-CREATE INDEX CONCURRENTLY ON documents 
+CREATE INDEX CONCURRENTLY ON documents
 USING hnsw (embedding vector_cosine_ops);
 ```
 
@@ -109,7 +112,7 @@ USING hnsw (embedding vector_cosine_ops);
 
 ```sql
 -- 为新增数据创建部分索引
-CREATE INDEX ON documents 
+CREATE INDEX ON documents
 USING hnsw (embedding vector_cosine_ops)
 WHERE created_at > NOW() - INTERVAL '1 day';
 ```
@@ -160,8 +163,8 @@ SET work_mem = '64MB';
 
 **优化效果**:
 
-| 优化项 | 优化前 | 优化后 | 提升 |
-| ------ | ------ | ------ | ---- |
+| 优化项   | 优化前 | 优化后 | 提升 |
+| -------- | ------ | ------ | ---- |
 | 查询延迟 | 25ms   | 8ms    | 3.1x |
 | 索引构建 | 8 小时 | 2 小时 | 4x   |
 | 内存占用 | 5x     | 3x     | 1.7x |
@@ -171,9 +174,9 @@ SET work_mem = '64MB';
 ## 7. 最佳实践
 
 1. **参数选择**: 根据数据规模选择合适的 m 和 ef_construction
-2. **并行构建**: 使用 CONCURRENTLY 避免锁表
-3. **查询优化**: 根据精度要求调整 ef_search
-4. **内存管理**: 合理配置 shared_buffers 和 work_mem
+1. **并行构建**: 使用 CONCURRENTLY 避免锁表
+1. **查询优化**: 根据精度要求调整 ef_search
+1. **内存管理**: 合理配置 shared_buffers 和 work_mem
 
 ---
 
@@ -186,4 +189,3 @@ SET work_mem = '64MB';
 
 **最后更新**: 2025 年 11 月 1 日  
 **维护者**: PostgreSQL Modern Team
-

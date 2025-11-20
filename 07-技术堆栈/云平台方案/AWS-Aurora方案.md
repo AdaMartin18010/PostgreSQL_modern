@@ -46,9 +46,9 @@ AWS Aurora 是 AWS 提供的云原生数据库服务，基于 PostgreSQL，提�
 **技术演进**:
 
 1. **2014 年**: Aurora MySQL 发布
-2. **2017 年**: Aurora PostgreSQL 发布
-3. **2020 年**: 支持 Serverless v2
-4. **2025 年**: 支持 pgvector 和更多扩展
+1. **2017 年**: Aurora PostgreSQL 发布
+1. **2020 年**: 支持 Serverless v2
+1. **2025 年**: 支持 pgvector 和更多扩展
 
 ### 1.2 方案定位
 
