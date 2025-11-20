@@ -1558,7 +1558,7 @@ SELECT setval('users_id_seq', 1, false);
    SELECT COALESCE(name, 'Unknown') FROM users;
    ```
 
-2. **字符串拼接**:
+1. **字符串拼接**:
 
    ```sql
    -- MySQL: CONCAT('a', 'b')
@@ -1566,7 +1566,7 @@ SELECT setval('users_id_seq', 1, false);
    SELECT first_name || ' ' || last_name FROM users;
    ```
 
-3. **LIMIT 语法**:
+1. **LIMIT 语法**:
 
    ```sql
    -- MySQL: LIMIT 10 OFFSET 20
@@ -1574,7 +1574,7 @@ SELECT setval('users_id_seq', 1, false);
    SELECT * FROM users LIMIT 10 OFFSET 20;
    ```
 
-4. **布尔值**:
+1. **布尔值**:
 
    ```sql
    -- MySQL: 使用 TINYINT(1)
@@ -1607,19 +1607,19 @@ SELECT setval('users_id_seq', 1, false);
    - 迁移后立即备份 PostgreSQL
    - 保留多个备份版本
 
-2. **测试验证**:
+1. **测试验证**:
 
    - 先在测试环境验证
    - 执行完整的功能测试
    - 性能基准测试
 
-3. **回滚方案**:
+1. **回滚方案**:
 
    - 保留 MySQL 数据
    - 准备回滚脚本
    - 制定回滚流程
 
-4. **监控告警**:
+1. **监控告警**:
    - 监控迁移进度
    - 监控系统资源
    - 设置告警阈值
