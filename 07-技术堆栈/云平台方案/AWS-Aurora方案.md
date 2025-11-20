@@ -1,4 +1,4 @@
-# 7.3.1 AWS Aurora 方案
+# AWS Aurora 方案
 
 > **更新时间**: 2025 年 11 月 1 日  
 > **技术版本**: Aurora PostgreSQL 15+  
@@ -6,7 +6,7 @@
 
 ## 📑 目录
 
-- [7.3.1 AWS Aurora 方案](#731-aws-aurora-方案)
+- [AWS Aurora 方案](#aws-aurora-方案)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
     - [1.1 技术背景](#11-技术背景)
@@ -134,10 +134,10 @@ resource "aws_rds_cluster" "aurora" {
   database_name           = "mydb"
   master_username         = "admin"
   master_password         = var.db_password
-  
+
   db_subnet_group_name    = aws_db_subnet_group.aurora.name
   vpc_security_group_ids  = [aws_security_group.aurora.id]
-  
+
   backup_retention_period = 7
   preferred_backup_window = "03:00-04:00"
 }

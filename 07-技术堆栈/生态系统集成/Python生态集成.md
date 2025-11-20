@@ -1,11 +1,12 @@
-# Python 生态集成 PostgreSQL 向量搜索
+# Python 生态集成
 
-> **更新时间**: 2025 年 11 月 1 日 **技术版本**: PostgreSQL 14+, pgvector 0.7.0+, Python 3.8+ **文档
-> 编号**: 07-03-03
+> **更新时间**: 2025 年 11 月 1 日  
+> **技术版本**: PostgreSQL 14+, pgvector 0.7.0+, Python 3.8+  
+> **文档编号**: 07-02-03
 
 ## 📑 目录
 
-- [Python 生态集成 PostgreSQL 向量搜索](#python-生态集成-postgresql-向量搜索)
+- [Python 生态集成](#python-生态集成)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
     - [1.1 文档目标](#11-文档目标)
