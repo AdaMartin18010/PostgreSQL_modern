@@ -73,14 +73,14 @@ JPA/Hibernate 集成提供 Java 应用与 PostgreSQL 的集成方案，支持向
         <artifactId>hibernate-core</artifactId>
         <version>6.4.0.Final</version>
     </dependency>
-    
+
     <!-- PostgreSQL Driver -->
     <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <version>42.7.0</version>
     </dependency>
-    
+
     <!-- pgvector Support -->
     <dependency>
         <groupId>com.pgvector</groupId>
@@ -115,7 +115,7 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 @Configuration
 @EnableJpaRepositories
 public class JpaConfig {
-    
+
     @Bean
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
@@ -124,20 +124,20 @@ public class JpaConfig {
         config.setPassword("mypassword");
         return new HikariDataSource(config);
     }
-    
+
     @Bean
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource());
         em.setPackagesToScan("com.example.entity");
-        
+
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         em.setJpaVendorAdapter(vendorAdapter);
-        
+
         Properties properties = new Properties();
         properties.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         em.setJpaProperties(properties);
-        
+
         return em;
     }
 }
@@ -155,17 +155,17 @@ public class JpaConfig {
 @Entity
 @Table(name = "documents")
 public class Document {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(name = "content")
     private String content;
-    
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     // Getters and Setters
 }
 ```
@@ -178,17 +178,17 @@ public class Document {
 @Entity
 @Table(name = "documents")
 public class Document {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(name = "content")
     private String content;
-    
+
     @Column(name = "embedding", columnDefinition = "vector(1536)")
     private Pgvector embedding;
-    
+
     // Getters and Setters
 }
 ```
@@ -198,15 +198,15 @@ public class Document {
 ```java
 public class Pgvector implements Serializable {
     private float[] vector;
-    
+
     public Pgvector(float[] vector) {
         this.vector = vector;
     }
-    
+
     public float[] getVector() {
         return vector;
     }
-    
+
     public String toString() {
         return "[" + Arrays.stream(vector)
             .mapToObj(String::valueOf)
@@ -223,15 +223,15 @@ public class Pgvector implements Serializable {
 @Entity
 @Table(name = "items")
 public class Item {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Type(JsonBinaryType.class)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, Object> metadata;
-    
+
     // Getters and Setters
 }
 ```
@@ -247,8 +247,8 @@ public class Item {
 ```java
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
-    
-    @Query(value = "SELECT * FROM documents ORDER BY embedding <=> CAST(:vector AS vector) LIMIT :limit", 
+
+    @Query(value = "SELECT * FROM documents ORDER BY embedding <=> CAST(:vector AS vector) LIMIT :limit",
            nativeQuery = true)
     List<Document> findSimilarDocuments(@Param("vector") String vector, @Param("limit") int limit);
 }
@@ -261,19 +261,19 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 ```java
 @Repository
 public class DocumentRepositoryImpl {
-    
+
     @PersistenceContext
     private EntityManager entityManager;
-    
+
     public List<Document> findSimilar(float[] queryVector, int limit) {
         String vectorStr = Arrays.stream(queryVector)
             .mapToObj(String::valueOf)
             .collect(Collectors.joining(","));
-        
+
         String sql = "SELECT * FROM documents " +
                      "ORDER BY embedding <=> CAST('[" + vectorStr + "]' AS vector) " +
                      "LIMIT :limit";
-        
+
         return entityManager.createNativeQuery(sql, Document.class)
             .setParameter("limit", limit)
             .getResultList();
@@ -316,4 +316,3 @@ public class DocumentRepositoryImpl {
 
 **最后更新**: 2025 年 11 月 1 日  
 **维护者**: PostgreSQL Modern Team
-

@@ -1,11 +1,12 @@
-# 7.2.1 Python 生态集成
+# Python 生态集成 PostgreSQL 向量搜索
 
-> **更新时间**: 2025 年 11 月 1 日  
-> **文档编号**: 07-02-01
+> **更新时间**: 2025 年 11 月 1 日
+> **技术版本**: PostgreSQL 14+, pgvector 0.7.0+, Python 3.8+
+> **文档编号**: 07-03-03
 
 ## 📑 目录
 
-- [7.2.1 Python 生态集成](#721-python-生态集成)
+- [Python 生态集成 PostgreSQL 向量搜索](#python-生态集成-postgresql-向量搜索)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
     - [1.1 文档目标](#11-文档目标)
@@ -1200,6 +1201,6 @@ def search_documents_safe(query_vector, top_k=10):
 
 ---
 
-**最后更新**: 2025 年 11 月 1 日  
-**维护者**: PostgreSQL Modern Team  
+**最后更新**: 2025 年 11 月 1 日
+**维护者**: PostgreSQL Modern Team
 **文档编号**: 07-02-01

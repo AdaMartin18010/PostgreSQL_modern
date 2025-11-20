@@ -47,6 +47,9 @@
       - [案例 2: 多环境开发流程](#案例-2-多环境开发流程)
     - [8. 故障排查](#8-故障排查)
       - [8.1 常见问题](#81-常见问题)
+        - [8.1.1 问题 1: 分支创建失败](#811-问题-1-分支创建失败)
+        - [8.1.2 问题 2: Scale-to-Zero 恢复缓慢](#812-问题-2-scale-to-zero-恢复缓慢)
+        - [8.1.3 问题 3: 查询性能下降](#813-问题-3-查询性能下降)
     - [9. 安全最佳实践](#9-安全最佳实践)
       - [9.1 访问控制](#91-访问控制)
       - [9.2 数据加密](#92-数据加密)
@@ -161,6 +164,9 @@
     - [43. 总结与快速开始](#43-总结与快速开始)
       - [43.1 5 分钟快速开始](#431-5-分钟快速开始)
       - [43.2 常见使用模式](#432-常见使用模式)
+        - [43.2.1 模式 1: AI Agent 实验](#4321-模式-1-ai-agent-实验)
+        - [43.2.2 模式 2: 多环境开发](#4322-模式-2-多环境开发)
+        - [43.2.3 模式 3: A/B 测试](#4323-模式-3-ab-测试)
     - [44. 学习路径与培训资源](#44-学习路径与培训资源)
   - [44. Neon 平台学习与培训](#44-neon-平台学习与培训)
     - [44.1 初学者学习路径](#441-初学者学习路径)
@@ -1055,7 +1061,7 @@ class DevelopmentWorkflow:
 
 #### 8.1 常见问题
 
-**问题 1: 分支创建失败**
+##### 8.1.1 问题 1: 分支创建失败
 
 ```python
 # 检查存储配额
@@ -1073,7 +1079,7 @@ if len(active_branches) > MAX_CONCURRENT_BRANCHES:
     print(f"活跃分支数 ({len(active_branches)}) 超过限制")
 ```
 
-**问题 2: Scale-to-Zero 恢复缓慢**
+##### 8.1.2 问题 2: Scale-to-Zero 恢复缓慢
 
 ```python
 # 使用连接预热
@@ -1089,7 +1095,7 @@ async def warmup_connection(connection_string):
 await warmup_connection(branch.connection_string)
 ```
 
-**问题 3: 查询性能下降**
+##### 8.1.3 问题 3: 查询性能下降
 
 ```python
 # 检查索引
@@ -2899,7 +2905,7 @@ client.branches.delete(
 
 #### 26.3 连接字符串格式
 
-```
+```text
 postgresql://[user]:[password]@[host]:[port]/[database]?sslmode=require
 ```
 
@@ -4706,7 +4712,7 @@ await conn.close()
 
 #### 43.2 常见使用模式
 
-**模式 1: AI Agent 实验**
+##### 43.2.1 模式 1: AI Agent 实验
 
 ```python
 # 为每次实验创建分支
@@ -4727,7 +4733,7 @@ for experiment in experiments:
     )
 ```
 
-**模式 2: 多环境开发**
+##### 43.2.2 模式 2: 多环境开发
 
 ```python
 # 为每个开发者创建环境
@@ -4742,7 +4748,7 @@ for developer in developers:
     await run_migrations(branch.connection_string)
 ```
 
-**模式 3: A/B 测试**
+##### 43.2.3 模式 3: A/B 测试
 
 ```python
 # 创建测试变体
