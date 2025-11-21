@@ -25,11 +25,17 @@
     - [5.1 性能指标](#51-性能指标)
     - [5.2 实际应用案例](#52-实际应用案例)
       - [案例: 某制造企业 IoT 时序数据分析系统（真实案例）](#案例-某制造企业-iot-时序数据分析系统真实案例)
-  - [6. 最佳实践](#6-最佳实践)
-    - [6.1 数据采集建议](#61-数据采集建议)
-    - [6.2 分析优化建议](#62-分析优化建议)
-    - [6.3 性能优化建议](#63-性能优化建议)
-  - [7. 参考资料](#7-参考资料)
+  - [6. 更多应用场景](#6-更多应用场景)
+    - [6.1 智能制造场景](#61-智能制造场景)
+    - [6.2 智慧城市场景](#62-智慧城市场景)
+    - [6.3 智能家居场景](#63-智能家居场景)
+    - [6.4 环境监测场景](#64-环境监测场景)
+  - [7. 最佳实践](#7-最佳实践)
+    - [7.1 数据采集建议](#71-数据采集建议)
+    - [7.2 分析优化建议](#72-分析优化建议)
+    - [7.3 性能优化建议](#73-性能优化建议)
+    - [7.4 场景选择建议](#74-场景选择建议)
+  - [8. 参考资料](#8-参考资料)
 
 ---
 
@@ -331,27 +337,143 @@ GROUP BY cs.device_id;
 | **维护成本** | 基准 | **降低 50%** | **降低** |
 | **生产效率** | 基准 | **提升 25%** | **提升** |
 
-## 6. 最佳实践
+## 6. 更多应用场景
 
-### 6.1 数据采集建议
+### 6.1 智能制造场景
+
+**应用场景**:
+
+在工业物联网（IIoT）中，时序数据分析用于：
+
+- **设备状态监控**: 实时监控设备运行状态
+- **预测性维护**: 预测设备故障，减少停机时间
+- **生产优化**: 优化生产流程，提高生产效率
+
+**技术实现**:
+
+```sql
+-- 设备状态监控查询
+SELECT
+    device_id,
+    time_bucket('5 minutes', time) AS bucket,
+    AVG(temperature) AS avg_temp,
+    AVG(pressure) AS avg_pressure,
+    AVG(vibration) AS avg_vibration
+FROM device_metrics
+WHERE time > NOW() - INTERVAL '1 hour'
+GROUP BY device_id, bucket
+ORDER BY bucket DESC;
+```
+
+### 6.2 智慧城市场景
+
+**应用场景**:
+
+通过对城市传感器网络生成的时序数据进行分析：
+
+- **交通流量优化**: 分析交通流量数据，优化交通信号
+- **环境监测**: 监测空气质量、水质等环境数据
+- **公共安全管理**: 分析公共安全相关数据
+
+**技术实现**:
+
+```sql
+-- 交通流量分析
+SELECT
+    sensor_id,
+    time_bucket('15 minutes', time) AS bucket,
+    AVG(traffic_flow) AS avg_flow,
+    MAX(traffic_flow) AS max_flow
+FROM traffic_sensors
+WHERE time > NOW() - INTERVAL '24 hours'
+GROUP BY sensor_id, bucket
+ORDER BY bucket DESC;
+```
+
+### 6.3 智能家居场景
+
+**应用场景**:
+
+分析家庭设备的时序数据：
+
+- **能耗优化**: 分析能耗数据，优化用电策略
+- **自动化控制**: 根据数据自动控制家居设备
+- **安全监控**: 监控家庭安全相关数据
+
+**技术实现**:
+
+```sql
+-- 能耗分析
+SELECT
+    device_id,
+    DATE_TRUNC('day', time) AS day,
+    SUM(energy_consumption) AS daily_consumption
+FROM home_devices
+WHERE time > NOW() - INTERVAL '30 days'
+GROUP BY device_id, day
+ORDER BY day DESC;
+```
+
+### 6.4 环境监测场景
+
+**应用场景**:
+
+利用传感器网络收集环境数据：
+
+- **实时分析**: 实时分析环境数据
+- **灾害预警**: 提供灾害预警和环境质量评估
+- **数据可视化**: 可视化环境数据，辅助决策
+
+**技术实现**:
+
+```sql
+-- 环境质量监测
+SELECT
+    sensor_id,
+    time_bucket('1 hour', time) AS bucket,
+    AVG(pm25) AS avg_pm25,
+    AVG(pm10) AS avg_pm10,
+    AVG(temperature) AS avg_temp,
+    AVG(humidity) AS avg_humidity
+FROM environment_sensors
+WHERE time > NOW() - INTERVAL '24 hours'
+GROUP BY sensor_id, bucket
+ORDER BY bucket DESC;
+```
+
+## 7. 最佳实践
+
+### 7.1 数据采集建议
 
 1. **批量写入**: 使用批量写入，提高写入性能
 2. **数据压缩**: 启用 TimescaleDB 压缩，降低存储成本
 3. **数据保留**: 设置合理的数据保留策略
+4. **数据验证**: 验证数据的有效性和一致性
 
-### 6.2 分析优化建议
+### 7.2 分析优化建议
 
 1. **时序分析**: 使用 TimescaleDB 时序函数，提高分析效率
 2. **向量化**: 将设备状态向量化，支持相似度计算
 3. **异常检测**: 结合时序分析和向量相似度，提高检测准确率
+4. **实时处理**: 使用流式处理技术处理实时数据
 
-### 6.3 性能优化建议
+### 7.3 性能优化建议
 
 1. **索引优化**: 为时序表和向量表创建合适的索引
 2. **分区策略**: 使用 TimescaleDB 分区，提高查询性能
 3. **缓存策略**: 缓存常用查询结果，减少数据库负载
+4. **查询优化**: 优化查询语句，提高查询性能
 
-## 7. 参考资料
+### 7.4 场景选择建议
+
+| 场景 | 推荐技术 | 说明 |
+|------|---------|------|
+| **智能制造** | TimescaleDB + pgvector | 设备监控、预测性维护 |
+| **智慧城市** | TimescaleDB + PostGIS | 交通、环境监测 |
+| **智能家居** | TimescaleDB | 能耗优化、自动化控制 |
+| **环境监测** | TimescaleDB + pgvector | 实时分析、异常检测 |
+
+## 8. 参考资料
 
 - [设备预测维护系统](./设备预测维护系统.md)
 - [多模数据模型设计](../../04-多模一体化/技术原理/多模数据模型设计.md)
