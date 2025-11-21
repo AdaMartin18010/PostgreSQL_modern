@@ -34,6 +34,7 @@
     - [8.1 ObjectId 转换](#81-objectid-转换)
     - [8.2 时区处理](#82-时区处理)
     - [8.3 实际迁移案例](#83-实际迁移案例)
+      - [案例: 某电商平台从 MongoDB 迁移到 PostgreSQL](#案例-某电商平台从-mongodb-迁移到-postgresql)
   - [9. 参考资料](#9-参考资料)
 
 ---
@@ -413,7 +414,7 @@ INSERT INTO documents (created_at) VALUES ('2024-01-01 12:00:00+00'::timestamptz
 
 ### 8.3 实际迁移案例
 
-**案例: 某电商平台从 MongoDB 迁移到 PostgreSQL**
+#### 案例: 某电商平台从 MongoDB 迁移到 PostgreSQL
 
 **业务场景**:
 

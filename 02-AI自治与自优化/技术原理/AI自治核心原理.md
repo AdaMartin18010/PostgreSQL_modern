@@ -1,7 +1,7 @@
 # AI 自治核心原理
 
-> **更新时间**: 2025 年 11 月 1 日  
-> **技术版本**: pg_ai 1.0 GA  
+> **更新时间**: 2025 年 11 月 1 日
+> **技术版本**: pg_ai 1.0 GA
 > **文档编号**: 02-01-01
 
 ## 📑 目录
@@ -887,7 +887,7 @@ SELECT pg_ai.set_performance_threshold(
 
 ### 7.2 学术论文
 
-- [Learning to Optimize Join Queries with Deep Reinforcement Learning](https://arxiv.org/abs/2001.01561) -
+- [Learning to Optimize Join Queries with Deep Reinforcement Learning](https://arxiv.org/abs/2001.01561)
   Deep Reinforcement Learning for Query Optimization
 - [Query Optimization with Learned Cost Models](https://arxiv.org/abs/1709.00075) - Learned Cost
   Models
@@ -900,6 +900,6 @@ SELECT pg_ai.set_performance_threshold(
 
 ---
 
-**最后更新**: 2025 年 11 月 1 日  
-**维护者**: PostgreSQL Modern Team  
+**最后更新**: 2025 年 11 月 1 日
+**维护者**: PostgreSQL Modern Team
 **文档编号**: 02-01-01

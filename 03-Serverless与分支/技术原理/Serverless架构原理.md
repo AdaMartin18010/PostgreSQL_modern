@@ -2704,6 +2704,6 @@ class ApplicationSwitchover:
 
 ---
 
-**最后更新**: 2025 年 11 月 1 日  
-**维护者**: PostgreSQL Modern Team  
+**最后更新**: 2025 年 11 月 1 日
+**维护者**: PostgreSQL Modern Team
 **文档编号**: 03-01-01

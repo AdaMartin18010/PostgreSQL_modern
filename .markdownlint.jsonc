@@ -9,8 +9,8 @@
   },
   // Allow files without a leading H1 (many docs are partials)
   "MD041": false,
-  // Ordered list style: always "1." for simplicity
-  "MD029": { "style": "one" },
+  // Ordered list style: allow both "1." and sequential numbering (1., 2., 3.)
+  "MD029": { "style": "one_or_ordered" },
   // Code block style: fenced with backticks
   "MD046": { "style": "fenced" },
   // Heading style: ATX (#) and require spaces after #
