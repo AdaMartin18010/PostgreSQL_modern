@@ -15,28 +15,28 @@
     - [2.1 SQL 基础体系架构](#21-sql-基础体系架构)
     - [2.2 SQL 学习路径](#22-sql-学习路径)
   - [3. SQL 数据类型](#3-sql-数据类型)
-    - [1.1 数值类型](#11-数值类型)
-    - [1.2 字符类型](#12-字符类型)
-    - [1.3 日期时间类型](#13-日期时间类型)
-    - [1.4 布尔类型](#14-布尔类型)
-    - [1.5 JSON 类型](#15-json-类型)
-    - [1.6 数组类型](#16-数组类型)
-    - [1.7 UUID 类型](#17-uuid-类型)
+    - [3.1 数值类型](#31-数值类型)
+    - [3.2 字符类型](#32-字符类型)
+    - [3.3 日期时间类型](#33-日期时间类型)
+    - [3.4 布尔类型](#34-布尔类型)
+    - [3.5 JSON 类型](#35-json-类型)
+    - [3.6 数组类型](#36-数组类型)
+    - [3.7 UUID 类型](#37-uuid-类型)
   - [4. DML 操作（数据操作语言）](#4-dml-操作数据操作语言)
-    - [2.1 INSERT 插入数据](#21-insert-插入数据)
-    - [2.2 UPDATE 更新数据](#22-update-更新数据)
-    - [2.3 DELETE 删除数据](#23-delete-删除数据)
-    - [2.4 UPSERT（插入或更新）](#24-upsert插入或更新)
+    - [4.1 INSERT 插入数据](#41-insert-插入数据)
+    - [4.2 UPDATE 更新数据](#42-update-更新数据)
+    - [4.3 DELETE 删除数据](#43-delete-删除数据)
+    - [4.4 UPSERT（插入或更新）](#44-upsert插入或更新)
   - [5. DQL 操作（数据查询语言）](#5-dql-操作数据查询语言)
-    - [3.1 SELECT 基础查询](#31-select-基础查询)
-    - [3.2 WHERE 条件过滤](#32-where-条件过滤)
-    - [3.3 ORDER BY 排序](#33-order-by-排序)
-    - [3.4 LIMIT 和 OFFSET](#34-limit-和-offset)
-    - [3.5 DISTINCT 去重](#35-distinct-去重)
-    - [3.6 GROUP BY 分组](#36-group-by-分组)
-    - [3.7 JOIN 连接](#37-join-连接)
-    - [3.8 子查询](#38-子查询)
-    - [3.9 UNION 合并查询结果](#39-union-合并查询结果)
+    - [5.1 SELECT 基础查询](#51-select-基础查询)
+    - [5.2 WHERE 条件过滤](#52-where-条件过滤)
+    - [5.3 ORDER BY 排序](#53-order-by-排序)
+    - [5.4 LIMIT 和 OFFSET](#54-limit-和-offset)
+    - [5.5 DISTINCT 去重](#55-distinct-去重)
+    - [5.6 GROUP BY 分组](#56-group-by-分组)
+    - [5.7 JOIN 连接](#57-join-连接)
+    - [5.8 子查询](#58-子查询)
+    - [5.9 UNION 合并查询结果](#59-union-合并查询结果)
   - [6. 实际应用案例](#6-实际应用案例)
     - [6.1 案例: 电商系统数据管理（真实案例）](#61-案例-电商系统数据管理真实案例)
     - [6.2 案例: 数据分析报表系统（真实案例）](#62-案例-数据分析报表系统真实案例)
@@ -183,7 +183,7 @@ flowchart TD
 
 ## 3. SQL 数据类型
 
-### 1.1 数值类型
+### 3.1 数值类型
 
 ```sql
 -- 数值类型示例
@@ -210,7 +210,7 @@ CREATE TABLE numeric_types (
 | 大数值 | BIGINT | 超过 INTEGER 范围 |
 | 科学计算 | REAL/DOUBLE PRECISION | 可接受精度损失 |
 
-### 1.2 字符类型
+### 3.2 字符类型
 
 ```sql
 -- 字符类型示例
@@ -229,7 +229,7 @@ CREATE TABLE character_types (
 - **TEXT**: 未知长度或很长的文本（推荐）
 - **CHAR(n)**: 固定长度字符串（很少使用）
 
-### 1.3 日期时间类型
+### 3.3 日期时间类型
 
 ```sql
 -- 日期时间类型示例
@@ -248,7 +248,7 @@ CREATE TABLE datetime_types (
 - 使用 `TIMESTAMPTZ` 而不是 `TIMESTAMP`（自动处理时区）
 - 使用 `NOW()` 或 `CURRENT_TIMESTAMP` 获取当前时间
 
-### 1.4 布尔类型
+### 3.4 布尔类型
 
 ```sql
 -- 布尔类型示例
@@ -264,7 +264,7 @@ INSERT INTO boolean_types (is_active) VALUES (FALSE);
 INSERT INTO boolean_types (is_active) VALUES (NULL);
 ```
 
-### 1.5 JSON 类型
+### 3.5 JSON 类型
 
 ```sql
 -- JSON 类型示例
@@ -293,7 +293,7 @@ SELECT jsonb_col->'tags'->0 AS first_tag FROM json_types;
 | 索引支持 | 否 | 是 |
 | 推荐使用 | 否 | 是 |
 
-### 1.6 数组类型
+### 3.6 数组类型
 
 ```sql
 -- 数组类型示例
@@ -315,7 +315,7 @@ SELECT * FROM array_types WHERE 'tag1' = ANY(tags);
 SELECT * FROM array_types WHERE tags @> ARRAY['tag1'];
 ```
 
-### 1.7 UUID 类型
+### 3.7 UUID 类型
 
 ```sql
 -- UUID 类型示例
@@ -330,7 +330,7 @@ SELECT gen_random_uuid();
 
 ## 4. DML 操作（数据操作语言）
 
-### 2.1 INSERT 插入数据
+### 4.1 INSERT 插入数据
 
 ```sql
 -- 单行插入
@@ -354,7 +354,7 @@ VALUES ('David', 'david@example.com')
 RETURNING id, name;
 ```
 
-### 2.2 UPDATE 更新数据
+### 4.2 UPDATE 更新数据
 
 ```sql
 -- 基本更新
@@ -388,7 +388,7 @@ WHERE id = 1
 RETURNING id, name, age;
 ```
 
-### 2.3 DELETE 删除数据
+### 4.3 DELETE 删除数据
 
 ```sql
 -- 删除特定行
@@ -412,7 +412,7 @@ WHERE age < 18
 RETURNING id, name;
 ```
 
-### 2.4 UPSERT（插入或更新）
+### 4.4 UPSERT（插入或更新）
 
 ```sql
 -- INSERT ... ON CONFLICT（PostgreSQL 9.5+）
@@ -431,7 +431,7 @@ ON CONFLICT (email) DO NOTHING;
 
 ## 5. DQL 操作（数据查询语言）
 
-### 3.1 SELECT 基础查询
+### 5.1 SELECT 基础查询
 
 ```sql
 -- 查询所有列
@@ -455,7 +455,7 @@ SELECT
 FROM users;
 ```
 
-### 3.2 WHERE 条件过滤
+### 5.2 WHERE 条件过滤
 
 ```sql
 -- 基本条件
@@ -494,7 +494,7 @@ SELECT * FROM users
 WHERE email IS NOT NULL;
 ```
 
-### 3.3 ORDER BY 排序
+### 5.3 ORDER BY 排序
 
 ```sql
 -- 升序排序（默认）
@@ -512,7 +512,7 @@ SELECT * FROM users
 ORDER BY LENGTH(name) DESC;
 ```
 
-### 3.4 LIMIT 和 OFFSET
+### 5.4 LIMIT 和 OFFSET
 
 ```sql
 -- 限制结果数量
@@ -532,7 +532,7 @@ ORDER BY id
 LIMIT 10 OFFSET 10;  -- 第2页
 ```
 
-### 3.5 DISTINCT 去重
+### 5.5 DISTINCT 去重
 
 ```sql
 -- 去重
@@ -547,7 +547,7 @@ FROM users
 ORDER BY age, created_at DESC;
 ```
 
-### 3.6 GROUP BY 分组
+### 5.6 GROUP BY 分组
 
 ```sql
 -- 基本分组
@@ -585,7 +585,7 @@ GROUP BY age
 HAVING COUNT(*) > 5;
 ```
 
-### 3.7 JOIN 连接
+### 5.7 JOIN 连接
 
 ```sql
 -- INNER JOIN（内连接）
@@ -625,7 +625,7 @@ JOIN order_items oi ON o.id = oi.order_id
 JOIN products p ON oi.product_id = p.id;
 ```
 
-### 3.8 子查询
+### 5.8 子查询
 
 ```sql
 -- 标量子查询（返回单个值）
@@ -662,7 +662,7 @@ SELECT
 FROM users u;
 ```
 
-### 3.9 UNION 合并查询结果
+### 5.9 UNION 合并查询结果
 
 ```sql
 -- UNION（去重）
