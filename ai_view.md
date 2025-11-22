@@ -1,9 +1,75 @@
-# postgres
+# PostgreSQL AI 时代完整技术视图
 
-## 分析
+> **最后更新**: 2025 年 1 月
+> **项目版本**: v2.0
 
-截至 2025 年 10 月，**PostgreSQL 已成为 AI 时代最炙手可热的“AI 原生数据库”底座**，其技术演进与落地场
-景呈现出以下五大趋势。
+## 📋 项目简介
+
+本项目全面梳理和论证 PostgreSQL 在 AI 时代（2025 年）的最新技术趋势、架构设计、技术堆栈和落地实践，为企业和开发者提供完整的技术参考和实践指南。
+
+### 项目结构
+
+```text
+PostgreSQL_modern/
+├── PostgreSQL_View/              # AI 时代技术视图（167+ 文档）
+│   ├── 01-向量与混合搜索/        # pgvector、RRF、混合搜索
+│   ├── 02-AI自治与自优化/        # pg_ai、强化学习、自动调优
+│   ├── 03-Serverless与分支/     # Neon、Supabase、数据Git
+│   ├── 04-多模一体化/            # JSONB、时序、图、向量四合一
+│   ├── 05-合规与可信/            # AI Act、数据主权、审计脱敏
+│   ├── 06-架构设计/              # 系统架构、数据模型、部署方案
+│   ├── 07-技术堆栈/              # 开发工具、生态系统、云平台
+│   ├── 08-落地案例/              # 50+ 行业场景案例
+│   ├── 09-实践指南/              # 快速开始、迁移、运维、故障排查
+│   └── 10-技术趋势/              # 最新趋势、未来展望
+│
+├── PostgreSQL培训/               # 完整培训体系（144 个文档）
+│   ├── 01-SQL基础/              # SQL 基础、查询优化、索引
+│   ├── 02-SQL高级特性/          # 窗口函数、CTE、递归查询
+│   ├── 03-数据类型/             # JSONB、数组、范围类型
+│   ├── 04-函数与编程/           # PL/pgSQL、触发器、函数
+│   ├── 05-数据管理/             # 分区表、约束、序列
+│   ├── 06-存储管理/             # 表空间、VACUUM、存储优化
+│   ├── 07-安全/                 # 权限管理、加密、审计
+│   ├── 08-备份恢复/             # 逻辑备份、物理备份、PITR
+│   ├── 09-高可用/               # 流复制、逻辑复制、高可用
+│   ├── 10-监控诊断/             # 监控、诊断、日志分析
+│   ├── 11-性能调优/             # 性能优化、基准测试
+│   ├── 12-扩展开发/             # 扩展管理、扩展开发
+│   ├── 13-运维管理/             # 统计信息、连接池、运维
+│   ├── 14-设计/                 # 数据库设计、FDW
+│   ├── 15-体系总览/             # 知识体系总览
+│   ├── 16-PostgreSQL17新特性/   # PostgreSQL 17 新特性（21 文档）
+│   ├── 17-PostgreSQL18新特性/   # PostgreSQL 18 新特性（26 文档）
+│   └── 18-新技术趋势/           # 新技术趋势（33 文档）
+│
+├── 00-导航.md                    # 完整导航文档
+├── ai_view.md                    # 本文件（AI 时代技术视图）
+└── README.md                     # 项目主 README
+```
+
+### 📊 文档统计
+
+- **PostgreSQL_View**: 167+ 个技术文档
+- **PostgreSQL培训**: 144 个培训文档
+  - 64 个基础培训文档
+  - 21 个 PostgreSQL 17 新特性文档
+  - 26 个 PostgreSQL 18 新特性文档
+  - 33 个新技术趋势文档
+- **总计**: 311+ 个文档
+
+### 🎯 快速导航
+
+- **[完整导航文档](./00-导航.md)** - PostgreSQL AI 时代完整导航
+- **[项目 README](./README.md)** - 项目概述和快速开始
+- **[PostgreSQL_View 索引](./PostgreSQL_View/README.md)** - AI 时代技术视图完整索引
+- **[培训体系索引](./PostgreSQL培训/README.md)** - 完整培训文档索引
+
+---
+
+## 📑 核心趋势分析
+
+截至 2025 年 1 月，**PostgreSQL 已成为 AI 时代最炙手可热的"AI 原生数据库"底座**，其技术演进与落地场景呈现出以下五大趋势。
 
 ---
 
@@ -72,22 +138,111 @@
 
 ### ✅ 行动清单（给企业 / 开发者）
 
-> 新增：完整专题导航见 `./05-前沿技术/AI-时代/00-导航.md`
+#### 📌 完整专题导航
 
-#### 主题与子主题（2025 优先·信息架构）
+- **[完整导航文档](./00-导航.md)** - PostgreSQL AI 时代完整导航
+- **[项目 README](./README.md)** - 项目概述和快速开始
+- **[PostgreSQL_View 索引](./PostgreSQL_View/README.md)** - AI 时代技术视图索引
+- **[培训体系索引](./PostgreSQL培训/README.md)** - 完整培训文档索引
 
-- 向量与混合搜索 → `05-前沿技术/AI-时代/01-向量与混合搜索-pgvector与RRF.md`
-- AI 自治与自优化 → `05-前沿技术/AI-时代/02-AI自治与自优化.md`
-- Serverless 与分支 → `05-前沿技术/AI-时代/03-Serverless与分支-Neon与Supabase.md`
-- 多模一体化（JSONB/时序/图/向量） → `05-前沿技术/AI-时代/04-多模一体化-JSONB时序图向量.md`
-- 合规与可信（AI Act/审计/脱敏） → `05-前沿技术/AI-时代/05-合规与可信-AI Act与审计.md`
-- 落地案例（2025 精选） → `05-前沿技术/AI-时代/06-落地案例-2025精选.md`
-- 实践指南（落地清单） → `05-前沿技术/AI-时代/07-实践指南-落地清单.md`
+#### 🎯 主题与子主题（2025 优先·信息架构）
 
-1. **立即启用 pgvector**——无论自建还是托管，先让现有 PostgreSQL 拥有“向量能力”，避免另立一套数据库。
-2. **把 Neon/Supabase 当“数据 Git”**——为每条 AI 特性建分支，实验完即丢，成本趋近于零。
+##### 1. 向量与混合搜索
+
+- **技术视图**: [PostgreSQL_View/01-向量与混合搜索/](./PostgreSQL_View/01-向量与混合搜索/)
+  - [技术原理](./PostgreSQL_View/01-向量与混合搜索/技术原理/)
+  - [架构设计](./PostgreSQL_View/01-向量与混合搜索/架构设计/)
+  - [最佳实践](./PostgreSQL_View/01-向量与混合搜索/最佳实践/)
+  - [性能优化](./PostgreSQL_View/01-向量与混合搜索/性能优化/)
+- **培训文档**:
+  - [pgvector 向量数据库详解](./PostgreSQL培训/18-新技术趋势/pgvector向量数据库详解.md)
+  - [向量搜索优化](./PostgreSQL培训/18-新技术趋势/向量搜索优化.md)
+  - [混合搜索方案](./PostgreSQL培训/18-新技术趋势/混合搜索方案.md)
+
+##### 2. AI 自治与自优化
+
+- **技术视图**: [PostgreSQL_View/02-AI自治与自优化/](./PostgreSQL_View/02-AI自治与自优化/)
+  - [技术原理](./PostgreSQL_View/02-AI自治与自优化/技术原理/)
+  - [强化学习优化器](./PostgreSQL_View/02-AI自治与自优化/强化学习优化器/)
+  - [自动索引推荐](./PostgreSQL_View/02-AI自治与自优化/自动索引推荐/)
+  - [性能调优](./PostgreSQL_View/02-AI自治与自优化/性能调优/)
+
+##### 3. Serverless 与分支
+
+- **技术视图**: [PostgreSQL_View/03-Serverless与分支/](./PostgreSQL_View/03-Serverless与分支/)
+  - [技术原理](./PostgreSQL_View/03-Serverless与分支/技术原理/)
+  - [Neon 平台](./PostgreSQL_View/03-Serverless与分支/Neon平台/)
+  - [Supabase 平台](./PostgreSQL_View/03-Serverless与分支/Supabase平台/)
+  - [RAG 数据版本管理](./PostgreSQL_View/03-Serverless与分支/RAG数据版本管理/)
+- **培训文档**: [Serverless PostgreSQL](./PostgreSQL培训/18-新技术趋势/Serverless_PostgreSQL.md)
+
+##### 4. 多模一体化（JSONB/时序/图/向量）
+
+- **技术视图**: [PostgreSQL_View/04-多模一体化/](./PostgreSQL_View/04-多模一体化/)
+  - [技术原理](./PostgreSQL_View/04-多模一体化/技术原理/)
+  - [JSONB 时序向量](./PostgreSQL_View/04-多模一体化/JSONB时序向量/)
+  - [图向量混合检索](./PostgreSQL_View/04-多模一体化/图向量混合检索/)
+  - [PostgreSQL 18 新特性](./PostgreSQL_View/04-多模一体化/PostgreSQL-18新特性/)
+- **培训文档**:
+  - [TimescaleDB 时序数据库详解](./PostgreSQL培训/18-新技术趋势/TimescaleDB时序数据库详解.md)
+  - [Apache AGE 图数据库详解](./PostgreSQL培训/18-新技术趋势/Apache_AGE图数据库详解.md)
+  - [PostGIS 空间数据库详解](./PostgreSQL培训/18-新技术趋势/PostGIS空间数据库详解.md)
+  - [知识图谱应用](./PostgreSQL培训/18-新技术趋势/知识图谱应用.md)
+
+##### 5. 合规与可信（AI Act/审计/脱敏）
+
+- **技术视图**: [PostgreSQL_View/05-合规与可信/](./PostgreSQL_View/05-合规与可信/)
+  - [技术原理](./PostgreSQL_View/05-合规与可信/技术原理/)
+  - [AI Act 合规](./PostgreSQL_View/05-合规与可信/AI-Act合规/)
+  - [数据主权](./PostgreSQL_View/05-合规与可信/数据主权/)
+  - [审计与脱敏](./PostgreSQL_View/05-合规与可信/审计与脱敏/)
+
+##### 6. 架构设计与技术堆栈
+
+- **架构设计**: [PostgreSQL_View/06-架构设计/](./PostgreSQL_View/06-架构设计/)
+  - [系统架构](./PostgreSQL_View/06-架构设计/系统架构/)
+  - [数据模型设计](./PostgreSQL_View/06-架构设计/数据模型设计/)
+  - [部署架构](./PostgreSQL_View/06-架构设计/部署架构/)
+  - [高可用架构](./PostgreSQL_View/06-架构设计/高可用架构/)
+- **技术堆栈**: [PostgreSQL_View/07-技术堆栈/](./PostgreSQL_View/07-技术堆栈/)
+  - [开发工具链](./PostgreSQL_View/07-技术堆栈/开发工具链/)
+  - [生态系统集成](./PostgreSQL_View/07-技术堆栈/生态系统集成/)
+  - [云平台方案](./PostgreSQL_View/07-技术堆栈/云平台方案/)
+
+##### 7. 落地案例与实践指南
+
+- **落地案例**: [PostgreSQL_View/08-落地案例/](./PostgreSQL_View/08-落地案例/)
+  - [电商场景](./PostgreSQL_View/08-落地案例/电商场景/)
+  - [金融场景](./PostgreSQL_View/08-落地案例/金融场景/)
+  - [医疗场景](./PostgreSQL_View/08-落地案例/医疗场景/)
+  - [制造场景](./PostgreSQL_View/08-落地案例/制造场景/)
+  - [政务场景](./PostgreSQL_View/08-落地案例/政务场景/)
+  - [更多场景](./PostgreSQL_View/08-落地案例/应用场景总览.md)（50+ 行业场景）
+- **实践指南**: [PostgreSQL_View/09-实践指南/](./PostgreSQL_View/09-实践指南/)
+  - [快速开始](./PostgreSQL_View/09-实践指南/快速开始/)
+  - [迁移指南](./PostgreSQL_View/09-实践指南/迁移指南/)
+  - [运维手册](./PostgreSQL_View/09-实践指南/运维手册/)
+  - [故障排查](./PostgreSQL_View/09-实践指南/故障排查/)
+
+##### 8. PostgreSQL 17/18 新特性
+
+- **PostgreSQL 17**: [PostgreSQL培训/16-PostgreSQL17新特性/](./PostgreSQL培训/16-PostgreSQL17新特性/)
+  - [新特性总览](./PostgreSQL培训/16-PostgreSQL17新特性/README.md)
+  - [SQL MERGE 语句详解](./PostgreSQL培训/16-PostgreSQL17新特性/SQL_MERGE语句详解.md)
+  - [逻辑复制性能优化](./PostgreSQL培训/16-PostgreSQL17新特性/逻辑复制性能优化.md)
+  - [更多新特性...](./PostgreSQL培训/16-PostgreSQL17新特性/README.md)（21 个文档）
+- **PostgreSQL 18**: [PostgreSQL培训/17-PostgreSQL18新特性/](./PostgreSQL培训/17-PostgreSQL18新特性/)
+  - [新特性总览](./PostgreSQL培训/17-PostgreSQL18新特性/README.md)
+  - [查询优化器革命性改进](./PostgreSQL培训/17-PostgreSQL18新特性/查询优化器革命性改进.md)
+  - [AI/ML 集成](./PostgreSQL培训/17-PostgreSQL18新特性/AI_ML集成.md)
+  - [更多新特性...](./PostgreSQL培训/17-PostgreSQL18新特性/README.md)（26 个文档）
+
+#### 🚀 立即行动（5 步走）
+
+1. **立即启用 pgvector**——无论自建还是托管，先让现有 PostgreSQL 拥有"向量能力"，避免另立一套数据库。
+2. **把 Neon/Supabase 当"数据 Git"**——为每条 AI 特性建分支，实验完即丢，成本趋近于零。
 3. **接入 AI Auto-Tuning**——慢 SQL 让模型去盯，DBA 聚焦业务建模。
-4. **规划“多模一体”表设计**——同一业务实体用 JSONB+向量+时序列簇存，减少跨库 ETL。
+4. **规划"多模一体"表设计**——同一业务实体用 JSONB+向量+时序列簇存，减少跨库 ETL。
 5. **提前评估合规插件**——pg_dsr、动态脱敏、行级标签，满足明年落地的 **AI 审计**要求。
 
 ---
@@ -250,7 +405,35 @@
 
 ## ✅ 结语
 
-PostgreSQL 正在从“最强开源关系数据库”进化为 **AI 原生、自治、多模、合规的统一数据平台**。
-在 2025 年10 月的今天，**pgvector + pg_ai + Serverless + 多模架构 + 合规插件** 的组合，
-已让 PostgreSQL 成为企业构建 AI 应用的首选底座。
-未来五年，谁掌握了这套“AI 数据栈”，谁就掌握了智能时代的核心基础设施。
+PostgreSQL 正在从"最强开源关系数据库"进化为 **AI 原生、自治、多模、合规的统一数据平台**。
+
+在 2025 年 1 月的今天，**pgvector + pg_ai + Serverless + 多模架构 + 合规插件** 的组合，已让 PostgreSQL 成为企业构建 AI 应用的首选底座。
+
+未来五年，谁掌握了这套"AI 数据栈"，谁就掌握了智能时代的核心基础设施。
+
+---
+
+## 📚 相关资源
+
+### 官方资源
+
+- [PostgreSQL 官方文档](https://www.postgresql.org/docs/)
+- [pgvector GitHub](https://github.com/pgvector/pgvector)
+- [Neon 平台](https://neon.tech)
+- [Supabase 平台](https://supabase.com)
+- [TimescaleDB 官方文档](https://docs.timescale.com/)
+- [Apache AGE 官方文档](https://age.apache.org/)
+- [PostGIS 官方文档](https://postgis.net/)
+
+### 项目导航
+
+- **[完整导航](./00-导航.md)** - PostgreSQL AI 时代完整导航
+- **[项目 README](./README.md)** - 项目概述和快速开始
+- **[PostgreSQL_View 索引](./PostgreSQL_View/README.md)** - AI 时代技术视图索引
+- **[培训体系索引](./PostgreSQL培训/README.md)** - 完整培训文档索引
+
+---
+
+**最后更新**: 2025 年 1 月
+**维护者**: PostgreSQL Modern Team
+**项目版本**: v2.0

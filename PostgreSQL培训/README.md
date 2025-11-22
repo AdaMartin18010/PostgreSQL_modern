@@ -6,7 +6,13 @@
 
 ## 📑 培训文档索引
 
-本目录包含 PostgreSQL 的全面培训资源，涵盖从基础到高级的所有内容，共 **64 个培训文档**。
+本目录包含 PostgreSQL 的全面培训资源，涵盖从基础到高级的所有内容，包括：
+
+- **64 个基础培训文档**（PostgreSQL 核心功能）
+- **21 个 PostgreSQL 17 新特性文档**（最新版本特性）
+- **26 个 PostgreSQL 18 新特性文档**（最新版本特性）
+- **33 个新技术趋势文档**（向量数据库、时序数据库、图数据库等）
+- **总计：144 个培训文档**
 
 > 📌 **完整文档索引**：详细文档列表和分类请参考 [PostgreSQL 知识体系总览](./15-体系总览/PostgreSQL知识体系总览.md)
 
@@ -223,7 +229,42 @@
 - **[PostgreSQL知识体系总览](./15-体系总览/PostgreSQL知识体系总览.md)** (03-03-64)
   - 完整的知识体系思维导图
   - 64个文档的完整分类索引
+
+---
+
+## 🆕 PostgreSQL 17+ 新特性模块
+
+### PostgreSQL 17 新特性（21 个文档）
+
+- **[PostgreSQL 17 新特性总览](./16-PostgreSQL17新特性/README.md)** (03-03-17-00)
+  - SQL MERGE 语句、逻辑复制增强、查询优化器改进、分区表优化、JSON 增强等
+
+### PostgreSQL 18 新特性（26 个文档）
+
+- **[PostgreSQL 18 新特性总览](./17-PostgreSQL18新特性/README.md)** (03-03-18-00)
+  - 查询性能提升、异步 I/O、并行查询增强、AI/ML 集成、云原生特性、多租户增强等
+
+---
+
+## 🚀 新技术趋势模块（33 个文档）
+
+### 向量数据库
+
+- **[pgvector 向量数据库详解](./18-新技术趋势/pgvector向量数据库详解.md)** (03-03-TREND-01)
+  - 向量相似度搜索、HNSW 索引、AI 应用集成
+
+- **[新技术趋势总览](./18-新技术趋势/README.md)** (03-03-TREND-00)
+  - 向量数据库、时序数据库、图数据库、空间数据库、分布式数据库等
   - 学习路径和知识架构
+
+### 主要技术栈
+
+- **向量数据库**：pgvector、混合搜索、AI 应用
+- **时序数据库**：TimescaleDB 3.0、IoT 监控、金融时序
+- **图数据库**：Apache AGE、知识图谱、社交网络分析
+- **空间数据库**：PostGIS、GIS 应用、位置服务
+- **分布式数据库**：Citus 12.1+、多云部署
+- **云原生方案**：Kubernetes、Serverless、云环境优化
 
 ## 🎯 学习路径
 
@@ -311,14 +352,38 @@ mindmap
 
 ## 📚 相关资源
 
+### 官方资源
+
 - [PostgreSQL 官方文档](https://www.postgresql.org/docs/)
 - [PostgreSQL 教程](https://www.postgresql.org/docs/current/tutorial.html)
-- [Neon 平台使用指南](../Neon平台/Neon架构详解.md)
+
+### 项目导航
+
+- [项目主文档](../README.md) - PostgreSQL Modern 项目概述
+- [完整导航文档](../00-导航.md) - PostgreSQL AI 时代完整导航
+- [AI 技术视图](../ai_view.md) - AI 时代五大趋势详解
+- [PostgreSQL_View 索引](../PostgreSQL_View/README.md) - AI 时代技术视图索引
+
+### 培训资源
+
 - [PostgreSQL 知识体系总览](./15-体系总览/PostgreSQL知识体系总览.md)
 - [SQL 函数体系详解](./01-SQL基础/SQL函数体系详解.md)
+- [PostgreSQL 17 新特性](./16-PostgreSQL17新特性/README.md)
+- [PostgreSQL 18 新特性](./17-PostgreSQL18新特性/README.md)
+- [新技术趋势](./18-新技术趋势/README.md)
 
 ---
 
-**最后更新**: 2025 年 11 月 1 日
+## 📊 文档统计
+
+- **基础培训文档**：64 个
+- **PostgreSQL 17 新特性**：21 个
+- **PostgreSQL 18 新特性**：26 个
+- **新技术趋势**：33 个
+- **总计**：144 个培训文档
+
+---
+
+**最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
 **文档编号**: 03-03-00
