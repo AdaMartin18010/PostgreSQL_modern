@@ -322,83 +322,83 @@ ALTER SYSTEM SET work_mem = '256MB';  -- 限制每个查询的内存
 
 1. **硬件升级**:
 
-```sql
--- 将存储介质从 HDD 升级为 SSD
--- 创建新的表空间指向 SSD
-CREATE TABLESPACE fast_ssd LOCATION '/fast/ssd/data';
+    ```sql
+    -- 将存储介质从 HDD 升级为 SSD
+    -- 创建新的表空间指向 SSD
+    CREATE TABLESPACE fast_ssd LOCATION '/fast/ssd/data';
 
--- 迁移表和索引到 SSD
-ALTER TABLE documents SET TABLESPACE fast_ssd;
-ALTER INDEX documents_embedding_idx SET TABLESPACE fast_ssd;
-```
+    -- 迁移表和索引到 SSD
+    ALTER TABLE documents SET TABLESPACE fast_ssd;
+    ALTER INDEX documents_embedding_idx SET TABLESPACE fast_ssd;
+    ```
 
-**性能对比** (HDD vs SSD):
+    **性能对比** (HDD vs SSD):
 
-| 指标 | HDD | SSD | 提升 |
-|------|-----|-----|------|
-| **随机读取 IOPS** | 150 | 50,000+ | **333x** |
-| **顺序读取速度** | 150 MB/s | 3,500 MB/s | **23x** |
-| **查询延迟** | 10,000ms | 500ms | **20x** |
-| **索引构建时间** | 12 小时 | 2 小时 | **6x** |
+    | 指标 | HDD | SSD | 提升 |
+    |------|-----|-----|------|
+    | **随机读取 IOPS** | 150 | 50,000+ | **333x** |
+    | **顺序读取速度** | 150 MB/s | 3,500 MB/s | **23x** |
+    | **查询延迟** | 10,000ms | 500ms | **20x** |
+    | **索引构建时间** | 12 小时 | 2 小时 | **6x** |
 
 2. **参数调优**:
 
-```sql
--- 优化前：使用默认参数
-CREATE INDEX documents_embedding_idx
-ON documents
-USING hnsw (embedding vector_cosine_ops);
--- 构建时间：12 小时
--- 查询延迟：10,000ms
+    ```sql
+    -- 优化前：使用默认参数
+    CREATE INDEX documents_embedding_idx
+    ON documents
+    USING hnsw (embedding vector_cosine_ops);
+    -- 构建时间：12 小时
+    -- 查询延迟：10,000ms
 
--- 优化后：针对千万级数据优化参数
-CREATE INDEX documents_embedding_idx
-ON documents
-USING hnsw (embedding vector_cosine_ops)
-WITH (
-    m = 32,              -- 提高连接数（默认 16）
-    ef_construction = 200  -- 提高构建质量（默认 64）
-);
--- 构建时间：2 小时（提升 83%）
--- 查询延迟：500ms（提升 95%）
+    -- 优化后：针对千万级数据优化参数
+    CREATE INDEX documents_embedding_idx
+    ON documents
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (
+        m = 32,              -- 提高连接数（默认 16）
+        ef_construction = 200  -- 提高构建质量（默认 64）
+    );
+    -- 构建时间：2 小时（提升 83%）
+    -- 查询延迟：500ms（提升 95%）
 
--- 查询时优化参数
-SET hnsw.ef_search = 100;  -- 平衡速度和召回率
-```
+    -- 查询时优化参数
+    SET hnsw.ef_search = 100;  -- 平衡速度和召回率
+    ```
 
-**参数调优效果**:
+    **参数调优效果**:
 
-| 参数组合 | 索引构建时间 | 查询延迟 | 召回率 | 索引大小 |
-|---------|------------|---------|--------|---------|
-| **m=16, ef_construction=64** | 12 小时 | 10,000ms | 90% | 2.5x |
-| **m=32, ef_construction=128** | 4 小时 | 1,000ms | 95% | 3.0x |
-| **m=32, ef_construction=200** | 2 小时 | 500ms | 98% | 3.2x |
-| **m=64, ef_construction=256** | 3 小时 | 300ms | 99% | 4.0x |
+    | 参数组合 | 索引构建时间 | 查询延迟 | 召回率 | 索引大小 |
+    |---------|------------|---------|--------|---------|
+    | **m=16, ef_construction=64** | 12 小时 | 10,000ms | 90% | 2.5x |
+    | **m=32, ef_construction=128** | 4 小时 | 1,000ms | 95% | 3.0x |
+    | **m=32, ef_construction=200** | 2 小时 | 500ms | 98% | 3.2x |
+    | **m=64, ef_construction=256** | 3 小时 | 300ms | 99% | 4.0x |
 
 3. **缓存优化**:
 
-```sql
--- 优化前：默认配置
--- shared_buffers = 128MB
--- effective_cache_size = 4GB
+    ```sql
+    -- 优化前：默认配置
+    -- shared_buffers = 128MB
+    -- effective_cache_size = 4GB
 
--- 优化后：针对 64GB 内存服务器
-ALTER SYSTEM SET shared_buffers = '16GB';  -- 25% of RAM
-ALTER SYSTEM SET effective_cache_size = '48GB';  -- 75% of RAM
-ALTER SYSTEM SET work_mem = '256MB';
-ALTER SYSTEM SET maintenance_work_mem = '4GB';
+    -- 优化后：针对 64GB 内存服务器
+    ALTER SYSTEM SET shared_buffers = '16GB';  -- 25% of RAM
+    ALTER SYSTEM SET effective_cache_size = '48GB';  -- 75% of RAM
+    ALTER SYSTEM SET work_mem = '256MB';
+    ALTER SYSTEM SET maintenance_work_mem = '4GB';
 
--- 重启 PostgreSQL 使配置生效
-SELECT pg_reload_conf();
-```
+    -- 重启 PostgreSQL 使配置生效
+    SELECT pg_reload_conf();
+    ```
 
-**缓存优化效果**:
+    **缓存优化效果**:
 
-| 指标 | 优化前 | 优化后 | 提升 |
-|------|--------|--------|------|
-| **缓存命中率** | 60% | 95% | **58%** ⬆️ |
-| **磁盘 I/O** | 高 | 低 | **80%** ⬇️ |
-| **查询延迟** | 500ms | 50ms | **90%** ⬇️ |
+    | 指标 | 优化前 | 优化后 | 提升 |
+    |------|--------|--------|------|
+    | **缓存命中率** | 60% | 95% | **58%** ⬆️ |
+    | **磁盘 I/O** | 高 | 低 | **80%** ⬇️ |
+    | **查询延迟** | 500ms | 50ms | **90%** ⬇️ |
 
 4. **查询优化**:
 
