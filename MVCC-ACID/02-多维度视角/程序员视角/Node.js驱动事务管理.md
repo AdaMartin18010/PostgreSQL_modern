@@ -69,7 +69,9 @@
 
 ## 📋 概述
 
-Node.js是PostgreSQL Web应用的主要编程语言之一，主要通过**pg**（node-postgres）驱动与PostgreSQL交互。pg是Node.js中功能最完善的PostgreSQL驱动，支持连接池、预编译语句和批量操作。本文档深入分析Node.js驱动在PostgreSQL MVCC环境下的最佳实践。
+Node.js是PostgreSQL Web应用的主要编程语言之一，主要通过**pg**（node-postgres）驱动与PostgreSQL交互。
+pg是Node.js中功能最完善的PostgreSQL驱动，支持连接池、预编译语句和批量操作。
+本文档深入分析Node.js驱动在PostgreSQL MVCC环境下的最佳实践。
 
 ---
 

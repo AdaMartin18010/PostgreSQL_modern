@@ -33,7 +33,7 @@
       - [引擎级隔离级别](#引擎级隔离级别)
       - [会话级隔离级别](#会话级隔离级别)
     - [2.3 并发控制](#23-并发控制)
-      - [with_for_update()](#with_for_update)
+      - [with\_for\_update()](#with_for_update)
       - [乐观锁实现](#乐观锁实现-1)
     - [2.4 MVCC最佳实践](#24-mvcc最佳实践)
       - [短事务原则](#短事务原则-1)
@@ -70,13 +70,20 @@
   - [📝 第六部分：最佳实践总结](#-第六部分最佳实践总结)
     - [6.1 通用最佳实践](#61-通用最佳实践)
     - [6.2 框架特定建议](#62-框架特定建议)
+      - [Django ORM](#django-orm)
+      - [SQLAlchemy](#sqlalchemy)
+      - [TypeORM](#typeorm)
+      - [Prisma](#prisma)
   - [🎯 总结](#-总结)
+    - [核心最佳实践](#核心最佳实践)
+    - [MVCC影响](#mvcc影响)
 
 ---
 
 ## 📋 概述
 
-ORM（Object-Relational Mapping）框架简化了数据库操作，但在PostgreSQL MVCC环境下需要特别注意事务管理。本文档深入分析主流ORM框架（Django ORM、SQLAlchemy、TypeORM、Prisma）在PostgreSQL MVCC环境下的最佳实践。
+ORM（Object-Relational Mapping）框架简化了数据库操作，但在PostgreSQL MVCC环境下需要特别注意事务管理。
+本文档深入分析主流ORM框架（Django ORM、SQLAlchemy、TypeORM、Prisma）在PostgreSQL MVCC环境下的最佳实践。
 
 ---
 

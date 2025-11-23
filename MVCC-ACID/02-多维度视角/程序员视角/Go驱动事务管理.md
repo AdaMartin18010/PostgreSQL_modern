@@ -68,7 +68,9 @@
 
 ## 📋 概述
 
-Go语言在PostgreSQL生态系统中越来越受欢迎，主要通过**pgx**驱动与PostgreSQL交互。pgx是Go语言中性能最好的PostgreSQL驱动，支持连接池、预编译语句和批量操作。本文档深入分析Go驱动在PostgreSQL MVCC环境下的最佳实践。
+Go语言在PostgreSQL生态系统中越来越受欢迎，主要通过**pgx**驱动与PostgreSQL交互。
+pgx是Go语言中性能最好的PostgreSQL驱动，支持连接池、预编译语句和批量操作。
+本文档深入分析Go驱动在PostgreSQL MVCC环境下的最佳实践。
 
 ---
 

@@ -89,6 +89,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 2.1 活动事务面板
 
 **Panel配置**:
+
 - **Title**: 活动事务数量
 - **Query**: `sum(pg_stat_activity_count{state="active"})`
 - **Type**: Stat
@@ -99,6 +100,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
   - Red: 100+
 
 **Panel JSON**:
+
 ```json
 {
   "targets": [
@@ -125,12 +127,14 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 2.2 长事务面板
 
 **Panel配置**:
+
 - **Title**: 长事务（>5分钟）
 - **Query**: `pg_stat_activity_max_xact_duration{state="active"} > 300`
 - **Type**: Table
 - **Columns**: pid, datname, duration, query
 
 **Panel JSON**:
+
 ```json
 {
   "targets": [
@@ -160,11 +164,13 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 2.3 事务状态分布
 
 **Panel配置**:
+
 - **Title**: 事务状态分布
 - **Query**: `sum by (state) (pg_stat_activity_count)`
 - **Type**: Pie Chart
 
 **Panel JSON**:
+
 ```json
 {
   "targets": [
@@ -194,12 +200,14 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 3.1 锁等待面板
 
 **Panel配置**:
+
 - **Title**: 锁等待数量
 - **Query**: `pg_locks_waiting`
 - **Type**: Graph
 - **Y-axis**: Lock Waits
 
 **Panel JSON**:
+
 ```json
 {
   "targets": [
@@ -227,6 +235,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 3.2 锁持有面板
 
 **Panel配置**:
+
 - **Title**: 锁持有数量
 - **Query**: `pg_locks_held`
 - **Type**: Stat
@@ -235,6 +244,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 3.3 死锁面板
 
 **Panel配置**:
+
 - **Title**: 死锁次数（5分钟）
 - **Query**: `increase(pg_stat_database_deadlocks[5m])`
 - **Type**: Graph
@@ -246,11 +256,13 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 4.1 死亡元组面板
 
 **Panel配置**:
+
 - **Title**: Top 10 死亡元组最多的表
 - **Query**: `topk(10, pg_stat_user_tables_n_dead_tup)`
 - **Type**: Bar Chart
 
 **Panel JSON**:
+
 ```json
 {
   "targets": [
@@ -270,6 +282,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 4.2 表大小面板
 
 **Panel配置**:
+
 - **Title**: Top 10 最大的表
 - **Query**: `topk(10, pg_stat_user_tables_size_bytes)`
 - **Type**: Bar Chart
@@ -278,6 +291,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 4.3 VACUUM面板
 
 **Panel配置**:
+
 - **Title**: VACUUM执行时间
 - **Query**: `pg_stat_progress_vacuum_elapsed_time`
 - **Type**: Graph
@@ -290,6 +304,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 5.1 XID年龄面板
 
 **Panel配置**:
+
 - **Title**: 数据库XID年龄
 - **Query**: `pg_database_age_datfrozenxid`
 - **Type**: Gauge
@@ -301,6 +316,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
   - Red: 1500000000+
 
 **Panel JSON**:
+
 ```json
 {
   "targets": [
@@ -328,6 +344,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 5.2 回卷风险面板
 
 **Panel配置**:
+
 - **Title**: XID回卷风险
 - **Query**: `(2147483647 - pg_database_age_datfrozenxid) / 2147483647 * 100`
 - **Type**: Stat
@@ -344,6 +361,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 6.1 查询性能面板
 
 **Panel配置**:
+
 - **Title**: 慢查询（>1秒）
 - **Query**: `pg_stat_statements_mean_exec_time > 1000`
 - **Type**: Table
@@ -351,6 +369,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 6.2 连接监控面板
 
 **Panel配置**:
+
 - **Title**: 连接使用率
 - **Query**: `pg_stat_database_numbackends / pg_settings_max_connections * 100`
 - **Type**: Gauge
@@ -359,6 +378,7 @@ Grafana是PostgreSQL MVCC-ACID监控的可视化工具，通过丰富的仪表�
 ### 6.3 复制监控面板
 
 **Panel配置**:
+
 - **Title**: 复制延迟
 - **Query**: `pg_replication_lag_bytes`
 - **Type**: Graph
