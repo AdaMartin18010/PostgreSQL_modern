@@ -64,6 +64,26 @@
     - **内容**: Result类型、Error类型设计、事务回滚机制、错误处理最佳实践、MVCC错误处理
     - **文档编号**: RUST-PRACTICE-ERROR-001
 
+15. ✅ [Rust宏与MVCC代码生成](Rust宏与MVCC代码生成.md) ⭐ 新增
+    - **内容**: Rust宏基础、MVCC代码生成、ORM宏生成、MVCC优化宏
+    - **文档编号**: RUST-PRACTICE-MACRO-001
+
+16. ✅ [Rust测试框架与MVCC场景测试](Rust测试框架与MVCC场景测试.md) ⭐ 新增
+    - **内容**: Rust测试框架、MVCC场景测试、测试工具、MVCC测试最佳实践
+    - **文档编号**: RUST-PRACTICE-TESTING-001
+
+17. ✅ [ORM框架对比与选择](ORM框架对比与选择.md) ⭐ 新增
+    - **内容**: ORM框架对比、使用场景选择、迁移指南
+    - **文档编号**: RUST-PRACTICE-ORM-COMPARISON-001
+
+18. ✅ [Rust通道与PostgreSQL通知](Rust通道与PostgreSQL通知.md) ⭐ 新增
+    - **内容**: PostgreSQL LISTEN/NOTIFY、Rust通道机制、集成方案、MVCC事件通知
+    - **文档编号**: RUST-PRACTICE-CHANNEL-001
+
+19. ✅ [Rust无锁数据结构与MVCC](Rust无锁数据结构与MVCC.md) ⭐ 新增
+    - **内容**: Rust Atomic类型、PostgreSQL无锁读、无锁算法对比、性能对比
+    - **文档编号**: RUST-PRACTICE-LOCKFREE-001
+
 ---
 
 ## 🎯 核心主题

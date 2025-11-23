@@ -40,6 +40,30 @@
     - **内容**: 查询构建器设计、查询优化策略、MVCC查询优化、性能优化实践
     - **文档编号**: DESIGN-RUST-QUERY-001
 
+9. ✅ [Rust内存布局优化](Rust内存布局优化.md) ⭐ 新增
+    - **内容**: Rust内存布局基础、PostgreSQL存储布局、内存布局优化、MVCC内存优化
+    - **文档编号**: DESIGN-RUST-MEMORY-001
+
+10. ✅ [Rust集合类型与PostgreSQL数组](Rust集合类型与PostgreSQL数组.md) ⭐ 新增
+    - **内容**: Rust集合类型、PostgreSQL数组类型、类型映射、MVCC与集合类型
+    - **文档编号**: DESIGN-RUST-COLLECTIONS-001
+
+11. ✅ [Rust批量操作与PostgreSQL MVCC](Rust批量操作与PostgreSQL-MVCC.md) ⭐ 新增
+    - **内容**: 批量INSERT、批量UPDATE、批量DELETE、MVCC性能优化
+    - **文档编号**: DESIGN-RUST-BATCH-001
+
+12. ✅ [Rust缓存策略与PostgreSQL MVCC](Rust缓存策略与PostgreSQL-MVCC.md) ⭐ 新增
+    - **内容**: 缓存策略、MVCC缓存一致性、缓存性能优化、MVCC与缓存协同
+    - **文档编号**: DESIGN-RUST-CACHE-001
+
+13. ✅ [Rust索引设计与PostgreSQL索引](Rust索引设计与PostgreSQL索引.md) ⭐ 新增
+    - **内容**: PostgreSQL索引类型、Rust索引使用、MVCC与索引
+    - **文档编号**: DESIGN-RUST-INDEX-001
+
+14. ✅ [Rust数据访问模式优化](Rust数据访问模式优化.md) ⭐ 新增
+    - **内容**: 访问模式分类、MVCC访问优化、访问模式最佳实践
+    - **文档编号**: DESIGN-RUST-ACCESS-001
+
 ---
 
 ## 🎯 核心主题
