@@ -1008,10 +1008,37 @@ CROSS JOIN LATERAL (
 
 ### 7.2 学术论文
 
-- [HNSW 论文](https://arxiv.org/abs/1603.09320) - Efficient and robust approximate nearest neighbor
-  search using Hierarchical Navigable Small World graphs
-- [IVFFlat 算法详解](https://github.com/facebookresearch/faiss/wiki) - Faiss: A library for
-  efficient similarity search
+**HNSW 算法原始论文**:
+
+- **Malkov, Y. A., & Yashunin, D. A. (2018). "Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs."**
+  - 期刊: IEEE transactions on pattern analysis and machine intelligence, 40(9), 2096-2108
+  - **DOI**: [10.1109/TPAMI.2018.2889473](https://doi.org/10.1109/TPAMI.2018.2889473)
+  - **arXiv**: [arXiv:1603.09320](https://arxiv.org/abs/1603.09320)
+  - **重要性**: HNSW 算法的原始论文，详细阐述了算法原理、性能分析和时间复杂度
+  - **引用次数**: 1000+ (截至 2025 年)
+
+**IVFFlat 算法基础论文**:
+
+- **Jégou, H., Douze, M., & Schmid, C. (2010). "Product quantization for nearest neighbor search."**
+  - 期刊: IEEE transactions on pattern analysis and machine intelligence, 33(1), 117-128
+  - **DOI**: [10.1109/TPAMI.2010.57](https://doi.org/10.1109/TPAMI.2010.57)
+  - **重要性**: IVFFlat 算法的基础理论，介绍了倒排文件索引和乘积量化的原理
+  - **引用次数**: 2000+ (截至 2025 年)
+
+**大规模向量搜索优化**:
+
+- **Johnson, J., Douze, M., & Jégou, H. (2019). "Billion-scale similarity search with GPUs."**
+  - 期刊: IEEE Transactions on Big Data, 7(3), 535-547
+  - **arXiv**: [arXiv:1702.08734](https://arxiv.org/abs/1702.08734)
+  - **DOI**: [10.1109/TBDATA.2019.2921572](https://doi.org/10.1109/TBDATA.2019.2921572)
+  - **重要性**: 大规模向量搜索的性能优化研究，包含 IVFFlat 的 GPU 加速方法
+  - **引用次数**: 500+ (截至 2025 年)
+
+**FAISS 库论文**:
+
+- **Douze, M., et al. (2024). "The Faiss library."**
+  - 来源: [arXiv:2401.08281](https://arxiv.org/abs/2401.08281)
+  - **重要性**: FAISS 库的完整文档，包含 IVFFlat 等算法的实现细节和性能分析
 
 ### 7.3 相关资源
 

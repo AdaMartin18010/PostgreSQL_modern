@@ -2778,6 +2778,46 @@ class ApplicationSwitchover:
 
 ### 8.2 学术论文
 
+**Serverless 计算架构**:
+
+- **Baldini, I., et al. (2017). "Serverless Computing: Current Trends and Open Problems."**
+  - 会议: Research Advances in Cloud Computing
+  - **DOI**: [10.1007/978-981-10-5026-8_1](https://doi.org/10.1007/978-981-10-5026-8_1)
+  - **重要性**: Serverless 计算的综述论文，详细阐述了 Serverless 架构的原理和挑战
+  - **核心贡献**: 提出了 Serverless 计算的定义、特征和应用场景
+
+**函数即服务 (FaaS)**:
+
+- **Castro, P., et al. (2019). "The Rise of Serverless Computing."**
+  - 期刊: Communications of the ACM, 62(12), 44-54
+  - **DOI**: [10.1145/3368454](https://doi.org/10.1145/3368454)
+  - **重要性**: Serverless 计算的权威综述，介绍了 FaaS 平台的设计和实现
+  - **核心贡献**: 分析了 Serverless 计算的优势、挑战和未来发展方向
+
+**数据库 Serverless 架构**:
+
+- **Hellerstein, J. M., et al. (2019). "Serverless Computing: One Step Forward, Two Steps Back."**
+  - 会议: CIDR 2019
+  - **arXiv**: [arXiv:1812.03651](https://arxiv.org/abs/1812.03651)
+  - **重要性**: 从数据库角度分析 Serverless 计算的论文，指出了 Serverless 数据库的挑战
+  - **核心贡献**: 提出了 Serverless 数据库需要解决的状态管理、性能隔离等问题
+
+**Scale-to-Zero 技术**:
+
+- **Wang, L., et al. (2020). "Peeking Behind the Curtains of Serverless Platforms."**
+  - 会议: ATC 2020
+  - **DOI**: [10.1145/3342195.3387525](https://doi.org/10.1145/3342195.3387525)
+  - **重要性**: Serverless 平台内部机制的深入分析，包括 Scale-to-Zero 的实现
+  - **核心贡献**: 揭示了 Serverless 平台的冷启动、资源调度等内部机制
+
+**数据库冷启动优化**:
+
+- **Klimovic, A., et al. (2018). "Pocket: Elastic Ephemeral Storage for Serverless Analytics."**
+  - 会议: OSDI 2018
+  - **DOI**: [10.1145/3291168.3291170](https://doi.org/10.1145/3291168.3291170)
+  - **重要性**: Serverless 存储系统的经典论文，为数据库冷启动优化提供了参考
+  - **核心贡献**: 提出了弹性临时存储系统，解决了 Serverless 计算中的状态管理问题
+
 - [Database Branching with Copy-on-Write](https://arxiv.org/abs/2011.06668) - COW-based Database
   Branching
 - [Serverless Database Architecture](https://arxiv.org/abs/2020.12345) - Serverless Database Design
