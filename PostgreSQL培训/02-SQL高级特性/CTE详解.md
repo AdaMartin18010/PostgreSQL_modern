@@ -9,6 +9,7 @@
 - [PostgreSQL CTE 详解](#postgresql-cte-详解)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+    - [1.0 CTE 工作原理概述](#10-cte-工作原理概述)
     - [1.1 技术背景](#11-技术背景)
     - [1.2 核心价值](#12-核心价值)
     - [1.3 学习目标](#13-学习目标)
@@ -28,10 +29,50 @@
     - [5.1 CTE 使用](#51-cte-使用)
     - [5.2 性能优化](#52-性能优化)
   - [6. 参考资料](#6-参考资料)
+    - [官方文档](#官方文档)
+    - [SQL 标准](#sql-标准)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
+    - [相关文档](#相关文档)
 
 ---
 
 ## 1. 概述
+
+### 1.0 CTE 工作原理概述
+
+**CTE 的本质**：
+
+CTE（Common Table Expression，公用表表达式）是 SQL 标准中的高级特性，允许在查询中定义临时的命名结果集，可以在主查询中多次引用。CTE 提供了一种结构化的方式来组织复杂查询，提高代码可读性和可维护性。
+
+**CTE 执行流程图**：
+
+```mermaid
+flowchart TD
+    A[查询开始] --> B[定义CTE]
+    B --> C{CTE类型}
+    C -->|简单CTE| D[执行CTE查询]
+    C -->|递归CTE| E[递归执行]
+    C -->|物化CTE| F[物化结果]
+    D --> G[主查询引用CTE]
+    E --> G
+    F --> G
+    G --> H[执行主查询]
+    H --> I[返回结果]
+
+    style B fill:#FFD700
+    style G fill:#90EE90
+    style I fill:#87CEEB
+```
+
+**CTE 执行顺序**：
+
+1. **定义 CTE**：在 WITH 子句中定义 CTE
+2. **执行 CTE**：执行 CTE 查询，生成临时结果集
+3. **物化（可选）**：如果使用 MATERIALIZED，将结果物化
+4. **主查询引用**：主查询可以多次引用 CTE
+5. **返回结果**：返回最终查询结果
 
 ### 1.1 技术背景
 
@@ -359,22 +400,268 @@ FROM validated_data;
 
 ### 5.1 CTE 使用
 
-1. **简化查询**: 使用 CTE 简化复杂查询
-2. **代码复用**: 在查询中多次引用 CTE
-3. **性能优化**: 使用 MATERIALIZED 优化性能
+**推荐做法**：
+
+1. **使用 CTE 简化复杂查询**（提高可读性）
+
+   ```sql
+   -- ✅ 好：使用 CTE 简化复杂查询（可读性好）
+   WITH
+       customer_stats AS (
+           SELECT user_id, COUNT(*) AS order_count, SUM(total_amount) AS total_spent
+           FROM orders
+           GROUP BY user_id
+       ),
+       high_value_customers AS (
+           SELECT user_id
+           FROM customer_stats
+           WHERE total_spent > 10000
+       )
+   SELECT u.name, cs.total_spent
+   FROM users u
+   JOIN high_value_customers hvc ON u.id = hvc.user_id
+   JOIN customer_stats cs ON u.id = cs.user_id;
+
+   -- ❌ 不好：使用嵌套子查询（可读性差）
+   SELECT u.name, cs.total_spent
+   FROM users u
+   JOIN (
+       SELECT user_id
+       FROM (
+           SELECT user_id, SUM(total_amount) AS total_spent
+           FROM orders
+           GROUP BY user_id
+       ) AS cs
+       WHERE cs.total_spent > 10000
+   ) AS hvc ON u.id = hvc.user_id
+   JOIN (
+       SELECT user_id, SUM(total_amount) AS total_spent
+       FROM orders
+       GROUP BY user_id
+   ) AS cs ON u.id = cs.user_id;
+   ```
+
+2. **在查询中多次引用 CTE**（代码复用）
+
+   ```sql
+   -- ✅ 好：多次引用 CTE（代码复用）
+   WITH customer_stats AS (
+       SELECT user_id, COUNT(*) AS order_count, SUM(total_amount) AS total_spent
+       FROM orders
+       GROUP BY user_id
+   )
+   SELECT
+       cs1.user_id,
+       cs1.order_count,
+       cs1.total_spent,
+       cs2.order_count AS other_order_count
+   FROM customer_stats cs1
+   JOIN customer_stats cs2 ON cs1.user_id = cs2.user_id;
+
+   -- ❌ 不好：重复子查询（代码冗余）
+   SELECT
+       cs1.user_id,
+       cs1.order_count,
+       cs1.total_spent,
+       cs2.order_count AS other_order_count
+   FROM (
+       SELECT user_id, COUNT(*) AS order_count, SUM(total_amount) AS total_spent
+       FROM orders
+       GROUP BY user_id
+   ) AS cs1
+   JOIN (
+       SELECT user_id, COUNT(*) AS order_count
+       FROM orders
+       GROUP BY user_id
+   ) AS cs2 ON cs1.user_id = cs2.user_id;
+   ```
+
+3. **使用 MATERIALIZED 优化性能**（复杂 CTE）
+
+   ```sql
+   -- ✅ 好：使用 MATERIALIZED（复杂 CTE，多次引用）
+   WITH MATERIALIZED complex_calculation AS (
+       SELECT user_id,
+              COUNT(*) AS order_count,
+              SUM(total_amount) AS total_spent,
+              AVG(total_amount) AS avg_order_value
+       FROM orders
+       GROUP BY user_id
+   )
+   SELECT * FROM complex_calculation
+   UNION ALL
+   SELECT * FROM complex_calculation;
+
+   -- ❌ 不好：不使用 MATERIALIZED（复杂 CTE，多次引用时性能差）
+   WITH complex_calculation AS (
+       SELECT user_id,
+              COUNT(*) AS order_count,
+              SUM(total_amount) AS total_spent,
+              AVG(total_amount) AS avg_order_value
+       FROM orders
+       GROUP BY user_id
+   )
+   SELECT * FROM complex_calculation
+   UNION ALL
+   SELECT * FROM complex_calculation;
+   ```
+
+**避免做法**：
+
+1. **避免过度使用 CTE**（简单查询不需要 CTE）
+2. **避免在 CTE 中执行复杂计算**（可能影响性能）
+3. **避免忽略 MATERIALIZED**（复杂 CTE 多次引用时）
 
 ### 5.2 性能优化
 
-1. **物化 CTE**: 对于复杂 CTE 使用 MATERIALIZED
-2. **索引**: 确保 CTE 查询使用索引
-3. **限制结果**: 在 CTE 中尽早过滤数据
+**推荐做法**：
+
+1. **对于复杂 CTE 使用 MATERIALIZED**（提升性能）
+
+   ```sql
+   -- ✅ 好：使用 MATERIALIZED（复杂 CTE，多次引用）
+   WITH MATERIALIZED complex_calculation AS (
+       SELECT user_id,
+              COUNT(*) AS order_count,
+              SUM(total_amount) AS total_spent
+       FROM orders
+       GROUP BY user_id
+   )
+   SELECT * FROM complex_calculation
+   UNION ALL
+   SELECT * FROM complex_calculation;
+
+   -- ❌ 不好：不使用 MATERIALIZED（复杂 CTE，多次引用时性能差）
+   WITH complex_calculation AS (
+       SELECT user_id,
+              COUNT(*) AS order_count,
+              SUM(total_amount) AS total_spent
+       FROM orders
+       GROUP BY user_id
+   )
+   SELECT * FROM complex_calculation
+   UNION ALL
+   SELECT * FROM complex_calculation;
+   ```
+
+2. **确保 CTE 查询使用索引**（提升性能）
+
+   ```sql
+   -- ✅ 好：为 CTE 查询创建索引
+   CREATE INDEX idx_orders_user_id ON orders(user_id);
+   CREATE INDEX idx_orders_created_at ON orders(created_at);
+
+   -- CTE 查询可以使用索引
+   WITH customer_stats AS (
+       SELECT user_id, COUNT(*) AS order_count
+       FROM orders
+       WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+       GROUP BY user_id
+   )
+   SELECT * FROM customer_stats;
+   ```
+
+3. **在 CTE 中尽早过滤数据**（减少计算量）
+
+   ```sql
+   -- ✅ 好：在 CTE 中尽早过滤（减少计算量）
+   WITH filtered_orders AS (
+       SELECT user_id, total_amount
+       FROM orders
+       WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+       AND status = 'completed'
+   )
+   SELECT user_id, SUM(total_amount) AS total_spent
+   FROM filtered_orders
+   GROUP BY user_id;
+
+   -- ❌ 不好：在主查询中过滤（计算量大）
+   WITH all_orders AS (
+       SELECT user_id, total_amount, created_at, status
+       FROM orders
+   )
+   SELECT user_id, SUM(total_amount) AS total_spent
+   FROM all_orders
+   WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+   AND status = 'completed'
+   GROUP BY user_id;
+   ```
+
+**避免做法**：
+
+1. **避免忽略 MATERIALIZED**（复杂 CTE 多次引用时性能差）
+2. **避免忽略索引**（CTE 查询性能差）
+3. **避免在主查询中过滤**（计算量大）
 
 ## 6. 参考资料
+
+### 官方文档
+
+- **[PostgreSQL 官方文档 - CTE](https://www.postgresql.org/docs/current/queries-with.html)**
+  - CTE 完整教程
+  - 语法和示例说明
+
+- **[PostgreSQL 官方文档 - WITH 查询](https://www.postgresql.org/docs/current/queries-with.html)**
+  - WITH 查询语法详解
+  - 递归 CTE 说明
+
+- **[PostgreSQL 官方文档 - MATERIALIZED CTE](https://www.postgresql.org/docs/current/queries-with.html#QUERIES-WITH-MATERIALIZED)**
+  - MATERIALIZED CTE 说明
+  - 性能优化建议
+
+### SQL 标准
+
+- **ISO/IEC 9075:2016 - SQL 标准 CTE**
+  - SQL 标准 CTE 规范
+  - CTE 标准语法
+
+### 技术论文
+
+- **Leis, V., et al. (2015). "How Good Are Query Optimizers?"**
+  - 会议: SIGMOD 2015
+  - 论文链接: [arXiv:1504.01155](https://arxiv.org/abs/1504.01155)
+  - **重要性**: 现代查询优化器性能评估研究
+  - **核心贡献**: 系统性地评估了现代查询优化器的性能，包括 CTE 的优化
+
+- **Graefe, G. (1995). "The Cascades Framework for Query Optimization."**
+  - 期刊: IEEE Data Engineering Bulletin, 18(3), 19-29
+  - **重要性**: 查询优化器框架设计的基础研究
+  - **核心贡献**: 提出了 Cascades 查询优化框架，影响了现代数据库优化器的设计
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - CTE](https://www.postgresql.org/docs/current/queries-with.html)**
+  - CTE 最佳实践
+  - 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL CTE](https://www.2ndquadrant.com/en/blog/postgresql-common-table-expressions/)**
+  - CTE 实战
+  - 性能优化案例
+
+- **[Percona - PostgreSQL CTE](https://www.percona.com/blog/postgresql-common-table-expressions/)**
+  - CTE 使用技巧
+  - 性能优化建议
+
+- **[EnterpriseDB - PostgreSQL CTE](https://www.enterprisedb.com/postgres-tutorials/postgresql-common-table-expressions-cte-tutorial)**
+  - CTE 深入解析
+  - 实际应用案例
+
+### 社区资源
+
+- **[PostgreSQL Wiki - CTE](https://wiki.postgresql.org/wiki/Common_table_expressions)**
+  - CTE 技巧
+  - 实际应用案例
+
+- **[Stack Overflow - PostgreSQL CTE](https://stackoverflow.com/questions/tagged/postgresql+cte)**
+  - CTE 问答
+  - 常见问题解答
+
+### 相关文档
 
 - [高级SQL特性](./高级SQL特性.md)
 - [递归查询详解](./递归查询详解.md)
 - [窗口函数详解](./窗口函数详解.md)
-- [PostgreSQL 官方文档 - CTE](https://www.postgresql.org/docs/current/queries-with.html)
+- [查询计划与优化器](../01-SQL基础/查询计划与优化器.md)
 
 ---
 

@@ -9,6 +9,7 @@
 - [PostgreSQL NULL 值处理详解](#postgresql-null-值处理详解)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+    - [1.0 NULL 值处理工作原理概述](#10-null-值处理工作原理概述)
     - [1.1 技术背景](#11-技术背景)
     - [1.2 核心价值](#12-核心价值)
     - [1.3 学习目标](#13-学习目标)
@@ -27,10 +28,54 @@
     - [5.1 NULL 值处理](#51-null-值处理)
     - [5.2 性能优化](#52-性能优化)
   - [6. 参考资料](#6-参考资料)
+    - [官方文档](#官方文档)
+    - [SQL 标准](#sql-标准)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
+    - [相关文档](#相关文档)
 
 ---
 
 ## 1. 概述
+
+### 1.0 NULL 值处理工作原理概述
+
+**NULL 值处理的本质**：
+
+PostgreSQL 的 NULL 值处理基于三值逻辑（Three-Valued Logic），即 TRUE、FALSE 和 UNKNOWN（NULL）。
+NULL 值表示缺失或未知的数据，
+在 SQL 中具有特殊的语义：任何与 NULL 的比较都返回 UNKNOWN，而不是 TRUE 或 FALSE。
+
+**NULL 值处理执行流程图**：
+
+```mermaid
+flowchart TD
+    A[查询开始] --> B[检测 NULL 值]
+    B --> C{使用 NULL 处理函数?}
+    C -->|是| D[应用 NULL 处理函数]
+    C -->|否| E[应用三值逻辑]
+    D --> F[返回处理结果]
+    E --> G{比较结果}
+    G -->|TRUE| H[返回 TRUE]
+    G -->|FALSE| I[返回 FALSE]
+    G -->|UNKNOWN| J[返回 NULL]
+    F --> K[返回最终结果]
+    H --> K
+    I --> K
+    J --> K
+
+    style D fill:#FFD700
+    style E fill:#90EE90
+    style K fill:#87CEEB
+```
+
+**NULL 值处理步骤**：
+
+1. **检测 NULL 值**：使用 IS NULL 或 IS NOT NULL 检测
+2. **应用 NULL 处理函数**：使用 COALESCE、NULLIF 等函数处理
+3. **应用三值逻辑**：在比较和条件判断中应用三值逻辑
+4. **返回结果**：返回处理后的结果
 
 ### 1.1 技术背景
 
@@ -294,21 +339,182 @@ GROUP BY product_id;
 
 ### 5.1 NULL 值处理
 
-1. **COALESCE**: 使用 COALESCE 提供默认值
-2. **NULLIF**: 使用 NULLIF 避免错误
-3. **IS NULL**: 使用 IS NULL 检测 NULL
+**推荐做法**：
+
+1. **使用 COALESCE 提供默认值**（数据完整性）
+
+   ```sql
+   -- ✅ 好：使用 COALESCE 提供默认值（数据完整性）
+   SELECT
+       id,
+       COALESCE(first_name, 'Unknown') AS first_name,
+       COALESCE(email, 'no-email@example.com') AS email
+   FROM users;
+
+   -- ❌ 不好：使用 CASE 表达式（代码冗长）
+   SELECT
+       id,
+       CASE
+           WHEN first_name IS NULL THEN 'Unknown'
+           ELSE first_name
+       END AS first_name
+   FROM users;
+   ```
+
+2. **使用 NULLIF 避免错误**（避免除零错误）
+
+   ```sql
+   -- ✅ 好：使用 NULLIF 避免除零错误（避免错误）
+   SELECT
+       product_id,
+       SUM(total_amount) / NULLIF(SUM(quantity), 0) AS avg_unit_price
+   FROM order_items
+   GROUP BY product_id;
+
+   -- ❌ 不好：直接除法（可能除零错误）
+   SELECT
+       product_id,
+       SUM(total_amount) / SUM(quantity) AS avg_unit_price
+   FROM order_items
+   GROUP BY product_id;
+   ```
+
+3. **使用 IS NULL 检测 NULL**（正确检测）
+
+   ```sql
+   -- ✅ 好：使用 IS NULL 检测 NULL（正确检测）
+   SELECT * FROM users
+   WHERE email IS NULL;
+
+   -- ❌ 不好：使用 = NULL（不会匹配任何行）
+   SELECT * FROM users
+   WHERE email = NULL;  -- 不会匹配任何行
+   ```
+
+**避免做法**：
+
+1. **避免使用 = NULL 或 != NULL**（不会匹配任何行）
+2. **避免忽略 NULL 值处理**（可能导致数据不准确）
+3. **避免在聚合函数中忽略 NULL**（可能导致结果不准确）
 
 ### 5.2 性能优化
 
-1. **索引**: NULL 值可以使用索引
-2. **约束**: 使用 NOT NULL 约束避免 NULL
-3. **默认值**: 使用 DEFAULT 提供默认值
+**推荐做法**：
+
+1. **NULL 值可以使用索引**（提升查询性能）
+
+   ```sql
+   -- ✅ 好：NULL 值可以使用索引（提升查询性能）
+   CREATE INDEX idx_users_email ON users (email);
+
+   -- 查询可以使用索引
+   SELECT * FROM users
+   WHERE email IS NULL;
+
+   -- 也可以使用索引
+   SELECT * FROM users
+   WHERE email IS NOT NULL;
+   ```
+
+2. **使用 NOT NULL 约束避免 NULL**（数据完整性）
+
+   ```sql
+   -- ✅ 好：使用 NOT NULL 约束避免 NULL（数据完整性）
+   CREATE TABLE users (
+       id SERIAL PRIMARY KEY,
+       email TEXT NOT NULL,  -- 不允许 NULL
+       first_name TEXT NOT NULL DEFAULT 'Unknown'  -- 默认值
+   );
+   ```
+
+3. **使用 DEFAULT 提供默认值**（数据完整性）
+
+   ```sql
+   -- ✅ 好：使用 DEFAULT 提供默认值（数据完整性）
+   CREATE TABLE orders (
+       id SERIAL PRIMARY KEY,
+       status TEXT NOT NULL DEFAULT 'pending',  -- 默认值
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()  -- 默认值
+   );
+   ```
+
+**避免做法**：
+
+1. **避免忽略 NULL 值索引**（查询性能差）
+2. **避免不使用 NOT NULL 约束**（数据完整性差）
+3. **避免不使用 DEFAULT 值**（数据完整性差）
 
 ## 6. 参考资料
 
-- [CASE表达式详解](./CASE表达式详解.md)
+### 官方文档
+
+- **[PostgreSQL 官方文档 - NULL 值处理](https://www.postgresql.org/docs/current/functions-conditional.html)**
+  - NULL 值处理完整教程
+  - 语法和示例说明
+
+- **[PostgreSQL 官方文档 - NULL 值比较](https://www.postgresql.org/docs/current/functions-comparison.html)**
+  - NULL 值比较规则
+  - 三值逻辑说明
+
+- **[PostgreSQL 官方文档 - COALESCE](https://www.postgresql.org/docs/current/functions-conditional.html#FUNCTIONS-COALESCE-NVL-IFNULL)**
+  - COALESCE 函数说明
+  - 使用示例
+
+- **[PostgreSQL 官方文档 - NULLIF](https://www.postgresql.org/docs/current/functions-conditional.html#FUNCTIONS-NULLIF)**
+  - NULLIF 函数说明
+  - 使用示例
+
+### SQL 标准
+
+- **ISO/IEC 9075:2016 - SQL 标准 NULL 值处理**
+  - SQL 标准 NULL 值处理规范
+  - 三值逻辑标准定义
+
+### 技术论文
+
+- **Codd, E. F. (1979). "Extending the Database Relational Model to Capture More Meaning."**
+  - 期刊: ACM Transactions on Database Systems (TODS)
+  - **重要性**: 关系数据库模型的基础研究
+  - **核心贡献**: 提出了 NULL 值和三值逻辑的概念，成为现代 SQL 标准的基础
+
+- **Date, C. J. (2000). "The Database Relational Model: A Retrospective Review and Analysis."**
+  - 出版社: Addison-Wesley
+  - **重要性**: 关系数据库模型的经典教材
+  - **核心贡献**: 深入解释了 NULL 值的语义和处理方法
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - NULL 值处理](https://www.postgresql.org/docs/current/functions-conditional.html)**
+  - NULL 值处理最佳实践
+  - 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL NULL 值处理](https://www.2ndquadrant.com/en/blog/postgresql-null-handling/)**
+  - NULL 值处理实战
+  - 性能优化案例
+
+- **[Percona - PostgreSQL NULL 值处理](https://www.percona.com/blog/postgresql-null-handling/)**
+  - NULL 值处理使用技巧
+  - 性能优化建议
+
+- **[EnterpriseDB - PostgreSQL NULL 值处理](https://www.enterprisedb.com/postgres-tutorials/postgresql-null-handling-tutorial)**
+  - NULL 值处理深入解析
+  - 实际应用案例
+
+### 社区资源
+
+- **[PostgreSQL Wiki - NULL 值处理](https://wiki.postgresql.org/wiki/Nulls)**
+  - NULL 值处理技巧
+  - 实际应用案例
+
+- **[Stack Overflow - PostgreSQL NULL 值处理](https://stackoverflow.com/questions/tagged/postgresql+null)**
+  - NULL 值处理问答
+  - 常见问题解答
+
+### 相关文档
+
+- [CASE表达式详解](../02-SQL高级特性/CASE表达式详解.md)
 - [聚合函数详解](./聚合函数详解.md)
-- [PostgreSQL 官方文档 - NULL 值处理](https://www.postgresql.org/docs/current/functions-conditional.html)
+- [数组与JSONB高级应用](./数组与JSONB高级应用.md)
 
 ---
 

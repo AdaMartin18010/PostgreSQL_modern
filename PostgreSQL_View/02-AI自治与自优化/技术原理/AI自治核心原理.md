@@ -911,7 +911,8 @@ SELECT pg_ai.set_performance_threshold(
 
 **自适应查询优化**:
 
-- **Ortiz, J., et al. (2018). "Learning State Representations for Query Optimization with Deep Reinforcement Learning."**
+- **Ortiz, J., et al. (2018).
+  "Learning State Representations for Query Optimization with Deep Reinforcement Learning."**
   - 会议: DEEM 2018 (SIGMOD Workshop)
   - **arXiv**: [arXiv:1808.03196](https://arxiv.org/abs/1808.03196)
   - **重要性**: 提出了查询状态表示学习方法，为强化学习优化器提供了更好的状态空间

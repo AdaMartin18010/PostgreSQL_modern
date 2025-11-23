@@ -22,13 +22,15 @@
     - [3.5 JSON 类型](#35-json-类型)
     - [3.6 数组类型](#36-数组类型)
     - [3.7 UUID 类型](#37-uuid-类型)
-  - [4. DML 操作（数据操作语言）](#4-dml-操作数据操作语言)
-    - [4.1 INSERT 插入数据](#41-insert-插入数据)
+  - [4. SQL 执行原理概述](#4-sql-执行原理概述)
+    - [4.0 SQL 查询执行流程](#40-sql-查询执行流程)
+  - [5. DML 操作（数据操作语言）](#5-dml-操作数据操作语言)
+    - [5.1 INSERT 插入数据](#51-insert-插入数据)
     - [4.2 UPDATE 更新数据](#42-update-更新数据)
     - [4.3 DELETE 删除数据](#43-delete-删除数据)
     - [4.4 UPSERT（插入或更新）](#44-upsert插入或更新)
-  - [5. DQL 操作（数据查询语言）](#5-dql-操作数据查询语言)
-    - [5.1 SELECT 基础查询](#51-select-基础查询)
+  - [6. DQL 操作（数据查询语言）](#6-dql-操作数据查询语言)
+    - [6.1 SELECT 基础查询](#61-select-基础查询)
     - [5.2 WHERE 条件过滤](#52-where-条件过滤)
     - [5.3 ORDER BY 排序](#53-order-by-排序)
     - [5.4 LIMIT 和 OFFSET](#54-limit-和-offset)
@@ -48,6 +50,11 @@
     - [8.1 SQL 编写原则](#81-sql-编写原则)
     - [8.2 性能优化建议](#82-性能优化建议)
   - [9. 参考资料](#9-参考资料)
+    - [9.1 官方文档](#91-官方文档)
+    - [9.2 SQL 标准文档](#92-sql-标准文档)
+    - [9.3 技术博客](#93-技术博客)
+    - [9.4 社区资源](#94-社区资源)
+    - [9.5 学习资源](#95-学习资源)
 
 ---
 
@@ -328,9 +335,70 @@ CREATE TABLE uuid_types (
 SELECT gen_random_uuid();
 ```
 
-## 4. DML 操作（数据操作语言）
+## 4. SQL 执行原理概述
 
-### 4.1 INSERT 插入数据
+### 4.0 SQL 查询执行流程
+
+**SQL 查询执行的本质**：
+
+SQL 查询在 PostgreSQL 中的执行是一个复杂的过程，包括解析、优化、执行三个阶段。理解这个流程有助于编写高效的 SQL 语句。
+
+**SQL 查询执行流程图**：
+
+```mermaid
+flowchart TD
+    A[SQL 查询语句] --> B[解析器 Parser]
+    B --> C[查询树 Query Tree]
+    C --> D[查询重写 Rewriter]
+    D --> E[优化器 Optimizer]
+    E --> F[执行计划 Execution Plan]
+    F --> G[执行器 Executor]
+    G --> H[结果返回]
+
+    E --> E1[成本估算]
+    E --> E2[索引选择]
+    E --> E3[JOIN 顺序]
+    E --> E4[并行计划]
+
+    style E fill:#FFD700
+    style G fill:#90EE90
+```
+
+**SQL 执行阶段详解**：
+
+1. **解析阶段（Parsing）**：将 SQL 文本解析为查询树
+2. **重写阶段（Rewriting）**：应用规则重写查询（视图展开、规则应用）
+3. **优化阶段（Optimization）**：生成最优执行计划
+4. **执行阶段（Execution）**：按照执行计划执行查询
+
+**查询优化器决策过程**：
+
+```mermaid
+flowchart TD
+    A[查询树] --> B{是否需要索引?}
+    B -->|是| C[选择索引类型]
+    B -->|否| D[顺序扫描]
+    C --> E{B-tree 索引?}
+    E -->|是| F[索引扫描]
+    E -->|否| G[其他索引类型]
+    F --> H[JOIN 策略选择]
+    D --> H
+    G --> H
+    H --> I{大表 JOIN?}
+    I -->|是| J[Hash Join]
+    I -->|否| K{Nested Loop}
+    J --> L[执行计划]
+    K --> L
+    L --> M[成本估算]
+    M --> N[选择最优计划]
+
+    style H fill:#FFD700
+    style N fill:#90EE90
+```
+
+## 5. DML 操作（数据操作语言）
+
+### 5.1 INSERT 插入数据
 
 ```sql
 -- 单行插入
@@ -429,9 +497,9 @@ VALUES ('john@example.com', 'John Doe')
 ON CONFLICT (email) DO NOTHING;
 ```
 
-## 5. DQL 操作（数据查询语言）
+## 6. DQL 操作（数据查询语言）
 
-### 5.1 SELECT 基础查询
+### 6.1 SELECT 基础查询
 
 ```sql
 -- 查询所有列
@@ -880,18 +948,214 @@ ORDER BY avg_salary DESC;
 
 ### 8.1 SQL 编写原则
 
-1. **明确列名**: 避免使用 SELECT *
-2. **使用索引**: 为 WHERE 条件创建索引
-3. **避免函数**: 避免在 WHERE 中使用函数
-4. **使用 JOIN**: 优先使用 JOIN 而非子查询
-5. **使用 LIMIT**: 限制结果集大小
+**推荐做法**：
+
+1. **明确列名**（避免使用 SELECT *，提升性能和可维护性）
+
+   ```sql
+   -- ✅ 好：明确指定列名
+   SELECT id, name, email FROM users WHERE status = 'active';
+
+   -- ❌ 不好：使用 SELECT *
+   SELECT * FROM users WHERE status = 'active';
+   -- 问题：返回不需要的列，增加网络传输和内存使用
+   ```
+
+2. **使用索引**（为 WHERE 条件创建索引，提升查询性能）
+
+   ```sql
+   -- ✅ 好：WHERE 条件使用索引列
+   SELECT * FROM users WHERE email = 'john@example.com';
+   -- 前提：CREATE INDEX idx_users_email ON users(email);
+
+   -- ❌ 不好：WHERE 条件不使用索引
+   SELECT * FROM users WHERE UPPER(name) = 'JOHN';
+   -- 问题：函数导致索引失效
+   -- 解决：CREATE INDEX idx_users_name_upper ON users(UPPER(name));
+   ```
+
+3. **避免函数**（避免在 WHERE 中使用函数，保持索引可用）
+
+   ```sql
+   -- ✅ 好：直接使用列值
+   SELECT * FROM orders WHERE order_date >= '2024-01-01';
+
+   -- ❌ 不好：在 WHERE 中使用函数
+   SELECT * FROM orders WHERE DATE_TRUNC('month', order_date) = '2024-01-01';
+   -- 问题：函数导致索引失效
+   -- 解决：重写查询条件或创建函数索引
+   ```
+
+4. **使用 JOIN**（优先使用 JOIN 而非子查询，性能更好）
+
+   ```sql
+   -- ✅ 好：使用 JOIN
+   SELECT u.name, o.total
+   FROM users u
+   JOIN orders o ON u.id = o.user_id
+   WHERE u.status = 'active';
+
+   -- ❌ 不好：使用子查询
+   SELECT name, (
+       SELECT total FROM orders WHERE user_id = users.id
+   ) AS total
+   FROM users
+   WHERE status = 'active';
+   -- 问题：子查询对每行执行一次，性能差
+   ```
+
+5. **使用 LIMIT**（限制结果集大小，避免返回大量数据）
+
+   ```sql
+   -- ✅ 好：使用 LIMIT
+   SELECT * FROM users ORDER BY created_at DESC LIMIT 10;
+
+   -- ❌ 不好：返回所有数据
+   SELECT * FROM users ORDER BY created_at DESC;
+   -- 问题：可能返回大量数据，影响性能
+   ```
+
+6. **使用参数化查询**（防止 SQL 注入，提升性能）
+
+   ```sql
+   -- ✅ 好：使用参数化查询
+   SELECT * FROM users WHERE email = $1;
+   -- 参数：'john@example.com'
+
+   -- ❌ 不好：字符串拼接
+   SELECT * FROM users WHERE email = 'john@example.com';
+   -- 问题：SQL 注入风险，无法利用查询计划缓存
+   ```
+
+**避免做法**：
+
+1. **避免使用 SELECT ***（返回不需要的列）
+2. **避免在 WHERE 中使用函数**（导致索引失效）
+3. **避免过度使用子查询**（性能差）
+4. **避免返回大量数据**（使用 LIMIT 限制）
+5. **避免字符串拼接 SQL**（SQL 注入风险）
 
 ### 8.2 性能优化建议
 
-1. **索引优化**: 为常用查询创建索引
-2. **查询优化**: 优化查询语句结构
-3. **批量操作**: 使用批量操作提升性能
-4. **连接池**: 使用连接池管理连接
+**推荐做法**：
+
+1. **索引优化**（为常用查询创建合适的索引）
+
+   ```sql
+   -- ✅ 好：为 WHERE 条件创建索引
+   CREATE INDEX idx_users_email ON users(email);
+   CREATE INDEX idx_orders_user_date ON orders(user_id, order_date);
+
+   -- ✅ 好：为 JOIN 条件创建索引
+   CREATE INDEX idx_orders_user_id ON orders(user_id);
+
+   -- ✅ 好：为 ORDER BY 创建索引
+   CREATE INDEX idx_users_created_at ON users(created_at);
+
+   -- 查看索引使用情况
+   SELECT schemaname, tablename, indexname, idx_scan
+   FROM pg_stat_user_indexes
+   WHERE schemaname = 'public'
+   ORDER BY idx_scan DESC;
+   ```
+
+2. **查询优化**（优化查询语句结构，提升性能）
+
+   ```sql
+   -- ✅ 好：使用 EXISTS 而非 COUNT
+   SELECT * FROM users u
+   WHERE EXISTS (
+       SELECT 1 FROM orders o WHERE o.user_id = u.id
+   );
+
+   -- ❌ 不好：使用 COUNT
+   SELECT * FROM users u
+   WHERE (
+       SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id
+   ) > 0;
+   -- 问题：COUNT 需要扫描所有行，EXISTS 找到一行就返回
+
+   -- ✅ 好：使用 UNION ALL 而非 UNION（如果不需要去重）
+   SELECT id FROM users WHERE status = 'active'
+   UNION ALL
+   SELECT id FROM users WHERE status = 'inactive';
+
+   -- ❌ 不好：使用 UNION（需要去重）
+   SELECT id FROM users WHERE status = 'active'
+   UNION
+   SELECT id FROM users WHERE status = 'inactive';
+   -- 问题：UNION 需要去重，性能差
+   ```
+
+3. **批量操作**（使用批量操作提升性能）
+
+   ```sql
+   -- ✅ 好：批量插入
+   INSERT INTO users (name, email) VALUES
+       ('John', 'john@example.com'),
+       ('Jane', 'jane@example.com'),
+       ('Bob', 'bob@example.com');
+
+   -- ❌ 不好：逐条插入
+   INSERT INTO users (name, email) VALUES ('John', 'john@example.com');
+   INSERT INTO users (name, email) VALUES ('Jane', 'jane@example.com');
+   INSERT INTO users (name, email) VALUES ('Bob', 'bob@example.com');
+   -- 问题：多次网络往返，性能差
+
+   -- ✅ 好：批量更新（使用 CASE）
+   UPDATE users SET status = CASE
+       WHEN id = 1 THEN 'active'
+       WHEN id = 2 THEN 'inactive'
+       WHEN id = 3 THEN 'active'
+   END
+   WHERE id IN (1, 2, 3);
+   ```
+
+4. **使用连接池**（减少连接开销）
+
+   ```ini
+   # ✅ 好：使用 PgBouncer 连接池
+   [pgbouncer]
+   pool_mode = transaction
+   max_client_conn = 1000
+   default_pool_size = 25
+   ```
+
+5. **使用 EXPLAIN 分析查询**（识别性能瓶颈）
+
+   ```sql
+   -- ✅ 好：分析查询计划
+   EXPLAIN ANALYZE
+   SELECT u.name, COUNT(o.id) AS order_count
+   FROM users u
+   LEFT JOIN orders o ON u.id = o.user_id
+   GROUP BY u.id, u.name
+   HAVING COUNT(o.id) > 10;
+
+   -- 查看执行计划，识别：
+   -- 1. 是否使用了索引（Index Scan vs Seq Scan）
+   -- 2. JOIN 类型（Nested Loop vs Hash Join）
+   -- 3. 执行时间（actual time）
+   ```
+
+6. **定期更新统计信息**（优化器需要准确的统计信息）
+
+   ```sql
+   -- ✅ 好：定期更新统计信息
+   ANALYZE users;
+   ANALYZE orders;
+
+   -- 或配置自动分析
+   -- postgresql.conf: autovacuum_analyze_scale_factor = 0.05
+   ```
+
+**避免做法**：
+
+1. **避免过度索引**（索引过多影响写入性能）
+2. **避免忽略统计信息**（优化器决策错误）
+3. **避免忽略查询计划分析**（无法发现性能问题）
+4. **避免逐条操作**（使用批量操作）
+5. **避免忽略连接池**（连接开销大）
 
 ## 9. 参考资料
 

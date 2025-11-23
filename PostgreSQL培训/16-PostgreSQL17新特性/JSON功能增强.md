@@ -23,6 +23,7 @@ PostgreSQL 17 对 JSON 和 JSONB 数据类型进行了重大增强，包括新�
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. JSON 功能增强概述](#1-json-功能增强概述)
+    - [1.0 JSON 功能增强工作原理概述](#10-json-功能增强工作原理概述)
     - [1.1 PostgreSQL 17 优化亮点](#11-postgresql-17-优化亮点)
     - [1.2 性能对比](#12-性能对比)
   - [2. 新操作符](#2-新操作符)
@@ -50,10 +51,49 @@ PostgreSQL 17 对 JSON 和 JSONB 数据类型进行了重大增强，包括新�
     - [7.1 案例：电商产品目录](#71-案例电商产品目录)
     - [7.2 案例：用户配置存储](#72-案例用户配置存储)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
+    - [官方文档](#官方文档)
+    - [SQL 标准](#sql-标准)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
+    - [相关文档](#相关文档)
 
 ---
 
 ## 1. JSON 功能增强概述
+
+### 1.0 JSON 功能增强工作原理概述
+
+**JSON 功能增强的本质**：
+
+PostgreSQL 17 对 JSON 和 JSONB 数据类型进行了重大增强，包括新的操作符、函数、索引优化等。
+JSONB 是 JSON 的二进制表示形式，支持索引和高效查询。
+PostgreSQL 17 优化了 JSONB 的存储格式和查询算法，显著提升了 JSON 数据的查询和处理性能。
+
+**JSON 功能增强执行流程图**：
+
+```mermaid
+flowchart TD
+    A[JSON查询开始] --> B{使用索引?}
+    B -->|是| C[GIN索引查找]
+    B -->|否| D[全表扫描]
+    C --> E[应用操作符]
+    D --> E
+    E --> F[类型转换]
+    F --> G[返回结果]
+
+    style C fill:#FFD700
+    style E fill:#90EE90
+    style G fill:#87CEEB
+```
+
+**JSON 功能增强步骤**：
+
+1. **索引查找**：如果创建了 GIN 索引，使用索引查找
+2. **应用操作符**：应用 JSON 操作符（->、->>、@> 等）
+3. **类型转换**：如果需要，进行类型转换
+4. **返回结果**：返回查询结果
 
 ### 1.1 PostgreSQL 17 优化亮点
 
@@ -384,56 +424,126 @@ WHERE id = 1;
 
 ### 6.1 JSON 结构设计
 
-```sql
--- 好的：扁平化结构，易于查询
-{
-    "price": 100,
-    "category": "electronics",
-    "tags": ["new", "popular"]
-}
+**推荐做法**：
 
--- 避免：深层嵌套结构
-{
-    "product": {
-        "details": {
-            "price": 100,
-            "category": "electronics"
-        }
-    }
-}
-```
+1. **使用扁平化结构**（易于查询）
+
+   ```sql
+   -- ✅ 好：扁平化结构，易于查询（易于查询）
+   CREATE TABLE products (
+       id SERIAL PRIMARY KEY,
+       name TEXT,
+       metadata JSONB
+   );
+
+   INSERT INTO products (name, metadata) VALUES
+   ('Product A', '{"price": 100, "category": "electronics", "tags": ["new", "popular"]}');
+
+   -- 查询简单
+   SELECT * FROM products
+   WHERE metadata->>'category' = 'electronics';
+   ```
+
+2. **避免深层嵌套结构**（查询复杂）
+
+   ```sql
+   -- ❌ 不好：深层嵌套结构（查询复杂）
+   INSERT INTO products (name, metadata) VALUES
+   ('Product A', '{
+       "product": {
+           "details": {
+               "price": 100,
+               "category": "electronics"
+           }
+       }
+   }');
+
+   -- 查询复杂
+   SELECT * FROM products
+   WHERE metadata->'product'->'details'->>'category' = 'electronics';
+   ```
+
+**避免做法**：
+
+1. **避免深层嵌套结构**（查询复杂）
+2. **避免使用 JSON 而不是 JSONB**（性能差）
 
 ### 6.2 索引策略
 
-```sql
--- 为常用查询字段创建索引
-CREATE INDEX idx_products_category
-ON products ((metadata->>'category'));
+**推荐做法**：
 
-CREATE INDEX idx_products_price
-ON products ((metadata->>'price')::numeric);
+1. **为常用查询字段创建索引**（提升查询性能）
 
--- 为复杂查询创建 GIN 索引
-CREATE INDEX idx_products_metadata_gin
-ON products USING GIN (metadata jsonb_path_ops);
-```
+   ```sql
+   -- ✅ 好：为常用查询字段创建索引（提升查询性能）
+   CREATE INDEX idx_products_category
+   ON products ((metadata->>'category'));
+
+   CREATE INDEX idx_products_price
+   ON products ((metadata->>'price')::numeric);
+
+   -- 查询可以使用索引
+   SELECT * FROM products
+   WHERE metadata->>'category' = 'electronics';
+   ```
+
+2. **为复杂查询创建 GIN 索引**（提升复杂查询性能）
+
+   ```sql
+   -- ✅ 好：为复杂查询创建 GIN 索引（提升复杂查询性能）
+   CREATE INDEX idx_products_metadata_gin
+   ON products USING GIN (metadata jsonb_path_ops);
+
+   -- 复杂查询可以使用索引
+   SELECT * FROM products
+   WHERE metadata @> '{"category": "electronics", "tags": ["new"]}';
+   ```
+
+**避免做法**：
+
+1. **避免不使用索引**（查询性能差）
+2. **避免为所有字段创建索引**（索引维护开销大）
 
 ### 6.3 查询模式
 
-```sql
--- 使用操作符而不是函数
--- 好的
-WHERE metadata->>'category' = 'electronics'
+**推荐做法**：
 
--- 避免
-WHERE jsonb_extract_path_text(metadata, 'category') = 'electronics'
+1. **使用操作符而不是函数**（性能好）
 
--- 使用类型转换
-WHERE (metadata->>'price')::numeric > 150
+   ```sql
+   -- ✅ 好：使用操作符而不是函数（性能好）
+   SELECT * FROM products
+   WHERE metadata->>'category' = 'electronics';
 
--- 使用路径查询
-WHERE jsonb_path_exists(metadata, '$.price ? (@ > 150)')
-```
+   -- ❌ 不好：使用函数（性能差）
+   SELECT * FROM products
+   WHERE jsonb_extract_path_text(metadata, 'category') = 'electronics';
+   ```
+
+2. **使用类型转换**（正确比较）
+
+   ```sql
+   -- ✅ 好：使用类型转换（正确比较）
+   SELECT * FROM products
+   WHERE (metadata->>'price')::numeric > 150;
+
+   -- ❌ 不好：字符串比较（可能错误）
+   SELECT * FROM products
+   WHERE metadata->>'price' > '150';  -- 字符串比较
+   ```
+
+3. **使用路径查询**（复杂查询）
+
+   ```sql
+   -- ✅ 好：使用路径查询（复杂查询）
+   SELECT * FROM products
+   WHERE jsonb_path_exists(metadata, '$.price ? (@ > 150)');
+   ```
+
+**避免做法**：
+
+1. **避免使用函数替代操作符**（性能差）
+2. **避免忽略类型转换**（可能比较错误）
 
 ---
 
@@ -545,6 +655,78 @@ WHERE jsonb_path_match(preferences, '$.notifications.email == true');
 
 PostgreSQL 17 的 JSON 功能增强显著提升了 JSON 数据的查询和处理性能。通过合理使用新操作符、函数、索引优化等功能，可以在生产环境中实现高效的 JSON 数据处理。
 建议使用 JSONB 而不是 JSON，为常用查询字段创建索引，并使用操作符而不是函数进行查询。
+
+## 📚 参考资料
+
+### 官方文档
+
+- **[PostgreSQL 官方文档 - JSON 类型](https://www.postgresql.org/docs/current/datatype-json.html)**
+  - JSON/JSONB 类型完整教程
+  - 语法和示例说明
+
+- **[PostgreSQL 官方文档 - JSON 函数和操作符](https://www.postgresql.org/docs/current/functions-json.html)**
+  - JSON 函数和操作符完整列表
+  - 使用示例
+
+- **[PostgreSQL 官方文档 - JSON 索引](https://www.postgresql.org/docs/current/datatype-json.html#JSON-INDEXING)**
+  - JSONB 索引说明
+  - GIN 索引使用
+
+- **[PostgreSQL 官方文档 - JSON 路径查询](https://www.postgresql.org/docs/current/functions-json.html#FUNCTIONS-SQLJSON-PATH)**
+  - JSON 路径查询说明
+  - SQL/JSON 路径语法
+
+### SQL 标准
+
+- **ISO/IEC 9075:2016 - SQL 标准 JSON 类型**
+  - SQL 标准 JSON 类型规范
+  - JSON 标准语法
+
+### 技术论文
+
+- **Crockford, D. (2006). "The Application/json Media Type for JavaScript Object Notation (JSON)."**
+  - RFC 4627
+  - **重要性**: JSON 格式的正式规范
+  - **核心贡献**: 定义了 JSON 数据格式，成为现代 Web 应用的标准
+
+- **Bray, T. (2014). "The JavaScript Object Notation (JSON) Data Interchange Format."**
+  - RFC 7159
+  - **重要性**: JSON 格式的更新规范
+  - **核心贡献**: 更新了 JSON 规范，支持更多数据类型
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - JSON 功能](https://www.postgresql.org/docs/current/datatype-json.html)**
+  - JSON 功能最佳实践
+  - 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL JSON](https://www.2ndquadrant.com/en/blog/postgresql-json/)**
+  - JSON 功能实战
+  - 性能优化案例
+
+- **[Percona - PostgreSQL JSON](https://www.percona.com/blog/postgresql-json/)**
+  - JSON 功能使用技巧
+  - 性能优化建议
+
+- **[EnterpriseDB - PostgreSQL JSON](https://www.enterprisedb.com/postgres-tutorials/postgresql-json-tutorial)**
+  - JSON 功能深入解析
+  - 实际应用案例
+
+### 社区资源
+
+- **[PostgreSQL Wiki - JSON](https://wiki.postgresql.org/wiki/JSON)**
+  - JSON 功能技巧
+  - 实际应用案例
+
+- **[Stack Overflow - PostgreSQL JSON](https://stackoverflow.com/questions/tagged/postgresql+json)**
+  - JSON 功能问答
+  - 常见问题解答
+
+### 相关文档
+
+- [数组与JSONB高级应用](../03-数据类型/数组与JSONB高级应用.md)
+- [JSONB索引优化](./JSONB索引优化.md)
+- [数据类型详解](../03-数据类型/数据类型详解.md)
 
 ---
 

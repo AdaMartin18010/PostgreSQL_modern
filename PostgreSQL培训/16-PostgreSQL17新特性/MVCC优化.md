@@ -23,6 +23,7 @@ PostgreSQL 17 对 MVCC（多版本并发控制）机制进行了重要优化，�
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. MVCC 优化概述](#1-mvcc-优化概述)
+    - [1.0 MVCC 优化工作原理概述](#10-mvcc-优化工作原理概述)
     - [1.1 PostgreSQL 17 优化亮点](#11-postgresql-17-优化亮点)
     - [1.2 性能对比](#12-性能对比)
   - [2. 事务处理优化](#2-事务处理优化)
@@ -49,10 +50,54 @@ PostgreSQL 17 对 MVCC（多版本并发控制）机制进行了重要优化，�
     - [7.1 案例：高并发事务系统优化](#71-案例高并发事务系统优化)
     - [7.2 案例：大表清理优化](#72-案例大表清理优化)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
+    - [官方文档](#官方文档)
+    - [SQL 标准](#sql-标准)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
+    - [相关文档](#相关文档)
 
 ---
 
 ## 1. MVCC 优化概述
+
+### 1.0 MVCC 优化工作原理概述
+
+**MVCC 优化的本质**：
+
+PostgreSQL 17 对 MVCC（多版本并发控制）机制进行了重要优化。
+MVCC 通过为每个事务创建数据快照，允许多个事务并发读取和修改数据，而不会相互阻塞。
+PostgreSQL 17 优化了事务 ID 管理、版本链管理、快照管理和 VACUUM 清理机制，显著提升了并发性能和存储效率。
+
+**MVCC 优化执行流程图**：
+
+```mermaid
+flowchart TD
+    A[事务开始] --> B[获取事务ID]
+    B --> C[创建快照]
+    C --> D[读取数据]
+    D --> E{需要修改?}
+    E -->|是| F[创建新版本]
+    E -->|否| G[返回结果]
+    F --> H[更新版本链]
+    H --> I[提交事务]
+    G --> I
+    I --> J[VACUUM清理]
+    J --> K[回收空间]
+
+    style C fill:#FFD700
+    style F fill:#90EE90
+    style K fill:#87CEEB
+```
+
+**MVCC 优化步骤**：
+
+1. **事务开始**：分配事务 ID，创建快照
+2. **读取数据**：根据快照读取可见版本
+3. **修改数据**：创建新版本，更新版本链
+4. **提交事务**：标记事务完成
+5. **VACUUM 清理**：清理旧版本，回收空间
 
 ### 1.1 PostgreSQL 17 优化亮点
 
@@ -404,70 +449,149 @@ WHERE query LIKE '%autovacuum%';
 
 ### 6.1 事务设计建议
 
-```sql
--- 推荐：短事务
-BEGIN;
--- 快速完成操作
-UPDATE orders SET status = 'processed' WHERE id = 1;
-COMMIT;
+**推荐做法**：
 
--- 避免：长事务
--- 避免在事务中执行长时间操作
-BEGIN;
--- 快速完成需要一致性读取的操作
-SELECT * FROM orders WHERE id = 1;
-COMMIT;
-```
+1. **使用短事务**（减少版本链长度）
+
+   ```sql
+   -- ✅ 好：短事务（减少版本链长度）
+   BEGIN;
+   UPDATE orders SET status = 'processed' WHERE id = 1;
+   COMMIT;  -- 快速提交
+
+   -- ❌ 不好：长事务（增加版本链长度）
+   BEGIN;
+   SELECT * FROM orders WHERE id = 1;
+   -- ... 长时间处理 ...
+   UPDATE orders SET status = 'processed' WHERE id = 1;
+   COMMIT;  -- 长时间持有事务
+   ```
+
+2. **避免在事务中执行长时间操作**（减少锁持有时间）
+
+   ```sql
+   -- ✅ 好：快速完成需要一致性读取的操作（减少锁持有时间）
+   BEGIN;
+   SELECT * FROM orders WHERE id = 1 FOR UPDATE;
+   -- 快速处理
+   UPDATE orders SET status = 'processed' WHERE id = 1;
+   COMMIT;
+
+   -- ❌ 不好：在事务中执行长时间操作（长时间持有锁）
+   BEGIN;
+   SELECT * FROM orders WHERE id = 1 FOR UPDATE;
+   -- ... 长时间处理（网络调用、文件操作等）...
+   UPDATE orders SET status = 'processed' WHERE id = 1;
+   COMMIT;
+   ```
+
+**避免做法**：
+
+1. **避免长事务**（增加版本链长度）
+2. **避免在事务中执行长时间操作**（长时间持有锁）
 
 ### 6.2 性能优化建议
 
-```sql
--- 优化：批量操作
--- 使用批量更新减少版本链长度
-UPDATE orders
-SET status = 'processed'
-WHERE id IN (1, 2, 3, 4, 5);
+**推荐做法**：
 
--- 优化：定期清理
--- 配置自动清理参数
-ALTER TABLE orders SET (
-    autovacuum_vacuum_scale_factor = 0.1,
-    autovacuum_analyze_scale_factor = 0.05
-);
+1. **使用批量操作**（减少版本链长度）
 
--- 优化：使用分区表
--- 分区表可以独立清理，提高清理效率
-CREATE TABLE orders (
-    id SERIAL,
-    order_date DATE,
-    data JSONB
-) PARTITION BY RANGE (order_date);
-```
+   ```sql
+   -- ✅ 好：批量操作（减少版本链长度）
+   UPDATE orders
+   SET status = 'processed'
+   WHERE id IN (1, 2, 3, 4, 5);
+
+   -- ❌ 不好：逐个更新（增加版本链长度）
+   UPDATE orders SET status = 'processed' WHERE id = 1;
+   UPDATE orders SET status = 'processed' WHERE id = 2;
+   -- ...
+   ```
+
+2. **配置合理的自动清理参数**（提升清理效率）
+
+   ```sql
+   -- ✅ 好：配置合理的自动清理参数（提升清理效率）
+   ALTER TABLE orders SET (
+       autovacuum_vacuum_scale_factor = 0.1,
+       autovacuum_analyze_scale_factor = 0.05
+   );
+
+   -- 对于大表，使用更小的比例
+   ALTER TABLE large_table SET (
+       autovacuum_vacuum_scale_factor = 0.05,
+       autovacuum_analyze_scale_factor = 0.02
+   );
+   ```
+
+3. **使用分区表**（提高清理效率）
+
+   ```sql
+   -- ✅ 好：使用分区表（提高清理效率）
+   CREATE TABLE orders (
+       id SERIAL,
+       order_date DATE,
+       data JSONB
+   ) PARTITION BY RANGE (order_date);
+
+   -- 每个分区可以独立清理
+   VACUUM orders_2024_q1;
+   VACUUM orders_2024_q2;
+   ```
+
+**避免做法**：
+
+1. **避免忽略自动清理配置**（清理效率低）
+2. **避免不使用分区表**（大表清理效率低）
 
 ### 6.3 维护建议
 
-```sql
--- 定期监控死元组
-SELECT
-    schemaname,
-    tablename,
-    n_dead_tup,
-    n_live_tup,
-    ROUND(n_dead_tup::numeric / NULLIF(n_live_tup + n_dead_tup, 0) * 100, 2) AS dead_percent
-FROM pg_stat_user_tables
-WHERE schemaname = 'public'
-ORDER BY n_dead_tup DESC;
+**推荐做法**：
 
--- 定期执行 VACUUM
-VACUUM ANALYZE;
+1. **定期监控死元组**（及时发现问题）
 
--- 监控事务 ID 包装
-SELECT
-    datname,
-    age(datfrozenxid) AS frozen_xid_age
-FROM pg_database
-WHERE datname = current_database();
-```
+   ```sql
+   -- ✅ 好：定期监控死元组（及时发现问题）
+   SELECT
+       schemaname,
+       tablename,
+       n_dead_tup,
+       n_live_tup,
+       ROUND(n_dead_tup::numeric / NULLIF(n_live_tup + n_dead_tup, 0) * 100, 2) AS dead_percent
+   FROM pg_stat_user_tables
+   WHERE schemaname = 'public'
+   ORDER BY n_dead_tup DESC;
+
+   -- 如果死元组比例超过 20%，需要清理
+   ```
+
+2. **定期执行 VACUUM**（保持数据库健康）
+
+   ```sql
+   -- ✅ 好：定期执行 VACUUM（保持数据库健康）
+   VACUUM ANALYZE;
+
+   -- 对于大表，使用并行 VACUUM（PostgreSQL 17）
+   VACUUM (PARALLEL 4) large_table;
+   ```
+
+3. **监控事务 ID 包装**（避免事务 ID 耗尽）
+
+   ```sql
+   -- ✅ 好：监控事务 ID 包装（避免事务 ID 耗尽）
+   SELECT
+       datname,
+       age(datfrozenxid) AS frozen_xid_age
+   FROM pg_database
+   WHERE datname = current_database();
+
+   -- 如果 frozen_xid_age 超过 1.5 亿，需要关注
+   ```
+
+**避免做法**：
+
+1. **避免忽略死元组监控**（可能导致表膨胀）
+2. **避免忽略事务 ID 包装**（可能导致事务 ID 耗尽）
 
 ---
 
@@ -570,6 +694,78 @@ PostgreSQL 17 的 MVCC 优化显著提升了并发性能和存储效率：
 - 配置合理的自动清理参数
 - 使用分区表提高清理效率
 - 使用并行 VACUUM 提升清理性能
+
+## 📚 参考资料
+
+### 官方文档
+
+- **[PostgreSQL 官方文档 - MVCC](https://www.postgresql.org/docs/current/mvcc.html)**
+  - MVCC 机制完整说明
+  - 并发控制原理
+
+- **[PostgreSQL 官方文档 - VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html)**
+  - VACUUM 命令说明
+  - 清理机制详解
+
+- **[PostgreSQL 官方文档 - 事务隔离](https://www.postgresql.org/docs/current/transaction-iso.html)**
+  - 事务隔离级别说明
+  - 隔离级别实现
+
+- **[PostgreSQL 官方文档 - 并发控制](https://www.postgresql.org/docs/current/mvcc-intro.html)**
+  - 并发控制机制说明
+  - MVCC 实现细节
+
+### SQL 标准
+
+- **ISO/IEC 9075:2016 - SQL 标准事务隔离**
+  - SQL 标准事务隔离级别规范
+  - 隔离级别标准定义
+
+### 技术论文
+
+- **Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels."**
+  - 会议: SIGMOD 1995
+  - **重要性**: 事务隔离级别的经典研究
+  - **核心贡献**: 深入分析了 ANSI SQL 隔离级别，提出了隔离级别的缺陷和改进方案
+
+- **Adya, A., et al. (2000). "Generalized Isolation Level Definitions."**
+  - 会议: ICDE 2000
+  - **重要性**: 通用隔离级别定义的研究
+  - **核心贡献**: 提出了更通用的隔离级别定义方法
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - MVCC](https://www.postgresql.org/docs/current/mvcc.html)**
+  - MVCC 最佳实践
+  - 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL MVCC](https://www.2ndquadrant.com/en/blog/postgresql-mvcc/)**
+  - MVCC 实战
+  - 性能优化案例
+
+- **[Percona - PostgreSQL MVCC](https://www.percona.com/blog/postgresql-mvcc/)**
+  - MVCC 使用技巧
+  - 性能优化建议
+
+- **[EnterpriseDB - PostgreSQL MVCC](https://www.enterprisedb.com/postgres-tutorials/postgresql-mvcc-tutorial)**
+  - MVCC 深入解析
+  - 实际应用案例
+
+### 社区资源
+
+- **[PostgreSQL Wiki - MVCC](https://wiki.postgresql.org/wiki/MVCC)**
+  - MVCC 技巧
+  - 实际应用案例
+
+- **[Stack Overflow - PostgreSQL MVCC](https://stackoverflow.com/questions/tagged/postgresql+mvcc)**
+  - MVCC 问答
+  - 常见问题解答
+
+### 相关文档
+
+- [并发控制详解](../15-体系总览/并发控制详解.md)
+- [事务管理详解](../15-体系总览/事务管理详解.md)
+- [锁机制详解](../15-体系总览/锁机制详解.md)
 
 ---
 

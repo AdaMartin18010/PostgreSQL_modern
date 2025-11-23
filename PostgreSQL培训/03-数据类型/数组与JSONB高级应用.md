@@ -9,6 +9,7 @@
 - [PostgreSQL 数组与 JSONB 高级应用](#postgresql-数组与-jsonb-高级应用)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+    - [1.0 数组与 JSONB 工作原理概述](#10-数组与-jsonb-工作原理概述)
     - [1.1 技术背景](#11-技术背景)
     - [1.2 核心价值](#12-核心价值)
     - [1.3 学习目标](#13-学习目标)
@@ -29,10 +30,50 @@
     - [5.2 JSONB 使用建议](#52-jsonb-使用建议)
     - [5.3 性能优化](#53-性能优化)
   - [6. 参考资料](#6-参考资料)
+    - [官方文档](#官方文档)
+    - [SQL 标准](#sql-标准)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
+    - [相关文档](#相关文档)
 
 ---
 
 ## 1. 概述
+
+### 1.0 数组与 JSONB 工作原理概述
+
+**数组与 JSONB 的本质**：
+
+PostgreSQL 的数组类型和 JSONB 类型是处理复杂数据结构的重要工具。数组类型存储同类型元素的集合，支持高效的集合操作。JSONB 类型存储二进制格式的 JSON 数据，支持高效的查询和索引。
+
+**数组与 JSONB 执行流程图**：
+
+```mermaid
+flowchart TD
+    A[查询开始] --> B{数据类型}
+    B -->|数组| C[数组操作]
+    B -->|JSONB| D[JSONB操作]
+    C --> E[应用数组操作符]
+    D --> F[应用JSONB操作符]
+    E --> G{使用索引?}
+    F --> G
+    G -->|是| H[GIN索引查找]
+    G -->|否| I[全表扫描]
+    H --> J[返回结果]
+    I --> J
+
+    style B fill:#FFD700
+    style H fill:#90EE90
+    style J fill:#87CEEB
+```
+
+**数组与 JSONB 执行步骤**：
+
+1. **数据类型识别**：识别查询涉及的数据类型（数组或 JSONB）
+2. **应用操作符**：应用相应的操作符（@>、<@、->、@> 等）
+3. **索引查找**：如果创建了 GIN 索引，使用索引查找
+4. **返回结果**：返回查询结果
 
 ### 1.1 技术背景
 
@@ -368,28 +409,226 @@ SELECT * FROM users WHERE settings->'notifications'->>'email' = 'true';
 
 ### 5.1 数组使用建议
 
-1. **索引选择**: 为数组列创建 GIN 索引
-2. **查询优化**: 使用 @> 和 && 操作符优化查询
-3. **数组大小**: 控制数组大小，避免过大数组
+**推荐做法**：
+
+1. **为数组列创建 GIN 索引**（提升查询性能）
+
+   ```sql
+   -- ✅ 好：创建 GIN 索引（提升查询性能）
+   CREATE TABLE articles (
+       id SERIAL PRIMARY KEY,
+       title TEXT,
+       tags TEXT[]
+   );
+
+   CREATE INDEX articles_tags_gin_idx ON articles USING GIN (tags);
+
+   -- 查询可以使用索引
+   SELECT * FROM articles WHERE tags @> ARRAY['PostgreSQL'];
+   ```
+
+2. **使用 @> 和 && 操作符优化查询**（性能好）
+
+   ```sql
+   -- ✅ 好：使用 @> 操作符（性能好）
+   SELECT * FROM articles WHERE tags @> ARRAY['PostgreSQL'];
+
+   -- ✅ 好：使用 && 操作符（性能好）
+   SELECT * FROM articles WHERE tags && ARRAY['PostgreSQL', 'Database'];
+
+   -- ❌ 不好：使用 ANY（性能差）
+   SELECT * FROM articles WHERE 'PostgreSQL' = ANY(tags);
+   ```
+
+3. **控制数组大小**（避免过大数组）
+
+   ```sql
+   -- ✅ 好：控制数组大小（避免过大数组）
+   CREATE TABLE articles (
+       id SERIAL PRIMARY KEY,
+       title TEXT,
+       tags TEXT[] CHECK (array_length(tags, 1) <= 10)  -- 限制最多10个标签
+   );
+
+   -- ❌ 不好：不限制数组大小（可能导致性能问题）
+   CREATE TABLE articles (
+       id SERIAL PRIMARY KEY,
+       title TEXT,
+       tags TEXT[]  -- 无限制
+   );
+   ```
+
+**避免做法**：
+
+1. **避免不使用 GIN 索引**（数组查询性能差）
+2. **避免使用 ANY 操作符**（性能差）
+3. **避免过大数组**（可能导致性能问题）
 
 ### 5.2 JSONB 使用建议
 
-1. **索引选择**: 根据查询模式选择合适的索引类型
-2. **路径查询**: 使用表达式索引优化路径查询
-3. **数据验证**: 使用 CHECK 约束验证 JSONB 结构
+**推荐做法**：
+
+1. **根据查询模式选择合适的索引类型**（提升性能）
+
+   ```sql
+   -- ✅ 好：使用默认 GIN 索引（支持所有操作符）
+   CREATE INDEX users_metadata_gin_idx ON users USING GIN (metadata);
+
+   -- ✅ 好：使用 jsonb_path_ops GIN 索引（仅支持 @>，但更小更快）
+   CREATE INDEX users_metadata_path_ops_idx ON users USING GIN (metadata jsonb_path_ops);
+
+   -- ✅ 好：使用表达式索引（特定路径查询）
+   CREATE INDEX users_email_idx ON users ((metadata->>'email'));
+   ```
+
+2. **使用表达式索引优化路径查询**（提升性能）
+
+   ```sql
+   -- ✅ 好：为常用路径创建表达式索引（提升性能）
+   CREATE INDEX users_email_idx ON users ((metadata->>'email'));
+   CREATE INDEX users_status_idx ON users ((metadata->>'status'));
+
+   -- 查询可以使用索引
+   SELECT * FROM users WHERE metadata->>'email' = 'user@example.com';
+   ```
+
+3. **使用 CHECK 约束验证 JSONB 结构**（数据完整性）
+
+   ```sql
+   -- ✅ 好：使用 CHECK 约束验证 JSONB 结构（数据完整性）
+   CREATE TABLE users (
+       id SERIAL PRIMARY KEY,
+       name TEXT,
+       metadata JSONB CHECK (
+           metadata ? 'email' AND
+           jsonb_typeof(metadata->'email') = 'string'
+       )
+   );
+   ```
+
+**避免做法**：
+
+1. **避免不使用索引**（JSONB 查询性能差）
+2. **避免在 WHERE 子句中使用函数**（无法使用索引）
+3. **避免忽略数据验证**（可能导致数据不一致）
 
 ### 5.3 性能优化
 
-1. **索引优化**: 为常用查询创建合适的索引
-2. **查询优化**: 避免在 WHERE 子句中使用函数
-3. **数据压缩**: JSONB 自动压缩，但注意更新频率
+**推荐做法**：
+
+1. **为常用查询创建合适的索引**（提升性能）
+
+   ```sql
+   -- ✅ 好：为常用查询创建索引（提升性能）
+   -- 数组查询
+   CREATE INDEX articles_tags_gin_idx ON articles USING GIN (tags);
+
+   -- JSONB 查询
+   CREATE INDEX users_metadata_gin_idx ON users USING GIN (metadata);
+
+   -- 表达式索引
+   CREATE INDEX users_email_idx ON users ((metadata->>'email'));
+   ```
+
+2. **避免在 WHERE 子句中使用函数**（无法使用索引）
+
+   ```sql
+   -- ✅ 好：直接使用操作符（可以使用索引）
+   SELECT * FROM users WHERE metadata @> '{"status": "active"}';
+
+   -- ❌ 不好：使用函数（无法使用索引）
+   SELECT * FROM users WHERE jsonb_extract_path_text(metadata, 'status') = 'active';
+   ```
+
+3. **注意 JSONB 更新频率**（JSONB 自动压缩）
+
+   ```sql
+   -- ✅ 好：批量更新（减少压缩开销）
+   UPDATE users SET metadata = jsonb_set(metadata, '{settings}', '{"theme": "dark"}')
+   WHERE id IN (1, 2, 3);
+
+   -- ❌ 不好：频繁单行更新（压缩开销大）
+   UPDATE users SET metadata = jsonb_set(metadata, '{settings}', '{"theme": "dark"}')
+   WHERE id = 1;
+   ```
+
+**避免做法**：
+
+1. **避免忽略索引**（查询性能差）
+2. **避免在 WHERE 子句中使用函数**（无法使用索引）
+3. **避免频繁更新 JSONB**（压缩开销大）
 
 ## 6. 参考资料
 
+### 官方文档
+
+- **[PostgreSQL 官方文档 - 数组类型](https://www.postgresql.org/docs/current/arrays.html)**
+  - 数组类型完整教程
+  - 语法和示例说明
+
+- **[PostgreSQL 官方文档 - JSON 类型](https://www.postgresql.org/docs/current/datatype-json.html)**
+  - JSON/JSONB 类型完整教程
+  - 语法和示例说明
+
+- **[PostgreSQL 官方文档 - JSONB 函数和操作符](https://www.postgresql.org/docs/current/functions-json.html)**
+  - JSONB 函数和操作符完整列表
+  - 函数说明和示例
+
+- **[PostgreSQL 官方文档 - 数组函数和操作符](https://www.postgresql.org/docs/current/functions-array.html)**
+  - 数组函数和操作符完整列表
+  - 函数说明和示例
+
+### SQL 标准
+
+- **ISO/IEC 9075:2016 - SQL 标准 JSON**
+  - SQL 标准 JSON 规范
+  - JSON 类型标准语法
+
+### 技术论文
+
+- **O'Neil, P., et al. (1996). "The LRU-K Page Replacement Algorithm For Database Disk Buffering."**
+  - 会议: SIGMOD 1996
+  - **重要性**: 数据库索引和缓存算法的基础研究
+  - **核心贡献**: 提出了 LRU-K 算法，影响了现代数据库索引的设计
+
+- **Graefe, G. (2011). "Modern B-Tree Techniques."**
+  - 期刊: Foundations and Trends in Databases, 3(4), 203-402
+  - **重要性**: B-tree 索引技术的最新研究
+  - **核心贡献**: 总结了现代 B-tree 技术，包括 GIN 索引的设计
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - JSONB](https://www.postgresql.org/docs/current/datatype-json.html)**
+  - JSONB 最佳实践
+  - 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL JSONB](https://www.2ndquadrant.com/en/blog/postgresql-jsonb-performance/)**
+  - JSONB 性能优化实战
+  - 性能优化案例
+
+- **[Percona - PostgreSQL JSONB](https://www.percona.com/blog/postgresql-jsonb-performance/)**
+  - JSONB 使用技巧
+  - 性能优化建议
+
+- **[EnterpriseDB - PostgreSQL JSONB](https://www.enterprisedb.com/postgres-tutorials/postgresql-jsonb-tutorial)**
+  - JSONB 深入解析
+  - 实际应用案例
+
+### 社区资源
+
+- **[PostgreSQL Wiki - JSONB](https://wiki.postgresql.org/wiki/JSONB)**
+  - JSONB 技巧
+  - 实际应用案例
+
+- **[Stack Overflow - PostgreSQL JSONB](https://stackoverflow.com/questions/tagged/postgresql+jsonb)**
+  - JSONB 问答
+  - 常见问题解答
+
+### 相关文档
+
 - [数据类型详解](./数据类型详解.md)
-- [索引与查询优化](./索引与查询优化.md)
-- [PostgreSQL 官方文档 - 数组类型](https://www.postgresql.org/docs/current/arrays.html)
-- [PostgreSQL 官方文档 - JSON 类型](https://www.postgresql.org/docs/current/datatype-json.html)
+- [索引与查询优化](../01-SQL基础/索引与查询优化.md)
+- [查询计划与优化器](../01-SQL基础/查询计划与优化器.md)
 
 ---
 

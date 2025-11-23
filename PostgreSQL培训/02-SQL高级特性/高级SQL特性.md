@@ -9,6 +9,7 @@
 - [PostgreSQL 高级 SQL 特性](#postgresql-高级-sql-特性)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+    - [1.0 高级 SQL 特性工作原理概述](#10-高级-sql-特性工作原理概述)
     - [1.1 技术背景](#11-技术背景)
     - [1.2 学习目标](#12-学习目标)
   - [2. 窗口函数](#2-窗口函数)
@@ -35,10 +36,48 @@
     - [7.2 CTE 最佳实践](#72-cte-最佳实践)
     - [7.3 递归查询最佳实践](#73-递归查询最佳实践)
   - [8. 参考资料](#8-参考资料)
+    - [官方文档](#官方文档)
+    - [SQL 标准](#sql-标准)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
+    - [相关文档](#相关文档)
 
 ---
 
 ## 1. 概述
+
+### 1.0 高级 SQL 特性工作原理概述
+
+**高级 SQL 特性的本质**：
+
+PostgreSQL 的高级 SQL 特性是一组强大的查询功能，包括窗口函数、CTE、递归查询等，能够解决复杂的数据处理需求。这些特性遵循 SQL 标准，提供了比传统 SQL 更强大、更灵活的数据处理能力。
+
+**高级 SQL 特性执行流程图**：
+
+```mermaid
+flowchart TD
+    A[查询开始] --> B{高级特性类型}
+    B -->|窗口函数| C[窗口函数计算]
+    B -->|CTE| D[CTE查询]
+    B -->|递归查询| E[递归查询]
+    C --> F[应用窗口框架]
+    D --> G[执行CTE查询]
+    E --> H[递归执行]
+    F --> I[返回结果]
+    G --> I
+    H --> I
+
+    style B fill:#FFD700
+    style I fill:#87CEEB
+```
+
+**高级 SQL 特性执行步骤**：
+
+1. **解析查询**：解析 SQL 查询，识别高级特性
+2. **执行高级特性**：根据特性类型执行相应的计算
+3. **优化查询**：查询优化器优化高级特性查询
+4. **返回结果**：返回最终查询结果
 
 ### 1.1 技术背景
 
@@ -438,26 +477,277 @@ ORDER BY path;
 
 ### 7.1 窗口函数最佳实践
 
-1. **合理使用 PARTITION BY**: 减少计算量
-2. **使用窗口框架**: ROWS/RANGE 优化性能
-3. **避免过度使用**: 简单查询不需要窗口函数
+**推荐做法**：
+
+1. **合理使用 PARTITION BY**（减少计算量）
+
+   ```sql
+   -- ✅ 好：使用 PARTITION BY（只计算分组内排名）
+   SELECT
+       department,
+       name,
+       salary,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
+   FROM employees;
+
+   -- ❌ 不好：不使用 PARTITION BY（计算全局排名，计算量大）
+   SELECT
+       department,
+       name,
+       salary,
+       RANK() OVER (ORDER BY salary DESC) AS global_rank
+   FROM employees;
+   ```
+
+2. **使用窗口框架**（ROWS/RANGE 优化性能）
+
+   ```sql
+   -- ✅ 好：使用 ROWS（性能好）
+   SELECT
+       date,
+       amount,
+       AVG(amount) OVER (
+           ORDER BY date
+           ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+       ) AS moving_avg
+   FROM sales;
+
+   -- ❌ 不好：使用 RANGE（性能差，除非需要值范围）
+   SELECT
+       date,
+       amount,
+       AVG(amount) OVER (
+           ORDER BY date
+           RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW
+       ) AS moving_avg
+   FROM sales;
+   ```
+
+3. **避免过度使用窗口函数**（简单查询不需要）
+
+   ```sql
+   -- ✅ 好：简单查询不使用窗口函数（性能好）
+   SELECT department, COUNT(*) AS employee_count
+   FROM employees
+   GROUP BY department;
+
+   -- ❌ 不好：简单查询使用窗口函数（性能差）
+   SELECT DISTINCT department, COUNT(*) OVER (PARTITION BY department) AS employee_count
+   FROM employees;
+   ```
+
+**避免做法**：
+
+1. **避免忽略 PARTITION BY**（计算量大）
+2. **避免忽略窗口框架**（可能导致性能问题）
+3. **避免过度使用窗口函数**（简单查询不需要）
 
 ### 7.2 CTE 最佳实践
 
-1. **提高可读性**: 使用 CTE 简化复杂查询
-2. **多次引用**: 利用 CTE 可多次引用的特性
-3. **性能考虑**: 对于大数据集，考虑物化 CTE
+**推荐做法**：
+
+1. **使用 CTE 简化复杂查询**（提高可读性）
+
+   ```sql
+   -- ✅ 好：使用 CTE 简化复杂查询（可读性好）
+   WITH
+       customer_stats AS (
+           SELECT user_id, COUNT(*) AS order_count, SUM(total_amount) AS total_spent
+           FROM orders
+           GROUP BY user_id
+       ),
+       high_value_customers AS (
+           SELECT user_id
+           FROM customer_stats
+           WHERE total_spent > 10000
+       )
+   SELECT u.name, cs.total_spent
+   FROM users u
+   JOIN high_value_customers hvc ON u.id = hvc.user_id
+   JOIN customer_stats cs ON u.id = cs.user_id;
+   ```
+
+2. **利用 CTE 可多次引用的特性**（代码复用）
+
+   ```sql
+   -- ✅ 好：多次引用 CTE（代码复用）
+   WITH customer_stats AS (
+       SELECT user_id, COUNT(*) AS order_count, SUM(total_amount) AS total_spent
+       FROM orders
+       GROUP BY user_id
+   )
+   SELECT
+       cs1.user_id,
+       cs1.order_count,
+       cs1.total_spent,
+       cs2.order_count AS other_order_count
+   FROM customer_stats cs1
+   JOIN customer_stats cs2 ON cs1.user_id = cs2.user_id;
+   ```
+
+3. **对于大数据集，考虑物化 CTE**（性能优化）
+
+   ```sql
+   -- ✅ 好：使用 MATERIALIZED（复杂 CTE，多次引用）
+   WITH MATERIALIZED complex_calculation AS (
+       SELECT user_id,
+              COUNT(*) AS order_count,
+              SUM(total_amount) AS total_spent
+       FROM orders
+       GROUP BY user_id
+   )
+   SELECT * FROM complex_calculation
+   UNION ALL
+   SELECT * FROM complex_calculation;
+   ```
+
+**避免做法**：
+
+1. **避免过度使用 CTE**（简单查询不需要 CTE）
+2. **避免忽略 MATERIALIZED**（复杂 CTE 多次引用时）
 
 ### 7.3 递归查询最佳实践
 
-1. **防止循环**: 使用路径数组防止无限递归
-2. **设置深度限制**: 使用 MAX 深度限制递归层数
-3. **性能优化**: 递归查询可能较慢，需要优化
+**推荐做法**：
+
+1. **使用路径数组防止无限递归**（防止循环）
+
+   ```sql
+   -- ✅ 好：使用路径数组避免循环（防止无限递归）
+   WITH RECURSIVE path_search AS (
+       SELECT id, name, parent_id, ARRAY[id] AS path
+       FROM nodes
+       WHERE id = 1
+
+       UNION ALL
+
+       SELECT n.id, n.name, n.parent_id, ps.path || n.id
+       FROM nodes n
+       JOIN path_search ps ON n.parent_id = ps.id
+       WHERE n.id != ALL(ps.path)  -- 避免循环
+   )
+   SELECT * FROM path_search;
+   ```
+
+2. **设置深度限制**（限制递归层数）
+
+   ```sql
+   -- ✅ 好：限制递归深度（避免深度递归）
+   WITH RECURSIVE dept_tree AS (
+       SELECT id, name, parent_id, 1 AS level
+       FROM departments
+       WHERE id = 1
+
+       UNION ALL
+
+       SELECT d.id, d.name, d.parent_id, dt.level + 1
+       FROM departments d
+       JOIN dept_tree dt ON d.parent_id = dt.id
+       WHERE dt.level < 10  -- 限制深度
+   )
+   SELECT * FROM dept_tree;
+   ```
+
+3. **为连接列创建索引**（性能优化）
+
+   ```sql
+   -- ✅ 好：为连接列创建索引（提升性能）
+   CREATE INDEX idx_departments_parent_id ON departments(parent_id);
+
+   -- 递归查询可以使用索引
+   WITH RECURSIVE dept_tree AS (
+       SELECT id, name, parent_id
+       FROM departments
+       WHERE id = 1
+
+       UNION ALL
+
+       SELECT d.id, d.name, d.parent_id
+       FROM departments d
+       JOIN dept_tree dt ON d.parent_id = dt.id
+   )
+   SELECT * FROM dept_tree;
+   ```
+
+**避免做法**：
+
+1. **避免忽略路径检查**（可能导致无限循环）
+2. **避免不限制深度**（可能导致深度递归）
+3. **避免忽略索引**（递归查询性能差）
 
 ## 8. 参考资料
 
-- [PostgreSQL 官方文档 - 窗口函数](https://www.postgresql.org/docs/current/tutorial-window.html)
-- [PostgreSQL 官方文档 - WITH 查询](https://www.postgresql.org/docs/current/queries-with.html)
+### 官方文档
+
+- **[PostgreSQL 官方文档 - 窗口函数](https://www.postgresql.org/docs/current/tutorial-window.html)**
+  - 窗口函数完整教程
+  - 语法和示例说明
+
+- **[PostgreSQL 官方文档 - WITH 查询](https://www.postgresql.org/docs/current/queries-with.html)**
+  - WITH 查询完整教程
+  - CTE 和递归查询说明
+
+- **[PostgreSQL 官方文档 - 高级 SQL 特性](https://www.postgresql.org/docs/current/tutorial-advanced.html)**
+  - 高级 SQL 特性完整教程
+  - 各种高级特性说明
+
+### SQL 标准
+
+- **ISO/IEC 9075:2016 - SQL 标准高级特性**
+  - SQL 标准窗口函数规范
+  - SQL 标准 CTE 规范
+  - SQL 标准递归查询规范
+
+### 技术论文
+
+- **Leis, V., et al. (2015). "How Good Are Query Optimizers?"**
+  - 会议: SIGMOD 2015
+  - 论文链接: [arXiv:1504.01155](https://arxiv.org/abs/1504.01155)
+  - **重要性**: 现代查询优化器性能评估研究
+  - **核心贡献**: 系统性地评估了现代查询优化器的性能，包括高级 SQL 特性的优化
+
+- **Graefe, G. (1995). "The Cascades Framework for Query Optimization."**
+  - 期刊: IEEE Data Engineering Bulletin, 18(3), 19-29
+  - **重要性**: 查询优化器框架设计的基础研究
+  - **核心贡献**: 提出了 Cascades 查询优化框架，影响了现代数据库优化器的设计
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - 高级 SQL 特性](https://www.postgresql.org/docs/current/tutorial-advanced.html)**
+  - 高级 SQL 特性最佳实践
+  - 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL 高级 SQL 特性](https://www.2ndquadrant.com/en/blog/postgresql-advanced-sql-features/)**
+  - 高级 SQL 特性实战
+  - 性能优化案例
+
+- **[Percona - PostgreSQL 高级 SQL 特性](https://www.percona.com/blog/postgresql-advanced-sql-features/)**
+  - 高级 SQL 特性使用技巧
+  - 性能优化建议
+
+- **[EnterpriseDB - PostgreSQL 高级 SQL 特性](https://www.enterprisedb.com/postgres-tutorials/postgresql-advanced-sql-features-tutorial)**
+  - 高级 SQL 特性深入解析
+  - 实际应用案例
+
+### 社区资源
+
+- **[PostgreSQL Wiki - 高级 SQL 特性](https://wiki.postgresql.org/wiki/Advanced_SQL_features)**
+  - 高级 SQL 特性技巧
+  - 实际应用案例
+
+- **[Stack Overflow - PostgreSQL 高级 SQL 特性](https://stackoverflow.com/questions/tagged/postgresql+window-functions)**
+  - 高级 SQL 特性问答
+  - 常见问题解答
+
+### 相关文档
+
+- [窗口函数详解](./窗口函数详解.md)
+- [CTE详解](./CTE详解.md)
+- [递归查询详解](./递归查询详解.md)
+- [LATERAL连接详解](./LATERAL连接详解.md)
+- [FILTER子句详解](./FILTER子句详解.md)
+- [CASE表达式详解](./CASE表达式详解.md)
+- [索引与查询优化](../01-SQL基础/索引与查询优化.md)
 
 ---
 

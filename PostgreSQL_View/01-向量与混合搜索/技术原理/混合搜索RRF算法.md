@@ -831,8 +831,12 @@ $$ LANGUAGE plpgsql;
 
 **RRF 算法原始论文**:
 
-- **Cormack, G. V., Clarke, C. L., & Büttcher, S. (2009). "Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods."**
-  - 会议: SIGIR 2009 (Proceedings of the 32nd international ACM SIGIR conference on Research and development in information retrieval)
+- **Cormack, G. V., Clarke, C. L., & Büttcher, S. (2009).
+  "Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods."
+  **
+  - 会议: SIGIR 2009
+  - (Proceedings of the 32nd international ACM SIGIR conference
+   on Research and development in information retrieval)
   - 论文链接: [RRF 算法原始论文](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf)
   - **DOI**: [10.1145/1571941.1572114](https://doi.org/10.1145/1571941.1572114)
   - **重要性**: RRF 算法的原始论文，详细阐述了算法原理和数学证明

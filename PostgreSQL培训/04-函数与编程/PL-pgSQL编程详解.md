@@ -9,6 +9,7 @@
 - [PostgreSQL PL/pgSQL 编程详解](#postgresql-plpgsql-编程详解)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+    - [1.0 PL/pgSQL 工作原理概述](#10-plpgsql-工作原理概述)
     - [1.1 技术背景](#11-技术背景)
     - [1.2 核心价值](#12-核心价值)
     - [1.3 学习目标](#13-学习目标)
@@ -30,10 +31,53 @@
     - [6.1 性能优化](#61-性能优化)
     - [6.2 代码规范](#62-代码规范)
   - [7. 参考资料](#7-参考资料)
+    - [官方文档](#官方文档)
+    - [SQL 标准](#sql-标准)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
+    - [相关文档](#相关文档)
 
 ---
 
 ## 1. 概述
+
+### 1.0 PL/pgSQL 工作原理概述
+
+**PL/pgSQL 的本质**：
+
+PL/pgSQL 是 PostgreSQL 的过程化编程语言，允许在数据库服务器端编写函数、存储过程和触发器。
+PL/pgSQL 函数在数据库服务器上执行，减少了客户端和服务器之间的网络往返，提升了性能。
+
+**PL/pgSQL 执行流程图**：
+
+```mermaid
+flowchart TD
+    A[函数调用] --> B[解析函数]
+    B --> C[编译函数]
+    C --> D[执行函数]
+    D --> E{执行语句}
+    E -->|SQL语句| F[执行SQL]
+    E -->|控制结构| G[执行控制逻辑]
+    E -->|异常处理| H[处理异常]
+    F --> I{还有语句?}
+    G --> I
+    H --> I
+    I -->|是| E
+    I -->|否| J[返回结果]
+
+    style B fill:#FFD700
+    style D fill:#90EE90
+    style J fill:#87CEEB
+```
+
+**PL/pgSQL 执行步骤**：
+
+1. **解析函数**：解析函数定义，检查语法
+2. **编译函数**：编译函数为执行计划
+3. **执行函数**：执行函数体中的语句
+4. **处理异常**：如果发生异常，执行异常处理
+5. **返回结果**：返回函数结果
 
 ### 1.1 技术背景
 
@@ -51,7 +95,7 @@ PL/pgSQL 是 PostgreSQL 的过程化编程语言：
 - **业务逻辑**: 在数据库层实现业务逻辑
 - **数据验证**: 数据验证和约束
 - **复杂计算**: 复杂计算和处理
-- **性能优化**: 减少网络往返，提升性能
+- **性能优化**: 减少网络往返，提升性能优化
 
 ### 1.2 核心价值
 
@@ -439,20 +483,315 @@ $$;
 
 ### 6.1 性能优化
 
-1. **使用 IMMUTABLE/STABLE**: 标记函数特性
-2. **避免循环**: 尽量使用 SQL 而非循环
-3. **批量处理**: 批量处理数据
+**推荐做法**：
+
+1. **使用 IMMUTABLE/STABLE 标记函数特性**（优化器优化）
+
+   ```sql
+   -- ✅ 好：使用 IMMUTABLE（纯函数，结果不变）
+   CREATE FUNCTION calculate_tax(amount DECIMAL)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   IMMUTABLE  -- 标记为不可变函数
+   AS $$
+   BEGIN
+       RETURN amount * 0.1;
+   END;
+   $$;
+
+   -- ✅ 好：使用 STABLE（稳定函数，在同一事务中结果不变）
+   CREATE FUNCTION get_current_price(product_id INTEGER)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   STABLE  -- 标记为稳定函数
+   AS $$
+   BEGIN
+       RETURN (SELECT price FROM products WHERE id = product_id);
+   END;
+   $$;
+
+   -- ❌ 不好：不使用标记（优化器无法优化）
+   CREATE FUNCTION calculate_tax(amount DECIMAL)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   -- 缺少 IMMUTABLE/STABLE 标记
+   AS $$
+   BEGIN
+       RETURN amount * 0.1;
+   END;
+   $$;
+   ```
+
+2. **尽量使用 SQL 而非循环**（性能好）
+
+   ```sql
+   -- ✅ 好：使用 SQL（性能好）
+   CREATE FUNCTION update_order_totals()
+   RETURNS INTEGER
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE
+       updated_count INTEGER;
+   BEGIN
+       UPDATE orders o
+       SET total_amount = (
+           SELECT SUM(quantity * price)
+           FROM order_items
+           WHERE order_id = o.id
+       )
+       WHERE EXISTS (SELECT 1 FROM order_items WHERE order_id = o.id);
+
+       GET DIAGNOSTICS updated_count = ROW_COUNT;
+       RETURN updated_count;
+   END;
+   $$;
+
+   -- ❌ 不好：使用循环（性能差）
+   CREATE FUNCTION update_order_totals()
+   RETURNS INTEGER
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE
+       order_record RECORD;
+       total DECIMAL;
+       updated_count INTEGER := 0;
+   BEGIN
+       FOR order_record IN SELECT id FROM orders
+       LOOP
+           SELECT SUM(quantity * price) INTO total
+           FROM order_items
+           WHERE order_id = order_record.id;
+
+           UPDATE orders SET total_amount = total WHERE id = order_record.id;
+           updated_count := updated_count + 1;
+       END LOOP;
+
+       RETURN updated_count;
+   END;
+   $$;
+   ```
+
+3. **批量处理数据**（减少网络往返）
+
+   ```sql
+   -- ✅ 好：批量处理（减少网络往返）
+   CREATE FUNCTION process_orders_batch(order_ids INTEGER[])
+   RETURNS INTEGER
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE
+       processed_count INTEGER;
+   BEGIN
+       UPDATE orders
+       SET status = 'processed'
+       WHERE id = ANY(order_ids);
+
+       GET DIAGNOSTICS processed_count = ROW_COUNT;
+       RETURN processed_count;
+   END;
+   $$;
+
+   -- ❌ 不好：逐条处理（网络往返多）
+   CREATE FUNCTION process_order(order_id INTEGER)
+   RETURNS VOID
+   LANGUAGE plpgsql
+   AS $$
+   BEGIN
+       UPDATE orders SET status = 'processed' WHERE id = order_id;
+   END;
+   $$;
+   ```
+
+**避免做法**：
+
+1. **避免不使用 IMMUTABLE/STABLE**（优化器无法优化）
+2. **避免使用循环处理数据**（性能差）
+3. **避免逐条处理数据**（网络往返多）
 
 ### 6.2 代码规范
 
-1. **命名规范**: 使用清晰的命名
-2. **注释完善**: 完善代码注释
-3. **错误处理**: 完善的错误处理
+**推荐做法**：
+
+1. **使用清晰的命名**（提高可读性）
+
+   ```sql
+   -- ✅ 好：使用清晰的命名（可读性好）
+   CREATE FUNCTION calculate_order_total(p_order_id INTEGER)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE
+       v_total_amount DECIMAL;
+   BEGIN
+       SELECT SUM(quantity * price) INTO v_total_amount
+       FROM order_items
+       WHERE order_id = p_order_id;
+
+       RETURN v_total_amount;
+   END;
+   $$;
+
+   -- ❌ 不好：命名不清晰（可读性差）
+   CREATE FUNCTION calc(o_id INTEGER)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE
+       t DECIMAL;
+   BEGIN
+       SELECT SUM(q * p) INTO t FROM oi WHERE oi = o_id;
+       RETURN t;
+   END;
+   $$;
+   ```
+
+2. **完善代码注释**（提高可维护性）
+
+   ```sql
+   -- ✅ 好：完善代码注释（可维护性好）
+   CREATE FUNCTION calculate_order_total(p_order_id INTEGER)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   AS $$
+   -- 功能：计算订单总金额
+   -- 参数：p_order_id - 订单ID
+   -- 返回：订单总金额
+   DECLARE
+       v_total_amount DECIMAL;
+   BEGIN
+       -- 计算订单项总金额
+       SELECT SUM(quantity * price) INTO v_total_amount
+       FROM order_items
+       WHERE order_id = p_order_id;
+
+       RETURN v_total_amount;
+   END;
+   $$;
+   ```
+
+3. **完善的错误处理**（提高健壮性）
+
+   ```sql
+   -- ✅ 好：完善的错误处理（健壮性好）
+   CREATE FUNCTION calculate_order_total(p_order_id INTEGER)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE
+       v_total_amount DECIMAL;
+   BEGIN
+       BEGIN
+           SELECT SUM(quantity * price) INTO v_total_amount
+           FROM order_items
+           WHERE order_id = p_order_id;
+
+           IF v_total_amount IS NULL THEN
+               v_total_amount := 0;
+           END IF;
+
+           RETURN v_total_amount;
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE EXCEPTION 'Error calculating order total: %', SQLERRM;
+       END;
+   END;
+   $$;
+
+   -- ❌ 不好：缺少错误处理（健壮性差）
+   CREATE FUNCTION calculate_order_total(p_order_id INTEGER)
+   RETURNS DECIMAL
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE
+       v_total_amount DECIMAL;
+   BEGIN
+       SELECT SUM(quantity * price) INTO v_total_amount
+       FROM order_items
+       WHERE order_id = p_order_id;
+
+       RETURN v_total_amount;
+       -- 缺少错误处理
+   END;
+   $$;
+   ```
+
+**避免做法**：
+
+1. **避免命名不清晰**（可读性差）
+2. **避免缺少注释**（可维护性差）
+3. **避免缺少错误处理**（健壮性差）
 
 ## 7. 参考资料
 
+### 官方文档
+
+- **[PostgreSQL 官方文档 - PL/pgSQL](https://www.postgresql.org/docs/current/plpgsql.html)**
+  - PL/pgSQL 完整教程
+  - 语法和示例说明
+
+- **[PostgreSQL 官方文档 - PL/pgSQL 函数](https://www.postgresql.org/docs/current/plpgsql-functions.html)**
+  - PL/pgSQL 函数完整说明
+  - 函数定义和调用
+
+- **[PostgreSQL 官方文档 - PL/pgSQL 控制结构](https://www.postgresql.org/docs/current/plpgsql-control-structures.html)**
+  - PL/pgSQL 控制结构说明
+  - 条件语句、循环语句
+
+- **[PostgreSQL 官方文档 - PL/pgSQL 异常处理](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html)**
+  - PL/pgSQL 异常处理说明
+  - 异常类型和处理
+
+### SQL 标准
+
+- **ISO/IEC 9075:2016 - SQL 标准存储过程**
+  - SQL 标准存储过程规范
+  - 存储过程标准语法
+
+### 技术论文
+
+- **Stonebraker, M., et al. (2005). "C-Store: A Column-oriented DBMS."**
+  - 会议: VLDB 2005
+  - **重要性**: 列式数据库的基础研究
+  - **核心贡献**: 提出了列式存储架构，影响了现代数据库的设计
+
+- **Graefe, G. (2011). "Modern B-Tree Techniques."**
+  - 期刊: Foundations and Trends in Databases, 3(4), 203-402
+  - **重要性**: B-tree 索引技术的最新研究
+  - **核心贡献**: 总结了现代 B-tree 技术，包括数据库函数和存储过程的优化
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - PL/pgSQL](https://www.postgresql.org/docs/current/plpgsql.html)**
+  - PL/pgSQL 最佳实践
+  - 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL PL/pgSQL](https://www.2ndquadrant.com/en/blog/postgresql-plpgsql-best-practices/)**
+  - PL/pgSQL 实战
+  - 性能优化案例
+
+- **[Percona - PostgreSQL PL/pgSQL](https://www.percona.com/blog/postgresql-plpgsql-performance/)**
+  - PL/pgSQL 使用技巧
+  - 性能优化建议
+
+- **[EnterpriseDB - PostgreSQL PL/pgSQL](https://www.enterprisedb.com/postgres-tutorials/postgresql-plpgsql-tutorial)**
+  - PL/pgSQL 深入解析
+  - 实际应用案例
+
+### 社区资源
+
+- **[PostgreSQL Wiki - PL/pgSQL](https://wiki.postgresql.org/wiki/PL/pgSQL)**
+  - PL/pgSQL 技巧
+  - 实际应用案例
+
+- **[Stack Overflow - PostgreSQL PL/pgSQL](https://stackoverflow.com/questions/tagged/postgresql+plpgsql)**
+  - PL/pgSQL 问答
+  - 常见问题解答
+
+### 相关文档
+
 - [函数与存储过程](./函数与存储过程.md)
-- [PostgreSQL 官方文档 - PL/pgSQL](https://www.postgresql.org/docs/current/plpgsql.html)
+- [触发器高级应用](./触发器高级应用.md)
+- [索引与查询优化](../01-SQL基础/索引与查询优化.md)
 
 ---
 

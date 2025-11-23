@@ -33,6 +33,7 @@ TimescaleDB 3.0 完全兼容 PostgreSQL 18，充分利用其异步 I/O、并行�
     - [1.2 安装 TimescaleDB](#12-安装-timescaledb)
     - [1.3 版本要求](#13-版本要求)
   - [2. 超表（Hypertable）](#2-超表hypertable)
+    - [2.0 超表工作原理概述](#20-超表工作原理概述)
     - [2.1 创建超表](#21-创建超表)
     - [2.2 超表特性](#22-超表特性)
     - [2.3 查看超表信息](#23-查看超表信息)
@@ -55,10 +56,16 @@ TimescaleDB 3.0 完全兼容 PostgreSQL 18，充分利用其异步 I/O、并行�
     - [6.1 时间桶函数](#61-时间桶函数)
     - [6.2 时间序列函数](#62-时间序列函数)
     - [6.3 索引优化](#63-索引优化)
+    - [6.4 最佳实践](#64-最佳实践)
   - [7. 实际案例](#7-实际案例)
     - [7.1 案例：IoT 传感器数据存储](#71-案例iot-传感器数据存储)
     - [7.2 案例：金融时序数据](#72-案例金融时序数据)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
+    - [官方文档](#官方文档)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
 
 ---
 
@@ -95,9 +102,72 @@ WHERE name = 'timescaledb';
 
 ## 2. 超表（Hypertable）
 
+### 2.0 超表工作原理概述
+
+**超表的本质**：
+
+超表（Hypertable）是 TimescaleDB 的核心概念，它将普通表转换为时序表。
+超表在逻辑上是一个表，但在物理上被自动分割成多个块（Chunk），每个块存储特定时间范围的数据。
+这种设计实现了自动分区管理，同时保持了 PostgreSQL 的完整 SQL 功能。
+
+**超表架构图**：
+
+```mermaid
+flowchart TD
+    A[超表 Hypertable] --> B[块 Chunk 1]
+    A --> C[块 Chunk 2]
+    A --> D[块 Chunk 3]
+    A --> E[块 Chunk N]
+
+    B --> B1[数据: 2024-01-01 至 2024-01-08]
+    C --> C1[数据: 2024-01-08 至 2024-01-15]
+    D --> D1[数据: 2024-01-15 至 2024-01-22]
+    E --> E1[数据: 2024-01-22 至 2024-01-29]
+
+    F[查询: WHERE time >= '2024-01-15'] --> A
+    A --> G[块裁剪]
+    G --> D
+    G --> E
+
+    style A fill:#87CEEB
+    style G fill:#90EE90
+```
+
+**超表工作流程**：
+
+```mermaid
+flowchart TD
+    A[创建超表] --> B[设置分区间隔]
+    B --> C[插入数据]
+    C --> D{数据时间范围}
+    D --> E[路由到对应块]
+    E --> F{块存在?}
+    F -->|是| G[插入到现有块]
+    F -->|否| H[创建新块]
+    H --> G
+    G --> I[查询时块裁剪]
+    I --> J[只扫描相关块]
+
+    style E fill:#FFD700
+    style I fill:#90EE90
+```
+
+**超表的优势**：
+
+- **自动分区管理**：根据时间自动创建和管理分区
+- **块裁剪**：查询时自动裁剪到相关块，提升性能
+- **透明查询**：对应用层透明，使用标准 SQL 查询
+- **PostgreSQL 18 集成**：充分利用异步 I/O 和并行查询
+
 ### 2.1 创建超表
 
 超表是 TimescaleDB 的核心概念，它将普通表转换为时序表。
+
+**创建超表的步骤**：
+
+1. 创建普通表
+2. 使用 `create_hypertable()` 转换为超表
+3. 设置分区间隔（chunk_time_interval）
 
 ```sql
 -- 创建普通表
@@ -385,18 +455,143 @@ GROUP BY bucket, sensor_id;
 ### 6.3 索引优化
 
 ```sql
--- 创建时间索引（自动创建）
+-- 1. 创建时间索引（自动创建）
 CREATE INDEX idx_sensor_data_time ON sensor_data (time DESC);
 
--- 创建复合索引
+-- 2. 创建复合索引
 CREATE INDEX idx_sensor_data_sensor_time
 ON sensor_data (sensor_id, time DESC);
 
--- 创建部分索引（只索引活跃数据）
+-- 3. 创建部分索引（只索引活跃数据）
 CREATE INDEX idx_sensor_data_recent
 ON sensor_data (sensor_id, time DESC)
 WHERE time >= NOW() - INTERVAL '30 days';
+
+-- 4. 查看索引使用情况
+EXPLAIN ANALYZE
+SELECT * FROM sensor_data
+WHERE time >= NOW() - INTERVAL '7 days'
+  AND sensor_id = 1
+ORDER BY time DESC;
 ```
+
+### 6.4 最佳实践
+
+**推荐做法**：
+
+1. **合理设置分区间隔**（根据数据量和查询模式选择）
+
+   ```sql
+   -- ✅ 好：高频写入场景使用较小的分区间隔
+   SELECT create_hypertable('sensor_data', 'time',
+       chunk_time_interval => INTERVAL '1 day');  -- 1 天
+
+   -- ✅ 好：低频写入场景使用较大的分区间隔
+   SELECT create_hypertable('log_data', 'time',
+       chunk_time_interval => INTERVAL '7 days');  -- 7 天
+
+   -- ❌ 不好：分区间隔过大（块过大，影响查询性能）
+   -- chunk_time_interval => INTERVAL '1 year'  -- 太大
+
+   -- ❌ 不好：分区间隔过小（块过多，管理开销大）
+   -- chunk_time_interval => INTERVAL '1 hour'  -- 太小（除非数据量非常大）
+   ```
+
+2. **使用连续聚合优化查询**（预计算聚合结果，提升查询性能）
+
+   ```sql
+   -- ✅ 好：创建连续聚合
+   CREATE MATERIALIZED VIEW sensor_data_hourly
+   WITH (timescaledb.continuous) AS
+   SELECT
+       time_bucket('1 hour', time) AS bucket,
+       sensor_id,
+       AVG(temperature) AS avg_temp,
+       MAX(temperature) AS max_temp,
+       MIN(temperature) AS min_temp
+   FROM sensor_data
+   GROUP BY bucket, sensor_id;
+
+   -- 查询时使用连续聚合
+   SELECT * FROM sensor_data_hourly
+   WHERE bucket >= NOW() - INTERVAL '7 days';
+   -- 性能提升：10-100 倍
+
+   -- ❌ 不好：每次都实时聚合
+   SELECT
+       time_bucket('1 hour', time) AS bucket,
+       AVG(temperature) AS avg_temp
+   FROM sensor_data
+   WHERE time >= NOW() - INTERVAL '7 days'
+   GROUP BY bucket;
+   -- 问题：每次查询都需要扫描和聚合大量数据
+   ```
+
+3. **启用数据压缩**（节省存储空间 90%+）
+
+   ```sql
+   -- ✅ 好：启用压缩（7 天前的数据）
+   ALTER TABLE sensor_data SET (
+       timescaledb.compress,
+       timescaledb.compress_segmentby = 'sensor_id',
+       timescaledb.compress_orderby = 'time DESC'
+   );
+
+   SELECT add_compression_policy('sensor_data', INTERVAL '7 days');
+
+   -- ❌ 不好：不启用压缩（存储空间浪费）
+   -- 时序数据压缩率通常可以达到 90%+
+   ```
+
+4. **使用时间范围查询**（利用块裁剪，提升性能）
+
+   ```sql
+   -- ✅ 好：使用时间范围查询（块裁剪生效）
+   SELECT * FROM sensor_data
+   WHERE time >= NOW() - INTERVAL '7 days'
+     AND sensor_id = 1;
+   -- 只扫描最近 7 天的块
+
+   -- ❌ 不好：不使用时间条件（扫描所有块）
+   SELECT * FROM sensor_data
+   WHERE sensor_id = 1;
+   -- 问题：扫描所有块，性能差
+   ```
+
+5. **创建合适的索引**（在时间列和设备ID列上创建索引）
+
+   ```sql
+   -- ✅ 好：创建时间+设备ID复合索引
+   CREATE INDEX idx_sensor_data_time_sensor
+   ON sensor_data (time DESC, sensor_id);
+
+   -- ✅ 好：创建设备ID+时间复合索引（按设备查询）
+   CREATE INDEX idx_sensor_data_sensor_time
+   ON sensor_data (sensor_id, time DESC);
+
+   -- ❌ 不好：只在时间列上创建索引（多设备查询性能差）
+   CREATE INDEX idx_sensor_data_time ON sensor_data (time DESC);
+   ```
+
+6. **使用保留策略自动清理**（自动删除旧数据）
+
+   ```sql
+   -- ✅ 好：添加保留策略（保留 90 天）
+   SELECT add_retention_policy('sensor_data', INTERVAL '90 days');
+
+   -- 自动删除 90 天前的数据，节省存储空间
+
+   -- ❌ 不好：手动删除数据（容易出错）
+   -- DELETE FROM sensor_data WHERE time < NOW() - INTERVAL '90 days';
+   ```
+
+**避免做法**：
+
+1. **避免分区间隔过大或过小**（影响查询性能或管理开销）
+2. **避免忽略连续聚合**（实时聚合性能差）
+3. **避免忽略数据压缩**（存储空间浪费）
+4. **避免不使用时间条件查询**（扫描所有块，性能差）
+5. **避免忽略索引创建**（查询性能差）
 
 ---
 
