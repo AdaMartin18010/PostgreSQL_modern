@@ -895,9 +895,79 @@ ORDER BY avg_salary DESC;
 
 ## 9. 参考资料
 
-- [PostgreSQL 官方文档 - 数据类型](https://www.postgresql.org/docs/current/datatype.html)
-- [PostgreSQL 官方文档 - SQL 命令](https://www.postgresql.org/docs/current/sql-commands.html)
-- [PostgreSQL 教程](https://www.postgresql.org/docs/current/tutorial.html)
+### 9.1 官方文档
+
+- **[PostgreSQL 官方文档 - SQL 语言](https://www.postgresql.org/docs/current/sql.html)**
+  - SQL 语言完整参考手册
+  - 包含所有 SQL 命令的详细说明
+
+- **[PostgreSQL 官方文档 - 数据类型](https://www.postgresql.org/docs/current/datatype.html)**
+  - 所有数据类型的详细说明
+  - 数据类型选择指南
+
+- **[PostgreSQL 官方文档 - SQL 命令](https://www.postgresql.org/docs/current/sql-commands.html)**
+  - SQL 命令完整列表
+  - 每个命令的语法和示例
+
+- **[PostgreSQL 教程](https://www.postgresql.org/docs/current/tutorial.html)**
+  - PostgreSQL 入门教程
+  - 从基础到高级的完整学习路径
+
+- **[PostgreSQL 官方文档 - 查询](https://www.postgresql.org/docs/current/queries.html)**
+  - SELECT 查询详细说明
+  - 查询优化技巧
+
+- **[PostgreSQL 官方文档 - 数据操作](https://www.postgresql.org/docs/current/dml.html)**
+  - INSERT、UPDATE、DELETE 操作说明
+  - 数据操作最佳实践
+
+### 9.2 SQL 标准文档
+
+- **[ISO/IEC 9075 SQL 标准](https://www.iso.org/standard/76583.html)**
+  - SQL 国际标准文档
+  - PostgreSQL 对 SQL 标准的支持情况
+
+- **[PostgreSQL SQL 标准兼容性](https://www.postgresql.org/docs/current/features.html)**
+  - PostgreSQL 对 SQL 标准的支持
+  - SQL 标准特性对比
+
+### 9.3 技术博客
+
+- **[PostgreSQL 官方博客](https://www.postgresql.org/about/newsarchive/)**
+  - PostgreSQL 最新动态
+  - 技术文章和最佳实践
+
+- **[2ndQuadrant PostgreSQL 博客](https://www.2ndquadrant.com/en/blog/)**
+  - PostgreSQL 性能优化文章
+  - 实际应用案例
+
+- **[Percona PostgreSQL 博客](https://www.percona.com/blog/tag/postgresql/)**
+  - PostgreSQL 运维实践
+  - 故障排查案例
+
+### 9.4 社区资源
+
+- **[PostgreSQL Wiki](https://wiki.postgresql.org/wiki/Main_Page)**
+  - PostgreSQL 社区 Wiki
+  - 常见问题解答和最佳实践
+
+- **[Stack Overflow - PostgreSQL](https://stackoverflow.com/questions/tagged/postgresql)
+  - PostgreSQL 相关问答
+  - 高质量的问题和答案
+
+- **[PostgreSQL 邮件列表](https://www.postgresql.org/list/)**
+  - PostgreSQL 社区讨论
+  - 技术问题交流
+
+### 9.5 学习资源
+
+- **[PostgreSQL 练习平台](https://pgexercises.com/)**
+  - 在线 SQL 练习平台
+  - 从基础到高级的练习题
+
+- **[PostgreSQL 官方教程](https://www.postgresqltutorial.com/)**
+  - 免费的 PostgreSQL 教程
+  - 包含大量示例和练习
 
 ---
 

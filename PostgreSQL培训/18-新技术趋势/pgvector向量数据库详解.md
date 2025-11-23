@@ -408,6 +408,71 @@ LIMIT 20;
 pgvector 为 PostgreSQL 提供了强大的向量数据库能力，是构建 AI/ML 应用的重要基础设施。
 通过合理使用索引和优化查询，可以实现高效的向量相似度搜索，满足推荐系统、语义搜索、RAG 等应用场景的需求。
 
+## 📚 参考资料
+
+### 官方文档
+
+- **[pgvector GitHub 仓库](https://github.com/pgvector/pgvector)**
+  - pgvector 官方源码和文档
+  - 安装和使用指南
+
+- **[pgvector 官方文档](https://github.com/pgvector/pgvector#documentation)**
+  - pgvector 完整参考手册
+  - API 和示例说明
+
+- **[PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)**
+  - PostgreSQL 扩展开发指南
+  - pgvector 扩展机制
+
+### 技术论文
+
+- **Malkov, Y. A., & Yashunin, D. A. (2018). "Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs."**
+  - 期刊: IEEE transactions on pattern analysis and machine intelligence, 40(9), 2096-2108
+  - DOI: [10.1109/TPAMI.2018.2889473](https://doi.org/10.1109/TPAMI.2018.2889473)
+  - arXiv: [arXiv:1603.09320](https://arxiv.org/abs/1603.09320)
+  - **重要性**: HNSW 算法的原始论文，详细阐述了算法原理和性能分析
+  - **核心贡献**: 提出了 HNSW 算法，显著提升了近似最近邻搜索的效率和鲁棒性
+
+- **Jégou, H., Douze, M., & Schmid, C. (2010). "Product quantization for nearest neighbor search."**
+  - 期刊: IEEE transactions on pattern analysis and machine intelligence, 33(1), 117-128
+  - DOI: [10.1109/TPAMI.2010.57](https://doi.org/10.1109/TPAMI.2010.57)
+  - **重要性**: IVFFlat 算法的基础理论，介绍了倒排文件索引的原理
+  - **核心贡献**: 提出了乘积量化 (Product Quantization) 技术，有效压缩向量并加速相似度搜索
+
+- **Johnson, J., Douze, M., & Jégou, H. (2019). "Billion-scale similarity search with GPUs."**
+  - 期刊: IEEE Transactions on Big Data, 7(3), 535-547
+  - arXiv: [arXiv:1702.08734](https://arxiv.org/abs/1702.08734)
+  - **重要性**: 大规模向量搜索的性能优化研究，包含 IVFFlat 的优化方法
+  - **核心贡献**: 提出了基于 GPU 的十亿级向量相似度搜索方案，并对 IVFFlat 等算法进行了优化
+
+### 技术博客
+
+- **[Supabase - pgvector 博客](https://supabase.com/blog/openai-embeddings-postgres-vector)**
+  - pgvector 与 OpenAI 集成
+  - RAG 应用实战
+
+- **[Neon - pgvector 教程](https://neon.tech/blog/pgvector)**
+  - pgvector 使用教程
+  - 向量搜索最佳实践
+
+- **[Timescale - pgvector 应用](https://www.timescale.com/blog/announcing-pgvector-on-timescale/)**
+  - pgvector 在 TimescaleDB 中的应用
+  - 时序向量数据管理
+
+### 社区资源
+
+- **[PostgreSQL Wiki - pgvector](https://wiki.postgresql.org/wiki/Pgvector)**
+  - pgvector 使用指南
+  - 常见问题解答
+
+- **[Stack Overflow - pgvector](https://stackoverflow.com/questions/tagged/pgvector)**
+  - pgvector 相关问题解答
+  - 实际应用案例
+
+- **[pgvector 讨论区](https://github.com/pgvector/pgvector/discussions)**
+  - pgvector 社区讨论
+  - 功能请求和问题反馈
+
 ---
 
 **最后更新**: 2025 年 1 月

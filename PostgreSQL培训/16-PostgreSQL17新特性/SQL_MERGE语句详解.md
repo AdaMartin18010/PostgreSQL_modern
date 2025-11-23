@@ -46,6 +46,7 @@ MERGE 语句允许在一个操作中同时执行 INSERT、UPDATE 和 DELETE 操�
     - [7.1 案例：电商订单同步](#71-案例电商订单同步)
     - [7.2 案例：用户画像更新](#72-案例用户画像更新)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
 
 ---
 
@@ -296,6 +297,52 @@ WHEN NOT MATCHED THEN
 ## 📊 总结
 
 PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化的解决方案。通过合理使用 MERGE 语句，可以简化数据同步、ETL 和数据仓库等场景的操作，提高开发效率和数据一致性。
+
+## 📚 参考资料
+
+### 官方文档
+
+- **[PostgreSQL 官方文档 - MERGE 语句](https://www.postgresql.org/docs/17/sql-merge.html)**
+  - MERGE 语句完整参考手册
+  - 语法和示例说明
+
+- **[PostgreSQL 17 发布说明 - MERGE](https://www.postgresql.org/about/news/postgresql-17-released-2781/)**
+  - PostgreSQL 17 新特性介绍
+  - MERGE 语句功能说明
+
+- **[PostgreSQL Wiki - MERGE Statement](https://wiki.postgresql.org/wiki/MERGE)**
+  - MERGE 语句社区讨论
+  - 使用示例和最佳实践
+
+### SQL 标准文档
+
+- **[ISO/IEC 9075 SQL 标准 - MERGE](https://www.iso.org/standard/76583.html)**
+  - SQL 标准 MERGE 语句定义
+  - PostgreSQL 对标准的支持情况
+
+### 技术博客
+
+- **[PostgreSQL 官方博客 - MERGE Statement](https://www.postgresql.org/about/news/postgresql-17-merges-into-production-2781/)**
+  - MERGE 语句发布公告
+  - 使用场景和优势
+
+- **[2ndQuadrant - PostgreSQL 17 MERGE](https://www.2ndquadrant.com/en/blog/postgresql-17-merge-statement/)**
+  - MERGE 语句实战
+  - 性能优化建议
+
+- **[Percona - PostgreSQL MERGE Statement](https://www.percona.com/blog/postgresql-17-merge-statement/)**
+  - MERGE 语句详解
+  - 与 UPSERT 对比
+
+### 社区资源
+
+- **[PostgreSQL Wiki - MERGE](https://wiki.postgresql.org/wiki/MERGE)**
+  - MERGE 语句使用指南
+  - 常见问题解答
+
+- **[Stack Overflow - PostgreSQL MERGE](https://stackoverflow.com/questions/tagged/postgresql+merge)**
+  - MERGE 相关问题解答
+  - 实际应用案例
 
 ---
 

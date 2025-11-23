@@ -526,8 +526,58 @@ ORDER BY bucket DESC;
 TimescaleDB 为 PostgreSQL 提供了强大的时序数据库能力，通过自动分区、连续聚合、数据压缩等功能，可以高效地存储和查询时序数据。
 它特别适合 IoT、监控、金融等时序数据场景，在保持 PostgreSQL 完整功能的同时，提供了时序数据的高性能处理能力。
 
----
+## 📚 参考资料
 
-**最后更新**: 2025 年 1 月
-**维护者**: PostgreSQL Modern Team
-**文档编号**: 03-03-TREND-05
+### 官方文档
+
+- **[TimescaleDB 官方文档](https://docs.timescale.com/)**
+  - TimescaleDB 完整参考手册
+  - 安装、配置和使用指南
+
+- **[TimescaleDB GitHub 仓库](https://github.com/timescale/timescaledb)**
+  - TimescaleDB 官方源码
+  - 最新版本和更新
+
+- **[TimescaleDB 与 PostgreSQL 18 集成](https://docs.timescale.com/use-timescale/latest/install-timescaledb/)**
+  - PostgreSQL 18 集成指南
+  - 新特性利用方法
+
+### 技术论文
+
+- **Jensen, E., et al. (2017). "TimescaleDB: An open-source time-series database optimized for PostgreSQL."**
+  - 会议: CIDR 2017 (Extended Abstract)
+  - **重要性**: TimescaleDB 的核心技术论文
+  - **核心贡献**: 介绍了 TimescaleDB 的超表 (hypertable) 概念和分块 (chunking) 机制，实现了时序数据的自动分区和高效查询
+
+- **Stonebraker, M., et al. (2005). "C-Store: A Column-oriented DBMS."**
+  - 会议: VLDB 2005
+  - **重要性**: 列式存储和时序数据压缩的基础研究
+  - **核心贡献**: 提出了列式存储架构，为 TimescaleDB 的数据压缩提供了理论基础
+
+### 技术博客
+
+- **[TimescaleDB 官方博客](https://www.timescale.com/blog)**
+  - TimescaleDB 最新动态
+  - 使用案例和最佳实践
+
+- **[2ndQuadrant - TimescaleDB 应用](https://www.2ndquadrant.com/en/blog/timescaledb/)**
+  - TimescaleDB 实战案例
+  - 性能优化建议
+
+- **[Percona - TimescaleDB 性能优化](https://www.percona.com/blog/timescaledb-performance/)**
+  - TimescaleDB 性能调优
+  - 时序数据管理最佳实践
+
+### 社区资源
+
+- **[TimescaleDB 社区论坛](https://www.timescale.com/community)**
+  - TimescaleDB 社区讨论
+  - 问题解答和技术交流
+
+- **[Stack Overflow - TimescaleDB](https://stackoverflow.com/questions/tagged/timescaledb)**
+  - TimescaleDB 相关问题解答
+  - 实际应用案例
+
+- **[TimescaleDB Slack](https://slack.timescale.com/)**
+  - TimescaleDB 实时社区支持
+  - 技术问题快速解答

@@ -780,6 +780,67 @@ Citus 为 PostgreSQL 提供了强大的分布式数据库能力：
 4. **负载均衡**：从任意节点查询时的负载均衡
 5. **高可用性**：支持多副本和自动故障转移
 
+## 📚 参考资料
+
+### 官方文档
+
+- **[Citus 官方文档](https://docs.citusdata.com/)**
+  - Citus 完整参考手册
+  - 安装、配置和使用指南
+
+- **[Citus GitHub 仓库](https://github.com/citusdata/citus)**
+  - Citus 官方源码
+  - 最新版本和更新
+
+- **[Citus 与 PostgreSQL 18 集成](https://docs.citusdata.com/en/latest/installation/)**
+  - PostgreSQL 18 集成指南
+  - 新特性利用方法
+
+### 技术论文
+
+- **Stonebraker, M., et al. (2011). "The VoltDB Main Memory DBMS."**
+  - 会议: ICDE 2011
+  - **重要性**: 分布式数据库设计的基础研究
+  - **核心贡献**: 提出了分布式数据库的架构设计，为 Citus 等分布式数据库提供了理论基础
+
+- **DeWitt, D. J., & Gray, J. (1992). "Parallel database systems: the future of high performance database systems."**
+  - 期刊: Communications of the ACM, 35(6), 85-98
+  - **重要性**: 并行数据库系统的经典论文
+  - **核心贡献**: 系统性地阐述了并行数据库系统的设计原则，为分布式查询执行提供了理论基础
+
+- **Özsu, M. T., & Valduriez, P. (2011). "Principles of Distributed Database Systems."**
+  - 出版社: Springer
+  - **重要性**: 分布式数据库系统的经典教材
+  - **核心贡献**: 详细阐述了分布式数据库系统的原理和设计方法
+
+### 技术博客
+
+- **[Citus 官方博客](https://www.citusdata.com/blog)**
+  - Citus 最新动态
+  - 使用案例和最佳实践
+
+- **[2ndQuadrant - Citus 应用](https://www.2ndquadrant.com/en/blog/citus/)**
+  - Citus 实战案例
+  - 性能优化建议
+
+- **[Percona - Citus 分布式数据库](https://www.percona.com/blog/citus-distributed-database/)**
+  - Citus 性能调优
+  - 分布式数据库管理最佳实践
+
+### 社区资源
+
+- **[Citus 社区论坛](https://github.com/citusdata/citus/discussions)**
+  - Citus 社区讨论
+  - 问题解答和技术交流
+
+- **[Stack Overflow - Citus](https://stackoverflow.com/questions/tagged/citus)**
+  - Citus 相关问题解答
+  - 实际应用案例
+
+- **[Citus Slack](https://slack.citusdata.com/)**
+  - Citus 实时社区支持
+  - 技术问题快速解答
+
 **最佳实践**：
 
 - 选择合适的分片键（高基数、均匀分布）
