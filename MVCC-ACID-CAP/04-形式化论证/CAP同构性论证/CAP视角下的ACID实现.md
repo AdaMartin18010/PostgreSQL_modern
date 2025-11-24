@@ -31,6 +31,10 @@
   - [📝 总结](#-总结)
     - [核心结论](#核心结论)
     - [实践建议](#实践建议)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -287,11 +291,14 @@ COMMIT PREPARED 'tx1';
 
 1. **ACID**：
    - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
-   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Weikum, G., & Vossen, G. (2001).
+   "Transactional Information Systems: Theory, Algorithms,
+   and the Practice of Concurrency Control and Recovery"
 
 2. **CAP**：
    - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
-   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Gilbert, S., & Lynch, N. (2002).
+   "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
 
 ### 官方文档
 

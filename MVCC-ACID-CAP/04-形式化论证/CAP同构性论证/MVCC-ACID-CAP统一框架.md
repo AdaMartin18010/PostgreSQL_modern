@@ -308,15 +308,19 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 
 1. **MVCC**：
    - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
-   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+   - Adya, A. (1999).
+   "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
 
 2. **ACID**：
    - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
-   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Weikum, G., & Vossen, G. (2001).
+   "Transactional Information Systems:
+   Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
 
 3. **CAP**：
    - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
-   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Gilbert, S., & Lynch, N. (2002).
+   "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
 
 ### 官方文档
 

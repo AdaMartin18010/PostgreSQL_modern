@@ -658,3 +658,78 @@ MVCC、ACID与CAP所揭示的结构同构性和权衡哲学，将继续指导未
 总而言之，MVCC、ACID与CAP所构成的理论框架，为我们理解数据系统的复杂性提供了一个强大的透镜。
 它们所展现的结构同构性告诉我们，尽管技术在不断演进，但底层的核心问题和解决思路往往具有惊人的延续性。
 在未来的系统设计中，深刻理解并灵活运用这些基础理论，将依然是构建可靠、高效、可扩展系统的关键所在。
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC相关**：
+   - [Multiversion Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Optimistic Concurrency Control](https://en.wikipedia.org/wiki/Optimistic_concurrency_control)
+
+2. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+
+3. **CAP相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+   - [Linearizability](https://en.wikipedia.org/wiki/Linearizability)
+
+4. **分布式系统**：
+   - [Distributed Database](https://en.wikipedia.org/wiki/Distributed_database)
+   - [Vector Clock](https://en.wikipedia.org/wiki/Vector_clock)
+   - [Raft (algorithm)](https://en.wikipedia.org/wiki/Raft_(algorithm))
+   - [Two-Phase Commit Protocol](https://en.wikipedia.org/wiki/Two-phase_commit_protocol)
+
+5. **NewSQL数据库**：
+   - [Google Spanner](https://en.wikipedia.org/wiki/Spanner_(database))
+   - [TiDB](https://en.wikipedia.org/wiki/TiDB)
+   - [CockroachDB](https://en.wikipedia.org/wiki/CockroachDB)
+
+### 学术论文
+
+1. **MVCC**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+
+2. **ACID**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+3. **CAP**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+
+4. **分布式MVCC**：
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"
+   - Cahill, M. J., et al. (2009). "Serializable Isolation for Snapshot Databases"
+
+5. **Raft算法**：
+   - Ongaro, D., & Ousterhout, J. (2014). "In Search of an Understandable Consensus Algorithm"
+
+6. **Spanner和Percolator**：
+   - Corbett, J. C., et al. (2013). "Spanner: Google's Globally-Distributed Database"
+   - Peng, D., & Dabek, F. (2010). "Large-scale Incremental Processing Using Distributed Transactions and Notifications"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
+
+2. **分布式数据库文档**：
+   - [Google Spanner Documentation](https://cloud.google.com/spanner/docs)
+   - [TiDB Documentation](https://docs.pingcap.com/tidb/stable)
+   - [CockroachDB Documentation](https://www.cockroachlabs.com/docs/)
+
+---
+
+**最后更新**: 2024年
+**维护状态**: ✅ 已完成

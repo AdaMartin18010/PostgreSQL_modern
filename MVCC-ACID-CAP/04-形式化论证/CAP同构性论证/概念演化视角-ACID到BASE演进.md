@@ -31,6 +31,10 @@
     - [4.3 MVCC桥梁作用定理](#43-mvcc桥梁作用定理)
     - [4.4 适应性定理](#44-适应性定理)
   - [🔗 相关文档](#-相关文档)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -191,6 +195,47 @@ Theory_Evolution ⟹ adapt_to(Practice_Environment)
 - [概念演化视角-一致性概念演进](概念演化视角-一致性概念演进.md) - CAP-ARG-006
 - [BASE理论详解](../../01-理论基础/CAP理论/BASE理论详解.md)
 - [MVCC-ACID-CAP统一框架](MVCC-ACID-CAP统一框架.md)
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [Atomicity (database systems)](https://en.wikipedia.org/wiki/Atomicity_(database_systems))
+   - [Consistency (database systems)](https://en.wikipedia.org/wiki/Consistency_(database_systems))
+
+2. **BASE相关**：
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+   - [BASE (ACID alternative)](https://en.wikipedia.org/wiki/Eventual_consistency#BASE)
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+
+3. **分布式系统**：
+   - [Distributed Database](https://en.wikipedia.org/wiki/Distributed_database)
+   - [NoSQL](https://en.wikipedia.org/wiki/NoSQL)
+
+### 学术论文
+
+1. **ACID**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+2. **BASE**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Pritchett, D. (2008). "BASE: An ACID Alternative"
+   - Vogels, W. (2009). "Eventually Consistent"
+
+3. **CAP**：
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [ACID Compliance](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
 
 ---
 

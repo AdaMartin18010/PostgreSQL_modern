@@ -1645,3 +1645,78 @@ impl DistributedFairLock {
 > **状态不可变，版本链记录变化，可见性函数定义一致性，合并策略解决冲突，垃圾回收释放资源**
 
 无论是一个内存变量、数据库行、Git提交还是区块链交易，都遵循这一模式。掌握MVCC，就掌握了并发世界的"万有引力定律"。
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC相关**：
+   - [Multiversion Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Optimistic Concurrency Control](https://en.wikipedia.org/wiki/Optimistic_concurrency_control)
+
+2. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [Atomicity (database systems)](https://en.wikipedia.org/wiki/Atomicity_(database_systems))
+   - [Consistency (database systems)](https://en.wikipedia.org/wiki/Consistency_(database_systems))
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+   - [Durability (database systems)](https://en.wikipedia.org/wiki/Durability_(database_systems))
+
+3. **CAP相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+   - [Linearizability](https://en.wikipedia.org/wiki/Linearizability)
+   - [High Availability](https://en.wikipedia.org/wiki/High_availability)
+   - [Network Partition](https://en.wikipedia.org/wiki/Network_partition)
+
+4. **分布式系统**：
+   - [Distributed Database](https://en.wikipedia.org/wiki/Distributed_database)
+   - [Vector Clock](https://en.wikipedia.org/wiki/Vector_clock)
+   - [Logical Clock](https://en.wikipedia.org/wiki/Logical_clock)
+   - [Raft (algorithm)](https://en.wikipedia.org/wiki/Raft_(algorithm))
+
+### 学术论文
+
+1. **MVCC**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"
+
+2. **ACID**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels"
+
+3. **CAP**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
+
+4. **分布式系统**：
+   - Lamport, L. (1978). "Time, Clocks, and the Ordering of Events in a Distributed System"
+   - Lamport, L. (1979). "How to Make a Multiprocessor Computer That Correctly Executes Multiprocess Programs"
+   - Herlihy, M. P., & Wing, J. M. (1990). "Linearizability: A Correctness Condition for Concurrent Objects"
+   - Ongaro, D., & Ousterhout, J. (2014). "In Search of an Understandable Consensus Algorithm"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
+   - [WAL](https://www.postgresql.org/docs/current/wal.html)
+
+2. **分布式数据库**：
+   - Google Spanner Documentation
+   - Spanner Documentation
+   - TiDB Documentation
+   - CockroachDB Documentation
+
+---
+
+**最后更新**: 2024年
+**维护状态**: ✅ 已完成

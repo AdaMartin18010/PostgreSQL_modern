@@ -32,6 +32,10 @@
     - [4.3 核心问题不变定理](#43-核心问题不变定理)
     - [4.4 设计思想普适性定理](#44-设计思想普适性定理)
   - [🔗 相关文档](#-相关文档)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -195,6 +199,53 @@ universal(version_management_design_principle)
 - [概念演化视角-一致性概念演进](概念演化视角-一致性概念演进.md) - CAP-ARG-006
 - [概念演化视角-ACID到BASE演进](概念演化视角-ACID到BASE演进.md) - CAP-ARG-007
 - [MVCC-ACID-CAP统一框架](MVCC-ACID-CAP统一框架.md)
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC相关**：
+   - [Multiversion Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Optimistic Concurrency Control](https://en.wikipedia.org/wiki/Optimistic_concurrency_control)
+
+2. **分布式事务相关**：
+   - [Distributed Transaction](https://en.wikipedia.org/wiki/Distributed_transaction)
+   - [Two-Phase Commit Protocol](https://en.wikipedia.org/wiki/Two-phase_commit_protocol)
+   - [Saga Pattern](https://en.wikipedia.org/wiki/Saga_pattern)
+
+3. **分布式系统**：
+   - [Distributed Database](https://en.wikipedia.org/wiki/Distributed_database)
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+
+### 学术论文
+
+1. **MVCC**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+
+2. **分布式事务**：
+   - Gray, J. (1978). "Notes on Database Operating Systems"
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Lampson, B. (1981). "Atomic Transactions"
+
+3. **分布式MVCC**：
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"
+   - Cahill, M. J., et al. (2009). "Serializable Isolation for Snapshot Databases"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Distributed Transactions](https://www.postgresql.org/docs/current/xa.html)
+
+2. **分布式数据库**：
+   - Google Spanner Documentation
+   - TiDB Documentation
 
 ---
 
