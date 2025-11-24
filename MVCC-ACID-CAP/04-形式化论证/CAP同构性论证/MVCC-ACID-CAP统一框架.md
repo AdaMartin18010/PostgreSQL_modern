@@ -35,6 +35,10 @@
   - [📝 总结](#-总结)
     - [核心结论](#核心结论)
     - [实践建议](#实践建议)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -278,6 +282,48 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 2. **选择最优模式**：根据场景选择最优模式
 3. **监控框架效果**：监控MVCC、ACID、CAP指标
 4. **动态调整框架**：根据场景动态调整
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC相关**：
+   - [Multiversion Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [PostgreSQL](https://en.wikipedia.org/wiki/PostgreSQL)
+
+2. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+
+3. **CAP相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+
+### 学术论文
+
+1. **MVCC**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+
+2. **ACID**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+3. **CAP**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
 
 ---
 

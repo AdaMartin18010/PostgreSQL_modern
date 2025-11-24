@@ -16,6 +16,7 @@
   - [📊 第二部分：ACID事务模型](#-第二部分acid事务模型)
   - [📊 第三部分：CAP理论](#-第三部分cap理论)
   - [📊 第四部分：三者同构关系](#-第四部分三者同构关系)
+    - [CAP-002深度探析视角](#cap-002深度探析视角--新增)
   - [📊 第五部分：实践应用](#-第五部分实践应用)
   - [📝 总结](#-总结)
     - [核心结构](#核心结构)
@@ -40,7 +41,7 @@
 
 ## 📊 第一部分：MVCC核心概念
 
-```
+```text
 MVCC (Multi-Version Concurrency Control)
 │
 ├─ 版本链 (Version Chain)
@@ -68,7 +69,7 @@ MVCC (Multi-Version Concurrency Control)
 
 ## 📊 第二部分：ACID事务模型
 
-```
+```text
 ACID Transaction Model
 │
 ├─ Atomicity (原子性)
@@ -97,7 +98,7 @@ ACID Transaction Model
 
 ## 📊 第三部分：CAP理论
 
-```
+```text
 CAP Theorem
 │
 ├─ Consistency (一致性)
@@ -120,7 +121,7 @@ CAP Theorem
 
 ## 📊 第四部分：三者同构关系
 
-```
+```text
 MVCC-ACID-CAP Isomorphism
 │
 ├─ 三元权衡内核
@@ -138,17 +139,32 @@ MVCC-ACID-CAP Isomorphism
 │   ├─ ACID: 隔离级别
 │   └─ CAP: 一致性边界
 │
-└─ 故障模型
-    ├─ MVCC: 版本链故障
-    ├─ ACID: 事务故障
-    └─ CAP: 分区故障
+├─ 故障模型
+│   ├─ MVCC: 版本链故障
+│   ├─ ACID: 事务故障
+│   └─ CAP: 分区故障
+│
+└─ CAP-002深度探析视角 ⭐ 新增
+    ├─ 技术实现视角
+    │   ├─ 版本控制同构性 (CAP-ARG-001)
+    │   ├─ 时间戳与顺序同构性 (CAP-ARG-002)
+    │   └─ 冲突解决策略同构性 (CAP-ARG-003)
+    │
+    ├─ 系统设计视角
+    │   ├─ 一致性模型光谱 (CAP-ARG-004)
+    │   └─ 性能与可用性权衡 (CAP-ARG-005)
+    │
+    └─ 概念演化视角
+        ├─ 一致性概念演进 (CAP-ARG-006)
+        ├─ ACID到BASE演进 (CAP-ARG-007)
+        └─ MVCC角色扩展 (CAP-ARG-008)
 ```
 
 ---
 
 ## 📊 第五部分：实践应用
 
-```
+```text
 Practical Applications
 │
 ├─ PostgreSQL实现
@@ -182,6 +198,7 @@ Practical Applications
 2. **ACID核心**：原子性、一致性、隔离性、持久性
 3. **CAP核心**：一致性、可用性、分区容错
 4. **同构关系**：三元权衡内核、状态机本质、可见性边界、故障模型
+5. **CAP-002深度探析**：技术实现、系统设计、概念演化三重透视 ⭐ 新增
 
 ### 实践指导
 

@@ -36,7 +36,8 @@
 
 ## 📋 概述
 
-从ACID视角看CAP选择，可以更好地理解ACID需求如何影响CAP模式选择。理解这种关系，有助于在系统设计中做出正确的ACID和CAP选择。
+从ACID视角看CAP选择，可以更好地理解ACID需求如何影响CAP模式选择。
+理解这种关系，有助于在系统设计中做出正确的ACID和CAP选择。
 
 本文档从强ACID的CP选择、弱ACID的AP选择、ACID与CAP的冲突和协调四个维度，全面阐述ACID视角下CAP选择的完整体系。
 
@@ -262,6 +263,42 @@ ALTER SYSTEM SET default_transaction_isolation = 'repeatable read';
 2. **根据场景选择**：根据业务需求选择ACID和CAP配置
 3. **处理冲突**：制定ACID-CAP冲突处理策略
 4. **协调ACID-CAP**：在ACID和CAP之间找到平衡
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Atomicity (database systems)](https://en.wikipedia.org/wiki/Atomicity_(database_systems))
+   - [Consistency (database systems)](https://en.wikipedia.org/wiki/Consistency_(database_systems))
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+   - [Durability (database systems)](https://en.wikipedia.org/wiki/Durability_(database_systems))
+
+2. **CAP相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [Availability](https://en.wikipedia.org/wiki/Availability)
+   - [Partition Tolerance](https://en.wikipedia.org/wiki/Network_partition)
+
+### 学术论文
+
+1. **ACID**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+2. **CAP**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [ACID Compliance](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
 
 ---
 

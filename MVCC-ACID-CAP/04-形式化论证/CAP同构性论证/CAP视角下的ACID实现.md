@@ -266,5 +266,41 @@ COMMIT PREPARED 'tx1';
 
 ---
 
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Atomicity (database systems)](https://en.wikipedia.org/wiki/Atomicity_(database_systems))
+   - [Consistency (database systems)](https://en.wikipedia.org/wiki/Consistency_(database_systems))
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+   - [Durability (database systems)](https://en.wikipedia.org/wiki/Durability_(database_systems))
+
+2. **CAP相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [Availability](https://en.wikipedia.org/wiki/Availability)
+   - [Partition Tolerance](https://en.wikipedia.org/wiki/Network_partition)
+
+### 学术论文
+
+1. **ACID**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+2. **CAP**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [ACID Compliance](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+
+---
+
 **最后更新**: 2024年
 **维护状态**: ✅ 已完成

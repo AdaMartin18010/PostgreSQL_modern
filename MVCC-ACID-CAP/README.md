@@ -75,6 +75,7 @@ MVCC-ACID-CAP/
     ├── mvcc04.md                   # MVCC-005: MVCC-ACID关联性
     ├── mvcc05.md                   # MVCC-006: MVCC-ACID-事务性
     ├── mvcc_view.md                # CAP-001: MVCC-ACID-CAP同构性 ⭐ 核心
+    ├── mvcc-cap-acid.md            # CAP-002: MVCC-ACID-CAP深度探析 ⭐ 核心
     └── postgresql_rust.md          # Rust同构性论证
 ```
 
@@ -91,13 +92,19 @@ MVCC-ACID-CAP/
 5. **MVCC-005**: [mvcc04.md](view/mvcc04.md) - MVCC-ACID关联性全景论证
 6. **MVCC-006**: [mvcc05.md](view/mvcc05.md) - MVCC-ACID-事务性深度关联性论证
 
-### CAP同构性文档（1个）⭐ 新增
+### CAP同构性文档（2个）⭐ 新增
 
 1. **CAP-001**: [mvcc_view.md](view/mvcc_view.md) - MVCC、ACID、CAP结构同构性多视角论证
    - 6个视角的结构同构论证
    - 形式化证明系统
    - 实践场景论证
    - 跨系统扩展（Git、区块链）
+
+2. **CAP-002**: [mvcc-cap-acid.md](view/mvcc-cap-acid.md) - MVCC、ACID、CAP结构同构性深度探析
+   - 技术实现、系统设计、概念演化三重透视
+   - 版本控制、时间戳、冲突解决机制的同构性
+   - 一致性模型光谱与权衡决策
+   - 从单机到分布式的理论延伸
 
 ### Rust同构性文档（1个）
 
@@ -241,9 +248,10 @@ MVCC-ACID-CAP/
 - **核心文档**: 8个（view文件夹）
 - **MVCC-ACID文档**: 142个
 - **CAP扩展文档**: 36个
+- **CAP-002配套文档**: 8个（CAP-ARG-001至008）⭐ 新增
 - **场景实践新增**: 3个
 - **形式化论证新增**: 2个
-- **总计**: 193个文档
+- **总计**: 201个文档
 
 ### 主题统计
 
