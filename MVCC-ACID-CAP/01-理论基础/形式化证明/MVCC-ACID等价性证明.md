@@ -12,10 +12,10 @@
 - [MVCC-ACID等价性证明](#mvcc-acid等价性证明)
   - [📑 目录](#-目录)
   - [📋 概述](#-概述)
-  - [第一部分：定理陈述](#第一部分定理陈述)
-  - [第二部分：映射定理证明](#第二部分映射定理证明)
-  - [第三部分：等价性定理证明](#第三部分等价性定理证明)
-  - [第四部分：同构性定理证明](#第四部分同构性定理证明)
+  - [📊 第一部分：定理陈述](#-第一部分定理陈述)
+  - [📊 第二部分：映射定理证明](#-第二部分映射定理证明)
+  - [📊 第三部分：等价性定理证明](#-第三部分等价性定理证明)
+  - [📊 第四部分：同构性定理证明](#-第四部分同构性定理证明)
   - [📚 参考资料](#-参考资料)
 
 ---
@@ -26,12 +26,13 @@
 
 ---
 
-## 第一部分：定理陈述
+## 📊 第一部分：定理陈述
 
 **定理1.1（映射定理）**：
 
 存在双射映射φ: MVCC → ACID，使得：
-```
+
+```text
 φ(version) = transaction
 φ(snapshot) = isolation
 φ(visibility) = consistency
@@ -40,7 +41,8 @@
 **定理1.2（等价性定理）**：
 
 MVCC操作和ACID操作等价：
-```
+
+```text
 ∀o_mvcc ∈ MVCC_operations,
   ∃o_acid ∈ ACID_operations:
     equivalent(o_mvcc, o_acid)
@@ -49,18 +51,20 @@ MVCC操作和ACID操作等价：
 **定理1.3（同构性定理）**：
 
 MVCC和ACID在结构上同构：
-```
+
+```text
 structurally_isomorphic(MVCC, ACID)
 ```
 
 ---
 
-## 第二部分：映射定理证明
+## 📊 第二部分：映射定理证明
 
 **证明定理1.1**：
 
 根据公理2.5（MVCC到ACID映射），存在映射φ: MVCC → ACID，使得：
-```
+
+```text
 φ(version) = transaction
 φ(snapshot) = isolation
 φ(visibility) = consistency
@@ -88,12 +92,13 @@ structurally_isomorphic(MVCC, ACID)
 
 ---
 
-## 第三部分：等价性定理证明
+## 📊 第三部分：等价性定理证明
 
 **证明定理1.2**：
 
 根据公理2.9（操作等价性），MVCC操作和ACID操作等价：
-```
+
+```text
 ∀o_mvcc ∈ MVCC_operations,
   ∃o_acid ∈ ACID_operations:
     equivalent(o_mvcc, o_acid)
@@ -120,12 +125,13 @@ structurally_isomorphic(MVCC, ACID)
 
 ---
 
-## 第四部分：同构性定理证明
+## 📊 第四部分：同构性定理证明
 
 **证明定理1.3**：
 
 根据公理2.1（MVCC-ACID结构同构），MVCC和ACID在结构上同构：
-```
+
+```text
 structurally_isomorphic(MVCC, ACID)
 ```
 

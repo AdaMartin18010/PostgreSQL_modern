@@ -19,13 +19,14 @@
   - [📊 第二部分：PostgreSQL与MongoDB的CAP一致性](#-第二部分postgresql与mongodb的cap一致性)
     - [2.1 MongoDB CAP定位](#21-mongodb-cap定位)
     - [2.2 PostgreSQL-MongoDB集成](#22-postgresql-mongodb集成)
-    -mongodb集成)
     - [2.3 CAP一致性保证](#23-cap一致性保证)
   - [📊 第三部分：多数据库CAP协调](#-第三部分多数据库cap协调)
     - [3.1 多数据库CAP矩阵](#31-多数据库cap矩阵)
     - [3.2 CAP协调策略](#32-cap协调策略)
     - [3.3 CAP一致性框架](#33-cap一致性框架)
   - [📝 总结](#-总结)
+    - [核心结论](#核心结论)
+    - [实践建议](#实践建议)
 
 ---
 
