@@ -26,6 +26,9 @@
     - [3.3 可用性与分区容错](#33-可用性与分区容错)
   - [📊 第四部分：推理规则](#-第四部分推理规则)
   - [📚 参考资料](#-参考资料)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -64,6 +67,7 @@
 **定义1.1（分布式系统）**：
 
 分布式系统S是一个节点集合N和操作集合O的元组：
+
 ```
 S = (N, O)
 ```
@@ -71,17 +75,20 @@ S = (N, O)
 **定义1.2（分区）**：
 
 分区p是节点集合N的一个划分：
+
 ```
 p = {N₁, N₂, ..., Nₖ}
 ```
 
 其中：
+
 - `Nᵢ ∩ Nⱼ = ∅` (i ≠ j)
 - `∪ᵢ Nᵢ = N`
 
 **定义1.3（一致性）**：
 
 系统S是一致的，当且仅当：
+
 ```
 ∀n₁, n₂ ∈ N, ∀k, read(n₁, k) = read(n₂, k)
 ```
@@ -89,6 +96,7 @@ p = {N₁, N₂, ..., Nₖ}
 **定义1.4（可用性）**：
 
 系统S是可用的，当且仅当：
+
 ```
 ∀n ∈ N, ∀o ∈ O, responds(n, o) within time_limit
 ```
@@ -96,6 +104,7 @@ p = {N₁, N₂, ..., Nₖ}
 **定义1.5（分区容错性）**：
 
 系统S是分区容错的，当且仅当：
+
 ```
 ∀p ∈ P, system_continues_operating(S, p)
 ```
@@ -109,6 +118,7 @@ p = {N₁, N₂, ..., Nₖ}
 **公理2.1（强一致性）**：
 
 系统S满足强一致性，当且仅当：
+
 ```
 consistent(S) ⟺
   ∀n₁, n₂ ∈ N, ∀k,
@@ -120,6 +130,7 @@ consistent(S) ⟺
 **公理2.2（最终一致性）**：
 
 系统S满足最终一致性，当且仅当：
+
 ```
 eventually_consistent(S) ⟺
   ∀n₁, n₂ ∈ N, ∀k,
@@ -129,6 +140,7 @@ eventually_consistent(S) ⟺
 **公理2.3（一致性传递性）**：
 
 如果节点n₁和n₂一致，节点n₂和n₃一致，则节点n₁和n₃一致：
+
 ```
 consistent(n₁, n₂) ∧ consistent(n₂, n₃) ⟹ consistent(n₁, n₃)
 ```
@@ -138,6 +150,7 @@ consistent(n₁, n₂) ∧ consistent(n₂, n₃) ⟹ consistent(n₁, n₃)
 **公理2.4（可用性定义）**：
 
 系统S是可用的，当且仅当：
+
 ```
 available(S) ⟺
   ∀n ∈ N, ∀o ∈ O,
@@ -148,6 +161,7 @@ available(S) ⟺
 **公理2.5（可用性传递性）**：
 
 如果系统S₁可用，系统S₂可用，则系统S₁ ∪ S₂可用：
+
 ```
 available(S₁) ∧ available(S₂) ⟹ available(S₁ ∪ S₂)
 ```
@@ -155,6 +169,7 @@ available(S₁) ∧ available(S₂) ⟹ available(S₁ ∪ S₂)
 **公理2.6（部分可用性）**：
 
 系统S是部分可用的，当且仅当：
+
 ```
 partially_available(S) ⟺
   ∃N' ⊆ N: available(S|N') ∧ |N'| / |N| > threshold
@@ -165,6 +180,7 @@ partially_available(S) ⟺
 **公理2.7（分区容错定义）**：
 
 系统S是分区容错的，当且仅当：
+
 ```
 partition_tolerant(S) ⟺
   ∀p ∈ P,
@@ -175,6 +191,7 @@ partition_tolerant(S) ⟺
 **公理2.8（分区恢复）**：
 
 系统S支持分区恢复，当且仅当：
+
 ```
 partition_recovery(S) ⟺
   ∀p ∈ P,
@@ -186,6 +203,7 @@ partition_recovery(S) ⟺
 **公理2.9（分区检测）**：
 
 系统S能够检测分区，当且仅当：
+
 ```
 partition_detection(S) ⟺
   ∀p ∈ P,
@@ -198,6 +216,7 @@ partition_detection(S) ⟺
 **公理2.10（CAP不可能定理）**：
 
 在存在分区的情况下，系统S不能同时满足强一致性、完全可用性和分区容错性：
+
 ```
 partition_occurs(p) ⟹
   ¬(strong_consistency(S) ∧ full_availability(S) ∧ partition_tolerance(S))
@@ -206,6 +225,7 @@ partition_occurs(p) ⟹
 **公理2.11（CP模式）**：
 
 系统S选择CP模式，当且仅当：
+
 ```
 CP_mode(S) ⟺
   strong_consistency(S) ∧ partition_tolerance(S) ∧
@@ -215,6 +235,7 @@ CP_mode(S) ⟺
 **公理2.12（AP模式）**：
 
 系统S选择AP模式，当且仅当：
+
 ```
 AP_mode(S) ⟺
   full_availability(S) ∧ partition_tolerance(S) ∧
@@ -224,6 +245,7 @@ AP_mode(S) ⟺
 **公理2.13（CA模式局限性）**：
 
 CA模式在分布式系统中不可行：
+
 ```
 distributed_system(S) ⟹ ¬CA_mode(S)
 ```
@@ -237,6 +259,7 @@ distributed_system(S) ⟹ ¬CA_mode(S)
 **公理3.1（一致性与可用性权衡）**：
 
 在分区情况下，一致性和可用性不能同时满足：
+
 ```
 partition_occurs(p) ⟹
   ¬(strong_consistency(S) ∧ full_availability(S))
@@ -245,6 +268,7 @@ partition_occurs(p) ⟹
 **公理3.2（一致性优先）**：
 
 如果系统优先保证一致性，则可能牺牲可用性：
+
 ```
 consistency_first(S) ⟹
   partition_occurs(p) ⟹
@@ -254,6 +278,7 @@ consistency_first(S) ⟹
 **公理3.3（可用性优先）**：
 
 如果系统优先保证可用性，则可能牺牲一致性：
+
 ```
 availability_first(S) ⟹
   partition_occurs(p) ⟹
@@ -265,6 +290,7 @@ availability_first(S) ⟹
 **公理3.4（一致性与分区容错兼容）**：
 
 一致性和分区容错可以同时满足：
+
 ```
 strong_consistency(S) ∧ partition_tolerance(S) ⟹ CP_mode(S)
 ```
@@ -272,6 +298,7 @@ strong_consistency(S) ∧ partition_tolerance(S) ⟹ CP_mode(S)
 **公理3.5（分区对一致性的影响）**：
 
 分区可能影响一致性：
+
 ```
 partition_occurs(p) ⟹
   may_affect_consistency(S, p)
@@ -282,6 +309,7 @@ partition_occurs(p) ⟹
 **公理3.6（可用性与分区容错兼容）**：
 
 可用性和分区容错可以同时满足：
+
 ```
 full_availability(S) ∧ partition_tolerance(S) ⟹ AP_mode(S)
 ```
@@ -289,6 +317,7 @@ full_availability(S) ∧ partition_tolerance(S) ⟹ AP_mode(S)
 **公理3.7（分区对可用性的影响）**：
 
 分区可能影响可用性：
+
 ```
 partition_occurs(p) ⟹
   may_affect_availability(S, p)
@@ -301,6 +330,7 @@ partition_occurs(p) ⟹
 **规则4.1（CAP选择规则）**：
 
 系统S必须选择CP、AP或CA模式之一：
+
 ```
 CAP_choice(S) ⟺
   CP_mode(S) ∨ AP_mode(S) ∨ CA_mode(S)
@@ -309,6 +339,7 @@ CAP_choice(S) ⟺
 **规则4.2（分布式系统CAP规则）**：
 
 分布式系统S不能选择CA模式：
+
 ```
 distributed_system(S) ⟹
   CP_mode(S) ∨ AP_mode(S)
@@ -317,6 +348,7 @@ distributed_system(S) ⟹
 **规则4.3（MVCC与CAP映射）**：
 
 MVCC机制实现CP模式：
+
 ```
 MVCC_mechanism(S) ⟹ CP_mode(S)
 ```
@@ -325,10 +357,44 @@ MVCC_mechanism(S) ⟹ CP_mode(S)
 
 ## 📚 参考资料
 
-1. CAP定理原始论文
-2. PostgreSQL官方文档 - 复制和分区
-3. MVCC核心公理 - 本文档同目录
-4. ACID公理系统 - 本文档同目录
+### Wikipedia资源
+
+1. **CAP定理相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [High Availability](https://en.wikipedia.org/wiki/High_availability)
+   - [Network Partition](https://en.wikipedia.org/wiki/Network_partition)
+   - [Distributed Computing](https://en.wikipedia.org/wiki/Distributed_computing)
+
+2. **分布式系统**：
+   - [Distributed Database](https://en.wikipedia.org/wiki/Distributed_database)
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+
+### 学术论文
+
+1. **CAP定理**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
+
+2. **一致性模型**：
+   - Vogels, W. (2009). "Eventually Consistent"
+   - Pritchett, D. (2008). "BASE: An ACID Alternative"
+
+3. **形式化方法**：
+   - Lamport, L. (2002). "Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [High Availability](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Replication](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html)
+
+2. **相关文档**：
+   - MVCC核心公理 - 本文档同目录
+   - ACID公理系统 - 本文档同目录
+   - CAP定理完整定义与证明 - `01-理论基础/CAP理论/`
 
 ---
 

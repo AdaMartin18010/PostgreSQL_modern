@@ -553,5 +553,56 @@ $$
 
 ---
 
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **CAP定理相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+   - [Linearizability](https://en.wikipedia.org/wiki/Linearizability)
+
+2. **分布式系统**：
+   - [Distributed Computing](https://en.wikipedia.org/wiki/Distributed_computing)
+   - [Distributed Database](https://en.wikipedia.org/wiki/Distributed_database)
+   - [High Availability](https://en.wikipedia.org/wiki/High_availability)
+   - [Network Partition](https://en.wikipedia.org/wiki/Network_partition)
+
+3. **一致性模型**：
+   - [Strong Consistency](https://en.wikipedia.org/wiki/Strong_consistency)
+   - [Weak Consistency](https://en.wikipedia.org/wiki/Weak_consistency)
+   - [Causal Consistency](https://en.wikipedia.org/wiki/Causal_consistency)
+
+### 学术论文
+
+1. **CAP定理**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
+
+2. **一致性模型**：
+   - Lamport, L. (1979). "How to Make a Multiprocessor Computer That Correctly Executes Multiprocess Programs"
+   - Herlihy, M. P., & Wing, J. M. (1990). "Linearizability: A Correctness Condition for Concurrent Objects"
+   - Vogels, W. (2009). "Eventually Consistent"
+
+3. **分布式系统**：
+   - Lamport, L. (1978). "Time, Clocks, and the Ordering of Events in a Distributed System"
+   - Chandra, T. D., & Toueg, S. (1996). "Unreliable Failure Detectors for Reliable Distributed Systems"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [High Availability](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Replication](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+
+2. **分布式数据库文档**：
+   - [Google Spanner Documentation](https://cloud.google.com/spanner/docs)
+   - [TiDB Documentation](https://docs.pingcap.com/tidb/stable)
+   - [CockroachDB Documentation](https://www.cockroachlabs.com/docs/)
+
+---
+
 **最后更新**: 2024年
 **维护状态**: ✅ 已完成

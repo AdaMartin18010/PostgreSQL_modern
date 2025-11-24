@@ -17,7 +17,10 @@
   - [📊 第三部分：一致性定理证明](#-第三部分一致性定理证明)
   - [📊 第四部分：隔离性定理证明](#-第四部分隔离性定理证明)
   - [📊 第五部分：持久性定理证明](#-第五部分持久性定理证明)
-  - [📚 参考资料](#-参考资料)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -173,12 +176,44 @@ MVCC机制通过WAL实现持久性：
 
 ---
 
-## 📚 参考资料
+## 📚 外部资源引用
 
-1. ACID公理系统 - 本文档同目录
-2. MVCC核心公理 - 本文档同目录
-3. PostgreSQL官方文档 - ACID属性
-4. 数据库理论 - 事务处理
+### Wikipedia资源
+
+1. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [Atomicity (database systems)](https://en.wikipedia.org/wiki/Atomicity_(database_systems))
+   - [Consistency (database systems)](https://en.wikipedia.org/wiki/Consistency_(database_systems))
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+   - [Durability (database systems)](https://en.wikipedia.org/wiki/Durability_(database_systems))
+
+2. **事务处理相关**：
+   - [Transaction Processing](https://en.wikipedia.org/wiki/Transaction_processing)
+   - [Concurrency Control](https://en.wikipedia.org/wiki/Concurrency_control)
+
+### 学术论文
+
+1. **ACID理论**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+2. **原子性**：
+   - Lampson, B. (1981). "Atomic Transactions"
+   - Gray, J. (1978). "Notes on Database Operating Systems"
+
+3. **持久性**：
+   - Mohan, C., et al. (1992). "ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [ACID Compliance](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [WAL](https://www.postgresql.org/docs/current/wal.html)
+
+2. **标准文档**：
+   - ANSI SQL Standard (ISO/IEC 9075)
 
 ---
 

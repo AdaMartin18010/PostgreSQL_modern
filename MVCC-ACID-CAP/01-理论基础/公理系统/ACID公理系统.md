@@ -26,6 +26,9 @@
     - [3.3 持久性与一致性](#33-持久性与一致性)
   - [📊 第四部分：推理规则](#-第四部分推理规则)
   - [📚 参考资料](#-参考资料)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -62,6 +65,7 @@
 **定义1.1（事务）**：
 
 事务τ是一个操作序列：
+
 ```
 τ = [o₁, o₂, ..., oₙ]
 ```
@@ -71,6 +75,7 @@
 **定义1.2（数据库状态）**：
 
 数据库状态s是一个映射：
+
 ```
 s: R → V
 ```
@@ -80,6 +85,7 @@ s: R → V
 **定义1.3（一致性约束）**：
 
 一致性约束c是一个谓词：
+
 ```
 c: S → {true, false}
 ```
@@ -95,6 +101,7 @@ c: S → {true, false}
 **公理2.1（原子性 - 全部提交）**：
 
 如果事务τ提交，则τ的所有操作都生效：
+
 ```
 commit(τ) ⟹ ∀o ∈ O(τ), applied(o, state(τ))
 ```
@@ -102,6 +109,7 @@ commit(τ) ⟹ ∀o ∈ O(τ), applied(o, state(τ))
 **公理2.2（原子性 - 全部回滚）**：
 
 如果事务τ中止，则τ的所有操作都不生效：
+
 ```
 abort(τ) ⟹ ∀o ∈ O(τ), ¬applied(o, state(τ))
 ```
@@ -109,6 +117,7 @@ abort(τ) ⟹ ∀o ∈ O(τ), ¬applied(o, state(τ))
 **公理2.3（原子性 - 二元性）**：
 
 事务τ要么全部提交，要么全部中止：
+
 ```
 commit(τ) ⟺ ¬abort(τ)
 ```
@@ -118,6 +127,7 @@ commit(τ) ⟺ ¬abort(τ)
 **公理2.4（一致性 - 初始状态）**：
 
 数据库初始状态满足所有一致性约束：
+
 ```
 ∀c ∈ C, satisfies(initial_state, c)
 ```
@@ -125,6 +135,7 @@ commit(τ) ⟺ ¬abort(τ)
 **公理2.5（一致性 - 提交后状态）**：
 
 如果事务τ提交，则提交后的状态满足所有一致性约束：
+
 ```
 commit(τ) ⟹ ∀c ∈ C, satisfies(state(τ), c)
 ```
@@ -132,6 +143,7 @@ commit(τ) ⟹ ∀c ∈ C, satisfies(state(τ), c)
 **公理2.6（一致性 - 事务内状态）**：
 
 事务τ执行过程中的中间状态可能不满足一致性约束，但提交时必须满足：
+
 ```
 ∀s ∈ intermediate_states(τ),
   (satisfies(s, c) ∨ ¬commit(τ)) ⟹
@@ -143,6 +155,7 @@ commit(τ) ⟹ ∀c ∈ C, satisfies(state(τ), c)
 **公理2.7（隔离性 - 读未提交）**：
 
 READ UNCOMMITTED隔离级别允许读取未提交的数据：
+
 ```
 isolation_level(τ) = READ_UNCOMMITTED ⟹
   ∀τ' ∈ concurrent(τ), can_read(τ, uncommitted_data(τ'))
@@ -151,6 +164,7 @@ isolation_level(τ) = READ_UNCOMMITTED ⟹
 **公理2.8（隔离性 - 读已提交）**：
 
 READ COMMITTED隔离级别只允许读取已提交的数据：
+
 ```
 isolation_level(τ) = READ_COMMITTED ⟹
   ∀τ' ∈ concurrent(τ), can_read(τ, committed_data(τ'))
@@ -159,6 +173,7 @@ isolation_level(τ) = READ_COMMITTED ⟹
 **公理2.9（隔离性 - 可重复读）**：
 
 REPEATABLE READ隔离级别保证同一事务内多次读取结果一致：
+
 ```
 isolation_level(τ) = REPEATABLE_READ ⟹
   ∀r ∈ R, ∀t₁, t₂ ∈ time(τ), read(τ, r, t₁) = read(τ, r, t₂)
@@ -167,6 +182,7 @@ isolation_level(τ) = REPEATABLE_READ ⟹
 **公理2.10（隔离性 - 可串行化）**：
 
 SERIALIZABLE隔离级别保证事务执行结果等价于某个串行执行：
+
 ```
 isolation_level(τ) = SERIALIZABLE ⟹
   ∃serial_order, result(concurrent_execution) = result(serial_order)
@@ -177,6 +193,7 @@ isolation_level(τ) = SERIALIZABLE ⟹
 **公理2.11（持久性 - 提交持久化）**：
 
 如果事务τ提交，则τ的修改持久化到存储：
+
 ```
 commit(τ) ⟹ persisted(state(τ))
 ```
@@ -184,6 +201,7 @@ commit(τ) ⟹ persisted(state(τ))
 **公理2.12（持久性 - 故障恢复）**：
 
 系统故障后恢复，已提交事务的修改仍然存在：
+
 ```
 crash_recovery() ⟹
   ∀τ: commit(τ) ∧ timestamp(commit(τ)) < crash_time,
@@ -193,6 +211,7 @@ crash_recovery() ⟹
 **公理2.13（持久性 - WAL保证）**：
 
 所有提交操作都写入WAL，WAL持久化保证数据持久化：
+
 ```
 commit(τ) ⟹ written_to_wal(O(τ)) ⟹ persisted(state(τ))
 ```
@@ -206,6 +225,7 @@ commit(τ) ⟹ written_to_wal(O(τ)) ⟹ persisted(state(τ))
 **公理3.1（原子性保证一致性）**：
 
 原子性保证事务要么全部生效，要么全部不生效，从而保证一致性：
+
 ```
 atomicity(τ) ⟹
   (commit(τ) ⟹ consistency(state(τ))) ∨
@@ -217,6 +237,7 @@ atomicity(τ) ⟹
 **公理3.2（隔离性保证一致性）**：
 
 隔离性防止并发事务相互干扰，保证一致性：
+
 ```
 isolation(τ₁, τ₂) ⟹
   consistency(state(τ₁)) ∧ consistency(state(τ₂))
@@ -227,6 +248,7 @@ isolation(τ₁, τ₂) ⟹
 **公理3.3（持久性保证一致性）**：
 
 持久性保证已提交的一致性状态不会丢失：
+
 ```
 durability(τ) ⟹
   commit(τ) ⟹ persisted(consistent_state(τ))
@@ -239,6 +261,7 @@ durability(τ) ⟹
 **规则4.1（ACID完整性）**：
 
 事务τ满足ACID属性，当且仅当：
+
 ```
 ACID(τ) ⟺
   atomicity(τ) ∧
@@ -250,6 +273,7 @@ ACID(τ) ⟺
 **规则4.2（MVCC保证ACID）**：
 
 MVCC机制保证ACID属性：
+
 ```
 MVCC_mechanism ⟹
   ∀τ ∈ T, ACID(τ)
@@ -259,10 +283,44 @@ MVCC_mechanism ⟹
 
 ## 📚 参考资料
 
-1. PostgreSQL官方文档 - ACID属性
-2. 数据库理论 - 事务处理原理
-3. MVCC核心公理 - 本文档同目录
-4. 形式化方法 - 公理系统
+### Wikipedia资源
+
+1. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [Atomicity (database systems)](https://en.wikipedia.org/wiki/Atomicity_(database_systems))
+   - [Consistency (database systems)](https://en.wikipedia.org/wiki/Consistency_(database_systems))
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+   - [Durability (database systems)](https://en.wikipedia.org/wiki/Durability_(database_systems))
+
+2. **事务处理**：
+   - [Transaction Processing](https://en.wikipedia.org/wiki/Transaction_processing)
+   - [Concurrency Control](https://en.wikipedia.org/wiki/Concurrency_control)
+
+### 学术论文
+
+1. **ACID理论**：
+   - Gray, J. (1981). "The Transaction Concept: Virtues and Limitations"
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Haerder, T., & Reuter, A. (1983). "Principles of Transaction-Oriented Database Recovery"
+
+2. **隔离级别**：
+   - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels"
+   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions"
+
+3. **形式化方法**：
+   - Lamport, L. (2002). "Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [ACID Compliance](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+
+2. **相关文档**：
+   - MVCC核心公理 - 本文档同目录
+   - ACID属性定理证明 - `01-理论基础/形式化证明/`
 
 ---
 

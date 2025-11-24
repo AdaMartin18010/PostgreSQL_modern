@@ -16,7 +16,10 @@
   - [📊 第二部分：可见性判定定理证明](#-第二部分可见性判定定理证明)
   - [📊 第三部分：可见性一致性定理证明](#-第三部分可见性一致性定理证明)
   - [📊 第四部分：可见性传递性定理证明](#-第四部分可见性传递性定理证明)
-  - [📚 参考资料](#-参考资料)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -129,12 +132,35 @@ committed(xmin(v))
 
 ---
 
-## 📚 参考资料
+## 📚 外部资源引用
 
-1. MVCC核心公理 - 本文档同目录
-2. PostgreSQL官方文档 - MVCC实现
-3. 数据库理论 - 事务处理原理
-4. 形式化方法 - 数学证明
+### Wikipedia资源
+
+1. **MVCC相关**：
+   - [Multiversion Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Concurrency Control](https://en.wikipedia.org/wiki/Concurrency_control)
+
+2. **可见性相关**：
+   - [Visibility (computer science)](https://en.wikipedia.org/wiki/Visibility_(computer_science))
+   - [Read Consistency](https://en.wikipedia.org/wiki/Read_consistency)
+
+### 学术论文
+
+1. **MVCC可见性**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+
+2. **快照隔离**：
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"
+   - Cahill, M. J., et al. (2009). "Serializable Isolation for Snapshot Databases"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
 
 ---
 
