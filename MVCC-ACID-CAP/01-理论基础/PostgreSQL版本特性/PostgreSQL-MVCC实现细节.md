@@ -40,13 +40,20 @@
     - [5.2 关键函数分析](#52-关键函数分析)
     - [5.3 性能优化技巧](#53-性能优化技巧)
   - [📝 总结](#-总结)
+    - [核心结论](#核心结论)
+    - [实践建议](#实践建议)
   - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
+    - [技术博客](#技术博客)
 
 ---
 
 ## 📋 概述
 
-PostgreSQL的MVCC（Multi-Version Concurrency Control）实现是数据库系统的核心机制之一。本文档深入分析PostgreSQL MVCC的实现细节，包括heap tuple结构、WAL机制、VACUUM机制和版本链管理。
+PostgreSQL的MVCC（Multi-Version Concurrency Control）实现是数据库系统的核心机制之一。
+本文档深入分析PostgreSQL MVCC的实现细节，包括heap tuple结构、WAL机制、VACUUM机制和版本链管理。
 
 **核心内容**：
 
@@ -101,10 +108,12 @@ struct HeapTupleHeaderData
 **xmin字段**：创建事务ID（Transaction ID）
 
 **作用**：
+
 - 标识创建该元组的事务ID
 - 用于可见性判断：如果xmin < snapshot.xmin，则该元组对当前事务可见
 
 **存储位置**：
+
 ```c
 struct HeapTupleFields
 {
@@ -154,10 +163,12 @@ bool HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot)
 **xmax字段**：删除/更新事务ID（Transaction ID）
 
 **作用**：
+
 - 标识删除或更新该元组的事务ID
 - 用于可见性判断：如果xmax有效且xmax < snapshot.xmin，则该元组已被删除
 
 **存储位置**：
+
 - 与xmin相同，存储在`HeapTupleFields`结构中
 
 **示例**：
@@ -202,10 +213,12 @@ bool HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot)
 **ctid字段**：当前元组ID（Current Tuple ID）
 
 **作用**：
+
 - 标识元组在页面中的位置
 - 用于版本链链接：UPDATE操作时，旧元组的ctid指向新元组
 
 **存储格式**：
+
 ```c
 typedef struct ItemPointerData
 {
@@ -302,7 +315,7 @@ bool HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot)
 
 **页面布局**（src/include/storage/bufpage.h）：
 
-```
+```text
 +-------------------+
 | PageHeader        | 24 bytes
 +-------------------+
@@ -333,7 +346,7 @@ typedef struct ItemIdData
 
 **元组在页面中的存储**：
 
-```
+```text
 页面0:
 +-------------------+
 | PageHeader        |
@@ -362,10 +375,12 @@ typedef struct ItemIdData
 **Write-Ahead Logging（WAL）**：预写日志机制
 
 **核心原理**：
+
 - 在修改数据页面之前，先将修改记录写入WAL
 - 确保数据的持久性：即使系统崩溃，也可以通过WAL恢复数据
 
 **WAL的优势**：
+
 - **持久性保证**：确保已提交事务的数据不会丢失
 - **性能优化**：批量写入WAL，减少磁盘I/O
 - **恢复能力**：支持时间点恢复（PITR）
@@ -421,6 +436,7 @@ XLogRecord record = {
 **WAL写入流程**：
 
 1. **生成WAL记录**：
+
    ```c
    XLogBeginInsert();
    XLogRegisterData(tuple_data, tuple_size);
@@ -429,18 +445,21 @@ XLogRecord record = {
    ```
 
 2. **写入WAL缓冲区**：
+
    ```c
    // 写入WAL缓冲区（内存）
    XLogWrite(record);
    ```
 
 3. **刷新WAL到磁盘**：
+
    ```c
    // 同步刷新（fsync）
    XLogFlush(lsn);
    ```
 
 4. **更新页面**：
+
    ```c
    // 在WAL写入成功后，更新数据页面
    MarkBufferDirty(buffer);
@@ -468,18 +487,21 @@ synchronous_commit = off;
 **WAL恢复流程**：
 
 1. **启动时检查**：
+
    ```c
    // 检查控制文件中的LSN
    XLogRecPtr last_checkpoint = ControlFile->checkPoint;
    ```
 
 2. **重放WAL记录**：
+
    ```c
    // 从checkpoint开始重放WAL
    XLogReplay(last_checkpoint);
    ```
 
 3. **应用WAL记录**：
+
    ```c
    // 根据记录类型应用操作
    switch (record->xl_info)
@@ -546,6 +568,7 @@ typedef struct xl_heap_update
 **VACUUM**：版本清理机制
 
 **核心原理**：
+
 - 扫描表页面，识别死亡元组（dead tuples）
 - 回收死亡元组的存储空间
 - 更新统计信息
@@ -563,6 +586,7 @@ typedef struct xl_heap_update
 **VACUUM算法流程**：
 
 1. **扫描页面**：
+
    ```c
    // 扫描表的所有页面
    for (blockno = 0; blockno < nblocks; blockno++)
@@ -587,6 +611,7 @@ typedef struct xl_heap_update
    ```
 
 2. **回收空间**：
+
    ```c
    // 回收死亡元组的空间
    for (dead_tuple in dead_tuples)
@@ -600,6 +625,7 @@ typedef struct xl_heap_update
    ```
 
 3. **更新统计信息**：
+
    ```c
    // 更新pg_stat_user_tables
    pgstat_report_vacuum(relation->rd_id, n_dead_tuples, n_live_tuples);
@@ -632,18 +658,21 @@ HTSV_Result HeapTupleSatisfiesVacuum(HeapTuple htup, TransactionId OldestXmin)
 **PostgreSQL 17的VACUUM内存优化**：
 
 1. **动态内存管理**：
+
    ```c
    // 动态分配内存，根据表大小调整
    vacuum_mem = Min(vacuum_mem, table_size / 10);
    ```
 
 2. **批量处理**：
+
    ```c
    // 批量处理死亡元组，减少I/O
    ProcessDeadTuplesBatch(dead_tuples, batch_size);
    ```
 
 3. **并行VACUUM**：
+
    ```sql
    -- PostgreSQL 13+支持并行VACUUM
    VACUUM (PARALLEL 4) users;
@@ -692,7 +721,7 @@ HTSV_Result HeapTupleSatisfiesVacuum(HeapTuple htup, TransactionId OldestXmin)
 
 **版本链示例**：
 
-```
+```text
 页面0:
 +-------------------+
 | Tuple[0]          | ctid = (0, 1)  -- 版本1
@@ -739,12 +768,14 @@ while (ItemPointerIsValid(ctid))
 **版本链遍历算法**：
 
 1. **从索引获取初始ctid**：
+
    ```c
    // 从索引获取ctid
    ctid = index_get_tid(index, key);
    ```
 
 2. **遍历版本链**：
+
    ```c
    // 遍历版本链，找到可见版本
    while (ItemPointerIsValid(ctid))
@@ -757,6 +788,7 @@ while (ItemPointerIsValid(ctid))
    ```
 
 3. **处理版本链断裂**：
+
    ```c
    // 如果版本链断裂，需要重新扫描
    if (!ItemPointerIsValid(ctid))
@@ -778,6 +810,7 @@ while (ItemPointerIsValid(ctid))
 **HOT条件**：
 
 1. **不修改索引列**：
+
    ```sql
    -- HOT优化示例
    UPDATE users SET name = 'Bob' WHERE id = 1;
@@ -785,6 +818,7 @@ while (ItemPointerIsValid(ctid))
    ```
 
 2. **同一页面有足够空间**：
+
    ```c
    // 检查页面是否有足够空间
    if (PageGetFreeSpace(page) >= new_tuple_size)
@@ -807,18 +841,21 @@ while (ItemPointerIsValid(ctid))
 **版本链清理**：
 
 1. **VACUUM清理死亡元组**：
+
    ```c
    // VACUUM清理死亡元组
    vacuum_dead_tuples(relation, dead_tuples);
    ```
 
 2. **更新版本链**：
+
    ```c
    // 更新版本链，跳过死亡元组
    update_version_chain(relation, dead_tuples);
    ```
 
 3. **压缩版本链**：
+
    ```c
    // 压缩版本链，移除中间版本
    compress_version_chain(relation);
@@ -876,18 +913,21 @@ while (ItemPointerIsValid(ctid))
    - 减少索引更新
 
 2. **合理设置fillfactor**：
+
    ```sql
    -- 为UPDATE操作预留空间
    CREATE TABLE users (id INT, name TEXT) WITH (fillfactor = 70);
    ```
 
 3. **定期VACUUM**：
+
    ```sql
    -- 配置自动VACUUM
    ALTER TABLE users SET (autovacuum_vacuum_scale_factor = 0.1);
    ```
 
 4. **监控版本链长度**：
+
    ```sql
    -- 监控版本链长度
    SELECT schemaname, tablename, n_dead_tup, n_live_tup
@@ -951,14 +991,16 @@ while (ItemPointerIsValid(ctid))
 ### 学术论文
 
 1. **MVCC理论**：
-   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Bernstein, P. A., & Goodman, N. (1983).
+   "Multiversion Concurrency Control—Theory and Algorithms".
+   ACM Transactions on Database Systems, 8(4), 465-483
    - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
 
 2. **WAL机制**：
    - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann
 
 3. **PostgreSQL实现**：
-   - PostgreSQL源码：https://github.com/postgres/postgres
+   - PostgreSQL源码：<https://github.com/postgres/postgres>
 
 ### 官方文档
 
@@ -975,7 +1017,7 @@ while (ItemPointerIsValid(ctid))
 ### 技术博客
 
 1. **PostgreSQL官方博客**：
-   - https://www.postgresql.org/about/news/
+   - <https://www.postgresql.org/about/news/>
    - PostgreSQL 17和18的新特性介绍
 
 2. **技术文章**：

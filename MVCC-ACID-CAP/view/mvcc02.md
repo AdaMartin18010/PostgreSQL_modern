@@ -641,3 +641,63 @@ END $$ LANGUAGE plpgsql;
 -- 在会话B执行：UPDATE accounts SET balance = balance + 1;
 -- 结果：iter1 ≠ iter2，证明定理2
 ```
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **形式化方法相关**：
+   - [Formal Methods](https://en.wikipedia.org/wiki/Formal_methods)
+   - [Mathematical Proof](https://en.wikipedia.org/wiki/Mathematical_proof)
+   - [Axiom](https://en.wikipedia.org/wiki/Axiom)
+   - [Theorem](https://en.wikipedia.org/wiki/Theorem)
+
+2. **数据库理论**：
+   - [Database Theory](https://en.wikipedia.org/wiki/Database_theory)
+   - [Serializability](https://en.wikipedia.org/wiki/Serializability)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+
+### 学术论文
+
+1. **形式化证明**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
+
+2. **可串行化理论**：
+   - Papadimitriou, C. H. (1979). "The Serializability of Concurrent Database Updates". Journal of the ACM, 26(4), 631-653
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+3. **快照隔离**：
+   - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels". SIGMOD 1995
+   - Cahill, M. J., et al. (2008). "Serializable Isolation for Snapshot Databases". SIGMOD 2008
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
+
+2. **形式化验证工具**：
+   - [TLA+](https://lamport.azurewebsites.net/tla/tla.html)
+   - [Coq](https://coq.inria.fr/)
+   - [Isabelle](https://isabelle.in.tum.de/)
+
+### 技术博客
+
+1. **形式化方法博客**：
+   - Leslie Lamport的TLA+博客
+   - 形式化验证相关文章
+
+2. **PostgreSQL技术博客**：
+   - <https://www.postgresql.org/about/news/>
+   - PostgreSQL形式化证明相关文章
+
+---
+
+**最后更新**: 2025年1月
+**维护状态**: ✅ 持续更新

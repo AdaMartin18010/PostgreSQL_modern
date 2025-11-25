@@ -628,3 +628,63 @@ $$
 在PostgreSQL中，**MVCC通过消除读锁将LockWaitTime降至0**，这是其高性能的核心，但代价是**SnapshotCalcTime和WALSyncTime的增加**，以及**版本管理的空间开销**。
 
 **最终认知**：PostgreSQL MVCC不是简单的版本控制，而是一个**与ACID深度耦合的并发控制状态机**，每个操作都精确映射到xmin/xmax/CLOG/WAL的物理状态变更。只有理解这些细节，才能真正做到不交不空不漏的全面掌控。
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC和事务性相关**：
+   - [Multi-Version Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Write-Ahead Logging](https://en.wikipedia.org/wiki/Write-ahead_logging)
+
+2. **存储系统**：
+   - [Database Storage](https://en.wikipedia.org/wiki/Database_storage_structures)
+   - [Page (computer memory)](https://en.wikipedia.org/wiki/Page_(computer_memory))
+
+### 学术论文
+
+1. **MVCC-ACID事务性深度关联**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Gray, J. (1983). "The Transaction Concept: Virtues and Limitations". VLDB 1983
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann
+
+2. **存储和事务**：
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Bernstein, P. A., & Newcomer, E. (2009). "Principles of Transaction Processing" (2nd Edition)
+
+3. **PostgreSQL实现**：
+   - PostgreSQL源码：https://github.com/postgres/postgres
+   - PostgreSQL内部文档：https://www.postgresql.org/docs/current/internals.html
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Database Physical Storage](https://www.postgresql.org/docs/current/storage.html)
+   - [Write-Ahead Logging](https://www.postgresql.org/docs/current/wal.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+
+2. **PostgreSQL源码文档**：
+   - [src/backend/access/heap/](https://github.com/postgres/postgres/tree/master/src/backend/access/heap)
+   - [src/backend/storage/](https://github.com/postgres/postgres/tree/master/src/backend/storage)
+   - [src/include/storage/](https://github.com/postgres/postgres/tree/master/src/include/storage)
+
+### 技术博客
+
+1. **PostgreSQL官方博客**：
+   - <https://www.postgresql.org/about/news/>
+   - PostgreSQL存储和事务相关文章
+
+2. **技术文章**：
+   - Bruce Momjian的PostgreSQL内部实现文章
+   - 2ndQuadrant的PostgreSQL技术博客
+   - Depesz的PostgreSQL技术博客
+
+---
+
+**最后更新**: 2025年1月
+**维护状态**: ✅ 持续更新

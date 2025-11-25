@@ -28,6 +28,14 @@
    - **内容**: 方案对比、设计模式、故障处理、性能优化
    - **文档编号**: TRANSACTION-BESTPRACTICES-001
 
+6. ✅ [隔离级别深度分析](隔离级别深度分析.md) ⭐ 新增（P2改进）
+   - **内容**: ANSI SQL标准、PostgreSQL实现、快照隔离vs可串行化、实际异常案例、性能影响
+   - **文档编号**: TRANSACTION-ISOLATION-DEEP-001
+
+7. ✅ [分布式事务模式深度对比](分布式事务模式深度对比.md) ⭐ 新增（P2改进）
+   - **内容**: 2PC、XA、Saga、TCC深度对比、实际系统案例、最佳实践
+   - **文档编号**: TRANSACTION-DISTRIBUTED-PATTERNS-001
+
 ---
 
 ## 🎯 核心主题

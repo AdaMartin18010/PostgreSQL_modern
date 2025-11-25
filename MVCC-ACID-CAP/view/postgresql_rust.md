@@ -2259,5 +2259,65 @@ fn create_order_saga(order: Order) -> Result<(), ()> {
 
 ---
 
-**最后更新**: 2024年
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **Rust相关**：
+   - [Rust (programming language)](https://en.wikipedia.org/wiki/Rust_(programming_language))
+   - [Ownership (computer science)](https://en.wikipedia.org/wiki/Ownership_(computer_science))
+   - [Concurrency (computer science)](https://en.wikipedia.org/wiki/Concurrency_(computer_science))
+
+2. **MVCC和数据库**：
+   - [Multi-Version Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [PostgreSQL](https://en.wikipedia.org/wiki/PostgreSQL)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+
+### 学术论文
+
+1. **Rust并发模型**：
+   - Rust官方文档：https://doc.rust-lang.org/book/
+   - Rust并发模型：https://doc.rust-lang.org/book/ch16-00-concurrency.html
+
+2. **MVCC理论**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
+
+3. **同构性理论**：
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
+
+### 官方文档
+
+1. **Rust官方文档**：
+   - [The Rust Programming Language](https://doc.rust-lang.org/book/)
+   - [Rust Async Book](https://rust-lang.github.io/async-book/)
+   - [Rust Reference](https://doc.rust-lang.org/reference/)
+
+2. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [High Availability](https://www.postgresql.org/docs/current/high-availability.html)
+
+3. **Rust PostgreSQL驱动**：
+   - [tokio-postgres](https://docs.rs/tokio-postgres/)
+   - [postgres](https://docs.rs/postgres/)
+   - [sqlx](https://docs.rs/sqlx/)
+
+### 技术博客
+
+1. **Rust技术博客**：
+   - <https://blog.rust-lang.org/>
+   - Rust并发编程相关文章
+
+2. **PostgreSQL技术博客**：
+   - <https://www.postgresql.org/about/news/>
+   - PostgreSQL与Rust集成相关文章
+
+3. **社区资源**：
+   - Rust社区：https://www.rust-lang.org/community
+   - PostgreSQL社区：https://www.postgresql.org/community/
+
+---
+
+**最后更新**: 2025年1月
 **维护状态**: ✅ 持续更新

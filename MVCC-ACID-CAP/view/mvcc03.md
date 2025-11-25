@@ -736,3 +736,57 @@ $$
 4. **XID是生命线**：回卷比任何性能问题都致命
 
 最终，PostgreSQL MVCC的成功依赖于 **"三分靠实现，七分靠运维"** 的深度协作模式。
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC相关**：
+   - [Multi-Version Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Concurrency Control](https://en.wikipedia.org/wiki/Concurrency_control)
+
+2. **数据库系统**：
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Write-Ahead Logging](https://en.wikipedia.org/wiki/Write-ahead_logging)
+
+### 学术论文
+
+1. **MVCC完整性理论**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
+
+2. **完整性验证**：
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html)
+   - [Database Physical Storage](https://www.postgresql.org/docs/current/storage.html)
+   - [Performance Tips](https://www.postgresql.org/docs/current/performance-tips.html)
+
+2. **PostgreSQL源码**：
+   - [src/backend/access/heap/](https://github.com/postgres/postgres/tree/master/src/backend/access/heap)
+   - [src/backend/commands/vacuum.c](https://github.com/postgres/postgres/blob/master/src/backend/commands/vacuum.c)
+
+### 技术博客
+
+1. **PostgreSQL官方博客**：
+   - <https://www.postgresql.org/about/news/>
+   - PostgreSQL MVCC优化相关文章
+
+2. **技术文章**：
+   - Bruce Momjian的PostgreSQL内部实现文章
+   - 2ndQuadrant的PostgreSQL技术博客
+
+---
+
+**最后更新**: 2025年1月
+**维护状态**: ✅ 持续更新

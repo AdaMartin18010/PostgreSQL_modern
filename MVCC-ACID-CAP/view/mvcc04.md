@@ -1144,3 +1144,59 @@ $$
 - **synchronous_commit=remote_apply**：接受100ms数据丢失风险，换取90%延迟降低
 
 **PostgreSQL MVCC的精髓**：将**业务并发控制**转化为**物理版本管理**，在**空间、时间、一致性**三角中寻找业务最优解。
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC和ACID相关**：
+   - [Multi-Version Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+
+2. **关联性理论**：
+   - [Isomorphism](https://en.wikipedia.org/wiki/Isomorphism)
+   - [Equivalence Relation](https://en.wikipedia.org/wiki/Equivalence_relation)
+
+### 学术论文
+
+1. **MVCC-ACID关联性**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Gray, J. (1983). "The Transaction Concept: Virtues and Limitations". VLDB 1983
+   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
+
+2. **事务理论**：
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Bernstein, P. A., & Newcomer, E. (2009). "Principles of Transaction Processing" (2nd Edition)
+
+3. **同构性理论**：
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [ACID Compliance](https://www.postgresql.org/docs/current/transaction-iso.html)
+
+2. **PostgreSQL源码**：
+   - [src/backend/access/heap/](https://github.com/postgres/postgres/tree/master/src/backend/access/heap)
+   - [src/backend/access/transam/](https://github.com/postgres/postgres/tree/master/src/backend/access/transam)
+
+### 技术博客
+
+1. **PostgreSQL官方博客**：
+   - <https://www.postgresql.org/about/news/>
+   - PostgreSQL MVCC-ACID关联性相关文章
+
+2. **技术文章**：
+   - Bruce Momjian的PostgreSQL内部实现文章
+   - 2ndQuadrant的PostgreSQL技术博客
+
+---
+
+**最后更新**: 2025年1月
+**维护状态**: ✅ 持续更新

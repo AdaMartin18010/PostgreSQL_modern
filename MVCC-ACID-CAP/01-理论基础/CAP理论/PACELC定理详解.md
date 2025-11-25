@@ -33,7 +33,13 @@
     - [5.2 性能优化策略](#52-性能优化策略)
     - [5.3 监控和诊断](#53-监控和诊断)
   - [📝 总结](#-总结)
+    - [核心结论](#核心结论)
+    - [实践建议](#实践建议)
   - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
+    - [技术博客](#技术博客)
 
 ---
 
@@ -67,7 +73,7 @@ PACELC定理由Daniel Abadi在2012年提出，是对CAP定理的重要扩展。P
 
 **简记**：
 
-```
+```text
 IF Partition THEN (Availability OR Consistency) ELSE (Latency OR Consistency)
 ```
 
@@ -493,18 +499,24 @@ SELECT pg_reload_conf();
 ### 学术论文
 
 1. **PACELC定理**：
-   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design". IEEE Computer, 45(2), 37-42
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design".
+   IEEE Computer, 45(2), 37-42
 
 2. **CAP定理**：
    - Brewer, E. A. (2000). "Towards Robust Distributed Systems". PODC Keynote
-   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services". ACM SIGACT News, 33(2), 51-59
+   - Gilbert, S., & Lynch, N. (2002).
+   "Brewer's Conjecture and the Feasibility of Consistent,
+    Available, Partition-Tolerant Web Services".
+   ACM SIGACT News, 33(2), 51-59
 
 3. **CAP定理批判**：
    - Kleppmann, M. (2015). "A Critique of the CAP Theorem". arXiv:1509.05393
 
 4. **一致性模型**：
    - Vogels, W. (2009). "Eventually Consistent". Communications of the ACM, 52(1), 40-44
-   - Lamport, L. (1979). "How to Make a Multiprocessor Computer That Correctly Executes Multiprocess Programs". IEEE Transactions on Computers, C-28(9), 690-691
+   - Lamport, L. (1979).
+   "How to Make a Multiprocessor Computer That Correctly Executes Multiprocess Programs".
+   IEEE Transactions on Computers, C-28(9), 690-691
 
 ### 官方文档
 
