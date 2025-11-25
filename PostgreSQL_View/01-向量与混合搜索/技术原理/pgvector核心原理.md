@@ -1010,7 +1010,8 @@ CROSS JOIN LATERAL (
 
 **HNSW 算法原始论文**:
 
-- **Malkov, Y. A., & Yashunin, D. A. (2018). "Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs."**
+- **Malkov, Y. A., & Yashunin, D. A. (2018).
+"Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs."**
   - 期刊: IEEE transactions on pattern analysis and machine intelligence, 40(9), 2096-2108
   - **DOI**: [10.1109/TPAMI.2018.2889473](https://doi.org/10.1109/TPAMI.2018.2889473)
   - **arXiv**: [arXiv:1603.09320](https://arxiv.org/abs/1603.09320)
