@@ -68,7 +68,7 @@
 
 分布式系统S是一个节点集合N和操作集合O的元组：
 
-```
+```text
 S = (N, O)
 ```
 
@@ -76,7 +76,7 @@ S = (N, O)
 
 分区p是节点集合N的一个划分：
 
-```
+```text
 p = {N₁, N₂, ..., Nₖ}
 ```
 
@@ -89,7 +89,7 @@ p = {N₁, N₂, ..., Nₖ}
 
 系统S是一致的，当且仅当：
 
-```
+```text
 ∀n₁, n₂ ∈ N, ∀k, read(n₁, k) = read(n₂, k)
 ```
 
@@ -97,7 +97,7 @@ p = {N₁, N₂, ..., Nₖ}
 
 系统S是可用的，当且仅当：
 
-```
+```text
 ∀n ∈ N, ∀o ∈ O, responds(n, o) within time_limit
 ```
 
@@ -105,7 +105,7 @@ p = {N₁, N₂, ..., Nₖ}
 
 系统S是分区容错的，当且仅当：
 
-```
+```text
 ∀p ∈ P, system_continues_operating(S, p)
 ```
 
@@ -119,7 +119,7 @@ p = {N₁, N₂, ..., Nₖ}
 
 系统S满足强一致性，当且仅当：
 
-```
+```text
 consistent(S) ⟺
   ∀n₁, n₂ ∈ N, ∀k,
     read(n₁, k) = read(n₂, k) ∧
@@ -131,7 +131,7 @@ consistent(S) ⟺
 
 系统S满足最终一致性，当且仅当：
 
-```
+```text
 eventually_consistent(S) ⟺
   ∀n₁, n₂ ∈ N, ∀k,
     ∃t: timestamp > t ⟹ read(n₁, k) = read(n₂, k)
@@ -141,7 +141,7 @@ eventually_consistent(S) ⟺
 
 如果节点n₁和n₂一致，节点n₂和n₃一致，则节点n₁和n₃一致：
 
-```
+```text
 consistent(n₁, n₂) ∧ consistent(n₂, n₃) ⟹ consistent(n₁, n₃)
 ```
 
@@ -151,7 +151,7 @@ consistent(n₁, n₂) ∧ consistent(n₂, n₃) ⟹ consistent(n₁, n₃)
 
 系统S是可用的，当且仅当：
 
-```
+```text
 available(S) ⟺
   ∀n ∈ N, ∀o ∈ O,
     responds(n, o) within time_limit ∧
@@ -162,7 +162,7 @@ available(S) ⟺
 
 如果系统S₁可用，系统S₂可用，则系统S₁ ∪ S₂可用：
 
-```
+```text
 available(S₁) ∧ available(S₂) ⟹ available(S₁ ∪ S₂)
 ```
 
@@ -170,7 +170,7 @@ available(S₁) ∧ available(S₂) ⟹ available(S₁ ∪ S₂)
 
 系统S是部分可用的，当且仅当：
 
-```
+```text
 partially_available(S) ⟺
   ∃N' ⊆ N: available(S|N') ∧ |N'| / |N| > threshold
 ```
@@ -181,7 +181,7 @@ partially_available(S) ⟺
 
 系统S是分区容错的，当且仅当：
 
-```
+```text
 partition_tolerant(S) ⟺
   ∀p ∈ P,
     system_continues_operating(S, p) ∧
@@ -192,7 +192,7 @@ partition_tolerant(S) ⟺
 
 系统S支持分区恢复，当且仅当：
 
-```
+```text
 partition_recovery(S) ⟺
   ∀p ∈ P,
     partition_occurs(p) ⟹
@@ -204,7 +204,7 @@ partition_recovery(S) ⟺
 
 系统S能够检测分区，当且仅当：
 
-```
+```text
 partition_detection(S) ⟺
   ∀p ∈ P,
     partition_occurs(p) ⟹
@@ -217,7 +217,7 @@ partition_detection(S) ⟺
 
 在存在分区的情况下，系统S不能同时满足强一致性、完全可用性和分区容错性：
 
-```
+```text
 partition_occurs(p) ⟹
   ¬(strong_consistency(S) ∧ full_availability(S) ∧ partition_tolerance(S))
 ```
@@ -226,7 +226,7 @@ partition_occurs(p) ⟹
 
 系统S选择CP模式，当且仅当：
 
-```
+```text
 CP_mode(S) ⟺
   strong_consistency(S) ∧ partition_tolerance(S) ∧
   ¬full_availability(S)
@@ -236,7 +236,7 @@ CP_mode(S) ⟺
 
 系统S选择AP模式，当且仅当：
 
-```
+```text
 AP_mode(S) ⟺
   full_availability(S) ∧ partition_tolerance(S) ∧
   ¬strong_consistency(S)
@@ -246,7 +246,7 @@ AP_mode(S) ⟺
 
 CA模式在分布式系统中不可行：
 
-```
+```text
 distributed_system(S) ⟹ ¬CA_mode(S)
 ```
 
@@ -260,7 +260,7 @@ distributed_system(S) ⟹ ¬CA_mode(S)
 
 在分区情况下，一致性和可用性不能同时满足：
 
-```
+```text
 partition_occurs(p) ⟹
   ¬(strong_consistency(S) ∧ full_availability(S))
 ```
@@ -269,7 +269,7 @@ partition_occurs(p) ⟹
 
 如果系统优先保证一致性，则可能牺牲可用性：
 
-```
+```text
 consistency_first(S) ⟹
   partition_occurs(p) ⟹
     may_sacrifice_availability(S, p)
@@ -279,7 +279,7 @@ consistency_first(S) ⟹
 
 如果系统优先保证可用性，则可能牺牲一致性：
 
-```
+```text
 availability_first(S) ⟹
   partition_occurs(p) ⟹
     may_sacrifice_consistency(S, p)
@@ -291,7 +291,7 @@ availability_first(S) ⟹
 
 一致性和分区容错可以同时满足：
 
-```
+```text
 strong_consistency(S) ∧ partition_tolerance(S) ⟹ CP_mode(S)
 ```
 
@@ -299,7 +299,7 @@ strong_consistency(S) ∧ partition_tolerance(S) ⟹ CP_mode(S)
 
 分区可能影响一致性：
 
-```
+```text
 partition_occurs(p) ⟹
   may_affect_consistency(S, p)
 ```
@@ -310,7 +310,7 @@ partition_occurs(p) ⟹
 
 可用性和分区容错可以同时满足：
 
-```
+```text
 full_availability(S) ∧ partition_tolerance(S) ⟹ AP_mode(S)
 ```
 
@@ -318,7 +318,7 @@ full_availability(S) ∧ partition_tolerance(S) ⟹ AP_mode(S)
 
 分区可能影响可用性：
 
-```
+```text
 partition_occurs(p) ⟹
   may_affect_availability(S, p)
 ```
@@ -331,7 +331,7 @@ partition_occurs(p) ⟹
 
 系统S必须选择CP、AP或CA模式之一：
 
-```
+```text
 CAP_choice(S) ⟺
   CP_mode(S) ∨ AP_mode(S) ∨ CA_mode(S)
 ```
@@ -340,7 +340,7 @@ CAP_choice(S) ⟺
 
 分布式系统S不能选择CA模式：
 
-```
+```text
 distributed_system(S) ⟹
   CP_mode(S) ∨ AP_mode(S)
 ```
@@ -349,7 +349,7 @@ distributed_system(S) ⟹
 
 MVCC机制实现CP模式：
 
-```
+```text
 MVCC_mechanism(S) ⟹ CP_mode(S)
 ```
 
@@ -374,7 +374,8 @@ MVCC_mechanism(S) ⟹ CP_mode(S)
 
 1. **CAP定理**：
    - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
-   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Gilbert, S., & Lynch, N. (2002).
+   "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
    - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
 
 2. **一致性模型**：

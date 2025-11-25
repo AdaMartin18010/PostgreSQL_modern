@@ -18,6 +18,9 @@
   - [📊 第四部分：BASE与CAP关系矩阵](#-第四部分base与cap关系矩阵)
   - [📊 第五部分：BASE与MVCC关系矩阵](#-第五部分base与mvcc关系矩阵)
   - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -26,6 +29,7 @@
 本文档通过多维矩阵对比的方式，全面展示BASE理论的定义、属性、与ACID的对比、与CAP的关系以及与MVCC的关系。
 
 **BASE理论**：
+
 - BA（Basically Available）：基本可用
 - S（Soft state）：软状态
 - E（Eventual consistency）：最终一致性

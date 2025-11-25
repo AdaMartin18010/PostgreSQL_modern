@@ -196,14 +196,18 @@ MVCC机制通过WAL实现持久性：
 
 1. **ACID理论**：
    - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
-   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Weikum, G., & Vossen, G. (2001).
+  "Transactional Information Systems:
+  Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
 
-2. **原子性**：
+1. **原子性**：
    - Lampson, B. (1981). "Atomic Transactions"
    - Gray, J. (1978). "Notes on Database Operating Systems"
 
-3. **持久性**：
-   - Mohan, C., et al. (1992). "ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging"
+2. **持久性**：
+   - Mohan, C., et al. (1992).
+  "ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and
+  Partial Rollbacks Using Write-Ahead Logging"
 
 ### 官方文档
 

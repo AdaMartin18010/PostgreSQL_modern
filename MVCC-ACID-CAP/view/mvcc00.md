@@ -241,3 +241,59 @@ SELECT n_dead_tup FROM pg_stat_user_tables WHERE relname='users'; -- 死亡元�
 ## 📝 总结
 
 **结论**：两种视角并非矛盾，而是**互补的抽象层级**。程序员视角是设计者视角的**必要简化**，但理解PostgreSQL的物理实现细节，能帮助开发者写出真正高效的并发代码，避免"抽象泄漏"带来的性能灾难。
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **MVCC相关**：
+   - [Multi-Version Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Concurrency Control](https://en.wikipedia.org/wiki/Concurrency_control)
+
+2. **数据库系统**：
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+
+### 学术论文
+
+1. **MVCC理论**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
+
+2. **快照隔离**：
+   - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels". SIGMOD 1995
+   - Cahill, M. J., et al. (2008). "Serializable Isolation for Snapshot Databases". SIGMOD 2008
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
+   - [VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html)
+   - [Database Physical Storage](https://www.postgresql.org/docs/current/storage.html)
+
+2. **PostgreSQL源码**：
+   - [src/backend/access/heap/](https://github.com/postgres/postgres/tree/master/src/backend/access/heap)
+   - [src/include/access/htup_details.h](https://github.com/postgres/postgres/blob/master/src/include/access/htup_details.h)
+
+### 技术博客和文章
+
+1. **PostgreSQL官方博客**：
+   - <https://www.postgresql.org/about/news/>
+   - PostgreSQL 17和18的新特性介绍
+
+2. **技术文章**：
+   - Bruce Momjian的PostgreSQL内部实现文章
+   - 2ndQuadrant的PostgreSQL技术博客
+   - Depesz的PostgreSQL技术博客
+
+---
+
+**最后更新**: 2025年1月
+**维护状态**: ✅ 持续更新

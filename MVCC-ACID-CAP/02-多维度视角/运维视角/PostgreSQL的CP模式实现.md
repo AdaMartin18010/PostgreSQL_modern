@@ -37,6 +37,8 @@
     - [6.2 同步延迟处理](#62-同步延迟处理)
     - [6.3 CP模式故障恢复](#63-cp模式故障恢复)
   - [📝 总结](#-总结)
+    - [核心结论](#核心结论)
+    - [实践建议](#实践建议)
 
 ---
 
@@ -349,12 +351,14 @@ COMMIT PREPARED 'dist_tx1';
 **优化策略**：
 
 1. **减少同步备库数量**
+
    ```sql
    -- 只同步一个备库（降低延迟）
    synchronous_standby_names = 'standby1'
    ```
 
 2. **使用remote_write而非remote_apply**
+
    ```sql
    -- remote_write延迟更低
    synchronous_commit = 'remote_write'
@@ -370,6 +374,7 @@ COMMIT PREPARED 'dist_tx1';
 **优化策略**：
 
 1. **只在必要时使用SERIALIZABLE**
+
    ```sql
    -- 默认使用READ COMMITTED
    default_transaction_isolation = 'read committed';

@@ -77,7 +77,7 @@
 
 版本v是一个四元组：
 
-```
+```text
 v = (xmin, xmax, data, timestamp)
 ```
 
@@ -92,7 +92,7 @@ v = (xmin, xmax, data, timestamp)
 
 快照s是一个事务ID集合：
 
-```
+```text
 s = {τ₁, τ₂, ..., τₙ}
 ```
 
@@ -102,7 +102,7 @@ s = {τ₁, τ₂, ..., τₙ}
 
 版本链C(r)是元组r的所有版本的序列：
 
-```
+```text
 C(r) = [v₁, v₂, ..., vₙ]
 ```
 
@@ -121,7 +121,7 @@ C(r) = [v₁, v₂, ..., vₙ]
 
 对于每个元组r和事务τ，如果τ修改r，则存在版本v使得：
 
-```
+```text
 xmin(v) = τ ∧ v ∈ C(r)
 ```
 
@@ -129,7 +129,7 @@ xmin(v) = τ ∧ v ∈ C(r)
 
 对于每个元组r和事务τ，最多存在一个版本v使得：
 
-```
+```text
 xmin(v) = τ ∧ v ∈ C(r)
 ```
 
@@ -137,7 +137,7 @@ xmin(v) = τ ∧ v ∈ C(r)
 
 对于每个元组r，版本链C(r)包含r的所有版本，且：
 
-```
+```text
 ∀v ∈ C(r), ∃τ ∈ T: xmin(v) = τ
 ```
 
@@ -147,7 +147,7 @@ xmin(v) = τ ∧ v ∈ C(r)
 
 版本v在快照s中可见，当且仅当：
 
-```
+```text
 visible(v, s) ⟺
   (xmin(v) ∈ s ∨ xmin(v) = ⊥) ∧
   (xmax(v) = ⊥ ∨ xmax(v) ∉ s) ∧
@@ -158,7 +158,7 @@ visible(v, s) ⟺
 
 对于快照s中的任意两个版本v₁和v₂，如果它们属于同一元组r，则：
 
-```
+```text
 visible(v₁, s) ∧ visible(v₂, s) ⟹ v₁ = v₂
 ```
 
@@ -166,7 +166,7 @@ visible(v₁, s) ∧ visible(v₂, s) ⟹ v₁ = v₂
 
 如果版本v在快照s中可见，且快照s'包含s的所有已提交事务，则：
 
-```
+```text
 visible(v, s) ∧ s ⊆ s' ⟹ visible(v, s')
 ```
 
@@ -176,7 +176,7 @@ visible(v, s) ∧ s ⊆ s' ⟹ visible(v, s')
 
 对于每个事务τ，存在唯一的快照snapshot(τ)，使得：
 
-```
+```text
 snapshot(τ) = {τ' ∈ T | committed(τ') ∧ timestamp(τ') < timestamp(τ)}
 ```
 
@@ -184,7 +184,7 @@ snapshot(τ) = {τ' ∈ T | committed(τ') ∧ timestamp(τ') < timestamp(τ)}
 
 对于两个并发事务τ₁和τ₂，如果它们读取同一元组r，则：
 
-```
+```text
 snapshot(τ₁) = snapshot(τ₂) ⟹
   ∀v ∈ C(r), visible(v, snapshot(τ₁)) = visible(v, snapshot(τ₂))
 ```
@@ -193,7 +193,7 @@ snapshot(τ₁) = snapshot(τ₂) ⟹
 
 对于事务τ₁和τ₂，如果τ₁在τ₂之前开始，则：
 
-```
+```text
 timestamp(τ₁) < timestamp(τ₂) ⟹ snapshot(τ₁) ⊆ snapshot(τ₂)
 ```
 
@@ -203,7 +203,7 @@ timestamp(τ₁) < timestamp(τ₂) ⟹ snapshot(τ₁) ⊆ snapshot(τ₂)
 
 对于版本链C(r) = [v₁, v₂, ..., vₙ]，满足：
 
-```
+```text
 ∀i < j, xmin(vᵢ) < xmin(vⱼ)
 ```
 
@@ -211,7 +211,7 @@ timestamp(τ₁) < timestamp(τ₂) ⟹ snapshot(τ₁) ⊆ snapshot(τ₂)
 
 对于版本链C(r) = [v₁, v₂, ..., vₙ]，满足：
 
-```
+```text
 ∀i < n, xmax(vᵢ) = xmin(vᵢ₊₁) ∨ xmax(vᵢ) = ⊥
 ```
 
@@ -219,7 +219,7 @@ timestamp(τ₁) < timestamp(τ₂) ⟹ snapshot(τ₁) ⊆ snapshot(τ₂)
 
 对于版本链C(r)中的任意版本vᵢ，存在从v₁到vᵢ的路径，使得：
 
-```
+```text
 ∀j < i, ∃vⱼ ∈ C(r): xmax(vⱼ) = xmin(vᵢ)
 ```
 
@@ -233,7 +233,7 @@ timestamp(τ₁) < timestamp(τ₂) ⟹ snapshot(τ₁) ⊆ snapshot(τ₂)
 
 如果事务τ创建元组r的版本v，则：
 
-```
+```text
 xmin(v) = τ ∧ v ∈ C(r) ∧ committed(τ) ⟹ visible(v, snapshot(τ'))
 ```
 
@@ -243,7 +243,7 @@ xmin(v) = τ ∧ v ∈ C(r) ∧ committed(τ) ⟹ visible(v, snapshot(τ'))
 
 如果事务τ删除版本v，则：
 
-```
+```text
 xmax(v) = τ ∧ committed(τ) ⟹
   ∀s: timestamp(s) > timestamp(τ), ¬visible(v, s)
 ```
@@ -254,7 +254,7 @@ xmax(v) = τ ∧ committed(τ) ⟹
 
 版本v在快照s中可见，当且仅当：
 
-```
+```text
 visible(v, s) ⟺
   (xmin(v) ∈ s ∨ xmin(v) = ⊥) ∧
   (xmax(v) = ⊥ ∨ xmax(v) ∉ s) ∧
@@ -265,7 +265,7 @@ visible(v, s) ⟺
 
 对于元组r和快照s，存在唯一版本v使得：
 
-```
+```text
 visible(v, s) ∧ ∀v' ∈ C(r), visible(v', s) ⟹ timestamp(v') ≤ timestamp(v)
 ```
 
@@ -275,7 +275,7 @@ visible(v, s) ∧ ∀v' ∈ C(r), visible(v', s) ⟹ timestamp(v') ≤ timestamp
 
 对于事务τ和快照snapshot(τ)，满足：
 
-```
+```text
 ∀r ∈ R, ∃!v ∈ C(r): visible(v, snapshot(τ))
 ```
 
@@ -283,7 +283,7 @@ visible(v, s) ∧ ∀v' ∈ C(r), visible(v', s) ⟹ timestamp(v') ≤ timestamp
 
 对于两个并发事务τ₁和τ₂，如果它们读取同一元组r，则：
 
-```
+```text
 snapshot(τ₁) = snapshot(τ₂) ⟹
   ∀v ∈ C(r), visible(v, snapshot(τ₁)) = visible(v, snapshot(τ₂))
 ```

@@ -66,7 +66,7 @@
 
 事务τ是一个操作序列：
 
-```
+```text
 τ = [o₁, o₂, ..., oₙ]
 ```
 
@@ -76,7 +76,7 @@
 
 数据库状态s是一个映射：
 
-```
+```text
 s: R → V
 ```
 
@@ -86,7 +86,7 @@ s: R → V
 
 一致性约束c是一个谓词：
 
-```
+```text
 c: S → {true, false}
 ```
 
@@ -102,7 +102,7 @@ c: S → {true, false}
 
 如果事务τ提交，则τ的所有操作都生效：
 
-```
+```text
 commit(τ) ⟹ ∀o ∈ O(τ), applied(o, state(τ))
 ```
 
@@ -110,7 +110,7 @@ commit(τ) ⟹ ∀o ∈ O(τ), applied(o, state(τ))
 
 如果事务τ中止，则τ的所有操作都不生效：
 
-```
+```text
 abort(τ) ⟹ ∀o ∈ O(τ), ¬applied(o, state(τ))
 ```
 
@@ -118,7 +118,7 @@ abort(τ) ⟹ ∀o ∈ O(τ), ¬applied(o, state(τ))
 
 事务τ要么全部提交，要么全部中止：
 
-```
+```text
 commit(τ) ⟺ ¬abort(τ)
 ```
 
@@ -128,7 +128,7 @@ commit(τ) ⟺ ¬abort(τ)
 
 数据库初始状态满足所有一致性约束：
 
-```
+```text
 ∀c ∈ C, satisfies(initial_state, c)
 ```
 
@@ -136,7 +136,7 @@ commit(τ) ⟺ ¬abort(τ)
 
 如果事务τ提交，则提交后的状态满足所有一致性约束：
 
-```
+```text
 commit(τ) ⟹ ∀c ∈ C, satisfies(state(τ), c)
 ```
 
@@ -144,7 +144,7 @@ commit(τ) ⟹ ∀c ∈ C, satisfies(state(τ), c)
 
 事务τ执行过程中的中间状态可能不满足一致性约束，但提交时必须满足：
 
-```
+```text
 ∀s ∈ intermediate_states(τ),
   (satisfies(s, c) ∨ ¬commit(τ)) ⟹
   (commit(τ) ⟹ satisfies(state(τ), c))
@@ -156,7 +156,7 @@ commit(τ) ⟹ ∀c ∈ C, satisfies(state(τ), c)
 
 READ UNCOMMITTED隔离级别允许读取未提交的数据：
 
-```
+```text
 isolation_level(τ) = READ_UNCOMMITTED ⟹
   ∀τ' ∈ concurrent(τ), can_read(τ, uncommitted_data(τ'))
 ```
@@ -165,7 +165,7 @@ isolation_level(τ) = READ_UNCOMMITTED ⟹
 
 READ COMMITTED隔离级别只允许读取已提交的数据：
 
-```
+```text
 isolation_level(τ) = READ_COMMITTED ⟹
   ∀τ' ∈ concurrent(τ), can_read(τ, committed_data(τ'))
 ```
@@ -174,7 +174,7 @@ isolation_level(τ) = READ_COMMITTED ⟹
 
 REPEATABLE READ隔离级别保证同一事务内多次读取结果一致：
 
-```
+```text
 isolation_level(τ) = REPEATABLE_READ ⟹
   ∀r ∈ R, ∀t₁, t₂ ∈ time(τ), read(τ, r, t₁) = read(τ, r, t₂)
 ```
@@ -183,7 +183,7 @@ isolation_level(τ) = REPEATABLE_READ ⟹
 
 SERIALIZABLE隔离级别保证事务执行结果等价于某个串行执行：
 
-```
+```text
 isolation_level(τ) = SERIALIZABLE ⟹
   ∃serial_order, result(concurrent_execution) = result(serial_order)
 ```
@@ -194,7 +194,7 @@ isolation_level(τ) = SERIALIZABLE ⟹
 
 如果事务τ提交，则τ的修改持久化到存储：
 
-```
+```text
 commit(τ) ⟹ persisted(state(τ))
 ```
 
@@ -202,7 +202,7 @@ commit(τ) ⟹ persisted(state(τ))
 
 系统故障后恢复，已提交事务的修改仍然存在：
 
-```
+```text
 crash_recovery() ⟹
   ∀τ: commit(τ) ∧ timestamp(commit(τ)) < crash_time,
     state(τ) ∈ recovered_state
@@ -212,7 +212,7 @@ crash_recovery() ⟹
 
 所有提交操作都写入WAL，WAL持久化保证数据持久化：
 
-```
+```text
 commit(τ) ⟹ written_to_wal(O(τ)) ⟹ persisted(state(τ))
 ```
 
@@ -226,7 +226,7 @@ commit(τ) ⟹ written_to_wal(O(τ)) ⟹ persisted(state(τ))
 
 原子性保证事务要么全部生效，要么全部不生效，从而保证一致性：
 
-```
+```text
 atomicity(τ) ⟹
   (commit(τ) ⟹ consistency(state(τ))) ∨
   (abort(τ) ⟹ consistency(previous_state))
@@ -238,7 +238,7 @@ atomicity(τ) ⟹
 
 隔离性防止并发事务相互干扰，保证一致性：
 
-```
+```text
 isolation(τ₁, τ₂) ⟹
   consistency(state(τ₁)) ∧ consistency(state(τ₂))
 ```
@@ -249,7 +249,7 @@ isolation(τ₁, τ₂) ⟹
 
 持久性保证已提交的一致性状态不会丢失：
 
-```
+```text
 durability(τ) ⟹
   commit(τ) ⟹ persisted(consistent_state(τ))
 ```
@@ -262,7 +262,7 @@ durability(τ) ⟹
 
 事务τ满足ACID属性，当且仅当：
 
-```
+```text
 ACID(τ) ⟺
   atomicity(τ) ∧
   consistency(τ) ∧
@@ -274,7 +274,7 @@ ACID(τ) ⟺
 
 MVCC机制保证ACID属性：
 
-```
+```text
 MVCC_mechanism ⟹
   ∀τ ∈ T, ACID(τ)
 ```

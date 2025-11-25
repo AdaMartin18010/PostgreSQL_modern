@@ -29,6 +29,12 @@
     - [4.2 PostgreSQL CAP演进](#42-postgresql-cap演进)
     - [4.3 PostgreSQL CAP未来](#43-postgresql-cap未来)
   - [📝 总结](#-总结)
+    - [核心结论](#核心结论)
+    - [实践建议](#实践建议)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -58,6 +64,7 @@ CAP理论是分布式系统设计的核心理论，理解CAP理论的历史演�
 **CAP定理原始表述**：
 
 > "It is impossible for a web service to provide all three of the following guarantees:
+>
 > - Consistency
 > - Availability
 > - Partition tolerance"

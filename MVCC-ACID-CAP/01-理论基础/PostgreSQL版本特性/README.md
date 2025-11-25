@@ -35,6 +35,15 @@
    - 版本链大小减少8-10%
    - WAL大小减少8-10%
 
+### MVCC实现细节
+
+5. ✅ [PostgreSQL MVCC实现细节](PostgreSQL-MVCC实现细节.md) ⭐ 新增（P0改进）
+   - Heap Tuple结构详解
+   - WAL机制深入分析
+   - VACUUM机制深入分析
+   - 版本链管理详解
+   - 源码分析
+
 ---
 
 ## 🎯 核心改进总结

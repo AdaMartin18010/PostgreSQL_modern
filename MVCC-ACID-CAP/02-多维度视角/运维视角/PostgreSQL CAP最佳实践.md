@@ -29,6 +29,8 @@
     - [4.2 AP模式性能调优](#42-ap模式性能调优)
     - [4.3 性能监控与优化](#43-性能监控与优化)
   - [📝 总结](#-总结)
+    - [核心结论](#核心结论)
+    - [实践建议](#实践建议)
 
 ---
 
@@ -111,12 +113,14 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **CP模式优化策略**：
 
 1. **减少同步备库数量**
+
    ```sql
    -- 只同步一个备库（降低延迟）
    ALTER SYSTEM SET synchronous_standby_names = 'standby1';
    ```
 
 2. **使用remote_write而非remote_apply**
+
    ```sql
    -- remote_write延迟更低
    ALTER SYSTEM SET synchronous_commit = 'remote_write';
@@ -132,6 +136,7 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **AP模式优化策略**：
 
 1. **批量WAL传输**
+
    ```sql
    -- 优化WAL传输
    wal_sender_timeout = '60s'
@@ -139,6 +144,7 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
    ```
 
 2. **并行应用WAL**
+
    ```sql
    -- 备库并行应用
    max_parallel_workers_per_gather = 4

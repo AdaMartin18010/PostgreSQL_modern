@@ -19,18 +19,29 @@
   - [第二部分：Diesel ORM深度分析](#第二部分diesel-orm深度分析)
     - [2.1 架构设计](#21-架构设计)
     - [2.2 核心特性](#22-核心特性)
+      - [2.2.1 Schema定义](#221-schema定义)
+      - [2.2.2 类型安全查询](#222-类型安全查询)
+      - [2.2.3 事务管理](#223-事务管理)
     - [2.3 MVCC支持分析](#23-mvcc支持分析)
     - [2.4 性能分析](#24-性能分析)
     - [2.5 源码分析](#25-源码分析)
+      - [Schema宏展开](#schema宏展开)
+      - [查询构建器](#查询构建器)
   - [第三部分：SQLx深度分析](#第三部分sqlx深度分析)
     - [3.1 架构设计](#31-架构设计)
     - [3.2 核心特性](#32-核心特性)
+      - [3.2.1 编译时SQL检查](#321-编译时sql检查)
+      - [3.2.2 类型安全查询](#322-类型安全查询)
+      - [3.2.3 事务管理](#323-事务管理)
     - [3.3 MVCC支持分析](#33-mvcc支持分析)
     - [3.4 性能分析](#34-性能分析)
     - [3.5 源码分析](#35-源码分析)
   - [第四部分：SeaORM深度分析](#第四部分seaorm深度分析)
     - [4.1 架构设计](#41-架构设计)
     - [4.2 核心特性](#42-核心特性)
+      - [4.2.1 实体定义](#421-实体定义)
+      - [4.2.2 查询操作](#422-查询操作)
+      - [4.2.3 事务管理](#423-事务管理)
     - [4.3 MVCC支持分析](#43-mvcc支持分析)
     - [4.4 性能分析](#44-性能分析)
     - [4.5 源码分析](#45-源码分析)
@@ -39,6 +50,8 @@
     - [5.2 性能对比](#52-性能对比)
     - [5.3 使用场景建议](#53-使用场景建议)
     - [5.4 迁移指南](#54-迁移指南)
+      - [从Diesel迁移到SQLx](#从diesel迁移到sqlx)
+      - [从SQLx迁移到SeaORM](#从sqlx迁移到seaorm)
   - [📚 参考资料](#-参考资料)
 
 ---
@@ -102,16 +115,19 @@
 ### 1.3 选择指南
 
 **选择Diesel如果**：
+
 - 需要编译时SQL生成
 - 使用同步代码
 - 需要成熟的ORM功能
 
 **选择SQLx如果**：
+
 - 需要异步支持
 - 需要编译时SQL检查
 - 需要多数据库支持
 
 **选择SeaORM如果**：
+
 - 需要异步ORM
 - 需要自动关系映射
 - 需要现代化API
@@ -130,10 +146,10 @@
 
 **架构图**：
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │         Application Layer               │
-│  (Diesel Query Builder API)            │
+│  (Diesel Query Builder API)             │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
@@ -258,6 +274,7 @@ fn transfer_funds(
 **MVCC集成**：
 
 1. **事务隔离级别**：
+
    ```rust
    // 设置隔离级别
    diesel::sql_query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
@@ -265,6 +282,7 @@ fn transfer_funds(
    ```
 
 2. **版本控制**：
+
    ```rust
    // 乐观锁实现
    #[derive(Queryable, Insertable, AsChangeset)]
@@ -417,7 +435,7 @@ impl<...> RunQueryDsl<PgConnection> for SelectStatement<...> {
 
 **架构图**：
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │         Application Layer               │
 │  (sqlx Query API)                       │
@@ -429,13 +447,13 @@ impl<...> RunQueryDsl<PgConnection> for SelectStatement<...> {
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
-│      Connection Pool Layer               │
+│      Connection Pool Layer              │
 │  (sqlx built-in pool)                   │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
 │      Protocol Layer                     │
-│  (PostgreSQL Protocol 3.0)               │
+│  (PostgreSQL Protocol 3.0)              │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
@@ -607,7 +625,7 @@ pub fn query(input: TokenStream) -> TokenStream {
 
 **架构图**：
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │         Application Layer               │
 │  (SeaORM Entity API)                    │
@@ -841,18 +859,21 @@ impl Entity {
 ### 5.3 使用场景建议
 
 **选择Diesel如果**：
+
 - ✅ 需要编译时SQL生成
 - ✅ 使用同步代码
 - ✅ 需要成熟的ORM功能
 - ✅ 追求极致性能
 
 **选择SQLx如果**：
+
 - ✅ 需要异步支持
 - ✅ 需要编译时SQL检查
 - ✅ 需要多数据库支持
 - ✅ 不需要复杂ORM功能
 
 **选择SeaORM如果**：
+
 - ✅ 需要异步ORM
 - ✅ 需要自动关系映射
 - ✅ 需要现代化API
@@ -898,9 +919,9 @@ let users = users::Entity::find()
 
 ## 📚 参考资料
 
-1. Diesel官方文档: https://diesel.rs
-2. SQLx官方文档: https://docs.rs/sqlx
-3. SeaORM官方文档: https://www.sea-ql.org/SeaORM
+1. Diesel官方文档: <https://diesel.rs>
+2. SQLx官方文档: <https://docs.rs/sqlx>
+3. SeaORM官方文档: <https://www.sea-ql.org/SeaORM>
 4. PostgreSQL MVCC文档
 5. Rust异步编程指南
 

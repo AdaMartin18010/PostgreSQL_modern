@@ -33,6 +33,12 @@
     - [5.2 BASE场景应用](#52-base场景应用)
     - [5.3 BASE与CAP的关系](#53-base与cap的关系)
   - [📝 总结](#-总结)
+    - [核心结论](#核心结论)
+    - [实践建议](#实践建议)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -58,6 +64,7 @@ BASE理论是对ACID理论的补充，它定义了分布式系统在CAP定理约
 **BASE理论定义**：
 
 BASE是**Basically Available, Soft state, Eventual consistency**的缩写，表示：
+
 - **BA（Basically Available）**：基本可用
 - **S（Soft state）**：软状态
 - **E（Eventual consistency）**：最终一致性
@@ -314,7 +321,8 @@ $$
 
 3. **CAP定理**：
    - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
-   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Gilbert, S., & Lynch, N. (2002).
+  "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
 
 ### 官方文档
 
