@@ -31,6 +31,10 @@
   - [📝 总结](#-总结)
     - [核心结论](#核心结论)
     - [实践意义](#实践意义)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -241,6 +245,64 @@ $$
 1. **理论保证**：为MVCC实现提供理论保证
 2. **正确性验证**：可以验证实现的正确性
 3. **优化指导**：指导MVCC优化方向
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **形式化方法相关**：
+   - [Formal Methods](https://en.wikipedia.org/wiki/Formal_methods)
+   - [Mathematical Proof](https://en.wikipedia.org/wiki/Mathematical_proof)
+   - [Theorem](https://en.wikipedia.org/wiki/Theorem)
+   - [Axiom](https://en.wikipedia.org/wiki/Axiom)
+
+2. **并发控制相关**：
+   - [Concurrency Control](https://en.wikipedia.org/wiki/Concurrency_control)
+   - [Multiversion Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+   - [Serializability](https://en.wikipedia.org/wiki/Serializability)
+
+3. **数据库理论**：
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+
+### 学术论文
+
+1. **MVCC理论**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
+   - Adya, A. (1999).
+   "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+
+2. **快照隔离**：
+   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"
+   - Cahill, M. J., et al. (2009). "Serializable Isolation for Snapshot Databases"
+
+3. **可串行化**：
+   - Papadimitriou, C. H. (1979). "The Serializability of Concurrent Database Updates"
+   - Bernstein, P. A., & Goodman, N. (1981). "Concurrency Control in Distributed Database Systems"
+
+4. **ACID属性**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001).
+   "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+5. **形式化方法**：
+   - Lamport, L. (1994). "The Temporal Logic of Actions"
+   - Hoare, C. A. R. (1969). "An Axiomatic Basis for Computer Programming"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
+
+2. **标准文档**：
+   - ANSI SQL Standard (ISO/IEC 9075)
+   - SQL Isolation Levels Specification
 
 ---
 

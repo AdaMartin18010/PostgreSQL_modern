@@ -45,6 +45,10 @@
     - [核心机制](#核心机制)
     - [性能影响](#性能影响)
     - [最佳实践](#最佳实践)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -542,3 +546,45 @@ XA事务最佳实践：
 4. **监控告警**: 监控XA事务和延迟
 
 PostgreSQL通过PREPARE TRANSACTION支持XA事务，可以与各种事务管理器集成，提供可靠的分布式事务支持。
+
+---
+
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **XA事务相关**：
+   - [X/Open XA](https://en.wikipedia.org/wiki/X/Open_XA)
+   - [Distributed Transaction](https://en.wikipedia.org/wiki/Distributed_transaction)
+   - [Two-Phase Commit Protocol](https://en.wikipedia.org/wiki/Two-phase_commit_protocol)
+   - [Transaction Manager](https://en.wikipedia.org/wiki/Transaction_manager)
+
+2. **分布式系统**：
+   - [Distributed Computing](https://en.wikipedia.org/wiki/Distributed_computing)
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+
+### 学术论文
+
+1. **XA协议**：
+   - X/Open Group (1991). "Distributed Transaction Processing: The XA Specification"
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+
+2. **两阶段提交**：
+   - Lampson, B., & Sturgis, H. (1979). "Crash Recovery in a Distributed Data Storage System"
+   - Skeen, D. (1981). "Nonblocking Commit Protocols"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [PREPARE TRANSACTION](https://www.postgresql.org/docs/current/sql-prepare-transaction.html)
+   - [Two-Phase Commit](https://www.postgresql.org/docs/current/sql-prepare-transaction.html)
+   - [JDBC XA Support](https://jdbc.postgresql.org/documentation/head/xa.html)
+
+2. **标准规范**：
+   - X/Open XA Specification
+   - Java Transaction API (JTA) Specification
+
+---
+
+**最后更新**: 2024年
+**维护状态**: ✅ 已完成

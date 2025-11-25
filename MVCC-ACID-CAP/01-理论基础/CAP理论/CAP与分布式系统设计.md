@@ -264,5 +264,52 @@ ALTER TABLE logs SET (synchronous_commit = 'local');
 
 ---
 
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **分布式系统相关**：
+   - [Distributed Computing](https://en.wikipedia.org/wiki/Distributed_computing)
+   - [Distributed Database](https://en.wikipedia.org/wiki/Distributed_database)
+   - [Microservices](https://en.wikipedia.org/wiki/Microservices)
+   - [Message Queue](https://en.wikipedia.org/wiki/Message_queue)
+
+2. **分布式数据库**：
+   - [MongoDB](https://en.wikipedia.org/wiki/MongoDB)
+   - [Cassandra](https://en.wikipedia.org/wiki/Apache_Cassandra)
+   - [CockroachDB](https://en.wikipedia.org/wiki/CockroachDB)
+   - [TiDB](https://en.wikipedia.org/wiki/TiDB)
+
+3. **消息队列**：
+   - [Apache Kafka](https://en.wikipedia.org/wiki/Apache_Kafka)
+   - [RabbitMQ](https://en.wikipedia.org/wiki/RabbitMQ)
+
+### 学术论文
+
+1. **分布式系统设计**：
+   - Fox, A., et al. (1997). "Cluster-Based Scalable Network Services"
+   - DeCandia, G., et al. (2007). "Dynamo: Amazon's Highly Available Key-value Store"
+
+2. **微服务架构**：
+   - Newman, S. (2015). "Building Microservices"
+   - Fowler, M. (2014). "Microservices"
+
+3. **消息队列**：
+   - Kreps, J., et al. (2011). "Kafka: a Distributed Messaging System for Log Processing"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [High Availability](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Replication](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Logical Replication](https://www.postgresql.org/docs/current/logical-replication.html)
+
+2. **分布式数据库文档**：
+   - [CockroachDB Documentation](https://www.cockroachlabs.com/docs/)
+   - [TiDB Documentation](https://docs.pingcap.com/tidb/stable)
+   - [MongoDB Documentation](https://www.mongodb.com/docs/)
+
+---
+
 **最后更新**: 2024年
 **维护状态**: ✅ 已完成

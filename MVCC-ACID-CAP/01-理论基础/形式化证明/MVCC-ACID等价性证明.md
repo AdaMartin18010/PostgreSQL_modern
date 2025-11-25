@@ -16,7 +16,10 @@
   - [📊 第二部分：映射定理证明](#-第二部分映射定理证明)
   - [📊 第三部分：等价性定理证明](#-第三部分等价性定理证明)
   - [📊 第四部分：同构性定理证明](#-第四部分同构性定理证明)
-  - [📚 参考资料](#-参考资料)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
 
 ---
 
@@ -159,12 +162,46 @@ structurally_isomorphic(MVCC, ACID)
 
 ---
 
-## 📚 参考资料
+## 📚 外部资源引用
 
-1. 同构性公理 - 本文档同目录
-2. MVCC核心公理 - 本文档同目录
-3. ACID公理系统 - 本文档同目录
-4. MVCC-ACID关联性论证 - 04目录
+### Wikipedia资源
+
+1. **等价性相关**：
+   - [Equivalence Relation](https://en.wikipedia.org/wiki/Equivalence_relation)
+   - [Isomorphism](https://en.wikipedia.org/wiki/Isomorphism)
+   - [Homomorphism](https://en.wikipedia.org/wiki/Homomorphism)
+
+2. **MVCC相关**：
+   - [Multiversion Concurrency Control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)
+   - [Snapshot Isolation](https://en.wikipedia.org/wiki/Snapshot_isolation)
+
+3. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+
+### 学术论文
+
+1. **MVCC理论**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+
+2. **ACID理论**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+
+3. **同构性理论**：
+   - Category Theory in Computer Science
+   - Universal Algebra
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [MVCC](https://www.postgresql.org/docs/current/mvcc.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   - [ACID Compliance](https://www.postgresql.org/docs/current/mvcc.html)
+
+2. **标准文档**：
+   - ANSI SQL Standard (ISO/IEC 9075)
 
 ---
 

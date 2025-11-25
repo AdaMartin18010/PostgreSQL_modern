@@ -203,5 +203,46 @@ PostgreSQL在不同版本中体现不同的CAP选择：
 
 ---
 
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **CAP定理相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Eric Brewer](https://en.wikipedia.org/wiki/Eric_Brewer_(scientist))
+   - [Distributed Computing](https://en.wikipedia.org/wiki/Distributed_computing)
+
+2. **理论演进**：
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+   - [High Availability](https://en.wikipedia.org/wiki/High_availability)
+
+### 学术论文
+
+1. **CAP定理**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+
+2. **理论演进**：
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
+   - Kleppmann, M. (2015). "A Critique of the CAP Theorem"
+
+3. **实践应用**：
+   - Vogels, W. (2009). "Eventually Consistent"
+   - Pritchett, D. (2008). "BASE: An ACID Alternative"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [High Availability](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Replication](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+
+2. **历史文档**：
+   - ACM PODC Conference Proceedings (2000)
+   - ACM PODC Conference Proceedings (2002)
+
+---
+
 **最后更新**: 2024年
 **维护状态**: ✅ 已完成

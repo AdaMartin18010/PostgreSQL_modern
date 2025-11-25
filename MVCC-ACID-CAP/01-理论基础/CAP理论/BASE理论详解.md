@@ -284,5 +284,51 @@ $$
 
 ---
 
+## 📚 外部资源引用
+
+### Wikipedia资源
+
+1. **BASE理论相关**：
+   - [BASE (ACID alternative)](https://en.wikipedia.org/wiki/Eventual_consistency#BASE)
+   - [Eventual Consistency](https://en.wikipedia.org/wiki/Eventual_consistency)
+   - [High Availability](https://en.wikipedia.org/wiki/High_availability)
+   - [Soft State](https://en.wikipedia.org/wiki/Soft_state)
+
+2. **ACID相关**：
+   - [ACID](https://en.wikipedia.org/wiki/ACID)
+   - [Database Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+
+3. **CAP相关**：
+   - [CAP Theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+   - [Consistency Model](https://en.wikipedia.org/wiki/Consistency_model)
+
+### 学术论文
+
+1. **BASE理论**：
+   - Pritchett, D. (2008). "BASE: An ACID Alternative"
+   - Vogels, W. (2009). "Eventually Consistent"
+
+2. **最终一致性**：
+   - Vogels, W. (2009). "Eventually Consistent"
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
+
+3. **CAP定理**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+
+### 官方文档
+
+1. **PostgreSQL官方文档**：
+   - [High Availability](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Replication](https://www.postgresql.org/docs/current/high-availability.html)
+   - [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+
+2. **分布式数据库文档**：
+   - [Amazon DynamoDB Documentation](https://docs.aws.amazon.com/dynamodb/)
+   - [Cassandra Documentation](https://cassandra.apache.org/doc/)
+   - [MongoDB Documentation](https://www.mongodb.com/docs/)
+
+---
+
 **最后更新**: 2024年
 **维护状态**: ✅ 已完成
