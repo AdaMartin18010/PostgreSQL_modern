@@ -92,6 +92,11 @@
       - [3.5.3 Rust同构实现](#353-rust同构实现)
     - [3.6 最终结论：业务场景驱动的技术选择](#36-最终结论业务场景驱动的技术选择)
   - [📝 总结](#-总结)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
+    - [技术博客](#技术博客)
 
 ---
 
@@ -2276,8 +2281,8 @@ fn create_order_saga(order: Order) -> Result<(), ()> {
 ### 学术论文
 
 1. **Rust并发模型**：
-   - Rust官方文档：https://doc.rust-lang.org/book/
-   - Rust并发模型：https://doc.rust-lang.org/book/ch16-00-concurrency.html
+   - Rust官方文档：<https://doc.rust-lang.org/book/>
+   - Rust并发模型：<https://doc.rust-lang.org/book/ch16-00-concurrency.html>
 
 2. **MVCC理论**：
    - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
@@ -2314,8 +2319,8 @@ fn create_order_saga(order: Order) -> Result<(), ()> {
    - PostgreSQL与Rust集成相关文章
 
 3. **社区资源**：
-   - Rust社区：https://www.rust-lang.org/community
-   - PostgreSQL社区：https://www.postgresql.org/community/
+   - Rust社区：<https://www.rust-lang.org/community>
+   - PostgreSQL社区：<https://www.postgresql.org/community/>
 
 ---
 

@@ -635,5 +635,197 @@ GROUP BY schemaname, tablename;
 
 ---
 
+## 10. 完整代码示例
+
+### 10.1 ProvSQL 安装与配置
+
+**安装 ProvSQL 扩展**：
+
+```bash
+# 克隆 ProvSQL 仓库
+git clone https://github.com/PierreSenellart/provsql.git
+cd provsql
+
+# 编译安装
+make
+sudo make install
+
+# 在 PostgreSQL 中启用扩展
+psql -d testdb -c "CREATE EXTENSION provsql;"
+```
+
+**验证安装**：
+
+```sql
+-- 检查扩展版本
+SELECT * FROM pg_available_extensions WHERE name = 'provsql';
+
+-- 查看已安装的扩展
+\dx provsql
+```
+
+### 10.2 Python ProvSQL 集成示例
+
+**Python 客户端集成**：
+
+```python
+import psycopg2
+from provsql import ProvenanceQuery
+
+class ProvSQLClient:
+    def __init__(self, conn_str):
+        """初始化ProvSQL客户端"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor()
+
+    def enable_provenance(self, table_name):
+        """启用表的溯源功能"""
+        self.cur.execute(f"""
+            SELECT provsql_add_provenance('{table_name}')
+        """)
+        self.conn.commit()
+        print(f"Provenance enabled for table: {table_name}")
+
+    def query_with_provenance(self, query):
+        """执行带溯源的查询"""
+        # 添加溯源信息
+        provenance_query = f"""
+            SELECT provsql_provenance_of(
+                ({query})
+            )
+        """
+
+        self.cur.execute(provenance_query)
+        results = self.cur.fetchall()
+
+        return results
+
+    def get_provenance_graph(self, table_name, record_id):
+        """获取记录的溯源图"""
+        self.cur.execute(f"""
+            SELECT provsql_provenance_graph(
+                '{table_name}',
+                {record_id}
+            )
+        """)
+
+        graph = self.cur.fetchone()[0]
+        return graph
+
+    def explain_provenance(self, query):
+        """解释查询的溯源信息"""
+        self.cur.execute(f"""
+            EXPLAIN (FORMAT JSON)
+            SELECT provsql_provenance_of(
+                ({query})
+            )
+        """)
+
+        plan = self.cur.fetchone()[0]
+        return plan
+
+# 使用示例
+client = ProvSQLClient("host=localhost dbname=testdb user=postgres password=secret")
+
+# 启用溯源
+client.enable_provenance('products')
+client.enable_provenance('orders')
+
+# 查询带溯源
+results = client.query_with_provenance("""
+    SELECT p.name, o.quantity
+    FROM products p
+    JOIN orders o ON p.id = o.product_id
+    WHERE o.quantity > 10
+""")
+
+# 获取溯源图
+graph = client.get_provenance_graph('orders', 1)
+print(f"Provenance graph: {graph}")
+```
+
+### 10.3 数据溯源查询示例
+
+**基础溯源查询**：
+
+```sql
+-- 启用溯源
+SELECT provsql_add_provenance('products');
+SELECT provsql_add_provenance('orders');
+
+-- 插入数据
+INSERT INTO products (name, price) VALUES ('Product A', 99.99);
+INSERT INTO orders (product_id, quantity) VALUES (1, 5);
+
+-- 查询带溯源
+SELECT provsql_provenance_of(
+    SELECT p.name, o.quantity
+    FROM products p
+    JOIN orders o ON p.id = o.product_id
+    WHERE p.price > 50
+);
+```
+
+**溯源图查询**：
+
+```sql
+-- 获取记录的完整溯源图
+SELECT provsql_provenance_graph('orders', 1);
+
+-- 获取溯源路径
+SELECT provsql_provenance_path('orders', 1, 'products', 1);
+```
+
+### 10.4 Docker Compose 部署配置
+
+**docker-compose.yml**：
+
+```yaml
+version: '3.8'
+
+services:
+  postgresql:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_provsql.sql:/docker-entrypoint-initdb.d/init.sql
+    command: postgres -c shared_preload_libraries=provsql
+
+volumes:
+  postgres_data:
+```
+
+**init_provsql.sql**：
+
+```sql
+-- 创建扩展
+CREATE EXTENSION IF NOT EXISTS provsql;
+
+-- 创建测试表
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    price NUMERIC
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER
+);
+
+-- 启用溯源
+SELECT provsql_add_provenance('products');
+SELECT provsql_add_provenance('orders');
+```
+
+---
+
 **最后更新**: 2025年1月
 **维护状态**: ✅ 持续更新

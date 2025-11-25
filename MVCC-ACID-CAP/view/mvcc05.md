@@ -33,6 +33,11 @@
     - [**实时可见性监控函数**](#实时可见性监控函数)
     - [**事务年龄实时监控Dashboard**](#事务年龄实时监控dashboard)
   - [📝 总结：关联性核心公式](#-总结关联性核心公式)
+  - [📚 外部资源引用](#-外部资源引用)
+    - [Wikipedia资源](#wikipedia资源)
+    - [学术论文](#学术论文)
+    - [官方文档](#官方文档)
+    - [技术博客](#技术博客)
 
 ---
 
@@ -657,8 +662,8 @@ $$
    - Bernstein, P. A., & Newcomer, E. (2009). "Principles of Transaction Processing" (2nd Edition)
 
 3. **PostgreSQL实现**：
-   - PostgreSQL源码：https://github.com/postgres/postgres
-   - PostgreSQL内部文档：https://www.postgresql.org/docs/current/internals.html
+   - PostgreSQL源码：<https://github.com/postgres/postgres>
+   - PostgreSQL内部文档：<https://www.postgresql.org/docs/current/internals.html>
 
 ### 官方文档
 

@@ -962,8 +962,8 @@ psql -c "VACUUM (VERBOSE, ANALYZE) big_table;" -d your_db
    - Cahill, M. J., et al. (2008). "Serializable Isolation for Snapshot Databases". SIGMOD 2008
 
 3. **PostgreSQL实现**：
-   - PostgreSQL源码：https://github.com/postgres/postgres
-   - PostgreSQL内部文档：https://www.postgresql.org/docs/current/internals.html
+   - PostgreSQL源码：<https://github.com/postgres/postgres>
+   - PostgreSQL内部文档：<https://www.postgresql.org/docs/current/internals.html>
 
 ### 官方文档
 
