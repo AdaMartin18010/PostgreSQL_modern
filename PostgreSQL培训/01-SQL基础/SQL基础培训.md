@@ -401,7 +401,9 @@ SELECT gen_random_uuid();
 - DCL = {GRANT, REVOKE}：数据控制语言
 
 **定义 2（SELECT语句）**：
-设 SELECT = SELECT <columns> FROM <table> [WHERE <condition>] [GROUP BY <group>] [HAVING <having>] [ORDER BY <order>] [LIMIT <limit>]，其中：
+设 SELECT =
+SELECT <columns> FROM <table> [WHERE <condition>]
+[GROUP BY <group>] [HAVING <having>] [ORDER BY <order>] [LIMIT <limit>]，其中：
 
 - columns：列表达式集合
 - table：表名或表表达式
@@ -414,7 +416,11 @@ SELECT gen_random_uuid();
 **定义 3（WHERE条件）**：
 设 condition = {predicate | condition AND condition | condition OR condition | NOT condition}，其中：
 
-- predicate = {column op value | column IN (values) | column BETWEEN value1 AND value2 | column LIKE pattern | column IS NULL}
+- predicate =
+{
+column op value | column IN (values) | column BETWEEN value1 AND value2
+| column LIKE pattern | column IS NULL
+}
 - op ∈ {=, <>, <, >, <=, >=}
 
 **形式化证明**：
@@ -983,21 +989,21 @@ SELECT name FROM suppliers;
 
 **方案分析**:
 
-**方案1：使用INTEGER作为主键**
+**方案1：使用INTEGER作为主键**:
 
 - **优点**: 存储空间小（4字节）、查询性能好、索引效率高
 - **缺点**: 范围有限（-2^31到2^31-1）
 - **适用场景**: 单机系统、数据量<20亿
 - **性能数据**: 查询时间 < 1ms，索引大小小
 
-**方案2：使用BIGINT作为主键**
+**方案2：使用BIGINT作为主键**:
 
 - **优点**: 范围大（-2^63到2^63-1）、查询性能好
 - **缺点**: 存储空间大（8字节）
 - **适用场景**: 分布式系统、数据量>20亿
 - **性能数据**: 查询时间 < 1ms，索引大小中等
 
-**方案3：使用UUID作为主键**
+**方案3：使用UUID作为主键**:
 
 - **优点**: 全局唯一、分布式友好
 - **缺点**: 存储空间大（16字节）、查询性能较差、索引效率低
