@@ -297,11 +297,12 @@ COMMIT PREPARED 'tx1';
 1. **ACID**：
    - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
    - Weikum, G., & Vossen, G. (2001).
-    "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+"Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
 
-2. **CAP**：
+1. **CAP**：
    - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
-   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Gilbert, S., & Lynch, N. (2002).
+"Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
 
 ### 官方文档
 
