@@ -6,27 +6,74 @@
 
 ## 📑 目录
 
-- [1. 概述](#1-概述)
-  - [1.1 技术背景](#11-技术背景)
-  - [1.2 技术定位](#12-技术定位)
-  - [1.3 核心价值](#13-核心价值)
-- [2. 技术原理](#2-技术原理)
-  - [2.1 向量数据类型实现原理](#21-向量数据类型实现原理)
-  - [2.2 HNSW 索引算法详解](#22-hnsw-索引算法详解)
-  - [2.3 IVFFlat 索引算法详解](#23-ivfflat-索引算法详解)
-  - [2.4 距离计算优化机制](#24-距离计算优化机制)
-- [3. 架构设计](#3-架构设计)
-  - [3.1 整体架构](#31-整体架构)
-  - [3.2 存储层设计](#32-存储层设计)
-  - [3.3 索引层设计](#33-索引层设计)
-- [4. 性能分析](#4-性能分析)
-  - [4.1 基准测试与论证](#41-基准测试与论证)
-  - [4.2 性能影响因素分析](#42-性能影响因素分析)
-- [5. 实现细节](#5-实现细节)
-  - [5.1 核心数据结构](#51-核心数据结构)
-  - [5.2 关键算法实现](#52-关键算法实现)
-- [6. 最佳实践](#6-最佳实践)
-- [7. 参考资料](#7-参考资料)
+- [pgvector 核心原理](#pgvector-核心原理)
+  - [📑 目录](#-目录)
+  - [1. 概述](#1-概述)
+    - [1.1 技术背景](#11-技术背景)
+    - [1.2 技术定位](#12-技术定位)
+    - [1.3 核心价值](#13-核心价值)
+  - [2. 技术原理](#2-技术原理)
+    - [2.1 向量数据类型实现原理](#21-向量数据类型实现原理)
+      - [2.1.1 标准向量类型 (vector)](#211-标准向量类型-vector)
+      - [2.1.2 半精度向量类型 (halfvec)](#212-半精度向量类型-halfvec)
+      - [2.1.3 二进制向量类型 (bit)](#213-二进制向量类型-bit)
+      - [2.1.4 稀疏向量类型 (sparsevec)](#214-稀疏向量类型-sparsevec)
+    - [2.2 HNSW 索引算法详解](#22-hnsw-索引算法详解)
+      - [2.2.1 算法原理](#221-算法原理)
+      - [2.2.2 参数优化论证](#222-参数优化论证)
+    - [2.3 IVFFlat 索引算法详解](#23-ivfflat-索引算法详解)
+      - [2.3.1 算法原理](#231-算法原理)
+      - [2.3.2 参数优化论证](#232-参数优化论证)
+    - [2.4 距离计算优化机制](#24-距离计算优化机制)
+      - [2.4.1 SIMD 优化](#241-simd-优化)
+      - [2.4.2 缓存优化](#242-缓存优化)
+  - [3. 架构设计](#3-架构设计)
+    - [3.1 整体架构](#31-整体架构)
+    - [3.2 存储层设计](#32-存储层设计)
+      - [3.2.1 向量数据存储](#321-向量数据存储)
+      - [3.2.2 索引存储结构](#322-索引存储结构)
+    - [3.3 索引层设计](#33-索引层设计)
+      - [3.3.1 HNSW 索引访问路径](#331-hnsw-索引访问路径)
+      - [3.3.2 IVFFlat 索引访问路径](#332-ivfflat-索引访问路径)
+  - [4. 性能分析](#4-性能分析)
+    - [4.1 基准测试与论证](#41-基准测试与论证)
+      - [4.1.1 测试环境](#411-测试环境)
+      - [4.1.2 HNSW 性能基准测试](#412-hnsw-性能基准测试)
+      - [4.1.3 IVFFlat 性能基准测试](#413-ivfflat-性能基准测试)
+    - [4.2 性能影响因素分析](#42-性能影响因素分析)
+      - [4.2.1 硬件因素](#421-硬件因素)
+      - [4.2.2 数据特征影响](#422-数据特征影响)
+    - [4.3 实际应用场景性能数据](#43-实际应用场景性能数据)
+      - [4.3.1 电商搜索场景](#431-电商搜索场景)
+      - [4.3.2 RAG 应用场景](#432-rag-应用场景)
+      - [4.3.3 推荐系统场景](#433-推荐系统场景)
+  - [5. 实现细节](#5-实现细节)
+    - [5.1 核心数据结构](#51-核心数据结构)
+      - [5.1.1 向量类型定义](#511-向量类型定义)
+      - [5.1.2 操作符实现](#512-操作符实现)
+    - [5.2 关键算法实现](#52-关键算法实现)
+      - [5.2.1 HNSW 索引构建算法](#521-hnsw-索引构建算法)
+      - [5.2.2 HNSW 查询算法](#522-hnsw-查询算法)
+  - [6. 最佳实践](#6-最佳实践)
+    - [6.1 索引选择策略](#61-索引选择策略)
+      - [6.1.1 场景分析与选择](#611-场景分析与选择)
+      - [6.1.2 参数调优建议](#612-参数调优建议)
+    - [6.2 查询优化技巧](#62-查询优化技巧)
+      - [6.2.1 查询计划分析](#621-查询计划分析)
+      - [6.2.2 批量查询优化](#622-批量查询优化)
+    - [6.3 常见问题与解决方案](#63-常见问题与解决方案)
+      - [6.3.1 索引构建慢](#631-索引构建慢)
+      - [6.3.2 查询召回率低](#632-查询召回率低)
+      - [6.3.3 内存占用高](#633-内存占用高)
+  - [7. 参考资料](#7-参考资料)
+    - [7.1 官方文档](#71-官方文档)
+    - [7.2 学术论文](#72-学术论文)
+    - [7.3 相关资源](#73-相关资源)
+  - [8. 完整代码示例](#8-完整代码示例)
+    - [8.1 pgvector安装与配置](#81-pgvector安装与配置)
+    - [8.2 向量数据操作示例](#82-向量数据操作示例)
+    - [8.3 HNSW索引创建与使用](#83-hnsw索引创建与使用)
+    - [8.4 向量相似度搜索示例](#84-向量相似度搜索示例)
 
 ---
 
@@ -1046,6 +1093,317 @@ CROSS JOIN LATERAL (
 - [向量数据库对比](https://www.pinecone.io/learn/vector-database/)
 - [PostgreSQL 扩展开发指南](https://www.postgresql.org/docs/current/extend.html)
 - [SIMD 优化技术](https://en.wikipedia.org/wiki/SIMD)
+
+---
+
+## 8. 完整代码示例
+
+### 8.1 pgvector安装与配置
+
+**安装pgvector扩展**：
+
+```bash
+# 使用Docker安装
+docker run -d \
+  --name postgres-vector \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_DB=testdb \
+  -p 5432:5432 \
+  pgvector/pgvector:pg18
+
+# 在PostgreSQL中启用扩展
+psql -d testdb -c "CREATE EXTENSION vector;"
+```
+
+**验证安装**：
+
+```sql
+-- 检查扩展版本
+SELECT * FROM pg_available_extensions WHERE name = 'vector';
+
+-- 查看已安装的扩展
+\dx vector
+
+-- 测试向量类型
+SELECT '[1,2,3]'::vector;
+```
+
+### 8.2 向量数据操作示例
+
+**创建向量表**：
+
+```sql
+-- 创建商品向量表
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    description TEXT,
+    embedding vector(1536),  -- OpenAI embedding维度
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 插入向量数据
+INSERT INTO products (name, description, embedding)
+VALUES (
+    'Product A',
+    'A high-quality product',
+    '[0.1,0.2,0.3,...]'::vector  -- 1536维向量
+);
+
+-- 批量插入向量数据
+INSERT INTO products (name, embedding)
+SELECT
+    'Product ' || i,
+    array_to_vector(ARRAY(SELECT random() FROM generate_series(1, 1536)))::vector(1536)
+FROM generate_series(1, 1000) i;
+```
+
+**Python向量操作示例**：
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+import numpy as np
+
+class VectorDBClient:
+    def __init__(self, conn_str):
+        """初始化向量数据库客户端"""
+        self.conn = psycopg2.connect(conn_str)
+        register_vector(self.conn)
+        self.cur = self.conn.cursor()
+
+    def insert_vector(self, name: str, description: str, embedding: np.ndarray):
+        """插入向量数据"""
+        self.cur.execute("""
+            INSERT INTO products (name, description, embedding)
+            VALUES (%s, %s, %s)
+        """, (name, description, embedding.tolist()))
+
+        self.conn.commit()
+
+    def search_similar(self, query_vector: np.ndarray, limit: int = 10) -> List[Dict]:
+        """相似度搜索"""
+        self.cur.execute("""
+            SELECT id, name, description, embedding <=> %s AS distance
+            FROM products
+            ORDER BY embedding <=> %s
+            LIMIT %s
+        """, (query_vector.tolist(), query_vector.tolist(), limit))
+
+        results = []
+        for row in self.cur.fetchall():
+            results.append({
+                'id': row[0],
+                'name': row[1],
+                'description': row[2],
+                'distance': row[3]
+            })
+
+        return results
+
+# 使用示例
+client = VectorDBClient("host=localhost dbname=testdb user=postgres password=secret")
+
+# 插入向量
+embedding = np.random.rand(1536).astype(np.float32)
+client.insert_vector("Product A", "Description", embedding)
+
+# 搜索相似向量
+query_embedding = np.random.rand(1536).astype(np.float32)
+results = client.search_similar(query_embedding, limit=10)
+for result in results:
+    print(f"{result['name']}: distance = {result['distance']:.4f}")
+```
+
+### 8.3 HNSW索引创建与使用
+
+**创建HNSW索引**：
+
+```sql
+-- 创建HNSW索引
+CREATE INDEX ON products
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+-- 查看索引信息
+SELECT
+    indexname,
+    indexdef
+FROM pg_indexes
+WHERE tablename = 'products';
+
+-- 设置HNSW搜索参数
+SET hnsw.ef_search = 100;  -- 增加搜索精度
+```
+
+**Python HNSW索引使用**：
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+import numpy as np
+
+class HNSWIndexManager:
+    def __init__(self, conn_str):
+        """初始化HNSW索引管理器"""
+        self.conn = psycopg2.connect(conn_str)
+        register_vector(self.conn)
+        self.cur = self.conn.cursor()
+
+    def create_hnsw_index(self, table_name: str, column_name: str,
+                          m: int = 16, ef_construction: int = 64):
+        """创建HNSW索引"""
+        index_name = f"idx_{table_name}_{column_name}_hnsw"
+
+        self.cur.execute(f"""
+            CREATE INDEX {index_name}
+            ON {table_name}
+            USING hnsw ({column_name} vector_cosine_ops)
+            WITH (m = %s, ef_construction = %s)
+        """, (m, ef_construction))
+
+        self.conn.commit()
+        print(f"Created HNSW index: {index_name}")
+
+    def set_search_parameters(self, ef_search: int = 100):
+        """设置搜索参数"""
+        self.cur.execute(f"SET hnsw.ef_search = {ef_search}")
+        self.conn.commit()
+
+    def search_with_hnsw(self, query_vector: np.ndarray, limit: int = 10) -> List[Dict]:
+        """使用HNSW索引搜索"""
+        self.cur.execute("""
+            SELECT id, name, embedding <=> %s AS distance
+            FROM products
+            ORDER BY embedding <=> %s
+            LIMIT %s
+        """, (query_vector.tolist(), query_vector.tolist(), limit))
+
+        results = []
+        for row in self.cur.fetchall():
+            results.append({
+                'id': row[0],
+                'name': row[1],
+                'distance': row[2]
+            })
+
+        return results
+
+# 使用示例
+index_manager = HNSWIndexManager("host=localhost dbname=testdb user=postgres password=secret")
+
+# 创建HNSW索引
+index_manager.create_hnsw_index('products', 'embedding', m=16, ef_construction=64)
+
+# 设置搜索参数
+index_manager.set_search_parameters(ef_search=100)
+
+# 搜索
+query_vector = np.random.rand(1536).astype(np.float32)
+results = index_manager.search_with_hnsw(query_vector)
+```
+
+### 8.4 向量相似度搜索示例
+
+**多种距离计算方式**：
+
+```sql
+-- 余弦相似度（默认）
+SELECT id, name, embedding <=> '[1,2,3]'::vector AS cosine_distance
+FROM products
+ORDER BY embedding <=> '[1,2,3]'::vector
+LIMIT 10;
+
+-- L2距离（欧氏距离）
+SELECT id, name, embedding <-> '[1,2,3]'::vector AS l2_distance
+FROM products
+ORDER BY embedding <-> '[1,2,3]'::vector
+LIMIT 10;
+
+-- 内积
+SELECT id, name, embedding <#> '[1,2,3]'::vector AS inner_product
+FROM products
+ORDER BY embedding <#> '[1,2,3]'::vector
+LIMIT 10;
+```
+
+**Python相似度搜索示例**：
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+import numpy as np
+from typing import List, Dict
+
+class VectorSearchEngine:
+    def __init__(self, conn_str):
+        """初始化向量搜索引擎"""
+        self.conn = psycopg2.connect(conn_str)
+        register_vector(self.conn)
+        self.cur = self.conn.cursor()
+
+    def cosine_search(self, query_vector: np.ndarray, limit: int = 10) -> List[Dict]:
+        """余弦相似度搜索"""
+        self.cur.execute("""
+            SELECT id, name, embedding <=> %s AS distance
+            FROM products
+            ORDER BY embedding <=> %s
+            LIMIT %s
+        """, (query_vector.tolist(), query_vector.tolist(), limit))
+
+        return [{'id': r[0], 'name': r[1], 'distance': r[2]} for r in self.cur.fetchall()]
+
+    def l2_search(self, query_vector: np.ndarray, limit: int = 10) -> List[Dict]:
+        """L2距离搜索"""
+        self.cur.execute("""
+            SELECT id, name, embedding <-> %s AS distance
+            FROM products
+            ORDER BY embedding <-> %s
+            LIMIT %s
+        """, (query_vector.tolist(), query_vector.tolist(), limit))
+
+        return [{'id': r[0], 'name': r[1], 'distance': r[2]} for r in self.cur.fetchall()]
+
+    def hybrid_search(self, query_vector: np.ndarray, text_query: str, limit: int = 10) -> List[Dict]:
+        """混合搜索（向量+全文）"""
+        self.cur.execute("""
+            SELECT
+                id,
+                name,
+                embedding <=> %s AS vector_distance,
+                ts_rank(to_tsvector('english', description), plainto_tsquery('english', %s)) AS text_rank
+            FROM products
+            WHERE to_tsvector('english', description) @@ plainto_tsquery('english', %s)
+            ORDER BY (embedding <=> %s) + (1 - ts_rank(to_tsvector('english', description), plainto_tsquery('english', %s)))
+            LIMIT %s
+        """, (
+            query_vector.tolist(),
+            text_query, text_query,
+            query_vector.tolist(),
+            text_query,
+            limit
+        ))
+
+        return [{'id': r[0], 'name': r[1], 'vector_dist': r[2], 'text_rank': r[3]}
+                for r in self.cur.fetchall()]
+
+# 使用示例
+search_engine = VectorSearchEngine("host=localhost dbname=testdb user=postgres password=secret")
+
+query_vector = np.random.rand(1536).astype(np.float32)
+
+# 余弦相似度搜索
+results = search_engine.cosine_search(query_vector)
+print("Cosine similarity results:")
+for r in results:
+    print(f"  {r['name']}: {r['distance']:.4f}")
+
+# 混合搜索
+hybrid_results = search_engine.hybrid_search(query_vector, "high quality")
+print("\nHybrid search results:")
+for r in hybrid_results:
+    print(f"  {r['name']}: vector={r['vector_dist']:.4f}, text={r['text_rank']:.4f}")
+```
 
 ---
 

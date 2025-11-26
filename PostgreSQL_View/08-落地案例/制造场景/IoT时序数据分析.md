@@ -747,6 +747,166 @@ ORDER BY bucket DESC;
 
 ---
 
+## 9. 完整代码示例
+
+### 9.1 TimescaleDB时序表创建
+
+**创建IoT时序数据表**：
+
+```sql
+-- 启用TimescaleDB和pgvector扩展
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 创建设备指标时序表
+CREATE TABLE device_metrics (
+    time TIMESTAMPTZ NOT NULL,
+    device_id TEXT NOT NULL,
+    metric_name TEXT NOT NULL,
+    value DOUBLE PRECISION,
+    tags JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 转换为超表
+SELECT create_hypertable('device_metrics', 'time');
+
+-- 创建设备状态向量表
+CREATE TABLE device_state_vectors (
+    device_id TEXT NOT NULL,
+    time TIMESTAMPTZ NOT NULL,
+    state_vector vector(768),
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 创建索引
+CREATE INDEX idx_device_metrics_device_time ON device_metrics (device_id, time DESC);
+CREATE INDEX idx_device_state_vectors_vector ON device_state_vectors USING hnsw (state_vector vector_cosine_ops);
+```
+
+### 9.2 时序数据分析实现
+
+**Python时序数据分析**：
+
+```python
+import psycopg2
+from datetime import datetime, timedelta
+from typing import List, Dict
+import json
+
+class IoTTimeSeriesAnalyzer:
+    def __init__(self, conn_str):
+        """初始化IoT时序分析器"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor()
+
+    def insert_metrics(self, device_id: str, metric_name: str, value: float, tags: Dict = None):
+        """插入设备指标"""
+        self.cur.execute("""
+            INSERT INTO device_metrics
+            (time, device_id, metric_name, value, tags)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            datetime.now(),
+            device_id,
+            metric_name,
+            value,
+            json.dumps(tags) if tags else None
+        ))
+        self.conn.commit()
+
+    def calculate_statistics(self, device_id: str, metric_name: str, hours: int = 24) -> Dict:
+        """计算统计指标"""
+        self.cur.execute("""
+            SELECT
+                AVG(value) as avg_value,
+                MIN(value) as min_value,
+                MAX(value) as max_value,
+                STDDEV(value) as stddev_value,
+                COUNT(*) as data_points
+            FROM device_metrics
+            WHERE device_id = %s AND metric_name = %s
+              AND time > NOW() - INTERVAL '%s hours'
+        """, (device_id, metric_name, hours))
+
+        result = self.cur.fetchone()
+        if result:
+            return {
+                'avg': result[0],
+                'min': result[1],
+                'max': result[2],
+                'stddev': result[3],
+                'data_points': result[4]
+            }
+        return None
+
+# 使用示例
+analyzer = IoTTimeSeriesAnalyzer("host=localhost dbname=testdb user=postgres password=secret")
+analyzer.insert_metrics('device_001', 'temperature', 25.5, {'unit': 'celsius'})
+stats = analyzer.calculate_statistics('device_001', 'temperature', hours=24)
+```
+
+### 9.3 异常检测实现
+
+**Python异常检测**：
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+import numpy as np
+from datetime import datetime
+
+class IoTAnomalyDetector:
+    def __init__(self, conn_str):
+        """初始化IoT异常检测器"""
+        self.conn = psycopg2.connect(conn_str)
+        register_vector(self.conn)
+        self.cur = self.conn.cursor()
+
+    def detect_anomaly(self, device_id: str, current_vector: np.ndarray) -> Dict:
+        """检测异常"""
+        # 获取历史正常状态
+        self.cur.execute("""
+            SELECT state_vector
+            FROM device_state_vectors
+            WHERE device_id = %s
+              AND time > NOW() - INTERVAL '7 days'
+            ORDER BY time DESC
+            LIMIT 100
+        """, (device_id,))
+
+        normal_vectors = [np.array(row[0]) for row in self.cur.fetchall() if row[0]]
+
+        if not normal_vectors:
+            return {'is_anomaly': False, 'similarity': 1.0}
+
+        # 计算相似度
+        similarities = [1 - np.linalg.norm(current_vector - nv) for nv in normal_vectors]
+        avg_similarity = sum(similarities) / len(similarities)
+
+        # 保存当前状态向量
+        self.cur.execute("""
+            INSERT INTO device_state_vectors
+            (device_id, time, state_vector)
+            VALUES (%s, %s, %s)
+        """, (device_id, datetime.now(), current_vector.tolist()))
+
+        self.conn.commit()
+
+        return {
+            'is_anomaly': avg_similarity < 0.7,
+            'similarity': avg_similarity
+        }
+
+# 使用示例
+detector = IoTAnomalyDetector("host=localhost dbname=testdb user=postgres password=secret")
+current_vector = np.random.rand(768).astype(np.float32)
+result = detector.detect_anomaly('device_001', current_vector)
+```
+
+---
+
 **最后更新**: 2025 年 11 月 1 日
 **维护者**: PostgreSQL Modern Team
 **文档编号**: 08-04-02

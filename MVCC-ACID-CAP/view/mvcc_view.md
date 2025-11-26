@@ -1688,12 +1688,14 @@ impl DistributedFairLock {
 
 2. **ACID**：
    - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
-   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
+   - Weikum, G., & Vossen, G. (2001).
+   "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
    - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels"
 
 3. **CAP**：
    - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
-   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+   - Gilbert, S., & Lynch, N. (2002).
+   "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
    - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
 
 4. **分布式系统**：
