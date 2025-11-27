@@ -722,97 +722,110 @@
 
 1. Rust驱动PostgreSQL实践
 2. Rust异步编程与MVCC交互
-6. Diesel ORM与PostgreSQL MVCC
-7. SQLx与PostgreSQL MVCC
-14. Rust并发原语深度对比
-15. Rust并发模式最佳实践
+3. Diesel ORM与PostgreSQL MVCC
+4. SQLx与PostgreSQL MVCC
+5. Rust并发原语深度对比
+6. Rust并发模式最佳实践
 
 **运维视角（4个）**：
-16. Rust应用并发监控指标
-17. Prometheus监控集成
-20. Rust应用故障诊断
-21. 性能故障处理
-22. 并发问题诊断
+
+1. Rust应用并发监控指标
+2. Prometheus监控集成
+3. Rust应用故障诊断
+4. 性能故障处理
+5. 并发问题诊断
 
 **数据库设计视角（3个）**：
-28. Rust数据结构与PostgreSQL表结构映射
-29. Rust序列化与PostgreSQL存储
-30. Rust类型系统与PostgreSQL类型系统
-33. Rust查询构建与PostgreSQL查询优化
+
+1. Rust数据结构与PostgreSQL表结构映射
+2. Rust序列化与PostgreSQL存储
+3. Rust类型系统与PostgreSQL类型系统
+4. Rust查询构建与PostgreSQL查询优化
 
 **性能优化视角（4个）**：
-38. 深度性能对比分析
-39. Rust性能优化技巧
-40. PostgreSQL MVCC性能优化
-41. 混合系统性能优化
-45. 性能调优案例研究
+
+1. 深度性能对比分析
+2. Rust性能优化技巧
+3. PostgreSQL MVCC性能优化
+4. 混合系统性能优化
+5. 性能调优案例研究
 
 **工具生态视角（2个）**：
-46. Rust PostgreSQL驱动库深度分析
-47. Rust ORM框架深度分析
-52. 监控工具集成
+
+1. Rust PostgreSQL驱动库深度分析
+2. Rust ORM框架深度分析
+3. 监控工具集成
 
 #### 🟡 中优先级（P1）- 第二阶段（30个主题）
 
 **程序员视角（6个）**：
-3. Rust错误处理与事务回滚
-4. Rust宏与MVCC代码生成
-5. Rust测试框架与MVCC场景测试
-10. ORM框架对比与选择
-11. Rust通道与PostgreSQL通知
-13. Rust无锁数据结构与MVCC
+
+1. Rust错误处理与事务回滚
+2. Rust宏与MVCC代码生成
+3. Rust测试框架与MVCC场景测试
+4. ORM框架对比与选择
+5. Rust通道与PostgreSQL通知
+6. Rust无锁数据结构与MVCC
 
 **运维视角（6个）**：
-18. 性能分析工具对比
-19. 分布式追踪与MVCC
-23. 故障处理完整流程
-24. Rust应用部署策略
-25. 配置管理
-26. 资源管理
-27. 运维自动化
+
+1. 性能分析工具对比
+2. 分布式追踪与MVCC
+3. 故障处理完整流程
+4. Rust应用部署策略
+5. 配置管理
+6. 资源管理
+7. 运维自动化
 
 **数据库设计视角（6个）**：
-31. Rust内存布局优化
-32. Rust集合类型与PostgreSQL数组
-34. Rust批量操作与PostgreSQL MVCC
-35. Rust缓存策略与PostgreSQL MVCC
-36. Rust索引设计与PostgreSQL索引
-37. Rust数据访问模式优化
+
+1. Rust内存布局优化
+2. Rust集合类型与PostgreSQL数组
+3. Rust批量操作与PostgreSQL MVCC
+4. Rust缓存策略与PostgreSQL MVCC
+5. Rust索引设计与PostgreSQL索引
+6. Rust数据访问模式优化
 
 **性能优化视角（3个）**：
-42. 性能测试框架
-43. 性能基准测试
-44. 性能回归测试
+
+1. 性能测试框架
+2. 性能基准测试
+3. 性能回归测试
 
 **工具生态视角（6个）**：
-48. Rust测试工具与MVCC
-49. Rust性能分析工具
-50. Rust调试工具
-51. CI/CD集成
-54. 代码质量工具
-55. 开发工具链
+
+1. Rust测试工具与MVCC
+2. Rust性能分析工具
+3. Rust调试工具
+4. CI/CD集成
+5. 代码质量工具
+6. 开发工具链
 
 **跨语言对比（3个）**：
-56. Go并发模型与PostgreSQL MVCC
-59. 多语言并发模型对比矩阵
-60. 所有权模型对比
-61. 类型系统对比
-62. 并发原语对比
-63. 语言选择指南
+
+1. Go并发模型与PostgreSQL MVCC
+2. 多语言并发模型对比矩阵
+3. 所有权模型对比
+4. 类型系统对比
+5. 并发原语对比
+6. 语言选择指南
 
 #### 🟢 低优先级（P2）- 第三阶段（13个主题）
 
 **程序员视角（2个）**：
-8. SeaORM与PostgreSQL MVCC
-9. 自定义ORM设计与MVCC
-12. Rust Actor模式与PostgreSQL MVCC
+
+1. SeaORM与PostgreSQL MVCC
+2. 自定义ORM设计与MVCC
+3. Rust Actor模式与PostgreSQL MVCC
 
 **工具生态视角（1个）**：
-53. 文档工具
+
+1. 文档工具
 
 **跨语言对比（2个）**：
-57. Java并发模型与PostgreSQL MVCC
-58. C++并发模型与PostgreSQL MVCC
+
+1. Java并发模型与PostgreSQL MVCC
+2. C++并发模型与PostgreSQL MVCC
 
 ### 4.2 时间规划
 

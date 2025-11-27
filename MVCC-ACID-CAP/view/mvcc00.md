@@ -266,11 +266,12 @@ SELECT n_dead_tup FROM pg_stat_user_tables WHERE relname='users'; -- 死亡元�
 ### 学术论文
 
 1. **MVCC理论**：
-   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
+   - Bernstein, P. A., & Goodman, N. (1983).
+   "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
    - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
    - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
 
-2. **快照隔离**：
+1. **快照隔离**：
    - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels". SIGMOD 1995
    - Cahill, M. J., et al. (2008). "Serializable Isolation for Snapshot Databases". SIGMOD 2008
 
