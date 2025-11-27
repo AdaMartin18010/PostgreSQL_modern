@@ -1683,7 +1683,8 @@ impl DistributedFairLock {
 
 1. **MVCC**：
    - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
-   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+   - Adya, A. (1999).
+   "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
    - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"
 
 2. **ACID**：
