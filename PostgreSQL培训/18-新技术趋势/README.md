@@ -103,6 +103,9 @@
 - **[Citus 与 PostgreSQL 18 集成](./Citus与PostgreSQL18集成.md)** (03-03-TREND-34-18)
   - PostgreSQL 18 异步 I/O 集成、并行查询优化、负载均衡增强
 
+- **[Patroni 与 Citus 核心区别](./Patroni与Citus核心区别.md)** (03-03-TREND-35)
+  - Patroni 高可用与 Citus 水平扩展对比、架构差异、选型决策、协作部署方案
+
 ### 8. 云原生方案
 
 - **[云原生架构设计](./云原生架构设计.md)** (03-03-TREND-21)

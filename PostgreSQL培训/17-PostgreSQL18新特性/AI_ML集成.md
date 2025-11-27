@@ -25,6 +25,10 @@ PostgreSQL 18 增强了对 AI/ML 应用的集成支持，包括改进的向量�
   - [1. AI/ML 集成概述](#1-aiml-集成概述)
     - [1.1 PostgreSQL 18 AI/ML 特性](#11-postgresql-18-aiml-特性)
     - [1.2 技术栈](#12-技术栈)
+    - [1.3 AI/ML集成形式化定义](#13-aiml集成形式化定义)
+    - [1.4 AI/ML集成方案对比矩阵](#14-aiml集成方案对比矩阵)
+    - [1.5 AI/ML集成方案选择决策流程](#15-aiml集成方案选择决策流程)
+    - [1.6 AI/ML集成方案选择决策论证](#16-aiml集成方案选择决策论证)
   - [2. 向量数据库增强](#2-向量数据库增强)
     - [2.1 pgvector 性能提升](#21-pgvector-性能提升)
     - [2.2 批量向量操作](#22-批量向量操作)
@@ -41,9 +45,15 @@ PostgreSQL 18 增强了对 AI/ML 应用的集成支持，包括改进的向量�
     - [6.1 GPU 加速](#61-gpu-加速)
     - [6.2 缓存优化](#62-缓存优化)
   - [7. 实际案例](#7-实际案例)
-    - [7.1 案例：智能推荐系统](#71-案例智能推荐系统)
+    - [7.1 案例：智能推荐系统（真实案例）](#71-案例智能推荐系统真实案例)
     - [7.2 案例：RAG 应用](#72-案例rag-应用)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
+    - [8.1 官方文档](#81-官方文档)
+    - [8.2 技术论文](#82-技术论文)
+    - [8.3 技术博客](#83-技术博客)
+    - [8.4 社区资源](#84-社区资源)
+    - [8.5 相关文档](#85-相关文档)
 
 ---
 
@@ -92,7 +102,7 @@ ML模型推理是一个函数 `MLInference: Model × Features → Prediction`，
 
 **ML模型推理算法**：
 
-```
+```text
 FUNCTION InferModel(model, features):
     IF model.type == TensorFlow:
         prediction = TensorFlowInference(model, features)
@@ -105,7 +115,7 @@ FUNCTION InferModel(model, features):
 
 对于ML模型推理，性能提升满足：
 
-```
+```text
 InferenceTime_old = ModelSize / InferenceSpeed
 InferenceTime_new = ModelSize / (InferenceSpeed × GPUAcceleration)
 PerformanceGain = GPUAcceleration
@@ -122,7 +132,7 @@ PerformanceGain ≈ 5 - 10x  // GPU加速5-10倍
 
 **向量生成算法**：
 
-```
+```text
 FUNCTION GenerateVector(text, model):
     IF CacheExists(text, model):
         RETURN CacheGet(text, model)
@@ -135,7 +145,7 @@ FUNCTION GenerateVector(text, model):
 
 对于向量生成，性能提升满足：
 
-```
+```text
 GenerationTime_old = ModelInferenceTime
 GenerationTime_new = CacheHitTime + (1 - CacheHitRate) × ModelInferenceTime
 PerformanceGain = GenerationTime_old / GenerationTime_new
@@ -152,7 +162,7 @@ PerformanceGain ≈ 1 / (CacheHitRate + (1 - CacheHitRate) / CacheHitRate)
 
 **流式处理算法**：
 
-```
+```text
 FUNCTION ProcessStream(data_stream, processing_function):
     result_stream = {}
     FOR data IN data_stream:
@@ -165,7 +175,7 @@ FUNCTION ProcessStream(data_stream, processing_function):
 
 对于流式处理，延迟降低满足：
 
-```
+```text
 Latency_old = BatchProcessingTime + WaitTime
 Latency_new = StreamProcessingTime
 LatencyReduction = (BatchProcessingTime + WaitTime) / StreamProcessingTime
@@ -238,7 +248,7 @@ flowchart TD
 
 **方案分析**：
 
-**方案1：pgvector集成**
+**方案1：pgvector集成**:
 
 - **描述**：使用pgvector进行向量数据库集成
 - **优点**：
@@ -253,7 +263,7 @@ flowchart TD
 - **性能数据**：性能优秀，易用性优秀，稳定性优秀，成本低
 - **成本分析**：开发成本低，维护成本低，风险低
 
-**方案2：pg_ml集成**
+**方案2：pg_ml集成**:
 
 - **描述**：使用pg_ml进行ML模型集成
 - **优点**：
@@ -267,7 +277,7 @@ flowchart TD
 - **性能数据**：扩展性优秀，性能良好，易用性中等，成本中等
 - **成本分析**：开发成本中等，维护成本中等，风险中等
 
-**方案3：pg_ai集成**
+**方案3：pg_ai集成**:
 
 - **描述**：使用pg_ai进行AI函数集成
 - **优点**：
@@ -281,7 +291,7 @@ flowchart TD
 - **性能数据**：易用性优秀，性能良好，成本良好，扩展性中等
 - **成本分析**：开发成本低，维护成本低，风险低
 
-**方案4：流式处理**
+**方案4：流式处理**:
 
 - **描述**：使用流式处理进行实时AI/ML处理
 - **优点**：
@@ -559,7 +569,7 @@ PostgreSQL 18 支持 GPU 加速的向量计算。
 
 **方案分析**:
 
-**方案1：pgvector集成**
+**方案1：pgvector集成**:
 
 - **描述**: 使用pgvector进行向量数据库集成
 - **优点**: 性能优秀（高性能向量搜索），易用性优秀（SQL接口），稳定性优秀（成熟稳定），成本低（开源免费），适合向量搜索场景
@@ -568,7 +578,7 @@ PostgreSQL 18 支持 GPU 加速的向量计算。
 - **性能数据**: 性能优秀，易用性优秀，稳定性优秀，成本低
 - **成本分析**: 开发成本低，维护成本低，风险低
 
-**方案2：组合方案（pgvector + pg_ai）**
+**方案2：组合方案（pgvector + pg_ai）**:
 
 - **描述**: 组合使用pgvector和pg_ai集成
 - **优点**: 性能优秀（组合方案），易用性优秀（内置AI函数），扩展性良好（支持多种功能），适合智能推荐系统
@@ -751,7 +761,8 @@ PostgreSQL 18 的 AI/ML 集成显著增强了 PostgreSQL 在 AI/ML 应用场景�
 
 ### 8.2 技术论文
 
-- **Malkov, Y. A., & Yashunin, D. A. (2018). "Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs."**
+- **Malkov, Y. A., & Yashunin, D. A. (2018).
+"Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs."**
   - 期刊: IEEE Transactions on Pattern Analysis and Machine Intelligence, 42(4), 824-836
   - **重要性**: HNSW索引算法的基础研究
   - **核心贡献**: 提出了HNSW索引算法，影响了现代向量数据库的设计

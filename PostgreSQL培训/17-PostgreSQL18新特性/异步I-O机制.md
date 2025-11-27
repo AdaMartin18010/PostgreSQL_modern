@@ -26,6 +26,10 @@ PostgreSQL 18 引入了异步 I/O 机制，允许数据库在等待 I/O 操作�
     - [1.1 什么是异步 I/O](#11-什么是异步-io)
     - [1.2 PostgreSQL 18 异步 I/O](#12-postgresql-18-异步-io)
     - [1.3 性能对比](#13-性能对比)
+    - [1.4 异步I/O机制形式化定义](#14-异步io机制形式化定义)
+    - [1.5 I/O策略对比矩阵](#15-io策略对比矩阵)
+    - [1.6 I/O策略选择决策流程](#16-io策略选择决策流程)
+    - [1.7 I/O策略选择决策论证](#17-io策略选择决策论证)
   - [2. 异步 I/O 原理](#2-异步-io-原理)
     - [2.1 同步 I/O vs 异步 I/O](#21-同步-io-vs-异步-io)
     - [2.2 异步 I/O 实现](#22-异步-io-实现)
@@ -42,8 +46,14 @@ PostgreSQL 18 引入了异步 I/O 机制，允许数据库在等待 I/O 操作�
     - [6.1 配置建议](#61-配置建议)
     - [6.2 使用建议](#62-使用建议)
   - [7. 实际案例](#7-实际案例)
-    - [7.1 案例：高并发查询优化](#71-案例高并发查询优化)
+    - [7.1 案例：高并发查询优化（真实案例）](#71-案例高并发查询优化真实案例)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
+    - [8.1 官方文档](#81-官方文档)
+    - [8.2 技术论文](#82-技术论文)
+    - [8.3 技术博客](#83-技术博客)
+    - [8.4 社区资源](#84-社区资源)
+    - [8.5 相关文档](#85-相关文档)
 
 ---
 
@@ -92,7 +102,7 @@ PostgreSQL 18 引入了异步 I/O 机制，在以下场景中特别有效：
 
 **异步I/O操作算法**：
 
-```
+```text
 FUNCTION SubmitAsyncIO(request, callback):
     request_handle = CreateRequestHandle(request)
     IF io_uring_available:
@@ -109,7 +119,7 @@ FUNCTION SubmitAsyncIO(request, callback):
 
 对于异步I/O操作，性能提升满足：
 
-```
+```text
 Throughput_sync = 1 / (IOTime + ProcessTime)
 Throughput_async = Concurrency / (IOTime + ProcessTime / Concurrency)
 PerformanceGain = Throughput_async / Throughput_sync
@@ -126,7 +136,7 @@ PerformanceGain ≈ Concurrency × (1 - ProcessTime / (IOTime + ProcessTime))
 
 **并发I/O控制算法**：
 
-```
+```text
 FUNCTION ControlConcurrency(request_queue, concurrency_limit):
     active_requests = {}
     processed_requests = {}
@@ -146,7 +156,7 @@ FUNCTION ControlConcurrency(request_queue, concurrency_limit):
 
 对于并发I/O控制，效率提升满足：
 
-```
+```text
 Efficiency_old = SequentialProcessingTime / TotalTime
 Efficiency_new = ConcurrentProcessingTime / TotalTime
 EfficiencyGain = Efficiency_new / Efficiency_old
@@ -163,7 +173,7 @@ EfficiencyGain ≈ ConcurrencyLimit × (1 - OverheadRatio)
 
 **异步I/O监控算法**：
 
-```
+```text
 FUNCTION MonitorAsyncIO(statistics, metrics):
     monitoring_result = {}
     FOR metric IN metrics:
@@ -243,7 +253,7 @@ flowchart TD
 
 **方案分析**：
 
-**方案1：同步I/O**
+**方案1：同步I/O**:
 
 - **描述**：使用传统同步I/O处理
 - **优点**：
@@ -257,7 +267,7 @@ flowchart TD
 - **性能数据**：稳定性优秀，复杂度低，并发性能差，资源利用率差
 - **成本分析**：开发成本低，维护成本低，风险低
 
-**方案2：异步I/O（io_uring）**
+**方案2：异步I/O（io_uring）**:
 
 - **描述**：使用Linux io_uring异步I/O
 - **优点**：
@@ -271,7 +281,7 @@ flowchart TD
 - **性能数据**：并发性能优秀，资源利用率优秀，响应时间优秀，复杂度中等
 - **成本分析**：开发成本中等，维护成本低，风险低
 
-**方案3：异步I/O（POSIX AIO）**
+**方案3：异步I/O（POSIX AIO）**:
 
 - **描述**：使用POSIX异步I/O
 - **优点**：
@@ -285,7 +295,7 @@ flowchart TD
 - **性能数据**：并发性能良好，资源利用率良好，跨平台支持，性能中等
 - **成本分析**：开发成本中等，维护成本低，风险低
 
-**方案4：异步I/O（线程池）**
+**方案4：异步I/O（线程池）**:
 
 - **描述**：使用线程池实现异步I/O
 - **优点**：
@@ -518,7 +528,7 @@ seq_page_cost = 1.0
 
 **方案分析**:
 
-**方案1：同步I/O**
+**方案1：同步I/O**:
 
 - **描述**: 使用传统同步I/O处理
 - **优点**: 稳定性优秀（成熟稳定），复杂度低（实现简单），适合低并发场景
@@ -527,7 +537,7 @@ seq_page_cost = 1.0
 - **性能数据**: 稳定性优秀，复杂度低，并发性能差，资源利用率差
 - **成本分析**: 开发成本低，维护成本低，风险低
 
-**方案2：异步I/O（io_uring）**
+**方案2：异步I/O（io_uring）**:
 
 - **描述**: 使用Linux io_uring异步I/O
 - **优点**: 并发性能优秀（高并发处理），资源利用率优秀（充分利用资源），响应时间优秀（减少等待），适合高并发场景
