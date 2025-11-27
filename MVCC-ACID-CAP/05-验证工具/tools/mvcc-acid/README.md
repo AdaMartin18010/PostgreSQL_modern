@@ -36,6 +36,7 @@
 2. `consistency_test.py` - 一致性测试工具
 3. `isolation_test.py` - 隔离性测试工具
 4. `durability_test.py` - 持久性测试工具
+5. `mapping_test.py` - MVCC-ACID集成测试工具
 
 ---
 
@@ -250,6 +251,25 @@ python durability_test.py \
     --test wal_write
 ```
 
+**MVCC-ACID集成测试**：
+
+```bash
+# 1. 设置测试环境
+python mapping_test.py \
+    --connection "dbname=testdb user=postgres password=postgres host=localhost" \
+    --setup
+
+# 2. 运行所有测试
+python mapping_test.py \
+    --connection "dbname=testdb user=postgres password=postgres host=localhost" \
+    --test all
+
+# 3. 运行特定测试
+python mapping_test.py \
+    --connection "dbname=testdb user=postgres password=postgres host=localhost" \
+    --test mvcc_to_acid
+```
+
 ### 测试结果
 
 **输出格式**：
@@ -333,10 +353,52 @@ python durability_test.py --connection "dbname=testdb user=postgres" --test wal_
 3. **可扩展性**：代码结构清晰，易于扩展新测试
 4. **可靠性**：包含错误处理和日志记录
 
+### 5. MVCC-ACID集成测试工具
+
+**文件**：`mapping_test.py`
+
+**功能**：
+
+- 测试MVCC到ACID的映射关系
+- 测试ACID到MVCC的映射关系
+- 测试MVCC-ACID等价性
+- 测试MVCC-ACID状态机
+
+**使用方法**：
+
+```bash
+# 设置测试表
+python mapping_test.py --connection "dbname=testdb user=postgres" --setup
+
+# 运行所有测试
+python mapping_test.py --connection "dbname=testdb user=postgres" --test all
+
+# 运行特定测试
+python mapping_test.py --connection "dbname=testdb user=postgres" --test mvcc_to_acid
+```
+
+**测试项**：
+
+1. **MVCC到ACID映射关系测试**：测试版本->原子性、快照->隔离性、可见性->一致性
+2. **ACID到MVCC映射关系测试**：测试原子性->版本、隔离性->快照、持久性->WAL
+3. **MVCC-ACID等价性测试**：测试MVCC操作和ACID操作的等价性
+4. **MVCC-ACID状态机测试**：测试状态转换（pending->active->committed）
+
+---
+
+## 📝 总结
+
+### 工具特点
+
+1. **完整性**：覆盖原子性、一致性、隔离性、持久性和集成测试的主要测试场景
+2. **易用性**：提供命令行接口，易于使用
+3. **可扩展性**：代码结构清晰，易于扩展新测试
+4. **可靠性**：包含错误处理和日志记录
+
 ### 后续扩展
 
 1. **性能测试工具**：开发性能测试工具
-2. **集成测试**：开发集成测试套件
+2. **集成测试扩展**：扩展集成测试场景
 
 ---
 
