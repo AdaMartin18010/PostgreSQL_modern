@@ -132,7 +132,8 @@ MVCC优化是一个五元组 `MVCC_OPT = (T, V, S, C, O)`，其中：
 - **T** = {t₁, t₂, ..., tₙ} 是事务集合，每个事务 tᵢ 包含操作序列 Oᵢ 和事务ID xidᵢ
 - **V** = {v₁, v₂, ..., vₘ} 是版本集合，每个版本 vⱼ 包含元组 tupⱼ 和版本信息 infoⱼ
 - **S** = {s₁, s₂, ..., sₖ} 是快照集合，每个快照 sₗ 包含可见事务集合 visibleₗ
-- **C** = (vacuum, freeze, analyze) 是清理机制，vacuum ∈ {true, false}，freeze ∈ {true, false}，analyze ∈ {true, false}
+- **C** = (vacuum, freeze, analyze) 是清理机制，
+vacuum ∈ {true, false}，freeze ∈ {true, false}，analyze ∈ {true, false}
 - **O** = (txid_opt, snapshot_opt, version_opt, vacuum_opt) 是优化策略
 
 **定义2（版本可见性判断）**：
@@ -145,7 +146,7 @@ MVCC优化是一个五元组 `MVCC_OPT = (T, V, S, C, O)`，其中：
 
 **版本可见性判断算法**：
 
-```
+```text
 FUNCTION IsVisible(version v, snapshot s, transaction t):
     IF v.xmin NOT IN s.visible:
         RETURN false
@@ -160,7 +161,7 @@ FUNCTION IsVisible(version v, snapshot s, transaction t):
 
 对于n个版本，版本可见性判断性能满足：
 
-```
+```text
 CheckCount = O(n)
 OptimizedCheckCount = O(log n)  // 使用索引优化
 PerformanceGain = n / log n
@@ -178,7 +179,7 @@ VACUUM清理是一个函数 `VacuumCleanup: T × V × C → V_cleaned`，其中�
 
 对于VACUUM清理，性能提升满足：
 
-```
+```text
 Time_serial = ScanTime + CleanupTime
 Time_parallel = ScanTime + CleanupTime / Workers
 Speedup = Time_serial / Time_parallel
@@ -197,7 +198,7 @@ Efficiency = Speedup / Workers
 
 对于事务ID管理，性能提升满足：
 
-```
+```text
 AllocationTime_old = O(n)
 AllocationTime_new = O(1)  // 使用预分配池
 PerformanceGain = n
@@ -272,7 +273,7 @@ flowchart TD
 
 **方案分析**：
 
-**方案1：事务ID管理优化**
+**方案1：事务ID管理优化**:
 
 - **描述**：优化事务ID分配和管理机制
 - **优点**：
@@ -286,7 +287,7 @@ flowchart TD
 - **性能数据**：事务吞吐量提升20-30%，存储效率提升10-15%
 - **成本分析**：开发成本低，维护成本低，风险低
 
-**方案2：快照管理优化**
+**方案2：快照管理优化**:
 
 - **描述**：优化快照创建和管理机制
 - **优点**：
@@ -300,7 +301,7 @@ flowchart TD
 - **性能数据**：并发查询性能提升25-35%，存储效率提升10-15%
 - **成本分析**：开发成本低，维护成本低，风险低
 
-**方案3：版本管理优化**
+**方案3：版本管理优化**:
 
 - **描述**：优化版本链管理和可见性判断
 - **优点**：
@@ -314,7 +315,7 @@ flowchart TD
 - **性能数据**：存储效率提升20-30%，版本管理效率提升40%
 - **成本分析**：开发成本中等，维护成本中等，风险低
 
-**方案4：VACUUM优化**
+**方案4：VACUUM优化**:
 
 - **描述**：优化VACUUM清理机制
 - **优点**：
@@ -328,7 +329,7 @@ flowchart TD
 - **性能数据**：VACUUM性能提升30-50%，存储效率提升20-30%
 - **成本分析**：开发成本中等，维护成本中等，风险低
 
-**方案5：并行VACUUM**
+**方案5：并行VACUUM**:
 
 - **描述**：使用并行VACUUM提升清理性能
 - **优点**：

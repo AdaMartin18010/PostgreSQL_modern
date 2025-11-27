@@ -630,7 +630,7 @@ DO UPDATE SET
 
 **方案分析**:
 
-**方案1：使用MERGE语句**
+**方案1：使用MERGE语句**:
 
 - **描述**: 使用PostgreSQL 17的MERGE语句实现数据合并
 - **优点**:
@@ -645,7 +645,7 @@ DO UPDATE SET
 - **性能数据**: 处理时间<5秒，TPS支持中等
 - **成本分析**: 开发成本中等，维护成本低，风险低
 
-**方案2：使用INSERT ... ON CONFLICT**
+**方案2：使用INSERT ... ON CONFLICT**:
 
 - **描述**: 使用INSERT ... ON CONFLICT实现UPSERT
 - **优点**:

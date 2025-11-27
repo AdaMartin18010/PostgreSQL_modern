@@ -56,11 +56,11 @@ PostgreSQL 17 对 JSONB 索引进行了重要优化，包括索引类型改进�
   - [📊 总结](#-总结)
   - [8. 参考资料](#8-参考资料)
     - [8.1 官方文档](#81-官方文档)
-    - [8.2 SQL标准](#82-sql标准)
-    - [8.3 技术论文](#83-技术论文)
-    - [8.4 技术博客](#84-技术博客)
-    - [8.5 社区资源](#85-社区资源)
-    - [8.6 相关文档](#86-相关文档)
+      - [8.2 SQL标准](#82-sql标准)
+      - [8.3 技术论文](#83-技术论文)
+      - [8.4 技术博客](#84-技术博客)
+      - [8.5 社区资源](#85-社区资源)
+      - [8.6 相关文档](#86-相关文档)
 
 ---
 
@@ -138,7 +138,8 @@ JSONB索引优化是一个五元组 `JSONB_IDX_OPT = (D, I, Q, C, O)`，其中�
 - **D** = {d₁, d₂, ..., dₙ} 是JSONB文档集合，每个文档 dᵢ 包含键值对集合 Kᵢ
 - **I** = {GIN, GiST, B-tree, Expression} 是索引类型集合
 - **Q** = {contains, path, range, exists} 是查询类型集合
-- **C** = (compression, maintenance, storage) 是优化配置，compression ∈ {true, false}，maintenance ∈ {auto, manual}，storage ∈ {disk, memory}
+- **C** = (compression, maintenance, storage) 是优化配置，
+- compression ∈ {true, false}，maintenance ∈ {auto, manual}，storage ∈ {disk, memory}
 - **O** = (build_time, query_time, storage_size) 是性能指标
 
 **定义2（GIN索引优化）**：
@@ -151,7 +152,7 @@ GIN索引优化是一个函数 `GINOptimization: D × Q → I_gin`，其中：
 
 **GIN索引构建算法**：
 
-```
+```text
 FUNCTION BuildGINIndex(documents, compression):
     index = {}
     FOR EACH doc IN documents:
@@ -168,7 +169,7 @@ FUNCTION BuildGINIndex(documents, compression):
 
 对于GIN索引查询，性能满足：
 
-```
+```text
 Time_without_index = O(n × m)  // n是文档数，m是键数量
 Time_with_gin_index = O(log n + k)  // k是匹配文档数
 PerformanceGain = (n × m) / (log n + k)
@@ -186,7 +187,7 @@ PerformanceGain = (n × m) / (log n + k)
 
 对于索引压缩，性能满足：
 
-```
+```text
 StorageReduction = 1 - Size(I_compressed) / Size(I)
 CompressionRatio = 0.7  // PostgreSQL 17优化后
 ```
@@ -203,7 +204,7 @@ CompressionRatio = 0.7  // PostgreSQL 17优化后
 
 对于索引选择，性能提升满足：
 
-```
+```text
 QueryCost_without_index = FullScanCost
 QueryCost_with_optimal_index = IndexScanCost + FilterCost
 PerformanceGain = FullScanCost / QueryCost_with_optimal_index
@@ -277,7 +278,7 @@ flowchart TD
 
 **方案分析**：
 
-**方案1：GIN索引**
+**方案1：GIN索引**:
 
 - **描述**：使用GIN索引进行包含查询
 - **优点**：
@@ -291,7 +292,7 @@ flowchart TD
 - **性能数据**：查询性能提升2-3倍，索引大小较大
 - **成本分析**：开发成本低，维护成本中等，风险低
 
-**方案2：表达式索引**
+**方案2：表达式索引**:
 
 - **描述**：使用表达式索引进行路径查询
 - **优点**：
@@ -305,7 +306,7 @@ flowchart TD
 - **性能数据**：查询性能提升3-5倍，索引大小中等
 - **成本分析**：开发成本低，维护成本低，风险低
 
-**方案3：复合索引（GIN + 表达式索引）**
+**方案3：复合索引（GIN + 表达式索引）**:
 
 - **描述**：同时使用GIN索引和表达式索引
 - **优点**：
@@ -767,7 +768,7 @@ AND schemaname = 'public';
 
 **方案分析**:
 
-**方案1：GIN索引**
+**方案1：GIN索引**:
 
 - **描述**: 使用GIN索引进行包含查询
 - **优点**: 查询性能优秀（2-3倍提升），适合包含查询（@>操作符）
@@ -776,7 +777,7 @@ AND schemaname = 'public';
 - **性能数据**: 查询性能提升2-3倍，索引大小较大
 - **成本分析**: 开发成本低，维护成本中等，风险低
 
-**方案2：表达式索引 + GIN索引**
+**方案2：表达式索引 + GIN索引**:
 
 - **描述**: 同时使用表达式索引和GIN索引
 - **优点**: 查询性能优秀（支持多种查询），适合复杂查询场景
@@ -904,7 +905,7 @@ PostgreSQL 17 的 JSONB 索引优化显著提升了 JSONB 数据的查询性能�
 
 ## 8. 参考资料
 
-#### 8.1 官方文档
+### 8.1 官方文档
 
 - **[PostgreSQL 官方文档 - JSONB索引](https://www.postgresql.org/docs/current/datatype-json.html#JSON-INDEXING)**
   - JSONB索引完整教程

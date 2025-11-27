@@ -153,7 +153,7 @@ SQL标准解析是一个函数 `SQLStandardParsing: Query × S → ParseTree`，
 
 **SQL标准解析算法**：
 
-```
+```text
 FUNCTION ParseSQLStandard(query, standard):
     tokens = Tokenize(query)
     parse_tree = ParseTokens(tokens, standard.grammar)
@@ -167,7 +167,7 @@ FUNCTION ParseSQLStandard(query, standard):
 
 对于SQL标准兼容性，兼容性级别满足：
 
-```
+```text
 CompatibilityLevel = Σ(feature ∈ StandardFeatures) / |StandardFeatures|
 CompatibilityScore = Σ(level × weight) / Σ(weight)
 ```
@@ -182,7 +182,7 @@ CompatibilityScore = Σ(level × weight) / Σ(weight)
 
 **标准函数调用算法**：
 
-```
+```text
 FUNCTION CallStandardFunction(function, args):
     IF IsStandardFunction(function):
         RETURN ExecuteStandardFunction(function, args)
@@ -194,7 +194,7 @@ FUNCTION CallStandardFunction(function, args):
 
 对于标准函数兼容性，兼容性满足：
 
-```
+```text
 FunctionCompatibility = |StandardFunctions| / |TotalFunctions|
 CompatibilityRate = StandardFunctions / TotalFunctions
 ```

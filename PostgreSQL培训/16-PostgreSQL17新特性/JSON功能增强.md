@@ -141,7 +141,7 @@ JSON路径查询是一个函数 `PathQuery: JSONB × Path → Value`，其中：
 
 **JSON路径查询算法**：
 
-```
+```text
 FUNCTION PathQuery(jsonb, path):
     tokens = ParsePath(path)
     current = jsonb
@@ -159,7 +159,7 @@ FUNCTION PathQuery(jsonb, path):
 
 对于JSON路径查询，性能满足：
 
-```
+```text
 Time_without_index = O(n × m)  // n是文档数，m是路径深度
 Time_with_gin_index = O(log n + m)
 PerformanceGain = n / log n
@@ -177,7 +177,7 @@ JSONB包含查询是一个函数 `ContainsQuery: JSONB × JSONB → {true, false
 
 对于JSONB包含查询，性能满足：
 
-```
+```text
 Time_without_index = O(n × m)  // n是文档数，m是键数量
 Time_with_gin_index = O(log n + m)
 PerformanceGain = n / log n
@@ -195,7 +195,7 @@ JSON索引优化是一个函数 `IndexOptimization: Q × D × I → I_optimal`�
 
 对于JSON索引优化，性能提升满足：
 
-```
+```text
 QueryCost_without_index = FullScanCost
 QueryCost_with_gin_index = IndexScanCost + FilterCost
 PerformanceGain = FullScanCost / QueryCost_with_gin_index
@@ -262,7 +262,7 @@ flowchart TD
 
 **方案分析**：
 
-**方案1：使用JSON类型**
+**方案1：使用JSON类型**:
 
 - **描述**：使用JSON类型存储数据
 - **优点**：
@@ -277,7 +277,7 @@ flowchart TD
 - **性能数据**：写入性能优秀，查询性能一般
 - **成本分析**：开发成本低，维护成本低，风险低
 
-**方案2：使用JSONB类型**
+**方案2：使用JSONB类型**:
 
 - **描述**：使用JSONB类型存储数据
 - **优点**：
@@ -785,7 +785,7 @@ WHERE id = 1;
 
 **方案分析**:
 
-**方案1：使用JSON类型**
+**方案1：使用JSON类型**:
 
 - **描述**: 使用JSON类型存储数据
 - **优点**: 写入性能优秀（保留原始格式），存储效率高
@@ -794,7 +794,7 @@ WHERE id = 1;
 - **性能数据**: 写入性能优秀，查询性能一般
 - **成本分析**: 开发成本低，维护成本低，风险低
 
-**方案2：使用JSONB类型**
+**方案2：使用JSONB类型**:
 
 - **描述**: 使用JSONB类型存储数据
 - **优点**: 查询性能优秀（二进制格式，支持索引），支持GIN索引
