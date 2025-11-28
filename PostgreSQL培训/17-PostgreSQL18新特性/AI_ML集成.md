@@ -737,6 +737,436 @@ SELECT * FROM rag_retrieve(
 
 ---
 
+## 8. Python 代码示例
+
+### 8.1 ML模型管理
+
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import Optional, List, Dict, Any
+import json
+
+class MLModelManager:
+    """PostgreSQL 18 ML模型管理器"""
+
+    def __init__(self, conn_str: str):
+        """初始化ML模型管理器"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def load_model(self, model_name: str, model_path: str) -> bool:
+        """加载ML模型"""
+        sql = "SELECT ml.load_model(%s, %s);"
+
+        try:
+            self.cur.execute(sql, (model_name, model_path))
+            result = self.cur.fetchone()
+            self.conn.commit()
+            print(f"✅ 模型 {model_name} 加载成功")
+            return True
+        except Exception as e:
+            print(f"❌ 加载模型失败: {e}")
+            return False
+
+    def unload_model(self, model_name: str) -> bool:
+        """卸载ML模型"""
+        sql = "SELECT ml.unload_model(%s);"
+
+        try:
+            self.cur.execute(sql, (model_name,))
+            self.conn.commit()
+            print(f"✅ 模型 {model_name} 卸载成功")
+            return True
+        except Exception as e:
+            print(f"❌ 卸载模型失败: {e}")
+            return False
+
+    def predict(self, model_name: str, features: Dict[str, Any]) -> Optional[Any]:
+        """使用模型进行预测"""
+        features_json = json.dumps(features)
+        sql = "SELECT ml.predict(%s, %s::jsonb) AS prediction;"
+
+        try:
+            self.cur.execute(sql, (model_name, features_json))
+            result = self.cur.fetchone()
+            return result['prediction'] if result else None
+        except Exception as e:
+            print(f"❌ 预测失败: {e}")
+            return None
+
+    def batch_predict(
+        self,
+        model_name: str,
+        features_list: List[Dict[str, Any]]
+    ) -> List[Any]:
+        """批量预测"""
+        predictions = []
+        for features in features_list:
+            prediction = self.predict(model_name, features)
+            if prediction is not None:
+                predictions.append(prediction)
+        return predictions
+
+    def get_models(self) -> List[Dict]:
+        """获取已加载的模型列表"""
+        sql = "SELECT * FROM ml.models;"
+
+        try:
+            self.cur.execute(sql)
+            return self.cur.fetchall()
+        except Exception as e:
+            print(f"❌ 获取模型列表失败: {e}")
+            return []
+
+    def update_model(self, model_name: str, new_model_path: str) -> bool:
+        """更新模型"""
+        sql = "SELECT ml.update_model(%s, %s);"
+
+        try:
+            self.cur.execute(sql, (model_name, new_model_path))
+            self.conn.commit()
+            print(f"✅ 模型 {model_name} 更新成功")
+            return True
+        except Exception as e:
+            print(f"❌ 更新模型失败: {e}")
+            return False
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    manager = MLModelManager(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 加载模型
+    manager.load_model("sentiment_model", "/path/to/model.pkl")
+
+    # 使用模型进行预测
+    features = {"text": "This is a great product!"}
+    prediction = manager.predict("sentiment_model", features)
+    print(f"预测结果: {prediction}")
+
+    # 批量预测
+    features_list = [
+        {"text": "Great product"},
+        {"text": "Not good"},
+        {"text": "Excellent service"}
+    ]
+    predictions = manager.batch_predict("sentiment_model", features_list)
+    print(f"批量预测结果: {predictions}")
+
+    # 获取模型列表
+    models = manager.get_models()
+    print(f"已加载模型: {models}")
+
+    manager.close()
+```
+
+### 8.2 AI函数使用
+
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import Optional, List, Dict
+import numpy as np
+
+class AIFunctionManager:
+    """PostgreSQL 18 AI函数管理器"""
+
+    def __init__(self, conn_str: str):
+        """初始化AI函数管理器"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def generate_embedding(
+        self,
+        model_name: str,
+        text: str
+    ) -> Optional[np.ndarray]:
+        """生成文本嵌入向量"""
+        sql = "SELECT ai.generate_embedding(%s, %s) AS embedding;"
+
+        try:
+            self.cur.execute(sql, (model_name, text))
+            result = self.cur.fetchone()
+            if result and result['embedding']:
+                # 将向量字符串转换为numpy数组
+                embedding_str = result['embedding']
+                if isinstance(embedding_str, str):
+                    embedding_str = embedding_str.strip('[]')
+                    embedding = np.array([float(x) for x in embedding_str.split(',')])
+                    return embedding
+            return None
+        except Exception as e:
+            print(f"❌ 生成嵌入向量失败: {e}")
+            return None
+
+    def batch_generate_embeddings(
+        self,
+        model_name: str,
+        texts: List[str]
+    ) -> List[np.ndarray]:
+        """批量生成嵌入向量"""
+        embeddings = []
+        for text in texts:
+            embedding = self.generate_embedding(model_name, text)
+            if embedding is not None:
+                embeddings.append(embedding)
+        return embeddings
+
+    def semantic_search(
+        self,
+        query: str,
+        model_name: str,
+        limit: int = 10
+    ) -> List[Dict]:
+        """语义搜索"""
+        sql = "SELECT ai.semantic_search(%s, %s, %s) AS results;"
+
+        try:
+            self.cur.execute(sql, (query, model_name, limit))
+            result = self.cur.fetchone()
+            if result and result['results']:
+                return result['results']
+            return []
+        except Exception as e:
+            print(f"❌ 语义搜索失败: {e}")
+            return []
+
+    def cosine_similarity(
+        self,
+        text1: str,
+        text2: str,
+        model_name: str
+    ) -> Optional[float]:
+        """计算两个文本的余弦相似度"""
+        sql = """
+        SELECT ai.cosine_similarity(
+            ai.generate_embedding(%s, %s),
+            ai.generate_embedding(%s, %s)
+        ) AS similarity;
+        """
+
+        try:
+            self.cur.execute(sql, (model_name, text1, model_name, text2))
+            result = self.cur.fetchone()
+            return float(result['similarity']) if result and result['similarity'] else None
+        except Exception as e:
+            print(f"❌ 计算相似度失败: {e}")
+            return None
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    ai_manager = AIFunctionManager(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 生成嵌入向量
+    embedding = ai_manager.generate_embedding(
+        "text-embedding-3-small",
+        "Hello, world!"
+    )
+    print(f"嵌入向量维度: {embedding.shape if embedding is not None else None}")
+
+    # 批量生成嵌入向量
+    texts = ["Text 1", "Text 2", "Text 3"]
+    embeddings = ai_manager.batch_generate_embeddings("text-embedding-3-small", texts)
+    print(f"生成了 {len(embeddings)} 个嵌入向量")
+
+    # 语义搜索
+    results = ai_manager.semantic_search(
+        "What is PostgreSQL?",
+        "text-embedding-3-small",
+        limit=10
+    )
+    print(f"语义搜索结果: {len(results)} 条")
+
+    # 计算相似度
+    similarity = ai_manager.cosine_similarity(
+        "PostgreSQL is a database",
+        "PostgreSQL is an open source database",
+        "text-embedding-3-small"
+    )
+    print(f"文本相似度: {similarity}")
+
+    ai_manager.close()
+```
+
+### 8.3 向量生成和搜索
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+import numpy as np
+from typing import List, Dict, Optional
+from pgvector import Vector
+
+class AIVectorManager:
+    """PostgreSQL 18 AI向量管理器（结合pgvector和pg_ai）"""
+
+    def __init__(self, conn_str: str):
+        """初始化AI向量管理器"""
+        self.conn = psycopg2.connect(conn_str)
+        register_vector(self.conn)
+        self.cur = self.conn.cursor()
+
+    def generate_and_store_embedding(
+        self,
+        table_name: str,
+        text: str,
+        model_name: str = "text-embedding-3-small",
+        metadata: Optional[dict] = None
+    ) -> Optional[int]:
+        """生成嵌入向量并存储"""
+        import json
+
+        # 生成嵌入向量
+        sql_generate = "SELECT ai.generate_embedding(%s, %s) AS embedding;"
+        self.cur.execute(sql_generate, (model_name, text))
+        result = self.cur.fetchone()
+
+        if not result or not result[0]:
+            print("❌ 生成嵌入向量失败")
+            return None
+
+        embedding_str = result[0]
+
+        # 存储到数据库
+        metadata_str = json.dumps(metadata) if metadata else '{}'
+        sql_insert = f"""
+        INSERT INTO {table_name} (content, embedding, metadata)
+        VALUES (%s, %s::vector, %s::jsonb)
+        RETURNING id;
+        """
+
+        try:
+            self.cur.execute(sql_insert, (text, embedding_str, metadata_str))
+            result = self.cur.fetchone()
+            self.conn.commit()
+            vector_id = result[0] if result else None
+            print(f"✅ 向量数据存储成功，ID: {vector_id}")
+            return vector_id
+        except Exception as e:
+            print(f"❌ 存储向量数据失败: {e}")
+            return None
+
+    def semantic_search_with_ai(
+        self,
+        table_name: str,
+        query: str,
+        model_name: str = "text-embedding-3-small",
+        limit: int = 10
+    ) -> List[Dict]:
+        """使用AI函数进行语义搜索"""
+        # 生成查询向量
+        sql_generate = "SELECT ai.generate_embedding(%s, %s) AS embedding;"
+        self.cur.execute(sql_generate, (model_name, query))
+        result = self.cur.fetchone()
+
+        if not result or not result[0]:
+            return []
+
+        query_embedding = result[0]
+
+        # 向量相似度搜索
+        sql_search = f"""
+        SELECT
+            id,
+            content,
+            1 - (embedding <=> %s::vector) AS similarity,
+            metadata
+        FROM {table_name}
+        ORDER BY embedding <=> %s::vector
+        LIMIT %s;
+        """
+
+        try:
+            self.cur.execute(sql_search, (query_embedding, query_embedding, limit))
+            results = self.cur.fetchall()
+
+            return [
+                {
+                    'id': row[0],
+                    'content': row[1],
+                    'similarity': float(row[2]),
+                    'metadata': row[3]
+                }
+                for row in results
+            ]
+        except Exception as e:
+            print(f"❌ 语义搜索失败: {e}")
+            return []
+
+    def batch_generate_and_store(
+        self,
+        table_name: str,
+        texts: List[str],
+        model_name: str = "text-embedding-3-small"
+    ) -> int:
+        """批量生成并存储嵌入向量"""
+        count = 0
+        for text in texts:
+            vector_id = self.generate_and_store_embedding(
+                table_name,
+                text,
+                model_name
+            )
+            if vector_id:
+                count += 1
+        return count
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    vector_manager = AIVectorManager(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 生成并存储嵌入向量
+    vector_id = vector_manager.generate_and_store_embedding(
+        "documents",
+        "PostgreSQL is a powerful open source database",
+        metadata={"category": "database", "source": "example"}
+    )
+
+    # 批量生成并存储
+    texts = [
+        "PostgreSQL is a database",
+        "Python is a programming language",
+        "Machine learning is a subset of AI"
+    ]
+    count = vector_manager.batch_generate_and_store("documents", texts)
+    print(f"批量存储了 {count} 条向量数据")
+
+    # 语义搜索
+    results = vector_manager.semantic_search_with_ai(
+        "documents",
+        "What is PostgreSQL?",
+        limit=5
+    )
+    print(f"语义搜索结果: {len(results)} 条")
+    for result in results:
+        print(f"  - ID: {result['id']}, 相似度: {result['similarity']:.4f}")
+
+    vector_manager.close()
+```
+
+---
+
 ## 📊 总结
 
 PostgreSQL 18 的 AI/ML 集成显著增强了 PostgreSQL 在 AI/ML 应用场景中的能力。

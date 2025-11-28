@@ -52,6 +52,10 @@ PostgreSQL 18 引入了多项新的 SQL 语法特性，包括新的 SQL 标准�
   - [8. 实际案例](#8-实际案例)
     - [8.1 案例：数据分析查询优化](#81-案例数据分析查询优化)
     - [8.2 案例：JSON 数据处理优化](#82-案例json-数据处理优化)
+  - [9. Python 代码示例](#9-python-代码示例)
+    - [9.1 SQL查询执行](#91-sql查询执行)
+    - [9.2 窗口函数使用](#92-窗口函数使用)
+    - [9.3 JSON数据处理](#93-json数据处理)
   - [📊 总结](#-总结)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
@@ -623,6 +627,348 @@ CREATE INDEX idx_products_category ON products ((details->>'category'));
 - JSON 查询性能提升 3 倍
 - 索引使用率 100%
 - 查询响应时间从 200ms 降至 50ms
+
+---
+
+## 9. Python 代码示例
+
+### 9.1 SQL查询执行
+
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import List, Dict, Any, Optional
+import json
+
+class SQLQueryExecutor:
+    """PostgreSQL 18 SQL查询执行器"""
+
+    def __init__(self, conn_str: str):
+        """初始化SQL查询执行器"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def execute_query(self, query: str) -> List[Dict]:
+        """执行SQL查询"""
+        try:
+            self.cur.execute(query)
+            results = self.cur.fetchall()
+            return [dict(row) for row in results]
+        except Exception as e:
+            print(f"❌ 查询执行失败: {e}")
+            return []
+
+    def execute_window_function(
+        self,
+        table_name: str,
+        partition_by: List[str],
+        order_by: List[str],
+        window_functions: Dict[str, str]
+    ) -> List[Dict]:
+        """执行窗口函数查询"""
+        partition_str = ", ".join(partition_by)
+        order_str = ", ".join(order_by)
+
+        function_exprs = []
+        for alias, func_expr in window_functions.items():
+            function_exprs.append(f"{func_expr} AS {alias}")
+
+        functions_str = ", ".join(function_exprs)
+
+        query = f"""
+        SELECT
+            *,
+            {functions_str}
+        FROM {table_name}
+        WINDOW w AS (PARTITION BY {partition_str} ORDER BY {order_str});
+        """
+
+        return self.execute_query(query)
+
+    def execute_json_query(
+        self,
+        table_name: str,
+        json_column: str,
+        json_path: str
+    ) -> List[Dict]:
+        """执行JSON查询"""
+        query = f"""
+        SELECT
+            *,
+            {json_column}->{json_path} AS extracted_value
+        FROM {table_name}
+        WHERE {json_column} ? {json_path};
+        """
+
+        return self.execute_query(query)
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    executor = SQLQueryExecutor(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 执行窗口函数查询
+    results = executor.execute_window_function(
+        "sales",
+        partition_by=["region"],
+        order_by=["sale_date"],
+        window_functions={
+            "running_total": "SUM(amount) OVER w",
+            "rank": "RANK() OVER w"
+        }
+    )
+    print(f"窗口函数查询结果: {len(results)} 行")
+
+    executor.close()
+```
+
+### 9.2 窗口函数使用
+
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import List, Dict, Optional
+
+class WindowFunctionHelper:
+    """PostgreSQL 18 窗口函数辅助类"""
+
+    def __init__(self, conn_str: str):
+        """初始化窗口函数辅助类"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def rank_by_partition(
+        self,
+        table_name: str,
+        partition_column: str,
+        order_column: str,
+        rank_column: str = "rank"
+    ) -> List[Dict]:
+        """按分区排名"""
+        query = f"""
+        SELECT
+            *,
+            RANK() OVER (
+                PARTITION BY {partition_column}
+                ORDER BY {order_column} DESC
+            ) AS {rank_column}
+        FROM {table_name};
+        """
+
+        self.cur.execute(query)
+        return self.cur.fetchall()
+
+    def running_total(
+        self,
+        table_name: str,
+        amount_column: str,
+        order_column: str,
+        partition_column: Optional[str] = None
+    ) -> List[Dict]:
+        """计算累计总和"""
+        if partition_column:
+            window_clause = f"PARTITION BY {partition_column} ORDER BY {order_column}"
+        else:
+            window_clause = f"ORDER BY {order_column}"
+
+        query = f"""
+        SELECT
+            *,
+            SUM({amount_column}) OVER ({window_clause}) AS running_total
+        FROM {table_name};
+        """
+
+        self.cur.execute(query)
+        return self.cur.fetchall()
+
+    def moving_average(
+        self,
+        table_name: str,
+        value_column: str,
+        order_column: str,
+        window_size: int = 3
+    ) -> List[Dict]:
+        """计算移动平均"""
+        query = f"""
+        SELECT
+            *,
+            AVG({value_column}) OVER (
+                ORDER BY {order_column}
+                ROWS BETWEEN {window_size - 1} PRECEDING AND CURRENT ROW
+            ) AS moving_avg
+        FROM {table_name};
+        """
+
+        self.cur.execute(query)
+        return self.cur.fetchall()
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    helper = WindowFunctionHelper(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 按分区排名
+    ranked = helper.rank_by_partition("sales", "region", "amount")
+    print(f"排名结果: {len(ranked)} 行")
+
+    # 计算累计总和
+    running = helper.running_total("sales", "amount", "sale_date", "region")
+    print(f"累计总和结果: {len(running)} 行")
+
+    # 计算移动平均
+    moving_avg = helper.moving_average("sales", "amount", "sale_date", 3)
+    print(f"移动平均结果: {len(moving_avg)} 行")
+
+    helper.close()
+```
+
+### 9.3 JSON数据处理
+
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import List, Dict, Any, Optional
+import json
+
+class JSONDataProcessor:
+    """PostgreSQL 18 JSON数据处理器"""
+
+    def __init__(self, conn_str: str):
+        """初始化JSON数据处理器"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def query_json(
+        self,
+        table_name: str,
+        json_column: str,
+        json_path: str,
+        condition: Optional[str] = None
+    ) -> List[Dict]:
+        """查询JSON数据"""
+        where_clause = f"WHERE {condition}" if condition else ""
+
+        query = f"""
+        SELECT
+            *,
+            {json_column}->{json_path} AS extracted_value
+        FROM {table_name}
+        {where_clause};
+        """
+
+        self.cur.execute(query)
+        return self.cur.fetchall()
+
+    def update_json(
+        self,
+        table_name: str,
+        json_column: str,
+        json_path: str,
+        new_value: Any,
+        where_condition: str
+    ) -> bool:
+        """更新JSON数据"""
+        import json
+
+        value_json = json.dumps(new_value)
+
+        query = f"""
+        UPDATE {table_name}
+        SET {json_column} = jsonb_set(
+            {json_column},
+            '{json_path}',
+            %s::jsonb
+        )
+        WHERE {where_condition};
+        """
+
+        try:
+            self.cur.execute(query, (value_json,))
+            self.conn.commit()
+            print(f"✅ JSON数据更新成功")
+            return True
+        except Exception as e:
+            print(f"❌ JSON数据更新失败: {e}")
+            return False
+
+    def aggregate_json(
+        self,
+        table_name: str,
+        json_column: str,
+        group_by: List[str]
+    ) -> List[Dict]:
+        """聚合JSON数据"""
+        group_str = ", ".join(group_by)
+
+        query = f"""
+        SELECT
+            {group_str},
+            jsonb_agg({json_column}) AS aggregated_json
+        FROM {table_name}
+        GROUP BY {group_str};
+        """
+
+        self.cur.execute(query)
+        return self.cur.fetchall()
+
+    def search_json(
+        self,
+        table_name: str,
+        json_column: str,
+        search_key: str,
+        search_value: Any
+    ) -> List[Dict]:
+        """搜索JSON数据"""
+        import json
+
+        search_json = json.dumps({search_key: search_value})
+
+        query = f"""
+        SELECT *
+        FROM {table_name}
+        WHERE {json_column} @> %s::jsonb;
+        """
+
+        self.cur.execute(query, (search_json,))
+        return self.cur.fetchall()
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    processor = JSONDataProcessor(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 查询JSON数据
+    results = processor.query_json("products", "details", "'category'")
+    print(f"JSON查询结果: {len(results)} 行")
+
+    # 搜索JSON数据
+    search_results = processor.search_json("products", "details", "category", "electronics")
+    print(f"JSON搜索结果: {len(search_results)} 行")
+
+    # 聚合JSON数据
+    aggregated = processor.aggregate_json("orders", "metadata", ["customer_id"])
+    print(f"JSON聚合结果: {len(aggregated)} 行")
+
+    processor.close()
+```
 
 ---
 
