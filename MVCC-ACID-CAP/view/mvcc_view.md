@@ -157,6 +157,172 @@ MVCC:   版本存活周期 ←→ VACUUM 频率
 
 ## 综合结论：结构同构的数学表达
 
+### 0.1 同构性形式化定义
+
+#### 0.1.1 同构性基本定义
+
+**定义0.1（系统同构）**：
+
+设 $S_1 = (M_1, O_1, R_1)$ 和 $S_2 = (M_2, O_2, R_2)$ 为两个系统，其中：
+
+- $M_i$ 为概念集合
+- $O_i$ 为操作集合
+- $R_i$ 为关系集合
+
+系统 $S_1$ 与 $S_2$ 同构，记作 $S_1 \cong S_2$，当且仅当存在双射映射 $f: M_1 \to M_2$，使得：
+
+$$
+\forall o_1 \in O_1, \exists o_2 \in O_2: f(o_1(m)) = o_2(f(m)) \quad \forall m \in M_1
+$$
+
+$$
+\forall r_1 \in R_1, \exists r_2 \in R_2: r_1(m_1, m_2) \iff r_2(f(m_1), f(m_2))
+$$
+
+#### 0.1.2 MVCC-ACID-CAP同构性定义
+
+**定义0.2（MVCC-ACID-CAP结构同构）**：
+
+MVCC、ACID、CAP三个系统在结构上同构，当且仅当存在保结构映射：
+
+$$
+\text{MVCC} \cong \text{ACID} \cong \text{CAP}
+$$
+
+**同构映射定义**：
+
+1. **MVCC到ACID映射** $\phi: \text{MVCC} \to \text{ACID}$：
+   $$
+   \begin{align}
+   \phi(\text{version}) &= \text{transaction} \\
+   \phi(\text{snapshot}) &= \text{isolation} \\
+   \phi(\text{visibility}) &= \text{consistency} \\
+   \phi(\text{VACUUM}) &= \text{recovery}
+   \end{align}
+   $$
+
+2. **MVCC到CAP映射** $\psi: \text{MVCC} \to \text{CAP}$：
+   $$
+   \begin{align}
+   \psi(\text{snapshot}) &= \text{consistency} \\
+   \psi(\text{read\_availability}) &= \text{availability} \\
+   \psi(\text{version\_chain}) &= \text{partition\_tolerance}
+   \end{align}
+   $$
+
+3. **ACID到CAP映射** $\chi: \text{ACID} \to \text{CAP}$：
+   $$
+   \begin{align}
+   \chi(\text{isolation}) &= \text{consistency} \\
+   \chi(\text{durability}) &= \text{availability} \\
+   \chi(\text{atomicity}) &= \text{partition\_tolerance}
+   \end{align}
+   $$
+
+#### 0.1.3 三元权衡内核形式化
+
+**定义0.3（三元权衡内核）**：
+
+三个系统共享相同的三元权衡结构 $(X, Y, Z)$，其中：
+
+$$
+\begin{align}
+\text{MVCC}: &\quad (\text{版本新鲜度}, \text{存储成本}, \text{垃圾回收开销}) \\
+\text{ACID}: &\quad (\text{隔离性}, \text{持久性}, \text{并发吞吐量}) \\
+\text{CAP}: &\quad (\text{一致性}, \text{可用性}, \text{分区容错})
+\end{align}
+$$
+
+**权衡约束**：
+
+$$
+\forall (x, y, z) \in \{(x, y, z) \mid x + y + z = 1, x, y, z \geq 0\}
+$$
+
+系统必须在三元之间做出权衡，无法同时最大化所有三个维度。
+
+### 0.2 同构机制工作机制说明
+
+#### 0.2.1 同构映射工作机制
+
+**映射保持性**：
+
+同构映射 $\phi, \psi, \chi$ 保持以下结构：
+
+1. **操作保持性**：
+   - MVCC的版本创建操作映射到ACID的事务操作
+   - MVCC的快照获取操作映射到CAP的一致性读取操作
+
+2. **关系保持性**：
+   - MVCC的版本链关系映射到ACID的事务序列关系
+   - MVCC的可见性关系映射到CAP的一致性关系
+
+3. **性质保持性**：
+   - MVCC的版本新鲜度性质映射到ACID的隔离性性质
+   - MVCC的存储成本性质映射到CAP的可用性性质
+
+#### 0.2.2 状态机同构机制
+
+**统一状态机模型**：
+
+三个系统共享相同的状态机结构：
+
+$$
+\mathcal{M} = (S, \Sigma, \delta, s_0, F)
+$$
+
+其中：
+
+- $S$：状态集合
+- $\Sigma$：输入字母表（操作集合）
+- $\delta: S \times \Sigma \to S$：状态转移函数
+- $s_0$：初始状态
+- $F \subseteq S$：接受状态集合
+
+**状态机映射**：
+
+1. **MVCC状态机**：
+   - 状态：元组版本状态 $\{\text{visible}, \text{obsolete}, \text{dead}\}$
+   - 转移：版本创建、版本删除、VACUUM清理
+
+2. **ACID状态机**：
+   - 状态：事务状态 $\{\text{active}, \text{committed}, \text{aborted}\}$
+   - 转移：事务开始、事务提交、事务回滚
+
+3. **CAP状态机**：
+   - 状态：系统分区状态 $\{\text{normal}, \text{partitioned}, \text{recovered}\}$
+   - 转移：分区发生、分区愈合、一致性恢复
+
+#### 0.2.3 权衡决策同构机制
+
+**统一权衡决策函数**：
+
+三个系统使用相同的权衡决策模式：
+
+$$
+\text{Decision}(x, y, z, \text{context}) = \arg\max_{(x', y', z')} \text{Utility}(x', y', z', \text{context})
+$$
+
+其中：
+
+- $(x, y, z)$ 为当前三元值
+- $\text{context}$ 为上下文信息
+- $\text{Utility}$ 为效用函数
+
+**PostgreSQL中的体现**：
+
+1. **隔离级别选择**（ACID权衡）：
+   - `READ COMMITTED`：优先可用性（A），牺牲一致性（C）
+   - `SERIALIZABLE`：优先一致性（C），牺牲可用性（A）
+
+2. **VACUUM策略**（MVCC权衡）：
+   - 频繁VACUUM：优先版本新鲜度，增加垃圾回收开销
+   - 延迟VACUUM：减少垃圾回收开销，增加存储成本
+
+3. **复制模式**（CAP权衡）：
+   - 同步复制：优先一致性（C），牺牲可用性（A）
+   - 异步复制：优先可用性（A），牺牲一致性（C）
+
 ### 同构算子定义
 
 存在一个**保结构映射** φ: MVCC → ACID → CAP，使得：
@@ -166,6 +332,20 @@ MVCC:   版本存活周期 ←→ VACUUM 频率
 φ(可见性规则) = 隔离级别 = 一致性模型
 φ(VACUUM) = 故障恢复 = 分区愈合
 ```
+
+**形式化表达**：
+
+$$
+\phi: \text{MVCC} \to \text{ACID} \to \text{CAP}
+$$
+
+$$
+\begin{align}
+\phi(\text{version}) &= \text{transaction} = \text{partition\_view} \\
+\phi(\text{visibility\_rule}) &= \text{isolation\_level} = \text{consistency\_model} \\
+\phi(\text{VACUUM}) &= \text{recovery} = \text{partition\_healing}
+\end{align}
+$$
 
 ### PostgreSQL 的工程体现
 
@@ -1645,6 +1825,545 @@ impl DistributedFairLock {
 > **状态不可变，版本链记录变化，可见性函数定义一致性，合并策略解决冲突，垃圾回收释放资源**
 
 无论是一个内存变量、数据库行、Git提交还是区块链交易，都遵循这一模式。掌握MVCC，就掌握了并发世界的"万有引力定律"。
+
+---
+
+## 💻 可运行代码示例：MVCC-ACID-CAP同构性演示
+
+### 代码示例1：三元权衡内核演示
+
+```python
+#!/usr/bin/env python3
+"""
+MVCC-ACID-CAP三元权衡内核演示
+演示三个系统在权衡决策上的同构性
+"""
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED, ISOLATION_LEVEL_SERIALIZABLE
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class TriadTradeoffDemo:
+    """三元权衡内核演示类"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        try:
+            self.conn = psycopg2.connect(connection_string)
+            self.conn.autocommit = False
+            logger.info("数据库连接成功")
+        except psycopg2.Error as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise
+
+    def setup_test_data(self):
+        """设置测试数据"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    DROP TABLE IF EXISTS tradeoff_test;
+                    CREATE TABLE tradeoff_test (
+                        id SERIAL PRIMARY KEY,
+                        data TEXT,
+                        version INTEGER DEFAULT 1
+                    )
+                """)
+                cur.execute("INSERT INTO tradeoff_test (data) VALUES ('initial')")
+                self.conn.commit()
+                logger.info("测试数据设置完成")
+        except psycopg2.Error as e:
+            logger.error(f"设置测试数据失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def demonstrate_mvcc_tradeoff(self):
+        """演示MVCC三元权衡：版本新鲜度 vs 存储成本 vs 垃圾回收开销"""
+        logger.info("=" * 60)
+        logger.info("MVCC三元权衡演示")
+        logger.info("=" * 60)
+
+        try:
+            with self.conn.cursor() as cur:
+                # 执行多次更新，产生版本链
+                for i in range(5):
+                    cur.execute("BEGIN")
+                    cur.execute("""
+                        UPDATE tradeoff_test
+                        SET data = %s, version = version + 1
+                        WHERE id = 1
+                    """, (f'version_{i+1}',))
+                    self.conn.commit()
+                    logger.info(f"更新到版本 {i+1}")
+
+                # 查看版本链信息
+                cur.execute("""
+                    SELECT ctid, xmin, xmax, data, version
+                    FROM tradeoff_test
+                    WHERE id = 1
+                """)
+                result = cur.fetchone()
+                logger.info(f"当前版本: ctid={result[0]}, xmin={result[1]}, data={result[3]}")
+
+                # 查看表大小（存储成本）
+                cur.execute("""
+                    SELECT pg_size_pretty(pg_relation_size('tradeoff_test'))
+                """)
+                size = cur.fetchone()[0]
+                logger.info(f"表大小: {size}")
+
+                # 查看死亡元组（垃圾回收开销）
+                cur.execute("""
+                    SELECT n_dead_tup, n_live_tup
+                    FROM pg_stat_user_tables
+                    WHERE relname = 'tradeoff_test'
+                """)
+                stats = cur.fetchone()
+                logger.info(f"死亡元组: {stats[0]}, 存活元组: {stats[1]}")
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def demonstrate_acid_tradeoff(self):
+        """演示ACID三元权衡：隔离性 vs 持久性 vs 并发吞吐量"""
+        logger.info("=" * 60)
+        logger.info("ACID三元权衡演示")
+        logger.info("=" * 60)
+
+        try:
+            # READ COMMITTED：高并发，低隔离性
+            conn_rc = psycopg2.connect(self.conn.dsn)
+            conn_rc.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+            conn_rc.autocommit = False
+
+            # SERIALIZABLE：高隔离性，低并发
+            conn_ser = psycopg2.connect(self.conn.dsn)
+            conn_ser.set_isolation_level(ISOLATION_LEVEL_SERIALIZABLE)
+            conn_ser.autocommit = False
+
+            import time
+
+            # 测试READ COMMITTED性能
+            start = time.time()
+            with conn_rc.cursor() as cur:
+                for _ in range(100):
+                    cur.execute("BEGIN")
+                    cur.execute("SELECT * FROM tradeoff_test WHERE id = 1")
+                    conn_rc.commit()
+            rc_time = time.time() - start
+            logger.info(f"READ COMMITTED 100次查询耗时: {rc_time:.3f}s")
+
+            # 测试SERIALIZABLE性能
+            start = time.time()
+            with conn_ser.cursor() as cur:
+                for _ in range(100):
+                    cur.execute("BEGIN")
+                    cur.execute("SELECT * FROM tradeoff_test WHERE id = 1")
+                    conn_ser.commit()
+            ser_time = time.time() - start
+            logger.info(f"SERIALIZABLE 100次查询耗时: {ser_time:.3f}s")
+
+            logger.info(f"性能差异: SERIALIZABLE比READ COMMITTED慢 {ser_time/rc_time:.2f}x")
+
+            conn_rc.close()
+            conn_ser.close()
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            raise
+
+    def demonstrate_cap_tradeoff(self):
+        """演示CAP三元权衡：一致性 vs 可用性 vs 分区容错"""
+        logger.info("=" * 60)
+        logger.info("CAP三元权衡演示（单机模拟）")
+        logger.info("=" * 60)
+
+        try:
+            # 模拟CP模式：强一致性，牺牲可用性
+            logger.info("CP模式：SERIALIZABLE隔离级别")
+            conn_cp = psycopg2.connect(self.conn.dsn)
+            conn_cp.set_isolation_level(ISOLATION_LEVEL_SERIALIZABLE)
+            conn_cp.autocommit = False
+
+            with conn_cp.cursor() as cur:
+                cur.execute("BEGIN")
+                try:
+                    cur.execute("SELECT * FROM tradeoff_test WHERE id = 1 FOR UPDATE")
+                    logger.info("CP模式：获取锁，保证一致性，但可能阻塞其他事务")
+                    conn_cp.commit()
+                except psycopg2.extensions.TransactionRollbackError as e:
+                    logger.warning(f"CP模式：串行化冲突，事务回滚: {e}")
+                    conn_cp.rollback()
+
+            # 模拟AP模式：高可用性，牺牲一致性
+            logger.info("AP模式：READ COMMITTED隔离级别")
+            conn_ap = psycopg2.connect(self.conn.dsn)
+            conn_ap.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+            conn_ap.autocommit = False
+
+            with conn_ap.cursor() as cur:
+                cur.execute("BEGIN")
+                cur.execute("SELECT * FROM tradeoff_test WHERE id = 1")
+                logger.info("AP模式：允许不可重复读，保证高可用性")
+                conn_ap.commit()
+
+            conn_cp.close()
+            conn_ap.close()
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            raise
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            if self.conn:
+                with self.conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS tradeoff_test")
+                    self.conn.commit()
+                self.conn.close()
+                logger.info("资源清理完成")
+        except Exception as e:
+            logger.error(f"资源清理失败: {e}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+
+    demo = None
+    try:
+        demo = TriadTradeoffDemo(connection_string)
+        demo.setup_test_data()
+        demo.demonstrate_mvcc_tradeoff()
+        demo.demonstrate_acid_tradeoff()
+        demo.demonstrate_cap_tradeoff()
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if demo:
+            demo.cleanup()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### 代码示例2：状态机同构演示
+
+```python
+#!/usr/bin/env python3
+"""
+MVCC-ACID-CAP状态机同构演示
+演示三个系统的状态机结构同构性
+"""
+
+import psycopg2
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class StateMachineIsomorphismDemo:
+    """状态机同构演示类"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        try:
+            self.conn = psycopg2.connect(connection_string)
+            self.conn.autocommit = False
+            logger.info("数据库连接成功")
+        except psycopg2.Error as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise
+
+    def demonstrate_mvcc_state_machine(self):
+        """演示MVCC元组状态机：INSERT -> UPDATE -> VACUUM"""
+        logger.info("=" * 60)
+        logger.info("MVCC状态机演示")
+        logger.info("=" * 60)
+
+        try:
+            with self.conn.cursor() as cur:
+                # 状态1：INSERT（创建新元组）
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS state_machine_test (
+                        id SERIAL PRIMARY KEY,
+                        data TEXT
+                    )
+                """)
+                cur.execute("INSERT INTO state_machine_test (data) VALUES ('state1')")
+                self.conn.commit()
+                logger.info("状态1：INSERT - 元组创建，xmin=当前XID，xmax=0")
+
+                # 状态2：UPDATE（创建新版本）
+                cur.execute("""
+                    UPDATE state_machine_test
+                    SET data = 'state2'
+                    WHERE id = 1
+                """)
+                self.conn.commit()
+                logger.info("状态2：UPDATE - 旧版本xmax=当前XID，新版本xmin=当前XID")
+
+                # 状态3：VACUUM（清理死亡元组）
+                cur.execute("VACUUM state_machine_test")
+                logger.info("状态3：VACUUM - 死亡元组被清理，空间回收")
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def demonstrate_acid_state_machine(self):
+        """演示ACID事务状态机：BEGIN -> ACTIVE -> COMMIT/ROLLBACK"""
+        logger.info("=" * 60)
+        logger.info("ACID状态机演示")
+        logger.info("=" * 60)
+
+        try:
+            with self.conn.cursor() as cur:
+                # 状态1：BEGIN
+                cur.execute("BEGIN")
+                logger.info("状态1：BEGIN - 事务开始，分配XID")
+
+                # 状态2：ACTIVE
+                cur.execute("SELECT 1")
+                logger.info("状态2：ACTIVE - 事务执行中，CLOG[XID]=IN_PROGRESS")
+
+                # 状态3：COMMIT
+                self.conn.commit()
+                logger.info("状态3：COMMIT - 事务提交，CLOG[XID]=COMMITTED")
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            if self.conn:
+                with self.conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS state_machine_test")
+                    self.conn.commit()
+                self.conn.close()
+                logger.info("资源清理完成")
+        except Exception as e:
+            logger.error(f"资源清理失败: {e}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+
+    demo = None
+    try:
+        demo = StateMachineIsomorphismDemo(connection_string)
+        demo.demonstrate_mvcc_state_machine()
+        demo.demonstrate_acid_state_machine()
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if demo:
+            demo.cleanup()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### 真实场景案例：分布式系统一致性选择
+
+**场景描述**：电商系统需要选择一致性策略，在CP和AP之间做出权衡。
+
+**业务需求**：
+- 商品库存查询：需要强一致性（CP模式）
+- 商品浏览记录：可以接受最终一致性（AP模式）
+
+**MVCC-ACID-CAP同构性应用**：
+
+```python
+#!/usr/bin/env python3
+"""
+电商系统一致性策略选择
+演示MVCC-ACID-CAP同构性在实际业务中的应用
+"""
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED, ISOLATION_LEVEL_SERIALIZABLE
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class ECommerceConsistencyStrategy:
+    """电商系统一致性策略"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        try:
+            self.conn = psycopg2.connect(connection_string)
+            self.conn.autocommit = False
+            logger.info("数据库连接成功")
+        except psycopg2.Error as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise
+
+    def setup_tables(self):
+        """设置表结构"""
+        try:
+            with self.conn.cursor() as cur:
+                # 商品库存表（需要强一致性）
+                cur.execute("""
+                    DROP TABLE IF EXISTS inventory;
+                    CREATE TABLE inventory (
+                        product_id INTEGER PRIMARY KEY,
+                        stock INTEGER NOT NULL CHECK (stock >= 0),
+                        price DECIMAL(10, 2)
+                    )
+                """)
+
+                # 浏览记录表（可以接受最终一致性）
+                cur.execute("""
+                    DROP TABLE IF EXISTS browse_history;
+                    CREATE TABLE browse_history (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER,
+                        product_id INTEGER,
+                        browse_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+
+                cur.execute("INSERT INTO inventory (product_id, stock, price) VALUES (1, 100, 99.99)")
+                self.conn.commit()
+                logger.info("表结构设置完成")
+        except psycopg2.Error as e:
+            logger.error(f"设置表结构失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def cp_mode_inventory_query(self):
+        """CP模式：商品库存查询（强一致性）"""
+        logger.info("=" * 60)
+        logger.info("CP模式：商品库存查询（强一致性）")
+        logger.info("=" * 60)
+
+        try:
+            # 使用SERIALIZABLE隔离级别保证强一致性
+            conn = psycopg2.connect(self.conn.dsn)
+            conn.set_isolation_level(ISOLATION_LEVEL_SERIALIZABLE)
+            conn.autocommit = False
+
+            with conn.cursor() as cur:
+                cur.execute("BEGIN")
+                # 使用FOR UPDATE保证读取最新数据
+                cur.execute("""
+                    SELECT product_id, stock, price
+                    FROM inventory
+                    WHERE product_id = 1
+                    FOR UPDATE
+                """)
+                result = cur.fetchone()
+                logger.info(f"商品库存: {result}")
+                logger.info("CP模式：保证强一致性，可能牺牲可用性（阻塞其他事务）")
+                conn.commit()
+
+            conn.close()
+
+        except psycopg2.Error as e:
+            logger.error(f"查询失败: {e}")
+            raise
+
+    def ap_mode_browse_history(self):
+        """AP模式：浏览记录（最终一致性）"""
+        logger.info("=" * 60)
+        logger.info("AP模式：浏览记录（最终一致性）")
+        logger.info("=" * 60)
+
+        try:
+            # 使用READ COMMITTED隔离级别保证高可用性
+            conn = psycopg2.connect(self.conn.dsn)
+            conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+            conn.autocommit = False
+
+            with conn.cursor() as cur:
+                cur.execute("BEGIN")
+                # 快速插入，不阻塞
+                cur.execute("""
+                    INSERT INTO browse_history (user_id, product_id)
+                    VALUES (1001, 1)
+                """)
+                conn.commit()
+                logger.info("AP模式：保证高可用性，接受最终一致性")
+
+            conn.close()
+
+        except psycopg2.Error as e:
+            logger.error(f"插入失败: {e}")
+            raise
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            if self.conn:
+                with self.conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS inventory, browse_history")
+                    self.conn.commit()
+                self.conn.close()
+                logger.info("资源清理完成")
+        except Exception as e:
+            logger.error(f"资源清理失败: {e}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+
+    strategy = None
+    try:
+        strategy = ECommerceConsistencyStrategy(connection_string)
+        strategy.setup_tables()
+        strategy.cp_mode_inventory_query()
+        strategy.ap_mode_browse_history()
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if strategy:
+            strategy.cleanup()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**场景分析**：
+
+1. **MVCC层面**：
+   - CP模式：使用SERIALIZABLE隔离级别，MVCC提供强一致性快照
+   - AP模式：使用READ COMMITTED隔离级别，MVCC提供高并发性能
+
+2. **ACID层面**：
+   - CP模式：强隔离性（I），保证数据一致性（C）
+   - AP模式：高并发吞吐量，接受较低的隔离性
+
+3. **CAP层面**：
+   - CP模式：选择一致性（C）和分区容错（P），牺牲可用性（A）
+   - AP模式：选择可用性（A）和分区容错（P），牺牲一致性（C）
+
+**同构性体现**：三个系统在权衡决策上遵循相同的三元结构，只是在不同场景下选择不同的权衡点。
 
 ---
 

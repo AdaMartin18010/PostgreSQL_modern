@@ -141,6 +141,160 @@ PostgreSQL MVCC-ACID关联性理论体系
 
 ## 📊 第二部分：形式化关联性证明系统
 
+### 0.1 MVCC-ACID关联性形式化定义
+
+#### 0.1.1 关联性基本定义
+
+**定义0.1（MVCC-ACID关联性）**：
+
+MVCC与ACID之间存在关联性，记作 $\text{Rel}(MVCC, ACID)$，当且仅当存在映射函数 $\phi: \text{MVCC} \to \text{ACID}$，使得：
+
+$$
+\forall m \in \text{MVCC}, \exists a \in \text{ACID}: \phi(m) = a \land \text{Preserves}(m, a)
+$$
+
+其中 $\text{Preserves}(m, a)$ 表示MVCC机制$m$保持ACID属性$a$。
+
+#### 0.1.2 MVCC-ACID映射关系形式化
+
+**定义0.2（MVCC到ACID映射）**：
+
+定义映射函数 $\phi: \text{MVCC} \to \text{ACID}$：
+
+$$
+\begin{align}
+\phi(\text{version}) &= \text{atomic\_operation} \\
+\phi(\text{snapshot}) &= \text{isolation\_level} \\
+\phi(\text{visibility\_rule}) &= \text{consistency\_constraint} \\
+\phi(\text{version\_chain}) &= \text{transaction\_sequence} \\
+\phi(\text{VACUUM}) &= \text{recovery\_mechanism}
+\end{align}
+$$
+
+**映射保持性定理**：
+
+$$
+\forall \tau \in \text{Versions}, \forall T \in \text{Transactions}: \\
+\text{Visible}(\tau, T) \iff \text{Isolated}(T, \tau)
+$$
+
+#### 0.1.3 ACID属性实现形式化
+
+**定义0.3（原子性实现）**：
+
+MVCC通过版本链实现原子性：
+
+$$
+\text{Atomic}(T) \equiv \forall \tau \in \text{Versions}(T): \\
+(\text{Commit}(T) \implies \text{Visible}(\tau, T')) \land \\
+(\text{Abort}(T) \implies \neg \text{Visible}(\tau, T'))
+$$
+
+**定义0.4（隔离性实现）**：
+
+MVCC通过快照实现隔离性：
+
+$$
+\text{Isolated}(T_1, T_2) \equiv \text{Snapshot}(T_1) \cap \text{Snapshot}(T_2) = \emptyset \lor \\
+\forall \tau: \text{Visible}(\tau, T_1) \land \text{Visible}(\tau, T_2) \implies \tau.\text{xmin} < \min(\text{Snapshot}(T_1) \cup \text{Snapshot}(T_2))
+$$
+
+**定义0.5（一致性实现）**：
+
+MVCC通过可见性规则和约束检查实现一致性：
+
+$$
+\text{Consistent}(D) \equiv \forall T, \forall \tau: \text{Visible}(\tau, T) \implies \text{Satisfies}(\tau, \text{Constraints}(D))
+$$
+
+**定义0.6（持久性实现）**：
+
+MVCC通过WAL和版本链实现持久性：
+
+$$
+\text{Durable}(T) \equiv \text{Commit}(T) \implies \\
+\forall \text{crash}: \text{Recover}() \vdash T \in \text{CommittedSet}
+$$
+
+### 0.2 MVCC-ACID关联机制工作机制说明
+
+#### 0.2.1 版本到原子性的映射机制
+
+**工作机制**：
+
+1. **版本创建**：
+   - 事务$T$执行UPDATE时，创建新版本$\tau_{\text{new}}$
+   - 设置$\tau_{\text{new}}.\text{xmin} = \mathcal{X}(T)$
+   - 标记旧版本$\tau_{\text{old}}.\text{xmax} = \mathcal{X}(T)$
+
+2. **原子性保证**：
+   - 如果$T$提交：$\mathcal{C}(\mathcal{X}(T)) = C$，新版本可见，旧版本不可见
+   - 如果$T$回滚：$\mathcal{C}(\mathcal{X}(T)) = A$，新版本不可见，旧版本保持可见
+   - 通过CLOG状态标记实现原子性，无需物理回滚
+
+#### 0.2.2 快照到隔离性的映射机制
+
+**工作机制**：
+
+1. **快照获取**：
+   - READ COMMITTED：每次查询获取新快照
+   - REPEATABLE READ：事务启动时获取快照，事务内复用
+
+2. **隔离性实现**：
+   - 快照定义事务可见的数据版本集合
+   - 不同事务的快照可能不同，实现隔离
+   - 通过可见性判断函数实现隔离级别
+
+**形式化表达**：
+
+$$
+\text{IsolationLevel}(T) = \begin{cases}
+\text{RC} & \text{if } \forall q: \text{Snapshot}(T, q) = \text{GetSnapshot}(\text{Now}()) \\
+\text{RR} & \text{if } \forall q: \text{Snapshot}(T, q) = \text{Snapshot}(T, q_0)
+\end{cases}
+$$
+
+#### 0.2.3 可见性到一致性的映射机制
+
+**工作机制**：
+
+1. **可见性判断**：
+   - 检查元组的xmin/xmax状态
+   - 检查事务快照
+   - 检查CLOG状态
+
+2. **一致性保证**：
+   - 只有可见的元组参与约束检查
+   - 约束检查在事务提交时进行
+   - 违反约束的事务回滚
+
+**形式化表达**：
+
+$$
+\text{Consistent}(D, T) \equiv \\
+\forall \tau \in \{\tau \mid \text{Visible}(\tau, T)\}: \text{Satisfies}(\tau, \text{Constraints}(D))
+$$
+
+#### 0.2.4 版本链到持久性的映射机制
+
+**工作机制**：
+
+1. **WAL记录**：
+   - 每个版本创建操作记录到WAL
+   - WAL保证操作的持久性
+
+2. **版本链持久化**：
+   - 版本链通过ctid指针链接
+   - 版本链存储在磁盘页面中
+   - 通过WAL恢复保证版本链完整性
+
+**形式化表达**：
+
+$$
+\text{Durable}(T) \equiv \\
+\text{Commit}(T) \implies \forall \text{crash}: \text{Replay}(\text{WAL}) \vdash \text{Chain}(T) \text{完整}
+$$
+
 ### 2.1 MVCC实现原子性的替代机制
 
 **传统Undo模型**：

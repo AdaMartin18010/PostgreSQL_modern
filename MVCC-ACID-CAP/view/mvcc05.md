@@ -47,7 +47,265 @@
 
 ---
 
-## 📊 第一部分：形式化语义与物理实现的紧耦合
+## 📊 第一部分：事务性形式化定义与工作机制
+
+### 0.1 事务性形式化定义
+
+#### 0.1.1 事务基本定义
+
+**定义0.1（事务）**：
+
+事务$T$是一个操作序列，定义为：
+
+$$
+T = \langle \text{xid}, \text{ops}, \text{state}, \text{snapshot} \rangle
+$$
+
+其中：
+
+- **xid**：事务标识符，$\text{xid} \in \mathbb{N}$，由XID分配函数$\mathcal{X}$分配
+- **ops**：操作序列，$\text{ops} = [o_1, o_2, ..., o_n]$，每个$o_i$是读操作或写操作
+- **state**：事务状态，$\text{state} \in \{I, C, A\}$（I:进行中, C:已提交, A:已中止）
+- **snapshot**：事务快照，$\text{snapshot} = \mathcal{S}(T)$
+
+#### 0.1.2 事务状态形式化定义
+
+**定义0.2（事务状态机）**：
+
+事务状态机是一个五元组 $\mathcal{T} = (S, \Sigma, \delta, s_0, F)$，其中：
+
+- **S**：状态集合，$S = \{\text{NOT\_STARTED}, \text{ACTIVE}, \text{COMMITTED}, \text{ABORTED}\}$
+- **$\Sigma$**：输入字母表，$\Sigma = \{\text{BEGIN}, \text{EXECUTE}, \text{COMMIT}, \text{ROLLBACK}\}$
+- **$\delta$**：状态转换函数，$\delta: S \times \Sigma \to S$
+- **$s_0$**：初始状态，$s_0 = \text{NOT\_STARTED}$
+- **F**：终止状态集合，$F = \{\text{COMMITTED}, \text{ABORTED}\}$
+
+**状态转换规则**：
+
+$$
+\begin{align}
+\delta(\text{NOT\_STARTED}, \text{BEGIN}) &= \text{ACTIVE} \\
+\delta(\text{ACTIVE}, \text{EXECUTE}) &= \text{ACTIVE} \\
+\delta(\text{ACTIVE}, \text{COMMIT}) &= \text{COMMITTED} \\
+\delta(\text{ACTIVE}, \text{ROLLBACK}) &= \text{ABORTED}
+\end{align}
+$$
+
+#### 0.1.3 事务生命周期形式化
+
+**定义0.3（事务生命周期）**：
+
+事务$T$的生命周期是一个状态序列：
+
+$$
+\text{Lifecycle}(T) = [s_0, s_1, ..., s_n]
+$$
+
+其中：
+
+- $s_0 = \text{NOT\_STARTED}$
+- $s_n \in F$（终止状态）
+- $\forall i: s_{i+1} = \delta(s_i, \sigma_i)$，$\sigma_i \in \Sigma$
+
+**生命周期约束**：
+
+$$
+\forall T: \text{Lifecycle}(T) \text{必须终止} \land \\
+\text{终止状态唯一} \land \\
+\text{无循环状态}
+$$
+
+#### 0.1.4 事务性与MVCC关联形式化
+
+**定义0.4（事务性与MVCC关联）**：
+
+事务$T$与MVCC的关联通过版本链和可见性规则实现：
+
+$$
+\text{Transactional}(T) \equiv \\
+\forall \tau \in \text{Versions}(T): \text{Visible}(\tau, T) \iff \\
+(\tau.\text{xmin} = \mathcal{X}(T) \land \mathcal{C}(\mathcal{X}(T)) = C) \lor \\
+(\tau.\text{xmin} < \mathcal{X}(T) \land \tau.\text{xmin} \notin \mathcal{S}(T) \land \\
+(\tau.\text{xmax} = 0 \lor \tau.\text{xmax} > \mathcal{X}(T) \lor \mathcal{C}(\tau.\text{xmax}) = A))
+$$
+
+### 0.2 事务性工作机制说明
+
+#### 0.2.1 事务启动机制
+
+**工作机制**：
+
+1. **XID分配**：
+   - 调用$\mathcal{X}(T)$分配唯一事务ID
+   - XID从全局计数器获取，保证唯一性
+   - XID范围：$[0, 2^{32}-1]$，循环使用
+
+2. **快照获取**：
+   - READ COMMITTED：每次查询获取新快照
+   - REPEATABLE READ：事务启动时获取快照，事务内复用
+   - SERIALIZABLE：事务启动时获取快照，并初始化SIREAD锁集合
+
+3. **状态初始化**：
+   - 设置$\text{state}(T) = I$（进行中）
+   - 记录到CLOG：$\mathcal{C}(\mathcal{X}(T)) = I$
+   - 注册到活跃事务列表
+
+**形式化表达**：
+
+$$
+\text{Begin}(T) \equiv \\
+\mathcal{X}(T) = \text{AllocateXID}() \land \\
+\mathcal{S}(T) = \text{GetSnapshot}(\text{IsolationLevel}(T)) \land \\
+\mathcal{C}(\mathcal{X}(T)) = I \land \\
+\text{RegisterActive}(T)
+$$
+
+#### 0.2.2 事务执行机制
+
+**工作机制**：
+
+1. **操作执行**：
+   - 每个操作$o_i$在事务$T$的上下文中执行
+   - 操作创建或修改元组版本
+   - 版本标记为事务$T$创建：$\tau.\text{xmin} = \mathcal{X}(T)$
+
+2. **可见性判断**：
+   - 查询操作使用事务快照判断可见性
+   - 更新操作需要获取行锁，防止写-写冲突
+   - 可见性判断通过`HeapTupleSatisfiesVisibility()`函数实现
+
+3. **状态保持**：
+   - 事务执行过程中状态保持为ACTIVE
+   - 所有修改在事务提交前对其他事务不可见
+
+**形式化表达**：
+
+$$
+\text{Execute}(T, o) \equiv \\
+\text{state}(T) = \text{ACTIVE} \land \\
+\text{Apply}(o, T) \land \\
+\forall \tau \in \text{CreatedBy}(o): \tau.\text{xmin} = \mathcal{X}(T) \land \\
+\text{state}(T) = \text{ACTIVE}
+$$
+
+#### 0.2.3 事务提交机制
+
+**工作机制**：
+
+1. **约束检查**：
+   - 检查所有约束是否满足
+   - 如果违反约束，事务回滚
+
+2. **WAL写入**：
+   - 将所有修改操作写入WAL
+   - 强制WAL刷盘，保证持久性
+
+3. **CLOG更新**：
+   - 原子更新CLOG：$\mathcal{C}(\mathcal{X}(T)) = C$
+   - CLOG更新是原子操作，保证原子性
+
+4. **状态转换**：
+   - 设置$\text{state}(T) = \text{COMMITTED}$
+   - 从活跃事务列表移除
+   - 释放所有锁
+
+**形式化表达**：
+
+$$
+\text{Commit}(T) \equiv \\
+\forall c \in \text{Constraints}: \text{Satisfies}(\text{State}(T), c) \land \\
+\text{WriteWAL}(T) \land \\
+\text{FlushWAL}() \land \\
+\mathcal{C}(\mathcal{X}(T)) = C \land \\
+\text{state}(T) = \text{COMMITTED} \land \\
+\text{UnregisterActive}(T) \land \\
+\text{ReleaseLocks}(T)
+$$
+
+#### 0.2.4 事务回滚机制
+
+**工作机制**：
+
+1. **CLOG更新**：
+   - 原子更新CLOG：$\mathcal{C}(\mathcal{X}(T)) = A$
+   - 标记事务为已中止
+
+2. **版本可见性**：
+   - 事务$T$创建的所有版本自动不可见
+   - 通过可见性判断规则实现，无需物理删除
+
+3. **锁释放**：
+   - 释放事务持有的所有锁
+   - 唤醒等待这些锁的事务
+
+4. **状态转换**：
+   - 设置$\text{state}(T) = \text{ABORTED}$
+   - 从活跃事务列表移除
+
+**形式化表达**：
+
+$$
+\text{Rollback}(T) \equiv \\
+\mathcal{C}(\mathcal{X}(T)) = A \land \\
+\forall \tau \in \text{CreatedBy}(T): \neg \text{Visible}(\tau, T') \quad \forall T' \land \\
+\text{ReleaseLocks}(T) \land \\
+\text{state}(T) = \text{ABORTED} \land \\
+\text{UnregisterActive}(T)
+$$
+
+#### 0.2.5 事务性与MVCC协同机制
+
+**工作机制**：
+
+1. **版本管理**：
+   - 每个事务的修改创建新版本
+   - 版本通过xmin/xmax标记事务归属
+   - 版本链通过ctid指针链接
+
+2. **可见性控制**：
+   - 快照定义事务可见的版本集合
+   - 可见性判断结合快照和CLOG状态
+   - 不同隔离级别使用不同的快照策略
+
+3. **并发控制**：
+   - 读操作通过快照隔离，无需锁
+   - 写操作需要行锁，防止写-写冲突
+   - SERIALIZABLE级别使用SSI检测序列化冲突
+
+**形式化表达**：
+
+$$
+\text{TransactionalMVCC}(T) \equiv \\
+\text{VersionManagement}(T) \land \\
+\text{VisibilityControl}(T) \land \\
+\text{ConcurrencyControl}(T)
+$$
+
+其中：
+
+$$
+\text{VersionManagement}(T) \equiv \\
+\forall \tau \in \text{CreatedBy}(T): \tau.\text{xmin} = \mathcal{X}(T) \land \\
+\text{Chain}(\tau) \text{完整}
+$$
+
+$$
+\text{VisibilityControl}(T) \equiv \\
+\forall \tau: \text{Visible}(\tau, T) \iff \\
+\text{SnapshotRule}(\tau, \mathcal{S}(T)) \land \\
+\text{CLOGRule}(\tau, \mathcal{C})
+$$
+
+$$
+\text{ConcurrencyControl}(T) \equiv \\
+\text{ReadIsolation}(T) \land \\
+\text{WriteLocking}(T) \land \\
+\text{ConflictDetection}(T)
+$$
+
+---
+
+## 📊 第二部分：形式化语义与物理实现的紧耦合
 
 ### 1.1 元组物理结构的形式化（带偏移量）
 
