@@ -33,6 +33,10 @@
       - [案例 1: 某推荐系统 HNSW 优化](#案例-1-某推荐系统-hnsw-优化)
       - [案例 2: 千万级数据表 HNSW 索引性能优化（真实案例）](#案例-2-千万级数据表-hnsw-索引性能优化真实案例)
   - [8. 参考资料](#8-参考资料)
+    - [8.1 官方文档](#81-官方文档)
+    - [8.2 学术论文](#82-学术论文)
+    - [8.3 技术博客](#83-技术博客)
+    - [8.4 相关资源](#84-相关资源)
 
 ---
 
@@ -442,8 +446,39 @@ LIMIT 10;
 
 ## 8. 参考资料
 
-- [pgvector 核心原理](../技术原理/pgvector核心原理.md)
-- [性能调优技巧](../最佳实践/性能调优技巧.md)
+### 8.1 官方文档
+
+- **[pgvector 官方文档](https://github.com/pgvector/pgvector)**
+  - 版本: pgvector 0.7.0+
+  - 内容: pgvector 扩展的完整文档，包括 HNSW 参数说明
+  - GitHub: <https://github.com/pgvector/pgvector>
+  - 最后更新: 2025年
+
+- **[PostgreSQL 索引文档](https://www.postgresql.org/docs/current/indexes.html)**
+  - 内容: PostgreSQL 索引的完整文档
+
+### 8.2 学术论文
+
+- **Malkov, Y. A., & Yashunin, D. A. (2018). "Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs."**
+  - 期刊: IEEE transactions on pattern analysis and machine intelligence, 40(9), 2096-2108
+  - **DOI**: [10.1109/TPAMI.2018.2889473](https://doi.org/10.1109/TPAMI.2018.2889473)
+  - **重要性**: HNSW 算法的原始论文，详细阐述了算法原理和参数选择
+
+### 8.3 技术博客
+
+- **[pgvector 核心原理](../技术原理/pgvector核心原理.md)**
+  - 内容: pgvector 的核心原理和实现细节
+
+- **[性能调优技巧](../最佳实践/性能调优技巧.md)**
+  - 内容: 向量数据库性能调优的实用技巧
+
+### 8.4 相关资源
+
+- **[PostgreSQL 内存配置文档](https://www.postgresql.org/docs/current/runtime-config-resource.html)**
+  - 内容: PostgreSQL 内存配置参数的详细说明
+
+- **[PostgreSQL 并行查询文档](https://www.postgresql.org/docs/current/parallel-query.html)**
+  - 内容: PostgreSQL 并行查询的配置和优化
 
 ---
 

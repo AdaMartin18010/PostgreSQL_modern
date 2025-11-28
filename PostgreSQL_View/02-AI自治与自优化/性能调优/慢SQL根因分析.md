@@ -32,6 +32,9 @@
     - [6.3 自动修复](#63-自动修复)
     - [6.4 分析报告](#64-分析报告)
   - [7. 参考资料](#7-参考资料)
+    - [7.1 官方文档](#71-官方文档)
+    - [7.2 技术博客](#72-技术博客)
+    - [7.3 相关资源](#73-相关资源)
 
 ---
 
@@ -555,8 +558,34 @@ class AnalysisReportGenerator:
 
 ## 7. 参考资料
 
-- [AI 自治核心原理](../技术原理/AI自治核心原理.md)
-- [自动参数调优](./自动参数调优.md)
+### 7.1 官方文档
+
+- **[PostgreSQL pg_stat_statements 文档](https://www.postgresql.org/docs/current/pgstatstatements.html)**
+  - 版本: PostgreSQL 9.2+
+  - 内容: pg_stat_statements 扩展的完整文档，用于慢 SQL 分析
+  - 最后更新: 2025年
+
+- **[PostgreSQL EXPLAIN 文档](https://www.postgresql.org/docs/current/sql-explain.html)**
+  - 内容: PostgreSQL EXPLAIN 命令的详细说明
+
+- **[PostgreSQL 查询性能优化文档](https://www.postgresql.org/docs/current/performance-tips.html)**
+  - 内容: PostgreSQL 查询性能优化的完整指南
+
+### 7.2 技术博客
+
+- **[AI 自治核心原理](../技术原理/AI自治核心原理.md)**
+  - 内容: AI 自治系统的核心原理和实现
+
+- **[自动参数调优](./自动参数调优.md)**
+  - 内容: 自动参数调优的实现和最佳实践
+
+### 7.3 相关资源
+
+- **[PostgreSQL 索引文档](https://www.postgresql.org/docs/current/indexes.html)**
+  - 内容: PostgreSQL 索引的完整文档
+
+- **[PostgreSQL 统计信息文档](https://www.postgresql.org/docs/current/planner-stats.html)**
+  - 内容: PostgreSQL 统计信息的收集和使用
 
 ---
 

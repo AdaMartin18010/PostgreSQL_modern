@@ -55,6 +55,11 @@
     - [7.4 性能基准测试](#74-性能基准测试)
     - [7.5 相关资源](#75-相关资源)
     - [7.6 代码实现参考](#76-代码实现参考)
+  - [8. 完整代码示例](#8-完整代码示例)
+    - [8.1 RRF 函数安装与配置](#81-rrf-函数安装与配置)
+    - [8.2 混合搜索完整实现示例](#82-混合搜索完整实现示例)
+    - [8.3 电商搜索应用示例](#83-电商搜索应用示例)
+    - [8.4 RRF 参数调优示例](#84-rrf-参数调优示例)
 
 ---
 
@@ -939,6 +944,412 @@ $$ LANGUAGE plpgsql;
 
 - **[pgvector RRF 示例代码](https://github.com/pgvector/pgvector/tree/main/examples)**
   - 内容: 混合搜索的完整示例代码
+
+---
+
+## 8. 完整代码示例
+
+### 8.1 RRF 函数安装与配置
+
+**安装 pgvector 和创建 RRF 函数**:
+
+```sql
+-- 1. 安装 pgvector 扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 2. 创建 RRF 融合函数
+CREATE OR REPLACE FUNCTION rrf(
+    text_results JSONB,
+    vector_results JSONB,
+    k INTEGER DEFAULT 60
+) RETURNS TABLE (
+    id TEXT,
+    rrf_score NUMERIC,
+    rank INTEGER
+) AS $$
+DECLARE
+    text_rank INTEGER;
+    vector_rank INTEGER;
+    combined_scores JSONB := '{}'::JSONB;
+    result JSONB;
+BEGIN
+    -- 处理文本搜索结果
+    FOR result IN SELECT * FROM jsonb_array_elements(text_results)
+    LOOP
+        text_rank := (result->>'rank')::INTEGER;
+        combined_scores := combined_scores || jsonb_build_object(
+            result->>'id',
+            jsonb_build_object(
+                'text_score', 1.0 / (k + text_rank),
+                'vector_score', 0.0,
+                'text_rank', text_rank,
+                'vector_rank', NULL
+            )
+        );
+    END LOOP;
+
+    -- 处理向量搜索结果
+    FOR result IN SELECT * FROM jsonb_array_elements(vector_results)
+    LOOP
+        vector_rank := (result->>'rank')::INTEGER;
+        IF combined_scores ? (result->>'id') THEN
+            -- 更新现有结果
+            combined_scores := jsonb_set(
+                combined_scores,
+                ARRAY[result->>'id', 'vector_score'],
+                to_jsonb(1.0 / (k + vector_rank))
+            );
+            combined_scores := jsonb_set(
+                combined_scores,
+                ARRAY[result->>'id', 'vector_rank'],
+                to_jsonb(vector_rank)
+            );
+        ELSE
+            -- 添加新结果
+            combined_scores := combined_scores || jsonb_build_object(
+                result->>'id',
+                jsonb_build_object(
+                    'text_score', 0.0,
+                    'vector_score', 1.0 / (k + vector_rank),
+                    'text_rank', NULL,
+                    'vector_rank', vector_rank
+                )
+            );
+        END IF;
+    END LOOP;
+
+    -- 计算 RRF 分数并排序
+    RETURN QUERY
+    SELECT
+        key AS id,
+        ((value->>'text_score')::NUMERIC + (value->>'vector_score')::NUMERIC) AS rrf_score,
+        ROW_NUMBER() OVER (ORDER BY ((value->>'text_score')::NUMERIC + (value->>'vector_score')::NUMERIC) DESC) AS rank
+    FROM jsonb_each(combined_scores)
+    ORDER BY rrf_score DESC;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 8.2 混合搜索完整实现示例
+
+**Python 混合搜索客户端**:
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+import json
+from typing import List, Dict, Tuple
+import numpy as np
+
+class HybridSearchClient:
+    """混合搜索客户端"""
+
+    def __init__(self, connection_string: str):
+        """初始化客户端"""
+        self.conn = psycopg2.connect(connection_string)
+        register_vector(self.conn)
+        self.cur = self.conn.cursor()
+
+    def text_search(self, query: str, limit: int = 20) -> List[Dict]:
+        """全文搜索"""
+        self.cur.execute("""
+            SELECT
+                id,
+                title,
+                content,
+                ts_rank(to_tsvector('english', title || ' ' || content),
+                        plainto_tsquery('english', %s)) AS rank
+            FROM documents
+            WHERE to_tsvector('english', title || ' ' || content) @@
+                  plainto_tsquery('english', %s)
+            ORDER BY rank DESC
+            LIMIT %s
+        """, (query, query, limit))
+
+        results = []
+        for row in self.cur.fetchall():
+            results.append({
+                'id': str(row[0]),
+                'title': row[1],
+                'content': row[2],
+                'rank': row[3]
+            })
+
+        return results
+
+    def vector_search(self, query_vector: np.ndarray, limit: int = 20) -> List[Dict]:
+        """向量搜索"""
+        self.cur.execute("""
+            SELECT
+                id,
+                title,
+                content,
+                embedding <=> %s AS distance,
+                ROW_NUMBER() OVER (ORDER BY embedding <=> %s) AS rank
+            FROM documents
+            ORDER BY embedding <=> %s
+            LIMIT %s
+        """, (query_vector.tolist(), query_vector.tolist(),
+              query_vector.tolist(), limit))
+
+        results = []
+        for row in self.cur.fetchall():
+            results.append({
+                'id': str(row[0]),
+                'title': row[1],
+                'content': row[2],
+                'distance': float(row[3]),
+                'rank': row[4]
+            })
+
+        return results
+
+    def hybrid_search(self, query: str, query_vector: np.ndarray,
+                     k: int = 60, limit: int = 20) -> List[Dict]:
+        """混合搜索（使用 RRF 融合）"""
+        # 1. 执行全文搜索
+        text_results = self.text_search(query, limit=limit * 2)
+
+        # 2. 执行向量搜索
+        vector_results = self.vector_search(query_vector, limit=limit * 2)
+
+        # 3. 准备 RRF 函数输入
+        text_json = json.dumps([
+            {'id': r['id'], 'rank': idx + 1}
+            for idx, r in enumerate(text_results)
+        ])
+
+        vector_json = json.dumps([
+            {'id': r['id'], 'rank': idx + 1}
+            for idx, r in enumerate(vector_results)
+        ])
+
+        # 4. 调用 RRF 函数
+        self.cur.execute("""
+            SELECT id, rrf_score, rank
+            FROM rrf(%s::JSONB, %s::JSONB, %s)
+            ORDER BY rrf_score DESC
+            LIMIT %s
+        """, (text_json, vector_json, k, limit))
+
+        # 5. 获取融合结果
+        rrf_results = []
+        for row in self.cur.fetchall():
+            rrf_results.append({
+                'id': row[0],
+                'rrf_score': float(row[1]),
+                'rank': row[2]
+            })
+
+        # 6. 合并详细信息
+        text_dict = {r['id']: r for r in text_results}
+        vector_dict = {r['id']: r for r in vector_results}
+
+        final_results = []
+        for rrf_item in rrf_results:
+            doc_id = rrf_item['id']
+            result = {
+                'id': doc_id,
+                'rrf_score': rrf_item['rrf_score'],
+                'rank': rrf_item['rank']
+            }
+
+            if doc_id in text_dict:
+                result['title'] = text_dict[doc_id]['title']
+                result['content'] = text_dict[doc_id]['content']
+                result['text_rank'] = text_dict[doc_id]['rank']
+            elif doc_id in vector_dict:
+                result['title'] = vector_dict[doc_id]['title']
+                result['content'] = vector_dict[doc_id]['content']
+                result['vector_distance'] = vector_dict[doc_id]['distance']
+
+            final_results.append(result)
+
+        return final_results
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+client = HybridSearchClient(
+    "host=localhost dbname=testdb user=postgres password=secret"
+)
+
+# 执行混合搜索
+query = "PostgreSQL vector search"
+query_vector = np.random.rand(768).astype(np.float32)  # 假设是768维向量
+
+results = client.hybrid_search(query, query_vector, k=60, limit=20)
+
+for result in results:
+    print(f"Rank {result['rank']}: {result['title']} (RRF Score: {result['rrf_score']:.4f})")
+
+client.close()
+```
+
+### 8.3 电商搜索应用示例
+
+**电商商品混合搜索**:
+
+```python
+from typing import List, Dict
+import numpy as np
+
+class ECommerceSearch:
+    """电商商品混合搜索"""
+
+    def __init__(self, connection_string: str):
+        self.client = HybridSearchClient(connection_string)
+
+    def search_products(self, query: str, query_vector: np.ndarray,
+                       category: str = None, price_range: Tuple[float, float] = None,
+                       limit: int = 20) -> List[Dict]:
+        """搜索商品"""
+        # 1. 构建全文搜索查询
+        text_query = query
+        if category:
+            text_query += f" category:{category}"
+
+        # 2. 执行混合搜索
+        results = self.client.hybrid_search(
+            text_query,
+            query_vector,
+            k=60,
+            limit=limit * 2
+        )
+
+        # 3. 应用价格过滤
+        if price_range:
+            filtered_results = []
+            for result in results:
+                # 假设商品信息存储在数据库中
+                product_info = self.get_product_info(result['id'])
+                if price_range[0] <= product_info['price'] <= price_range[1]:
+                    filtered_results.append(result)
+                    if len(filtered_results) >= limit:
+                        break
+            results = filtered_results[:limit]
+        else:
+            results = results[:limit]
+
+        return results
+
+    def get_product_info(self, product_id: str) -> Dict:
+        """获取商品信息"""
+        # 从数据库获取商品详细信息
+        self.client.cur.execute("""
+            SELECT id, name, price, category, description
+            FROM products
+            WHERE id = %s
+        """, (product_id,))
+
+        row = self.client.cur.fetchone()
+        return {
+            'id': row[0],
+            'name': row[1],
+            'price': row[2],
+            'category': row[3],
+            'description': row[4]
+        }
+
+# 使用示例
+ecommerce = ECommerceSearch(
+    "host=localhost dbname=ecommerce user=postgres password=secret"
+)
+
+# 搜索商品
+query = "summer dress"
+query_vector = np.random.rand(768).astype(np.float32)
+
+products = ecommerce.search_products(
+    query=query,
+    query_vector=query_vector,
+    category="clothing",
+    price_range=(50.0, 200.0),
+    limit=20
+)
+
+for product in products:
+    print(f"{product['rank']}. {product.get('title', 'N/A')} - RRF Score: {product['rrf_score']:.4f}")
+```
+
+### 8.4 RRF 参数调优示例
+
+**RRF 参数优化**:
+
+```python
+from typing import List, Tuple
+import numpy as np
+
+class RRFTuner:
+    """RRF 参数调优器"""
+
+    def __init__(self, connection_string: str):
+        self.client = HybridSearchClient(connection_string)
+
+    def tune_k_parameter(self, queries: List[Tuple[str, np.ndarray]],
+                        k_values: List[int] = [20, 40, 60, 80, 100],
+                        ground_truth: Dict[str, List[str]] = None) -> Dict[int, float]:
+        """调优 k 参数"""
+        results = {}
+
+        for k in k_values:
+            total_score = 0.0
+            count = 0
+
+            for query, query_vector in queries:
+                # 执行混合搜索
+                search_results = self.client.hybrid_search(
+                    query, query_vector, k=k, limit=20
+                )
+
+                # 计算指标（如果有 ground truth）
+                if ground_truth and query in ground_truth:
+                    score = self.calculate_ndcg(
+                        search_results,
+                        ground_truth[query]
+                    )
+                    total_score += score
+                    count += 1
+
+            if count > 0:
+                results[k] = total_score / count
+
+        return results
+
+    def calculate_ndcg(self, results: List[Dict],
+                      relevant_ids: List[str],
+                      k: int = 10) -> float:
+        """计算 NDCG@k"""
+        dcg = 0.0
+        for i, result in enumerate(results[:k]):
+            if result['id'] in relevant_ids:
+                relevance = 1.0
+                dcg += relevance / np.log2(i + 2)
+
+        # 计算 IDCG
+        idcg = sum(1.0 / np.log2(i + 2) for i in range(min(len(relevant_ids), k)))
+
+        return dcg / idcg if idcg > 0 else 0.0
+
+# 使用示例
+tuner = RRFTuner("host=localhost dbname=testdb user=postgres password=secret")
+
+# 准备测试查询
+queries = [
+    ("PostgreSQL vector search", np.random.rand(768).astype(np.float32)),
+    ("database optimization", np.random.rand(768).astype(np.float32)),
+]
+
+# 调优 k 参数
+k_results = tuner.tune_k_parameter(queries, k_values=[20, 40, 60, 80, 100])
+
+# 找到最佳 k 值
+best_k = max(k_results, key=k_results.get)
+print(f"最佳 k 值: {best_k}, NDCG 分数: {k_results[best_k]:.4f}")
+```
 
 ---
 

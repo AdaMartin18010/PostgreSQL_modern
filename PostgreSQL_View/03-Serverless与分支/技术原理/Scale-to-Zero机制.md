@@ -39,6 +39,11 @@
     - [7.2 性能优化](#72-性能优化)
     - [7.3 监控建议](#73-监控建议)
   - [8. 参考资料](#8-参考资料)
+  - [8. 完整代码示例](#8-完整代码示例)
+    - [8.1 Neon Scale-to-Zero 配置示例](#81-neon-scale-to-zero-配置示例)
+    - [8.2 Scale-to-Zero 状态监控示例](#82-scale-to-zero-状态监控示例)
+    - [8.3 冷启动处理示例](#83-冷启动处理示例)
+    - [8.4 应用层 Scale-to-Zero 处理示例](#84-应用层-scale-to-zero-处理示例)
 
 ---
 
@@ -671,6 +676,286 @@ async def warmup_database(connection_string):
 - [Neon Scale-to-Zero 文档](https://neon.tech/docs/concepts/scale-to-zero)
 - [Supabase 暂停文档](https://supabase.com/docs/guides/platform/pausing)
 - [Serverless 架构模式](https://aws.amazon.com/serverless/)
+
+---
+
+## 8. 完整代码示例
+
+### 8.1 Neon Scale-to-Zero 配置示例
+
+**Neon API 配置**:
+
+```python
+import neon
+from neon import NeonClient
+
+# 初始化 Neon 客户端
+client = NeonClient(api_key="your_api_key")
+
+# 创建支持 Scale-to-Zero 的数据库
+project = client.projects.create(
+    name="my-project",
+    region="us-east-1"
+)
+
+database = client.databases.create(
+    project_id=project.id,
+    name="my-database",
+    scale_to_zero=True,  # 启用 Scale-to-Zero
+    idle_timeout=300  # 5分钟无请求后暂停
+)
+
+print(f"数据库已创建: {database.id}")
+print(f"连接字符串: {database.connection_string}")
+```
+
+**连接字符串配置**:
+
+```python
+import psycopg2
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
+
+# 使用连接池处理 Scale-to-Zero
+connection_string = database.connection_string
+
+# SQLAlchemy 连接池配置
+engine = create_engine(
+    connection_string,
+    poolclass=QueuePool,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,  # 连接前检查，自动处理冷启动
+    pool_recycle=3600,   # 1小时回收连接
+    connect_args={
+        "connect_timeout": 10,  # 连接超时10秒
+        "options": "-c statement_timeout=30000"  # 30秒查询超时
+    }
+)
+```
+
+### 8.2 Scale-to-Zero 状态监控示例
+
+**状态监控脚本**:
+
+```python
+import time
+from typing import Dict, List
+from neon import NeonClient
+
+class ScaleToZeroMonitor:
+    """Scale-to-Zero 状态监控器"""
+
+    def __init__(self, client: NeonClient, database_id: str):
+        self.client = client
+        self.database_id = database_id
+        self.state_history = []
+
+    def get_database_state(self) -> Dict:
+        """获取数据库状态"""
+        database = self.client.databases.get(self.database_id)
+        return {
+            'id': database.id,
+            'state': database.state,  # running, idle, suspended, zero
+            'last_request_time': database.last_request_time,
+            'idle_since': database.idle_since,
+            'resume_time': database.resume_time if hasattr(database, 'resume_time') else None
+        }
+
+    def monitor_state(self, duration_seconds: int = 300, interval_seconds: int = 10):
+        """监控状态变化"""
+        print(f"开始监控数据库状态，持续 {duration_seconds} 秒...")
+        start_time = time.time()
+
+        while time.time() - start_time < duration_seconds:
+            state = self.get_database_state()
+            self.state_history.append({
+                'timestamp': time.time(),
+                'state': state['state'],
+                'last_request_time': state['last_request_time']
+            })
+
+            print(f"[{time.strftime('%H:%M:%S')}] 状态: {state['state']}, "
+                  f"最后请求: {state['last_request_time']}")
+
+            time.sleep(interval_seconds)
+
+        return self.state_history
+
+    def analyze_state_transitions(self) -> Dict:
+        """分析状态转换"""
+        transitions = []
+        for i in range(1, len(self.state_history)):
+            prev_state = self.state_history[i-1]['state']
+            curr_state = self.state_history[i]['state']
+
+            if prev_state != curr_state:
+                transitions.append({
+                    'from': prev_state,
+                    'to': curr_state,
+                    'timestamp': self.state_history[i]['timestamp']
+                })
+
+        return {
+            'total_transitions': len(transitions),
+            'transitions': transitions
+        }
+
+# 使用示例
+client = NeonClient(api_key="your_api_key")
+monitor = ScaleToZeroMonitor(client, "database_id_123")
+
+# 监控状态
+history = monitor.monitor_state(duration_seconds=300, interval_seconds=10)
+
+# 分析状态转换
+analysis = monitor.analyze_state_transitions()
+print(f"\n状态转换分析: {analysis}")
+```
+
+### 8.3 冷启动处理示例
+
+**连接预热脚本**:
+
+```python
+import psycopg2
+import time
+from typing import Optional
+
+class ConnectionWarmer:
+    """连接预热器"""
+
+    def __init__(self, connection_string: str):
+        self.connection_string = connection_string
+        self.warmup_queries = [
+            "SELECT 1",
+            "SELECT version()",
+            "SELECT current_database()",
+            "SELECT current_user"
+        ]
+
+    def warmup(self, timeout: int = 30) -> Dict:
+        """预热连接"""
+        start_time = time.time()
+        results = {
+            'success': False,
+            'warmup_time_ms': 0,
+            'queries_executed': 0,
+            'error': None
+        }
+
+        try:
+            # 尝试连接
+            conn = psycopg2.connect(
+                self.connection_string,
+                connect_timeout=timeout
+            )
+            cursor = conn.cursor()
+
+            # 执行预热查询
+            for query in self.warmup_queries:
+                cursor.execute(query)
+                cursor.fetchone()
+                results['queries_executed'] += 1
+
+            cursor.close()
+            conn.close()
+
+            results['success'] = True
+            results['warmup_time_ms'] = (time.time() - start_time) * 1000
+
+        except Exception as e:
+            results['error'] = str(e)
+            results['warmup_time_ms'] = (time.time() - start_time) * 1000
+
+        return results
+
+# 使用示例
+warmer = ConnectionWarmer("postgresql://user:pass@host:5432/dbname")
+
+# 预热连接
+result = warmer.warmup(timeout=30)
+print(f"预热结果: {result}")
+
+if result['success']:
+    print(f"预热成功，耗时: {result['warmup_time_ms']:.2f}ms")
+else:
+    print(f"预热失败: {result['error']}")
+```
+
+### 8.4 应用层 Scale-to-Zero 处理示例
+
+**应用层自动处理**:
+
+```python
+import psycopg2
+from sqlalchemy import create_engine, event
+from sqlalchemy.pool import QueuePool
+import time
+from functools import wraps
+
+class ScaleToZeroConnectionManager:
+    """Scale-to-Zero 连接管理器"""
+
+    def __init__(self, connection_string: str):
+        self.connection_string = connection_string
+        self.engine = create_engine(
+            connection_string,
+            poolclass=QueuePool,
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,  # 自动处理冷启动
+            pool_recycle=3600
+        )
+
+        # 注册连接事件
+        self._register_events()
+
+    def _register_events(self):
+        """注册连接事件"""
+        @event.listens_for(self.engine, "connect")
+        def set_connection_timeout(dbapi_conn, connection_record):
+            """设置连接超时"""
+            with dbapi_conn.cursor() as cursor:
+                cursor.execute("SET statement_timeout = 30000")  # 30秒超时
+
+        @event.listens_for(self.engine, "checkout")
+        def receive_checkout(dbapi_conn, connection_record, connection_proxy):
+            """连接检出时检查"""
+            # 执行简单查询确保连接可用
+            try:
+                with dbapi_conn.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+            except Exception:
+                # 连接不可用，重新连接
+                raise
+
+    def execute_query(self, query: str, params: tuple = None):
+        """执行查询（自动处理冷启动）"""
+        max_retries = 3
+        retry_delay = 1
+
+        for attempt in range(max_retries):
+            try:
+                with self.engine.connect() as conn:
+                    result = conn.execute(query, params or ())
+                    return result.fetchall()
+            except psycopg2.OperationalError as e:
+                if "connection" in str(e).lower() and attempt < max_retries - 1:
+                    # 可能是冷启动，等待后重试
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                raise
+
+# 使用示例
+manager = ScaleToZeroConnectionManager(
+    "postgresql://user:pass@host:5432/dbname"
+)
+
+# 执行查询（自动处理冷启动）
+results = manager.execute_query("SELECT * FROM users LIMIT 10")
+print(f"查询结果: {len(results)} 行")
+```
 
 ---
 

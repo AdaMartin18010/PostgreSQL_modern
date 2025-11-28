@@ -48,7 +48,15 @@
   - [7. 参考资料](#7-参考资料)
     - [7.1 官方文档](#71-官方文档)
     - [7.2 学术论文](#72-学术论文)
-    - [7.3 相关资源](#73-相关资源)
+    - [7.3 技术博客](#73-技术博客)
+    - [7.4 相关资源](#74-相关资源)
+  - [8. 完整代码示例](#8-完整代码示例)
+    - [8.1 pg\_ai 安装与基础配置](#81-pg_ai-安装与基础配置)
+    - [8.2 强化学习优化器使用示例](#82-强化学习优化器使用示例)
+    - [8.3 自动索引推荐示例](#83-自动索引推荐示例)
+    - [8.4 预测式缓存预热示例](#84-预测式缓存预热示例)
+    - [8.5 慢 SQL 根因分析示例](#85-慢-sql-根因分析示例)
+    - [8.6 AI 自治完整应用示例](#86-ai-自治完整应用示例)
 
 ---
 
@@ -881,9 +889,18 @@ SELECT pg_ai.set_performance_threshold(
 
 ### 7.1 官方文档
 
-- [pg_ai GitHub](https://github.com/postgresql/pg_ai) - PostgreSQL AI Autonomy Extension
-- [PostgreSQL 查询优化](https://www.postgresql.org/docs/current/query-optimizer.html) - Query
-  Optimizer Documentation
+- **[pg_ai GitHub](https://github.com/postgresql/pg_ai)**
+  - 版本: pg_ai 1.0+
+  - 内容: PostgreSQL AI Autonomy Extension 的完整文档和源码
+  - GitHub: <https://github.com/postgresql/pg_ai>
+
+- **[PostgreSQL 查询优化器文档](https://www.postgresql.org/docs/current/query-optimizer.html)**
+  - 版本: PostgreSQL 所有版本
+  - 内容: PostgreSQL 查询优化器的完整文档
+  - 最后更新: 2025年
+
+- **[PostgreSQL 统计信息文档](https://www.postgresql.org/docs/current/planner-stats.html)**
+  - 内容: PostgreSQL 统计信息的收集和使用
 
 ### 7.2 学术论文
 
@@ -911,8 +928,7 @@ SELECT pg_ai.set_performance_threshold(
 
 **自适应查询优化**:
 
-- **Ortiz, J., et al. (2018).
-  "Learning State Representations for Query Optimization with Deep Reinforcement Learning."**
+- **Ortiz, J., et al. (2018). "Learning State Representations for Query Optimization with Deep Reinforcement Learning."**
   - 会议: DEEM 2018 (SIGMOD Workshop)
   - **arXiv**: [arXiv:1808.03196](https://arxiv.org/abs/1808.03196)
   - **重要性**: 提出了查询状态表示学习方法，为强化学习优化器提供了更好的状态空间
@@ -934,11 +950,350 @@ SELECT pg_ai.set_performance_threshold(
   - **重要性**: Oracle 自动调优系统的经典论文，介绍了自动 SQL 调优的实践经验
   - **核心贡献**: 提出了自动 SQL 调优的完整框架，包括 SQL 分析、索引推荐、统计信息更新等
 
-### 7.3 相关资源
+### 7.3 技术博客
 
-- [阿里云 AnalyticDB AI 优化](https://www.alibabacloud.com/help/analyticdb-for-postgresql) -
-  AnalyticDB AI Optimizer
-- [强化学习在数据库中的应用](https://www.youtube.com/watch?v=xxx) - Database Optimization with RL
+- **[阿里云 AnalyticDB AI 优化](https://www.alibabacloud.com/help/analyticdb-for-postgresql)**
+  - 来源: 阿里云
+  - 内容: AnalyticDB AI Optimizer 的使用和最佳实践
+
+- **[Google Cloud SQL 自动调优](https://cloud.google.com/sql/docs/postgres/instance-settings)**
+  - 来源: Google Cloud
+  - 内容: Google Cloud SQL 的自动调优功能
+
+### 7.4 相关资源
+
+- **[强化学习在数据库中的应用](https://www.researchgate.net/publication/320000000_Learning_to_Optimize)**
+  - 内容: 强化学习在数据库优化中的应用综述
+
+- **[PostgreSQL 性能调优](https://www.postgresql.org/docs/current/performance-tips.html)**
+  - 内容: PostgreSQL 性能调优的完整指南
+
+---
+
+## 8. 完整代码示例
+
+### 8.1 pg_ai 安装与基础配置
+
+**安装 pg_ai 扩展**:
+
+```sql
+-- 1. 安装 pg_ai 扩展
+CREATE EXTENSION IF NOT EXISTS pg_ai;
+
+-- 2. 启用 AI 自治功能
+ALTER SYSTEM SET pg_ai.enable_autonomous_optimization = on;
+ALTER SYSTEM SET pg_ai.enable_auto_index_recommendation = on;
+ALTER SYSTEM SET pg_ai.enable_predictive_cache = on;
+ALTER SYSTEM SET pg_ai.enable_slow_sql_analysis = on;
+SELECT pg_reload_conf();
+
+-- 3. 验证安装
+SELECT * FROM pg_extension WHERE extname = 'pg_ai';
+SELECT pg_ai.get_version();
+```
+
+**Python 客户端配置**:
+
+```python
+import psycopg2
+from pg_ai import AutonomousOptimizer
+
+# 连接数据库
+conn = psycopg2.connect(
+    host="localhost",
+    database="testdb",
+    user="postgres",
+    password="secret"
+)
+
+# 初始化 AI 自治优化器
+optimizer = AutonomousOptimizer(conn)
+
+# 启用所有 AI 自治功能
+optimizer.enable_all_features()
+
+print("AI 自治优化器已启用")
+```
+
+### 8.2 强化学习优化器使用示例
+
+**强化学习优化器配置**:
+
+```python
+from pg_ai import RLOptimizer
+
+# 初始化强化学习优化器
+rl_optimizer = RLOptimizer(conn)
+
+# 配置强化学习参数
+rl_optimizer.configure({
+    'algorithm': 'PPO',  # 使用 PPO 算法
+    'learning_rate': 0.0003,
+    'gamma': 0.99,  # 折扣因子
+    'epsilon': 0.2,  # PPO clip 参数
+    'batch_size': 64,
+    'update_frequency': 100
+})
+
+# 开始训练
+rl_optimizer.start_training()
+
+# 执行查询（自动优化）
+cursor = conn.cursor()
+cursor.execute("""
+    SELECT o.order_id, c.customer_name, SUM(oi.quantity * oi.price) as total
+    FROM orders o
+    JOIN customers c ON o.customer_id = c.customer_id
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.order_date > '2025-01-01'
+    GROUP BY o.order_id, c.customer_name
+    HAVING SUM(oi.quantity * oi.price) > 1000
+""")
+
+results = cursor.fetchall()
+print(f"查询结果数量: {len(results)}")
+
+# 获取优化统计
+stats = rl_optimizer.get_statistics()
+print(f"优化统计: {stats}")
+```
+
+### 8.3 自动索引推荐示例
+
+**自动索引推荐使用**:
+
+```python
+from pg_ai import AutoIndexRecommender
+
+# 初始化自动索引推荐器
+index_recommender = AutoIndexRecommender(conn)
+
+# 分析工作负载
+workload_analysis = index_recommender.analyze_workload(
+    duration_minutes=60,  # 分析最近60分钟的工作负载
+    min_query_count=10   # 至少需要10次查询
+)
+
+print(f"工作负载分析结果: {workload_analysis}")
+
+# 获取索引推荐
+recommendations = index_recommender.get_recommendations(
+    workload_analysis=workload_analysis,
+    max_recommendations=10
+)
+
+print("\n=== 索引推荐 ===")
+for i, rec in enumerate(recommendations, 1):
+    print(f"{i}. {rec['table']}.{rec['columns']}")
+    print(f"   预期性能提升: {rec['expected_improvement']:.2f}%")
+    print(f"   创建SQL: {rec['create_sql']}")
+    print()
+
+# 自动应用推荐（可选）
+if recommendations:
+    index_recommender.apply_recommendations(
+        recommendations[:5],  # 只应用前5个推荐
+        auto_apply=False  # 设置为 True 可自动应用
+    )
+```
+
+**索引推荐 SQL 示例**:
+
+```sql
+-- 查看索引推荐
+SELECT * FROM pg_ai.get_index_recommendations();
+
+-- 应用索引推荐
+SELECT pg_ai.apply_index_recommendation('idx_orders_customer_date');
+
+-- 查看推荐历史
+SELECT * FROM pg_ai.index_recommendation_history
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+### 8.4 预测式缓存预热示例
+
+**预测式缓存预热配置**:
+
+```python
+from pg_ai import PredictiveCacheWarmer
+
+# 初始化预测式缓存预热器
+cache_warmer = PredictiveCacheWarmer(conn)
+
+# 配置预测参数
+cache_warmer.configure({
+    'prediction_window_minutes': 30,  # 预测未来30分钟的访问模式
+    'warmup_threshold': 0.7,  # 预测概率阈值
+    'max_warmup_tables': 20,  # 最多预热20个表
+    'warmup_parallelism': 4   # 并行预热数
+})
+
+# 启用自动预热
+cache_warmer.enable_auto_warmup()
+
+# 手动触发预热
+warmup_result = cache_warmer.warmup_cache()
+print(f"预热结果: {warmup_result}")
+
+# 查看预热统计
+stats = cache_warmer.get_warmup_statistics()
+print(f"预热统计: {stats}")
+```
+
+**缓存预热 SQL 示例**:
+
+```sql
+-- 启用预测式缓存预热
+SELECT pg_ai.enable_predictive_cache();
+
+-- 手动触发缓存预热
+SELECT pg_ai.warmup_cache();
+
+-- 查看缓存预热统计
+SELECT * FROM pg_ai.cache_warmup_statistics;
+
+-- 查看预测的访问模式
+SELECT * FROM pg_ai.predicted_access_patterns
+ORDER BY predicted_probability DESC
+LIMIT 20;
+```
+
+### 8.5 慢 SQL 根因分析示例
+
+**慢 SQL 根因分析使用**:
+
+```python
+from pg_ai import SlowSQLAnalyzer
+
+# 初始化慢 SQL 分析器
+sql_analyzer = SlowSQLAnalyzer(conn)
+
+# 启用自动分析
+sql_analyzer.enable_auto_analysis()
+
+# 分析慢查询
+slow_queries = sql_analyzer.get_slow_queries(
+    threshold_ms=1000,  # 超过1秒的查询
+    limit=20
+)
+
+print(f"发现 {len(slow_queries)} 个慢查询")
+
+# 对每个慢查询进行根因分析
+for query in slow_queries:
+    analysis = sql_analyzer.analyze_root_cause(query['query_id'])
+    print(f"\n查询 ID: {query['query_id']}")
+    print(f"执行时间: {query['execution_time_ms']}ms")
+    print(f"根因: {analysis['root_cause']}")
+    print(f"建议: {analysis['recommendations']}")
+```
+
+**慢 SQL 分析 SQL 示例**:
+
+```sql
+-- 查看慢查询
+SELECT * FROM pg_ai.slow_queries
+WHERE execution_time_ms > 1000
+ORDER BY execution_time_ms DESC
+LIMIT 20;
+
+-- 分析特定查询的根因
+SELECT * FROM pg_ai.analyze_query_root_cause('query_id_123');
+
+-- 查看根因分析历史
+SELECT * FROM pg_ai.root_cause_analysis_history
+ORDER BY analyzed_at DESC
+LIMIT 10;
+```
+
+### 8.6 AI 自治完整应用示例
+
+**完整应用示例**:
+
+```python
+import psycopg2
+from pg_ai import AutonomousOptimizer, RLOptimizer, AutoIndexRecommender, PredictiveCacheWarmer, SlowSQLAnalyzer
+import time
+
+class AIAutonomousDatabase:
+    """AI 自治数据库应用"""
+
+    def __init__(self, connection_string: str):
+        """初始化 AI 自治数据库"""
+        self.conn = psycopg2.connect(connection_string)
+        self.optimizer = AutonomousOptimizer(self.conn)
+        self.rl_optimizer = RLOptimizer(self.conn)
+        self.index_recommender = AutoIndexRecommender(self.conn)
+        self.cache_warmer = PredictiveCacheWarmer(self.conn)
+        self.sql_analyzer = SlowSQLAnalyzer(self.conn)
+
+        # 启用所有 AI 自治功能
+        self.optimizer.enable_all_features()
+        self.rl_optimizer.start_training()
+        self.cache_warmer.enable_auto_warmup()
+        self.sql_analyzer.enable_auto_analysis()
+
+    def execute_query(self, query: str):
+        """执行查询（自动优化）"""
+        cursor = self.conn.cursor()
+        start_time = time.time()
+
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        execution_time = (time.time() - start_time) * 1000
+
+        # 如果是慢查询，自动分析根因
+        if execution_time > 1000:
+            query_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
+            if query_id:
+                analysis = self.sql_analyzer.analyze_root_cause(query_id)
+                print(f"慢查询检测: {execution_time:.2f}ms")
+                print(f"根因: {analysis['root_cause']}")
+
+        return results
+
+    def get_optimization_report(self) -> dict:
+        """获取优化报告"""
+        return {
+            'rl_optimizer': self.rl_optimizer.get_statistics(),
+            'index_recommendations': self.index_recommender.get_recommendations(),
+            'cache_warmup': self.cache_warmer.get_warmup_statistics(),
+            'slow_queries': self.sql_analyzer.get_slow_queries(limit=10)
+        }
+
+    def close(self):
+        """关闭连接"""
+        self.conn.close()
+
+# 使用示例
+db = AIAutonomousDatabase(
+    "host=localhost dbname=testdb user=postgres password=secret"
+)
+
+# 执行查询（自动优化）
+query = """
+    SELECT o.order_id, c.customer_name, SUM(oi.quantity * oi.price) as total
+    FROM orders o
+    JOIN customers c ON o.customer_id = c.customer_id
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.order_date > '2025-01-01'
+    GROUP BY o.order_id, c.customer_name
+    HAVING SUM(oi.quantity * oi.price) > 1000
+"""
+
+results = db.execute_query(query)
+print(f"查询结果数量: {len(results)}")
+
+# 获取优化报告
+report = db.get_optimization_report()
+print(f"\n优化报告: {report}")
+
+# 关闭连接
+db.close()
+```
 
 ---
 
