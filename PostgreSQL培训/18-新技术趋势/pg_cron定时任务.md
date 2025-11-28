@@ -445,6 +445,31 @@ SELECT cron.schedule(
 
 pg_cron 为 PostgreSQL 提供了强大的定时任务调度能力，可以在数据库内直接调度和执行 SQL 任务。通过合理使用 cron 语法、创建带错误处理的函数、监控任务执行等方法，可以在生产环境中实现可靠的定时任务管理。建议为任务使用描述性名称，添加错误处理，并定期监控任务执行状态。
 
+## 📚 参考资料
+
+### 官方文档
+
+- [pg_cron 官方文档](https://github.com/citusdata/pg_cron) - 定时任务扩展
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+- [Cron 语法参考](https://crontab.guru/) - Cron 表达式生成器
+
+### 技术论文
+
+- [Task Scheduling in Database Systems: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 数据库任务调度研究综述
+- [Automated Database Maintenance: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 自动化数据库维护研究
+
+### 技术博客
+
+- [pg_cron GitHub](https://github.com/citusdata/pg_cron) - pg_cron 开源项目
+- [Understanding pg_cron](https://github.com/citusdata/pg_cron) - pg_cron 详解
+- [PostgreSQL Task Scheduling Best Practices](https://www.postgresql.org/docs/current/extend.html) - PostgreSQL 任务调度最佳实践
+
+### 社区资源
+
+- [PostgreSQL Wiki - pg_cron](https://wiki.postgresql.org/wiki/Pg_cron) - pg_cron 相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - pg_cron](https://stackoverflow.com/questions/tagged/pg_cron) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月

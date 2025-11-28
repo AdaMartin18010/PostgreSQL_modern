@@ -439,7 +439,7 @@ CREATE INDEX users_email_idx ON users ((metadata->>'email'));
 
 **方案分析**:
 
-**方案1：使用数组类型**
+**方案1：使用数组类型**:
 
 - **描述**: 使用TEXT[]数组存储标签
 - **优点**:
@@ -452,7 +452,7 @@ CREATE INDEX users_email_idx ON users ((metadata->>'email'));
 - **性能数据**: 查询时间<10ms
 - **成本分析**: 开发成本低，维护成本低
 
-**方案2：使用JSONB数组**
+**方案2：使用JSONB数组**:
 
 - **描述**: 使用JSONB数组存储标签
 - **优点**:
@@ -465,7 +465,7 @@ CREATE INDEX users_email_idx ON users ((metadata->>'email'));
 - **性能数据**: 查询时间<50ms
 - **成本分析**: 开发成本低，性能成本中等
 
-**方案3：使用关联表**
+**方案3：使用关联表**:
 
 - **描述**: 使用关联表存储标签
 - **优点**:

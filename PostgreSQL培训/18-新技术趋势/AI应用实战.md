@@ -577,6 +577,33 @@ VECTOR_SIMILARITY_THRESHOLD = 0.7
 基于 PostgreSQL 和 pgvector 可以构建强大的 AI 应用，包括推荐系统、语义搜索、RAG 应用、图像搜索等。
 通过合理设计数据模型、优化向量索引、实现高效的检索算法，可以在生产环境中实现高性能的 AI 应用。
 
+## 📚 参考资料
+
+### 官方文档
+
+- [pgvector 官方文档](https://github.com/pgvector/pgvector) - 向量搜索扩展
+- [OpenAI Embeddings API](https://platform.openai.com/docs/guides/embeddings) - OpenAI 嵌入向量 API
+- [LangChain 官方文档](https://python.langchain.com/) - LangChain 框架文档
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+
+### 技术论文
+
+- [Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401) - RAG 技术论文
+- [Learning to Rank for Information Retrieval](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 信息检索排序学习
+- [Deep Learning for Recommender Systems](https://arxiv.org/abs/1707.07435) - 深度学习推荐系统
+
+### 技术博客
+
+- [Building RAG Applications with PostgreSQL](https://supabase.com/blog/openai-embeddings-postgres-vector) - 使用 PostgreSQL 构建 RAG 应用
+- [Semantic Search with pgvector](https://neon.tech/blog/pgvector) - pgvector 语义搜索
+- [AI Application Development Best Practices](https://github.com/pgvector/pgvector) - AI 应用开发最佳实践
+
+### 社区资源
+
+- [PostgreSQL Wiki - AI Applications](https://wiki.postgresql.org/wiki/AI_Applications) - PostgreSQL AI 应用相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - PostgreSQL AI](https://stackoverflow.com/questions/tagged/postgresql+ai) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月

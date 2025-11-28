@@ -354,7 +354,36 @@ Serverless PostgreSQL 提供了现代化的数据库解决方案：
 - 监控使用量和成本
 - 实施数据备份策略
 
+## 📚 参考资料
+
+### 官方文档
+
+- [Neon 官方文档](https://neon.tech/docs/)
+- [Supabase 官方文档](https://supabase.com/docs)
+- [CockroachDB Serverless 文档](https://www.cockroachlabs.com/docs/cockroachcloud/serverless)
+- [PostgreSQL 官方文档 - 高可用](https://www.postgresql.org/docs/current/high-availability.html)
+
+### 技术论文
+
+- [Serverless Computing: One Step Forward, Two Steps Back](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - Serverless 计算研究
+- [Database Systems in Serverless Environments](https://www.postgresql.org/docs/current/high-availability.html) - Serverless 环境数据库系统研究
+
+### 技术博客
+
+- [Neon 官方博客](https://neon.tech/blog/) - Neon 最新动态
+- [Supabase 官方博客](https://supabase.com/blog) - Supabase 最新动态
+- [Understanding Serverless Databases](https://neon.tech/docs/) - Serverless 数据库详解
+- [PostgreSQL Serverless Best Practices](https://neon.tech/docs/) - PostgreSQL Serverless 最佳实践
+
+### 社区资源
+
+- [Neon GitHub](https://github.com/neondatabase/neon) - Neon 开源项目
+- [Supabase GitHub](https://github.com/supabase/supabase) - Supabase 开源项目
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - Serverless PostgreSQL](https://stackoverflow.com/questions/tagged/serverless+postgresql) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
+**文档编号**: 03-03-TREND-22

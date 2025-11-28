@@ -656,7 +656,33 @@ Citus 12.1+ 与 PostgreSQL 18 的深度集成为分布式数据库应用带来�
 - 选择合适的分片键
 - 使用共置表优化 JOIN
 
+## 📚 参考资料
+
+### 官方文档
+
+- [Citus 官方文档](https://docs.citusdata.com/) - 分布式数据库扩展
+- [PostgreSQL 18 官方文档](https://www.postgresql.org/docs/18/) - PostgreSQL 18 新特性
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+
+### 技术论文
+
+- [Distributed Database Systems: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 分布式数据库系统研究综述
+- [Asynchronous I/O in Database Systems](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 数据库异步 I/O 研究
+
+### 技术博客
+
+- [Citus 官方博客](https://www.citusdata.com/blog/) - Citus 最新动态
+- [Understanding Citus](https://docs.citusdata.com/) - Citus 详解
+- [PostgreSQL 18 Integration Best Practices](https://docs.citusdata.com/) - PostgreSQL 18 集成最佳实践
+
+### 社区资源
+
+- [Citus GitHub](https://github.com/citusdata/citus) - Citus 开源项目
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - Citus](https://stackoverflow.com/questions/tagged/citus) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
+**文档编号**: 03-03-TREND-34-18

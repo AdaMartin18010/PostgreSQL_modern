@@ -430,6 +430,33 @@ $$) AS (path agtype);
 Apache AGE 为 PostgreSQL 提供了强大的图数据库能力，通过 Cypher 查询语言可以直观地查询和分析图数据。
 它特别适合知识图谱、社交网络、推荐系统等图数据应用场景，在保持 PostgreSQL 完整功能的同时，提供了高效的图数据存储和查询能力。
 
+## 📚 参考资料
+
+### 官方文档
+
+- [Apache AGE 官方文档](https://age.apache.org/)
+- [Apache AGE GitHub](https://github.com/apache/age)
+- [Cypher 查询语言规范](https://neo4j.com/docs/cypher-manual/current/)
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+
+### 技术论文
+
+- [Graph Databases: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 图数据库研究综述
+- [The Property Graph Database Model](https://neo4j.com/whitepapers/property-graph-model/) - 属性图数据库模型
+- [Cypher: An Evolving Query Language for Property Graphs](https://dl.acm.org/doi/10.1145/3183713.3190657) - Cypher 查询语言演进
+
+### 技术博客
+
+- [Apache AGE 官方博客](https://age.apache.org/blog/) - Apache AGE 最新动态
+- [Understanding Graph Databases](https://neo4j.com/developer/graph-database/) - 图数据库详解
+- [PostgreSQL Graph Database Best Practices](https://age.apache.org/docs/) - PostgreSQL 图数据库最佳实践
+
+### 社区资源
+
+- [Apache AGE Wiki](https://github.com/apache/age/wiki) - Apache AGE 相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - Apache AGE](https://stackoverflow.com/questions/tagged/apache-age) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月

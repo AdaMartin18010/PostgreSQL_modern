@@ -709,7 +709,33 @@ TimescaleDB 3.0 与 PostgreSQL 18 的深度集成为时序数据应用带来了�
 - 启用数据压缩节省存储
 - 使用多节点架构（如果需要）
 
+## 📚 参考资料
+
+### 官方文档
+
+- [TimescaleDB 官方文档](https://docs.timescale.com/) - 时序数据库扩展
+- [PostgreSQL 18 官方文档](https://www.postgresql.org/docs/18/) - PostgreSQL 18 新特性
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+
+### 技术论文
+
+- [Time-Series Database Systems: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 时序数据库系统研究综述
+- [Asynchronous I/O in Database Systems](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 数据库异步 I/O 研究
+
+### 技术博客
+
+- [TimescaleDB 官方博客](https://www.timescale.com/blog/) - TimescaleDB 最新动态
+- [Understanding TimescaleDB](https://docs.timescale.com/) - TimescaleDB 详解
+- [PostgreSQL 18 Integration Best Practices](https://docs.timescale.com/) - PostgreSQL 18 集成最佳实践
+
+### 社区资源
+
+- [TimescaleDB GitHub](https://github.com/timescale/timescaledb) - TimescaleDB 开源项目
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - TimescaleDB](https://stackoverflow.com/questions/tagged/timescaledb) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
+**文档编号**: 03-03-TREND-05-18

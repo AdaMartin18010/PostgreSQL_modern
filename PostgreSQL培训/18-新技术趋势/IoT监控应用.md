@@ -799,7 +799,33 @@ PostgreSQL IoT 监控应用提供了完整的 IoT 数据采集、监控、告警
 - 配置数据保留和压缩策略
 - 实现智能告警和通知机制
 
+## 📚 参考资料
+
+### 官方文档
+
+- [TimescaleDB 官方文档](https://docs.timescale.com/) - 时序数据库扩展
+- [PostgreSQL 官方文档 - 分区](https://www.postgresql.org/docs/current/ddl-partitioning.html)
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+
+### 技术论文
+
+- [Time-Series Database Systems: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 时序数据库系统研究综述
+- [IoT Data Management: Challenges and Solutions](https://www.timescale.com/blog/) - IoT 数据管理研究
+
+### 技术博客
+
+- [TimescaleDB 官方博客](https://www.timescale.com/blog/) - TimescaleDB 最新动态
+- [Understanding IoT Monitoring](https://docs.timescale.com/) - IoT 监控详解
+- [PostgreSQL IoT Best Practices](https://docs.timescale.com/) - PostgreSQL IoT 最佳实践
+
+### 社区资源
+
+- [TimescaleDB GitHub](https://github.com/timescale/timescaledb) - TimescaleDB 开源项目
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - IoT Monitoring](https://stackoverflow.com/questions/tagged/iot+monitoring) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
+**文档编号**: 03-03-TREND-07

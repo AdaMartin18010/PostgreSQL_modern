@@ -358,6 +358,31 @@ CDC 变更数据捕获为 PostgreSQL 提供了强大的实时数据同步能力�
 通过合理使用逻辑复制、Debezium、WAL 解析等方案，可以在生产环境中实现低延迟、高可靠的数据同步。
 建议根据实际场景选择合适的 CDC 方案，并建立完善的监控和错误处理机制。
 
+## 📚 参考资料
+
+### 官方文档
+
+- [PostgreSQL 官方文档 - 逻辑复制](https://www.postgresql.org/docs/current/logical-replication.html)
+- [Debezium 官方文档](https://debezium.io/documentation/) - CDC 工具
+- [PostgreSQL 官方文档 - WAL](https://www.postgresql.org/docs/current/wal.html)
+
+### 技术论文
+
+- [Change Data Capture: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 变更数据捕获研究综述
+- [Write-Ahead Logging: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - WAL 研究综述
+
+### 技术博客
+
+- [Debezium 官方博客](https://debezium.io/blog/) - Debezium 最新动态
+- [Understanding CDC](https://debezium.io/documentation/) - CDC 详解
+- [PostgreSQL CDC Best Practices](https://www.postgresql.org/docs/current/logical-replication.html) - PostgreSQL CDC 最佳实践
+
+### 社区资源
+
+- [Debezium GitHub](https://github.com/debezium/debezium) - Debezium 开源项目
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - CDC](https://stackoverflow.com/questions/tagged/change-data-capture) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月

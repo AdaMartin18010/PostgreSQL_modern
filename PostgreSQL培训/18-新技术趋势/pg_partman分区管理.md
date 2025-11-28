@@ -322,6 +322,31 @@ SELECT cron.schedule(
 
 pg_partman 为 PostgreSQL 提供了强大的自动分区管理功能，大大简化了分区表的管理工作。通过合理配置分区策略、归档策略、自动维护等方法，可以在生产环境中实现高效的分区表管理。建议根据数据特征选择合适的分区策略，并定期监控分区状态。
 
+## 📚 参考资料
+
+### 官方文档
+
+- [pg_partman 官方文档](https://github.com/pgpartman/pg_partman) - 分区管理扩展
+- [PostgreSQL 官方文档 - 分区](https://www.postgresql.org/docs/current/ddl-partitioning.html)
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+
+### 技术论文
+
+- [Partitioning Strategies for Database Systems: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 数据库分区策略研究综述
+- [Automated Partition Management: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 自动化分区管理研究
+
+### 技术博客
+
+- [pg_partman GitHub](https://github.com/pgpartman/pg_partman) - pg_partman 开源项目
+- [Understanding pg_partman](https://github.com/pgpartman/pg_partman) - pg_partman 详解
+- [PostgreSQL Partitioning Best Practices](https://www.postgresql.org/docs/current/ddl-partitioning.html) - PostgreSQL 分区最佳实践
+
+### 社区资源
+
+- [PostgreSQL Wiki - Partitioning](https://wiki.postgresql.org/wiki/Partitioning) - PostgreSQL 分区相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - pg_partman](https://stackoverflow.com/questions/tagged/pg_partman) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月

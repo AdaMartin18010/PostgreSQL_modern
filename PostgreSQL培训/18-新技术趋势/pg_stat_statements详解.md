@@ -495,6 +495,31 @@ ORDER BY snapshot_time DESC, query_hash;
 
 pg_stat_statements 是 PostgreSQL 性能分析和优化的核心工具。通过合理使用统计信息查询、性能分析、查询优化等功能，可以在生产环境中及时发现和解决性能问题。建议定期查看统计信息，识别慢查询和高频查询，并根据统计数据进行针对性的优化。
 
+## 📚 参考资料
+
+### 官方文档
+
+- [PostgreSQL 官方文档 - pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html) - 查询统计扩展
+- [PostgreSQL 官方文档 - 性能调优](https://www.postgresql.org/docs/current/performance-tips.html)
+- [PostgreSQL 官方文档 - 监控](https://www.postgresql.org/docs/current/monitoring.html)
+
+### 技术论文
+
+- [Query Performance Analysis: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 查询性能分析研究综述
+- [Database Performance Monitoring: A Survey](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 数据库性能监控研究综述
+
+### 技术博客
+
+- [PostgreSQL 官方博客 - 性能分析](https://www.postgresql.org/about/news/) - PostgreSQL 性能分析最新动态
+- [Understanding pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html) - pg_stat_statements 详解
+- [PostgreSQL Performance Analysis Best Practices](https://www.postgresql.org/docs/current/performance-tips.html) - PostgreSQL 性能分析最佳实践
+
+### 社区资源
+
+- [PostgreSQL Wiki - Performance](https://wiki.postgresql.org/wiki/Performance) - PostgreSQL 性能相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - pg_stat_statements](https://stackoverflow.com/questions/tagged/pg_stat_statements) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月

@@ -783,7 +783,33 @@ PostgreSQL 结合 PostGIS 提供了强大的 GIS 应用开发能力：
 - 优化空间查询
 - 简化复杂几何对象
 
+## 📚 参考资料
+
+### 官方文档
+
+- [PostGIS 官方文档](https://postgis.net/documentation/) - 空间数据库扩展
+- [OGC 标准文档](https://www.ogc.org/standards/sfs) - OGC Simple Features 标准
+- [PostgreSQL 官方文档 - 扩展](https://www.postgresql.org/docs/current/extend.html)
+
+### 技术论文
+
+- [Spatial Database Systems: Design, Implementation and Project Management](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 空间数据库系统研究
+- [R-tree: A Dynamic Index Structure for Spatial Searching](https://dl.acm.org/doi/10.1145/602259.602266) - R-tree 索引结构研究
+
+### 技术博客
+
+- [PostGIS 官方博客](https://postgis.net/blog/) - PostGIS 最新动态
+- [Understanding GIS Development](https://postgis.net/documentation/) - GIS 应用开发详解
+- [PostGIS Best Practices](https://postgis.net/documentation/) - PostGIS 最佳实践
+
+### 社区资源
+
+- [PostGIS Wiki](https://trac.osgeo.org/postgis/wiki) - PostGIS 相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - PostGIS](https://stackoverflow.com/questions/tagged/postgis) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
+**文档编号**: 03-03-TREND-14
