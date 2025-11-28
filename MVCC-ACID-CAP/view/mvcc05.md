@@ -873,6 +873,338 @@ ORDER BY age(backend_xmin) DESC;
 
 ---
 
+## 💻 可运行代码示例：事务性完整演示
+
+### 代码示例1：事务生命周期完整演示
+
+```python
+#!/usr/bin/env python3
+"""
+事务生命周期完整演示
+演示从BEGIN到COMMIT/ROLLBACK的完整过程
+"""
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class TransactionLifecycleDemo:
+    """事务生命周期演示类"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        try:
+            self.conn = psycopg2.connect(connection_string)
+            self.conn.set_isolation_level(ISOLATION_LEVEL_REPEATABLE_READ)
+            self.conn.autocommit = False
+            logger.info("数据库连接成功")
+        except psycopg2.Error as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise
+
+    def setup_data(self):
+        """设置数据"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    DROP TABLE IF EXISTS transaction_test;
+                    CREATE TABLE transaction_test (
+                        id SERIAL PRIMARY KEY,
+                        value INTEGER,
+                        status VARCHAR(20)
+                    )
+                """)
+                cur.execute("INSERT INTO transaction_test (value, status) VALUES (100, 'initial')")
+                self.conn.commit()
+                logger.info("数据设置完成")
+        except psycopg2.Error as e:
+            logger.error(f"设置数据失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def demonstrate_transaction_lifecycle(self):
+        """演示事务生命周期"""
+        logger.info("=" * 60)
+        logger.info("事务生命周期演示")
+        logger.info("=" * 60)
+
+        try:
+            with self.conn.cursor() as cur:
+                # 阶段1：BEGIN（事务启动）
+                cur.execute("BEGIN")
+                logger.info("阶段1：BEGIN - 事务启动，分配XID")
+
+                # 阶段2：ACTIVE（事务执行）
+                cur.execute("UPDATE transaction_test SET value = 200 WHERE id = 1")
+                logger.info("阶段2：ACTIVE - 事务执行中，CLOG[XID]=IN_PROGRESS")
+
+                # 阶段3：COMMIT（事务提交）
+                self.conn.commit()
+                logger.info("阶段3：COMMIT - 事务提交，CLOG[XID]=COMMITTED")
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def demonstrate_savepoint(self):
+        """演示SAVEPOINT（子事务）"""
+        logger.info("=" * 60)
+        logger.info("SAVEPOINT演示")
+        logger.info("=" * 60)
+
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("BEGIN")
+                logger.info("主事务开始")
+
+                # 创建SAVEPOINT
+                cur.execute("SAVEPOINT sp1")
+                logger.info("SAVEPOINT sp1创建")
+
+                # 执行操作
+                cur.execute("UPDATE transaction_test SET value = 300 WHERE id = 1")
+                logger.info("更新值到300")
+
+                # 回滚到SAVEPOINT
+                cur.execute("ROLLBACK TO SAVEPOINT sp1")
+                logger.info("回滚到SAVEPOINT sp1")
+
+                # 验证值未变
+                cur.execute("SELECT value FROM transaction_test WHERE id = 1")
+                value = cur.fetchone()[0]
+                logger.info(f"回滚后值: {value} (应该保持200)")
+
+                self.conn.commit()
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            if self.conn:
+                with self.conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS transaction_test")
+                    self.conn.commit()
+                self.conn.close()
+                logger.info("资源清理完成")
+        except Exception as e:
+            logger.error(f"资源清理失败: {e}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+
+    demo = None
+    try:
+        demo = TransactionLifecycleDemo(connection_string)
+        demo.setup_data()
+        demo.demonstrate_transaction_lifecycle()
+        demo.demonstrate_savepoint()
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if demo:
+            demo.cleanup()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### 真实场景案例：电商订单全流程
+
+**场景描述**：电商订单处理，包含订单创建、库存扣减、支付处理等步骤，需要保证事务性。
+
+**完整实现**：
+
+```python
+#!/usr/bin/env python3
+"""
+电商订单全流程演示
+演示事务性在复杂业务场景中的应用
+"""
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class OrderProcessingSystem:
+    """订单处理系统"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        try:
+            self.conn = psycopg2.connect(connection_string)
+            self.conn.set_isolation_level(ISOLATION_LEVEL_REPEATABLE_READ)
+            self.conn.autocommit = False
+            logger.info("数据库连接成功")
+        except psycopg2.Error as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise
+
+    def setup_database(self):
+        """设置数据库"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    DROP TABLE IF EXISTS products, orders, payments;
+                    CREATE TABLE products (
+                        product_id INTEGER PRIMARY KEY,
+                        name VARCHAR(100),
+                        stock INTEGER NOT NULL CHECK (stock >= 0),
+                        price DECIMAL(10, 2)
+                    );
+                    CREATE TABLE orders (
+                        order_id SERIAL PRIMARY KEY,
+                        user_id INTEGER,
+                        product_id INTEGER,
+                        quantity INTEGER,
+                        amount DECIMAL(10, 2),
+                        status VARCHAR(20) DEFAULT 'pending'
+                    );
+                    CREATE TABLE payments (
+                        payment_id SERIAL PRIMARY KEY,
+                        order_id INTEGER REFERENCES orders(order_id),
+                        amount DECIMAL(10, 2),
+                        status VARCHAR(20) DEFAULT 'pending'
+                    );
+                    INSERT INTO products (product_id, name, stock, price)
+                    VALUES (1, 'iPhone 15', 100, 5999.00);
+                """)
+                self.conn.commit()
+                logger.info("数据库设置完成")
+        except psycopg2.Error as e:
+            logger.error(f"设置数据库失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def process_order(self, user_id, product_id, quantity):
+        """处理订单"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("BEGIN")
+                logger.info(f"开始处理订单: 用户{user_id}, 商品{product_id}, 数量{quantity}")
+
+                # 步骤1：检查库存
+                cur.execute("""
+                    SELECT stock, price FROM products
+                    WHERE product_id = %s
+                    FOR UPDATE
+                """, (product_id,))
+
+                result = cur.fetchone()
+                if not result or result[0] < quantity:
+                    logger.warning("库存不足")
+                    self.conn.rollback()
+                    return False
+
+                stock, price = result
+                amount = price * quantity
+
+                # 步骤2：扣减库存
+                cur.execute("""
+                    UPDATE products
+                    SET stock = stock - %s
+                    WHERE product_id = %s
+                """, (quantity, product_id))
+
+                # 步骤3：创建订单
+                cur.execute("""
+                    INSERT INTO orders (user_id, product_id, quantity, amount, status)
+                    VALUES (%s, %s, %s, %s, 'created')
+                    RETURNING order_id
+                """, (user_id, product_id, quantity, amount))
+
+                order_id = cur.fetchone()[0]
+
+                # 步骤4：创建支付记录
+                cur.execute("""
+                    INSERT INTO payments (order_id, amount, status)
+                    VALUES (%s, %s, 'pending')
+                """, (order_id, amount))
+
+                # 步骤5：模拟支付处理
+                cur.execute("""
+                    UPDATE payments
+                    SET status = 'completed'
+                    WHERE order_id = %s
+                """, (order_id,))
+
+                cur.execute("""
+                    UPDATE orders
+                    SET status = 'completed'
+                    WHERE order_id = %s
+                """, (order_id,))
+
+                # 提交事务
+                self.conn.commit()
+                logger.info(f"订单处理成功: order_id={order_id}")
+                return True
+
+        except psycopg2.Error as e:
+            logger.error(f"订单处理失败: {e}")
+            self.conn.rollback()
+            return False
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            if self.conn:
+                with self.conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS products, orders, payments CASCADE")
+                    self.conn.commit()
+                self.conn.close()
+                logger.info("资源清理完成")
+        except Exception as e:
+            logger.error(f"资源清理失败: {e}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+
+    system = None
+    try:
+        system = OrderProcessingSystem(connection_string)
+        system.setup_database()
+        system.process_order(1001, 1, 2)
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if system:
+            system.cleanup()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**场景分析**：
+
+1. **事务性保证**：整个订单处理过程在一个事务中完成，保证原子性
+2. **隔离性**：使用REPEATABLE READ隔离级别，保证事务内数据一致性
+3. **持久性**：事务提交后，所有数据持久化到磁盘
+4. **一致性**：通过CHECK约束和业务逻辑保证数据一致性
+
+---
+
 ## 📝 总结：关联性核心公式
 
 **MVCC-ACID协同工作公式**：
@@ -911,15 +1243,21 @@ $$
 ### 学术论文
 
 1. **MVCC-ACID事务性深度关联**：
-   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
-   - Gray, J. (1983). "The Transaction Concept: Virtues and Limitations". VLDB 1983
-   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483. DOI: 10.1145/319996.319998
+   - Gray, J. (1983). "The Transaction Concept: Virtues and Limitations". Proceedings of the 9th International Conference on Very Large Data Bases (VLDB 1983), 144-154
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann Publishers. ISBN: 978-1558601901
 
-2. **存储和事务**：
-   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
-   - Bernstein, P. A., & Newcomer, E. (2009). "Principles of Transaction Processing" (2nd Edition)
+2. **事务处理与存储系统**：
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery". Morgan Kaufmann Publishers. ISBN: 978-1558605084
+   - Bernstein, P. A., & Newcomer, E. (2009). "Principles of Transaction Processing" (2nd Edition). Morgan Kaufmann Publishers. ISBN: 978-1558606234
+   - Lomet, D. B. (1993). "Key Range Locking Strategies for Improved Concurrency". Proceedings of the 19th International Conference on Very Large Data Bases (VLDB 1993), 655-664
 
-3. **PostgreSQL实现**：
+3. **隔离级别与可串行化**：
+   - Berenson, H., Bernstein, P., Gray, J., Melton, J., O'Neil, E., & O'Neil, P. (1995). "A Critique of ANSI SQL Isolation Levels". Proceedings of the 1995 ACM SIGMOD International Conference on Management of Data, 1-10. DOI: 10.1145/223784.223785
+   - Fekete, A., Liarokapis, D., O'Neil, E., O'Neil, P., & Shasha, D. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528. DOI: 10.1145/1071610.1071615
+   - Cahill, M. J., Röhm, U., & Fekete, A. D. (2008). "Serializable Isolation for Snapshot Databases". Proceedings of the 2008 ACM SIGMOD International Conference on Management of Data, 729-738. DOI: 10.1145/1376616.1376690
+
+4. **PostgreSQL实现与优化**：
    - PostgreSQL源码：<https://github.com/postgres/postgres>
    - PostgreSQL内部文档：<https://www.postgresql.org/docs/current/internals.html>
 

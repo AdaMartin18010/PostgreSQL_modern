@@ -877,12 +877,26 @@ MVCC、ACID与CAP所揭示的结构同构性和权衡哲学，将继续指导未
 
 ### 学术论文
 
-1. **MVCC**：
-   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
-   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+1. **MVCC理论基础**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483. DOI: 10.1145/319996.319998
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions". PhD Thesis, Massachusetts Institute of Technology
 
-2. **ACID**：
-   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
+2. **ACID事务模型**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann Publishers. ISBN: 978-1558601901
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery". Morgan Kaufmann Publishers. ISBN: 978-1558605084
+
+3. **CAP定理与分布式一致性**：
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services". ACM SIGACT News, 33(2), 51-59. DOI: 10.1145/564585.564601
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design: CAP is Only Part of the Story". Computer, 45(2), 37-42. DOI: 10.1109/MC.2012.33
+   - Bailis, P., & Ghodsi, A. (2013). "Eventual Consistency Today: Limitations, Extensions, and Beyond". Communications of the ACM, 56(5), 55-63. DOI: 10.1145/2447976.2447992
+
+4. **分布式MVCC与NewSQL**：
+   - Corbett, J. C., Dean, J., Epstein, M., Fikes, A., Frost, C., Furman, J. J., ... & Woodford, D. (2013). "Spanner: Google's Globally-Distributed Database". ACM Transactions on Computer Systems, 31(3), 8:1-8:22. DOI: 10.1145/2491245
+   - Peng, D., & Dabek, F. (2010). "Large-scale Incremental Processing Using Distributed Transactions and Notifications". Proceedings of the 9th USENIX Symposium on Operating Systems Design and Implementation (OSDI 2010), 251-264
+
+5. **一致性模型与隔离级别**：
+   - Berenson, H., Bernstein, P., Gray, J., Melton, J., O'Neil, E., & O'Neil, P. (1995). "A Critique of ANSI SQL Isolation Levels". Proceedings of the 1995 ACM SIGMOD International Conference on Management of Data, 1-10. DOI: 10.1145/223784.223785
+   - Fekete, A., Liarokapis, D., O'Neil, E., O'Neil, P., & Shasha, D. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528. DOI: 10.1145/1071610.1071615
    - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
 
 3. **CAP**：
@@ -911,6 +925,173 @@ MVCC、ACID与CAP所揭示的结构同构性和权衡哲学，将继续指导未
    - [Google Spanner Documentation](https://cloud.google.com/spanner/docs)
    - [TiDB Documentation](https://docs.pingcap.com/tidb/stable)
    - [CockroachDB Documentation](https://www.cockroachlabs.com/docs/)
+
+---
+
+## 💻 可运行代码示例：深度探析演示
+
+### 代码示例：技术实现视角探析
+
+```python
+#!/usr/bin/env python3
+"""
+技术实现视角探析演示
+演示MVCC-ACID-CAP在技术实现层面的同构性
+"""
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED, ISOLATION_LEVEL_SERIALIZABLE
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class TechnicalIsomorphismDemo:
+    """技术实现同构性演示"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        try:
+            self.conn = psycopg2.connect(connection_string)
+            self.conn.autocommit = False
+            logger.info("数据库连接成功")
+        except psycopg2.Error as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise
+
+    def setup_data(self):
+        """设置数据"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    DROP TABLE IF EXISTS isomorphism_test;
+                    CREATE TABLE isomorphism_test (
+                        id SERIAL PRIMARY KEY,
+                        data TEXT,
+                        version INTEGER DEFAULT 1
+                    )
+                """)
+                cur.execute("INSERT INTO isomorphism_test (data) VALUES ('initial')")
+                self.conn.commit()
+                logger.info("数据设置完成")
+        except psycopg2.Error as e:
+            logger.error(f"设置数据失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def demonstrate_version_control(self):
+        """演示版本控制机制（MVCC vs 分布式版本控制）"""
+        logger.info("=" * 60)
+        logger.info("版本控制机制同构性演示")
+        logger.info("=" * 60)
+
+        try:
+            with self.conn.cursor() as cur:
+                # MVCC版本控制
+                for i in range(3):
+                    cur.execute("BEGIN")
+                    cur.execute("""
+                        UPDATE isomorphism_test
+                        SET data = %s, version = version + 1
+                        WHERE id = 1
+                    """, (f'version_{i+1}',))
+                    self.conn.commit()
+                    logger.info(f"MVCC版本控制: 创建版本 {i+1}")
+
+                # 查看版本链
+                cur.execute("""
+                    SELECT ctid, xmin, xmax, data, version
+                    FROM isomorphism_test
+                    WHERE id = 1
+                """)
+                result = cur.fetchone()
+                logger.info(f"当前版本: ctid={result[0]}, xmin={result[1]}, data={result[3]}")
+                logger.info("版本控制机制: MVCC通过版本链管理历史，类似分布式系统的向量时钟")
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def demonstrate_logical_clock(self):
+        """演示逻辑时钟（事务ID vs 日志索引）"""
+        logger.info("=" * 60)
+        logger.info("逻辑时钟同构性演示")
+        logger.info("=" * 60)
+
+        try:
+            with self.conn.cursor() as cur:
+                # 获取当前事务ID（逻辑时钟）
+                cur.execute("SELECT txid_current()")
+                xid = cur.fetchone()[0]
+                logger.info(f"当前事务ID（逻辑时钟）: {xid}")
+                logger.info("逻辑时钟: 事务ID定义全局顺序，类似Raft的日志索引")
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            raise
+
+    def demonstrate_conflict_resolution(self):
+        """演示冲突解决策略（写锁 vs 2PC）"""
+        logger.info("=" * 60)
+        logger.info("冲突解决策略同构性演示")
+        logger.info("=" * 60)
+
+        try:
+            # CP模式：强一致性，阻塞等待
+            conn_cp = psycopg2.connect(self.conn.dsn)
+            conn_cp.set_isolation_level(ISOLATION_LEVEL_SERIALIZABLE)
+            conn_cp.autocommit = False
+
+            with conn_cp.cursor() as cur:
+                cur.execute("BEGIN")
+                cur.execute("SELECT * FROM isomorphism_test WHERE id = 1 FOR UPDATE")
+                logger.info("CP模式: 获取锁，保证一致性，可能阻塞其他事务")
+                conn_cp.commit()
+
+            conn_cp.close()
+
+        except psycopg2.Error as e:
+            logger.error(f"演示失败: {e}")
+            raise
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            if self.conn:
+                with self.conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS isomorphism_test")
+                    self.conn.commit()
+                self.conn.close()
+                logger.info("资源清理完成")
+        except Exception as e:
+            logger.error(f"资源清理失败: {e}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+
+    demo = None
+    try:
+        demo = TechnicalIsomorphismDemo(connection_string)
+        demo.setup_data()
+        demo.demonstrate_version_control()
+        demo.demonstrate_logical_clock()
+        demo.demonstrate_conflict_resolution()
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if demo:
+            demo.cleanup()
+
+
+if __name__ == "__main__":
+    main()
+```
 
 ---
 

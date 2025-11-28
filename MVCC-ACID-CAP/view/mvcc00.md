@@ -11,19 +11,38 @@
 - [MVCC的程序员视角和设计视角](#mvcc的程序员视角和设计视角)
   - [📑 目录](#-目录)
   - [📋 概述](#-概述)
-  - [📊 第一部分：思维导图：MVCC双视角认知体系](#-第一部分思维导图mvcc双视角认知体系)
-  - [📈 第二部分：矩阵对比：双视角全景差异分析](#-第二部分矩阵对比双视角全景差异分析)
-  - [🔬 第三部分：深度论证：PostgreSQL实例中的视角融合](#-第三部分深度论证postgresql实例中的视角融合)
-    - [**场景：事务T1（XID=100）更新id=1的记录**](#场景事务t1xid100更新id1的记录)
-    - [**执行：UPDATE users SET data='new' WHERE id=1**](#执行update-users-set-datanew-where-id1)
-    - [**提交：COMMIT**](#提交commit)
-    - [**清理：VACUUM（异步）**](#清理vacuum异步)
-  - [⚠️ 第四部分：关键认知断层与弥合](#️-第四部分关键认知断层与弥合)
-    - [**断层1：Undo Log的误解**](#断层1undo-log的误解)
-    - [**断层2：锁的必要性**](#断层2锁的必要性)
-    - [**断层3：可见性规则的简化**](#断层3可见性规则的简化)
-    - [**断层4：清理机制的责任归属**](#断层4清理机制的责任归属)
-  - [🎯 第五部分：实践建议：双向思维转换指南](#-第五部分实践建议双向思维转换指南)
+  - [📊 第一部分：形式化定义与工作机制](#-第一部分形式化定义与工作机制)
+    - [1.1 MVCC核心概念形式化定义](#11-mvcc核心概念形式化定义)
+      - [1.1.1 数据库状态空间模型](#111-数据库状态空间模型)
+      - [1.1.2 元组形式化定义](#112-元组形式化定义)
+      - [1.1.3 版本链形式化定义](#113-版本链形式化定义)
+      - [1.1.4 可见性判断形式化定义](#114-可见性判断形式化定义)
+    - [1.2 MVCC工作机制说明](#12-mvcc工作机制说明)
+      - [1.2.1 版本创建机制](#121-版本创建机制)
+      - [1.2.2 快照获取机制](#122-快照获取机制)
+      - [1.2.3 可见性判断机制](#123-可见性判断机制)
+      - [1.2.4 VACUUM清理机制](#124-vacuum清理机制)
+  - [📊 第二部分：思维导图：MVCC双视角认知体系](#-第二部分思维导图mvcc双视角认知体系)
+  - [📈 第三部分：矩阵对比：双视角全景差异分析](#-第三部分矩阵对比双视角全景差异分析)
+  - [🔬 第四部分：深度论证：PostgreSQL实例中的视角融合](#-第四部分深度论证postgresql实例中的视角融合)
+    - [场景：事务T1（XID=100）更新id=1的记录](#场景事务t1xid100更新id1的记录)
+    - [执行：UPDATE users SET data='new' WHERE id=1](#执行update-users-set-datanew-where-id1)
+    - [提交：COMMIT](#提交commit)
+    - [清理：VACUUM（异步）](#清理vacuum异步)
+  - [⚠️ 第五部分：关键认知断层与弥合](#️-第五部分关键认知断层与弥合)
+    - [断层1：Undo Log的误解](#断层1undo-log的误解)
+    - [断层2：锁的必要性](#断层2锁的必要性)
+    - [断层3：可见性规则的简化](#断层3可见性规则的简化)
+    - [断层4：清理机制的责任归属](#断层4清理机制的责任归属)
+  - [🎯 第六部分：实践建议：双向思维转换指南](#-第六部分实践建议双向思维转换指南)
+  - [💻 第七部分：可运行代码示例](#-第七部分可运行代码示例)
+    - [6.1 MVCC可见性判断完整示例](#61-mvcc可见性判断完整示例)
+      - [6.1.1 Python完整代码示例](#611-python完整代码示例)
+      - [6.1.2 测试代码](#612-测试代码)
+    - [6.2 真实场景案例：电商库存扣减](#62-真实场景案例电商库存扣减)
+      - [6.2.1 业务场景描述](#621-业务场景描述)
+      - [6.2.2 完整实现代码](#622-完整实现代码)
+      - [6.2.3 场景分析](#623-场景分析)
   - [📝 总结](#-总结)
   - [📚 外部资源引用](#-外部资源引用)
     - [Wikipedia资源](#wikipedia资源)
@@ -243,7 +262,7 @@ mindmap
 
 ---
 
-## 📈 第二部分：矩阵对比：双视角全景差异分析
+## 📈 第三部分：矩阵对比：双视角全景差异分析
 
 | 对比维度 | **数据库设计者视角**（实现层） | **编程人员视角**（使用层） | **PostgreSQL具体体现** |
 |---------|------------------------------|--------------------------|------------------------|
@@ -260,7 +279,7 @@ mindmap
 
 ---
 
-## 🔬 第三部分：深度论证：PostgreSQL实例中的视角融合
+## 🔬 第四部分：深度论证：PostgreSQL实例中的视角融合
 
 用一个完整的UPDATE流程来演示两种视角如何交汇：
 
@@ -346,7 +365,7 @@ SELECT n_dead_tup FROM pg_stat_user_tables WHERE relname='users'; -- 死亡元�
 
 ---
 
-## ⚠️ 第四部分：关键认知断层与弥合
+## ⚠️ 第五部分：关键认知断层与弥合
 
 ### **断层1：Undo Log的误解**
 
@@ -374,7 +393,7 @@ SELECT n_dead_tup FROM pg_stat_user_tables WHERE relname='users'; -- 死亡元�
 
 ---
 
-## 🎯 第五部分：实践建议：双向思维转换指南
+## 🎯 第六部分：实践建议：双向思维转换指南
 
 | **作为设计者思考** | **作为程序员行动** |
 |-------------------|-------------------|
@@ -386,11 +405,11 @@ SELECT n_dead_tup FROM pg_stat_user_tables WHERE relname='users'; -- 死亡元�
 
 ---
 
-## 💻 第六部分：可运行代码示例
+## 💻 第七部分：可运行代码示例
 
-### 6.1 MVCC可见性判断完整示例
+### 7.1 MVCC可见性判断完整示例
 
-#### 6.1.1 Python完整代码示例
+#### 7.1.1 Python完整代码示例
 
 ```python
 #!/usr/bin/env python3
@@ -672,7 +691,7 @@ if __name__ == "__main__":
     main()
 ```
 
-#### 6.1.2 测试代码
+#### 7.1.2 测试代码
 
 ```python
 #!/usr/bin/env python3
@@ -793,9 +812,9 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-### 6.2 真实场景案例：电商库存扣减
+### 7.2 真实场景案例：电商库存扣减
 
-#### 6.2.1 业务场景描述
+#### 7.2.1 业务场景描述
 
 **场景**：电商系统中，多个用户同时购买同一商品，需要保证库存扣减的正确性。
 
@@ -811,7 +830,7 @@ if __name__ == "__main__":
 - 通过行级锁保证写-写冲突的正确处理
 - 利用MVCC的可见性规则保证读一致性
 
-#### 6.2.2 完整实现代码
+#### 7.2.2 完整实现代码
 
 ```python
 #!/usr/bin/env python3
@@ -1019,7 +1038,7 @@ if __name__ == "__main__":
     main()
 ```
 
-#### 6.2.3 场景分析
+#### 7.2.3 场景分析
 
 **MVCC在库存扣减中的作用**：
 
@@ -1076,15 +1095,22 @@ if __name__ == "__main__":
 
 ### 学术论文
 
-1. **MVCC理论**：
-   - Bernstein, P. A., & Goodman, N. (1983).
-   "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
-   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
-   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
+1. **MVCC理论基础**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483. DOI: 10.1145/319996.319998
+   - Adya, A., Liskov, B., & O'Neil, P. (2000). "Generalized Isolation Level Definitions". Proceedings of the 16th International Conference on Data Engineering (ICDE 2000), 67-78. DOI: 10.1109/ICDE.2000.839384
+   - Fekete, A., Liarokapis, D., O'Neil, E., O'Neil, P., & Shasha, D. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528. DOI: 10.1145/1071610.1071615
 
-1. **快照隔离**：
-   - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels". SIGMOD 1995
-   - Cahill, M. J., et al. (2008). "Serializable Isolation for Snapshot Databases". SIGMOD 2008
+2. **快照隔离与隔离级别**：
+   - Berenson, H., Bernstein, P., Gray, J., Melton, J., O'Neil, E., & O'Neil, P. (1995). "A Critique of ANSI SQL Isolation Levels". Proceedings of the 1995 ACM SIGMOD International Conference on Management of Data, 1-10. DOI: 10.1145/223784.223785
+   - Cahill, M. J., Röhm, U., & Fekete, A. D. (2008). "Serializable Isolation for Snapshot Databases". Proceedings of the 2008 ACM SIGMOD International Conference on Management of Data, 729-738. DOI: 10.1145/1376616.1376690
+
+3. **PostgreSQL MVCC实现**：
+   - Stonebraker, M. (1981). "Operating System Support for Database Management". Communications of the ACM, 24(7), 412-418. DOI: 10.1145/358699.358703
+   - Lomet, D. B. (1993). "Key Range Locking Strategies for Improved Concurrency". Proceedings of the 19th International Conference on Very Large Data Bases (VLDB 1993), 655-664
+
+4. **并发控制理论**：
+   - Papadimitriou, C. H. (1979). "The Serializability of Concurrent Database Updates". Journal of the ACM, 26(4), 631-653. DOI: 10.1145/322154.322158
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery". Morgan Kaufmann Publishers
 
 ### 官方文档
 

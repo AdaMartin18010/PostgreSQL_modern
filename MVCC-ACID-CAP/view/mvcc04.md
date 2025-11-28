@@ -1306,6 +1306,306 @@ $$
 
 ---
 
+## 💻 可运行代码示例：MVCC-ACID关联性演示
+
+### 代码示例1：转账事务ACID全链路演示
+
+```python
+#!/usr/bin/env python3
+"""
+转账事务ACID全链路演示
+演示MVCC如何实现ACID属性
+"""
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class TransferTransactionDemo:
+    """转账事务演示类"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        try:
+            self.conn = psycopg2.connect(connection_string)
+            self.conn.set_isolation_level(ISOLATION_LEVEL_REPEATABLE_READ)
+            self.conn.autocommit = False
+            logger.info("数据库连接成功")
+        except psycopg2.Error as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise
+
+    def setup_accounts(self):
+        """设置账户"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    DROP TABLE IF EXISTS accounts;
+                    CREATE TABLE accounts (
+                        id VARCHAR(10) PRIMARY KEY,
+                        balance DECIMAL(10, 2) NOT NULL CHECK (balance >= 0)
+                    )
+                """)
+                cur.execute("INSERT INTO accounts (id, balance) VALUES ('A', 1000.00)")
+                cur.execute("INSERT INTO accounts (id, balance) VALUES ('B', 500.00)")
+                self.conn.commit()
+                logger.info("账户设置完成: A=1000, B=500")
+        except psycopg2.Error as e:
+            logger.error(f"设置账户失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def transfer(self, from_account, to_account, amount):
+        """转账操作"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("BEGIN")
+                logger.info(f"开始转账: {from_account} -> {to_account}, 金额: {amount}")
+
+                # 原子性：检查余额
+                cur.execute("SELECT balance FROM accounts WHERE id = %s FOR UPDATE", (from_account,))
+                from_balance = cur.fetchone()[0]
+                logger.info(f"账户{from_account}当前余额: {from_balance}")
+
+                if from_balance < amount:
+                    logger.warning(f"余额不足: {from_balance} < {amount}")
+                    self.conn.rollback()
+                    return False
+
+                # 原子性：扣减转出账户
+                cur.execute("""
+                    UPDATE accounts
+                    SET balance = balance - %s
+                    WHERE id = %s
+                """, (amount, from_account))
+                logger.info(f"账户{from_account}扣减: {amount}")
+
+                # 原子性：增加转入账户
+                cur.execute("""
+                    UPDATE accounts
+                    SET balance = balance + %s
+                    WHERE id = %s
+                """, (amount, to_account))
+                logger.info(f"账户{to_account}增加: {amount}")
+
+                # 一致性：验证总额不变
+                cur.execute("SELECT SUM(balance) FROM accounts")
+                total = cur.fetchone()[0]
+                logger.info(f"转账后总余额: {total} (应该保持1500)")
+
+                # 持久性：提交事务
+                self.conn.commit()
+                logger.info("转账成功提交")
+
+                return True
+
+        except psycopg2.Error as e:
+            logger.error(f"转账失败: {e}")
+            self.conn.rollback()
+            return False
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            if self.conn:
+                with self.conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS accounts")
+                    self.conn.commit()
+                self.conn.close()
+                logger.info("资源清理完成")
+        except Exception as e:
+            logger.error(f"资源清理失败: {e}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+
+    demo = None
+    try:
+        demo = TransferTransactionDemo(connection_string)
+        demo.setup_accounts()
+        demo.transfer('A', 'B', 100.00)
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if demo:
+            demo.cleanup()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### 真实场景案例：电商秒杀系统
+
+**场景描述**：双11秒杀活动，需要处理高并发订单，保证ACID属性。
+
+**完整实现**：
+
+```python
+#!/usr/bin/env python3
+"""
+电商秒杀系统完整实现
+演示MVCC-ACID在高并发场景下的应用
+"""
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
+import threading
+import time
+import random
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(threadName)s] - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class FlashSaleSystem:
+    """秒杀系统"""
+
+    def __init__(self, connection_string):
+        """初始化"""
+        self.connection_string = connection_string
+        self.setup_database()
+
+    def setup_database(self):
+        """设置数据库"""
+        try:
+            conn = psycopg2.connect(self.connection_string)
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DROP TABLE IF EXISTS products, orders;
+                    CREATE TABLE products (
+                        product_id INTEGER PRIMARY KEY,
+                        name VARCHAR(100),
+                        stock INTEGER NOT NULL CHECK (stock >= 0),
+                        price DECIMAL(10, 2)
+                    );
+                    CREATE TABLE orders (
+                        order_id SERIAL PRIMARY KEY,
+                        user_id INTEGER,
+                        product_id INTEGER,
+                        quantity INTEGER,
+                        amount DECIMAL(10, 2),
+                        status VARCHAR(20) DEFAULT 'pending',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    INSERT INTO products (product_id, name, stock, price)
+                    VALUES (1, 'iPhone 15 Pro', 1000, 7999.00);
+                """)
+            conn.close()
+            logger.info("数据库设置完成")
+        except psycopg2.Error as e:
+            logger.error(f"数据库设置失败: {e}")
+            raise
+
+    def flash_sale_order(self, user_id, product_id, quantity):
+        """秒杀下单"""
+        conn = None
+        try:
+            conn = psycopg2.connect(self.connection_string)
+            conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+            conn.autocommit = False
+
+            with conn.cursor() as cur:
+                cur.execute("BEGIN")
+
+                # 原子性：检查并扣减库存
+                cur.execute("""
+                    SELECT stock, price FROM products
+                    WHERE product_id = %s
+                    FOR UPDATE
+                """, (product_id,))
+
+                result = cur.fetchone()
+                if not result or result[0] < quantity:
+                    conn.rollback()
+                    return False
+
+                stock, price = result
+
+                # 原子性：扣减库存
+                cur.execute("""
+                    UPDATE products
+                    SET stock = stock - %s
+                    WHERE product_id = %s
+                """, (quantity, product_id))
+
+                # 原子性：创建订单
+                amount = price * quantity
+                cur.execute("""
+                    INSERT INTO orders (user_id, product_id, quantity, amount, status)
+                    VALUES (%s, %s, %s, %s, 'completed')
+                """, (user_id, product_id, quantity, amount))
+
+                conn.commit()
+                logger.info(f"[用户{user_id}] 秒杀成功")
+                return True
+
+        except psycopg2.Error as e:
+            logger.error(f"[用户{user_id}] 秒杀失败: {e}")
+            if conn:
+                conn.rollback()
+            return False
+        finally:
+            if conn:
+                conn.close()
+
+    def concurrent_flash_sale(self, num_users=100):
+        """并发秒杀测试"""
+        results = {'success': 0, 'failed': 0}
+        lock = threading.Lock()
+
+        def worker(user_id):
+            success = self.flash_sale_order(user_id, 1, 1)
+            with lock:
+                if success:
+                    results['success'] += 1
+                else:
+                    results['failed'] += 1
+
+        threads = [threading.Thread(target=worker, args=(i+1,)) for i in range(num_users)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        logger.info(f"并发秒杀完成: 成功={results['success']}, 失败={results['failed']}")
+
+
+def main():
+    """主函数"""
+    connection_string = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
+    try:
+        system = FlashSaleSystem(connection_string)
+        system.concurrent_flash_sale(num_users=200)
+    except Exception as e:
+        logger.error(f"程序执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**场景分析**：
+
+1. **原子性（A）**：通过事务保证库存扣减和订单创建要么全部成功，要么全部失败
+2. **一致性（C）**：通过CHECK约束保证库存不为负，通过FOR UPDATE保证并发安全
+3. **隔离性（I）**：使用READ COMMITTED隔离级别，MVCC提供快照隔离
+4. **持久性（D）**：通过WAL保证事务提交后数据持久化
+
+---
+
 ## 📚 外部资源引用
 
 ### Wikipedia资源
@@ -1322,17 +1622,24 @@ $$
 
 ### 学术论文
 
-1. **MVCC-ACID关联性**：
-   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483
-   - Gray, J. (1983). "The Transaction Concept: Virtues and Limitations". VLDB 1983
-   - Adya, A., et al. (2000). "Generalized Isolation Level Definitions". ICDE 2000
+1. **MVCC-ACID关联性理论基础**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483. DOI: 10.1145/319996.319998
+   - Gray, J. (1983). "The Transaction Concept: Virtues and Limitations". Proceedings of the 9th International Conference on Very Large Data Bases (VLDB 1983), 144-154
+   - Adya, A., Liskov, B., & O'Neil, P. (2000). "Generalized Isolation Level Definitions". Proceedings of the 16th International Conference on Data Engineering (ICDE 2000), 67-78. DOI: 10.1109/ICDE.2000.839384
 
-2. **事务理论**：
-   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
-   - Bernstein, P. A., & Newcomer, E. (2009). "Principles of Transaction Processing" (2nd Edition)
+2. **事务处理理论**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann Publishers. ISBN: 978-1558601901
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery". Morgan Kaufmann Publishers. ISBN: 978-1558605084
+   - Bernstein, P. A., & Newcomer, E. (2009). "Principles of Transaction Processing" (2nd Edition). Morgan Kaufmann Publishers. ISBN: 978-1558606234
 
-3. **同构性理论**：
-   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528
+3. **隔离级别与可串行化**：
+   - Berenson, H., Bernstein, P., Gray, J., Melton, J., O'Neil, E., & O'Neil, P. (1995). "A Critique of ANSI SQL Isolation Levels". Proceedings of the 1995 ACM SIGMOD International Conference on Management of Data, 1-10. DOI: 10.1145/223784.223785
+   - Fekete, A., Liarokapis, D., O'Neil, E., O'Neil, P., & Shasha, D. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528. DOI: 10.1145/1071610.1071615
+   - Cahill, M. J., Röhm, U., & Fekete, A. D. (2008). "Serializable Isolation for Snapshot Databases". Proceedings of the 2008 ACM SIGMOD International Conference on Management of Data, 729-738. DOI: 10.1145/1376616.1376690
+
+4. **ACID属性形式化**：
+   - Lamport, L. (1978). "Time, Clocks, and the Ordering of Events in a Distributed System". Communications of the ACM, 21(7), 558-565. DOI: 10.1145/359545.359563
+   - Herlihy, M., & Wing, J. M. (1990). "Linearizability: A Correctness Condition for Concurrent Objects". ACM Transactions on Programming Languages and Systems, 12(3), 463-492. DOI: 10.1145/78969.78972
 
 ### 官方文档
 

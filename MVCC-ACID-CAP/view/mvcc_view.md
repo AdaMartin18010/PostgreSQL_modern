@@ -2187,6 +2187,7 @@ if __name__ == "__main__":
 **场景描述**：电商系统需要选择一致性策略，在CP和AP之间做出权衡。
 
 **业务需求**：
+
 - 商品库存查询：需要强一致性（CP模式）
 - 商品浏览记录：可以接受最终一致性（AP模式）
 
@@ -2400,25 +2401,23 @@ if __name__ == "__main__":
 
 ### 学术论文
 
-1. **MVCC**：
-   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
-   - Adya, A. (1999).
-   "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
-   - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"
+1. **MVCC理论基础**：
+   - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms". ACM Transactions on Database Systems, 8(4), 465-483. DOI: 10.1145/319996.319998
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions". PhD Thesis, Massachusetts Institute of Technology
+   - Fekete, A., Liarokapis, D., O'Neil, E., O'Neil, P., & Shasha, D. (2005). "Making Snapshot Isolation Serializable". ACM Transactions on Database Systems, 30(2), 492-528. DOI: 10.1145/1071610.1071615
 
-2. **ACID**：
-   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
-   - Weikum, G., & Vossen, G. (2001).
-   "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
-   - Berenson, H., et al. (1995). "A Critique of ANSI SQL Isolation Levels"
+2. **ACID事务模型**：
+   - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques". Morgan Kaufmann Publishers. ISBN: 978-1558601901
+   - Weikum, G., & Vossen, G. (2001). "Transactional Information Systems: Theory, Algorithms, and the Practice of Concurrency Control and Recovery". Morgan Kaufmann Publishers. ISBN: 978-1558605084
+   - Berenson, H., Bernstein, P., Gray, J., Melton, J., O'Neil, E., & O'Neil, P. (1995). "A Critique of ANSI SQL Isolation Levels". Proceedings of the 1995 ACM SIGMOD International Conference on Management of Data, 1-10. DOI: 10.1145/223784.223785
 
-3. **CAP**：
-   - Brewer, E. A. (2000). "Towards Robust Distributed Systems"
-   - Gilbert, S., & Lynch, N. (2002).
-   "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
-   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design"
+3. **CAP定理与分布式一致性**：
+   - Brewer, E. A. (2000). "Towards Robust Distributed Systems". Keynote Address at the 19th Annual ACM Symposium on Principles of Distributed Computing (PODC 2000)
+   - Gilbert, S., & Lynch, N. (2002). "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services". ACM SIGACT News, 33(2), 51-59. DOI: 10.1145/564585.564601
+   - Abadi, D. (2012). "Consistency Tradeoffs in Modern Distributed Database System Design: CAP is Only Part of the Story". Computer, 45(2), 37-42. DOI: 10.1109/MC.2012.33
+   - Bailis, P., & Ghodsi, A. (2013). "Eventual Consistency Today: Limitations, Extensions, and Beyond". Communications of the ACM, 56(5), 55-63. DOI: 10.1145/2447976.2447992
 
-4. **分布式系统**：
+4. **分布式系统与NewSQL**：
    - Lamport, L. (1978). "Time, Clocks, and the Ordering of Events in a Distributed System"
    - Lamport, L. (1979). "How to Make a Multiprocessor Computer That Correctly Executes Multiprocess Programs"
    - Herlihy, M. P., & Wing, J. M. (1990). "Linearizability: A Correctness Condition for Concurrent Objects"
