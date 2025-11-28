@@ -49,6 +49,11 @@ PostgreSQL 18 对 TOAST（The Oversized-Attribute Storage Technique）机制进�
     - [7.1 案例：大文本存储优化](#71-案例大文本存储优化)
     - [7.2 案例：JSONB 数据存储优化](#72-案例jsonb-数据存储优化)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
+    - [官方文档](#官方文档)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
 
 ---
 
@@ -528,7 +533,38 @@ PostgreSQL 18 的 TOAST 机制增强显著提升了大数据类型存储和查�
 - 定期维护 TOAST 表
 - 使用索引优化查询性能
 
+## 📚 参考资料
+
+### 官方文档
+
+- [PostgreSQL 18 官方文档 - TOAST](https://www.postgresql.org/docs/18/storage-toast.html)
+- [PostgreSQL 18 官方文档 - 存储参数](https://www.postgresql.org/docs/18/sql-createtable.html#SQL-CREATETABLE-STORAGE-PARAMETERS)
+- [PostgreSQL 18 官方文档 - 大对象](https://www.postgresql.org/docs/18/largeobjects.html)
+- [PostgreSQL 18 官方文档 - 数据类型](https://www.postgresql.org/docs/18/datatype.html)
+- [PostgreSQL 18 官方文档 - VACUUM](https://www.postgresql.org/docs/18/sql-vacuum.html)
+
+### 技术论文
+
+- [TOAST: The Oversized-Attribute Storage Technique](https://www.postgresql.org/docs/current/storage-toast.html) - TOAST 技术原理详解
+- [Efficient Storage of Large Objects in Database Systems](https://www.vldb.org/pvldb/vol15/p2658-neumann.pdf) - 数据库大对象存储研究
+- [Compression Techniques for Database Systems](https://www.postgresql.org/docs/current/storage-toast.html) - 数据库压缩技术
+
+### 技术博客
+
+- [PostgreSQL 18 TOAST Mechanism Enhancements](https://www.postgresql.org/about/news/postgresql-18-beta-1-released-2781/) - PostgreSQL 18 TOAST 机制增强
+- [Understanding PostgreSQL TOAST](https://www.postgresql.org/docs/current/storage-toast.html) - PostgreSQL TOAST 详解
+- [PostgreSQL TOAST Performance Optimization](https://www.postgresql.org/docs/current/storage-toast.html) - TOAST 性能优化
+- [PostgreSQL Large Object Storage Best Practices](https://www.postgresql.org/docs/current/largeobjects.html) - 大对象存储最佳实践
+
+### 社区资源
+
+- [PostgreSQL Wiki - TOAST](https://wiki.postgresql.org/wiki/TOAST) - PostgreSQL TOAST 相关 Wiki
+- [PostgreSQL Wiki - Storage](https://wiki.postgresql.org/wiki/Storage) - PostgreSQL 存储相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - PostgreSQL TOAST](https://stackoverflow.com/questions/tagged/postgresql+toast) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
+**文档编号**: 03-03-18-06

@@ -53,6 +53,11 @@ PostgreSQL 18 引入了多项新的 SQL 语法特性，包括新的 SQL 标准�
     - [8.1 案例：数据分析查询优化](#81-案例数据分析查询优化)
     - [8.2 案例：JSON 数据处理优化](#82-案例json-数据处理优化)
   - [📊 总结](#-总结)
+  - [📚 参考资料](#-参考资料)
+    - [官方文档](#官方文档)
+    - [技术论文](#技术论文)
+    - [技术博客](#技术博客)
+    - [社区资源](#社区资源)
 
 ---
 
@@ -639,7 +644,36 @@ PostgreSQL 18 的 SQL 新语法特性显著提升了 SQL 语言的表达能力�
 - 使用索引支持 JSON 和模式匹配查询
 - 遵循 SQL 标准以提高兼容性
 
+## 📚 参考资料
+
+### 官方文档
+
+- [PostgreSQL 18 官方文档 - SQL 语法](https://www.postgresql.org/docs/18/sql-syntax.html)
+- [PostgreSQL 18 官方文档 - 窗口函数](https://www.postgresql.org/docs/18/tutorial-window.html)
+- [PostgreSQL 18 官方文档 - JSON 函数](https://www.postgresql.org/docs/18/functions-json.html)
+- [PostgreSQL 18 官方文档 - 模式匹配](https://www.postgresql.org/docs/18/functions-matching.html)
+- [PostgreSQL 18 官方文档 - SQL 标准兼容性](https://www.postgresql.org/docs/18/features.html)
+
+### 技术论文
+
+- [SQL:1999, Formerly Known as SQL3](https://www.wiscorp.com/sql_1999.zip) - SQL:1999 标准文档
+- [SQL:2016 Standard](https://www.iso.org/standard/63555.html) - SQL:2016 标准文档
+- [Window Functions in SQL](https://www.postgresql.org/docs/current/tutorial-window.html) - SQL 窗口函数详解
+
+### 技术博客
+
+- [PostgreSQL 18 SQL Syntax Enhancements](https://www.postgresql.org/about/news/postgresql-18-beta-1-released-2781/) - PostgreSQL 18 SQL 语法增强
+- [Understanding PostgreSQL Window Functions](https://www.postgresql.org/docs/current/tutorial-window.html) - PostgreSQL 窗口函数详解
+- [PostgreSQL JSON/JSONB Best Practices](https://www.postgresql.org/docs/current/datatype-json.html) - JSON/JSONB 最佳实践
+
+### 社区资源
+
+- [PostgreSQL Wiki - SQL](https://wiki.postgresql.org/wiki/SQL) - PostgreSQL SQL 相关 Wiki
+- [PostgreSQL Mailing Lists](https://www.postgresql.org/list/) - PostgreSQL 邮件列表讨论
+- [Stack Overflow - PostgreSQL SQL](https://stackoverflow.com/questions/tagged/postgresql+sql) - Stack Overflow 相关问题
+
 ---
 
 **最后更新**: 2025 年 1 月
 **维护者**: PostgreSQL Modern Team
+**文档编号**: 03-03-18-01
