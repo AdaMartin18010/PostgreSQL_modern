@@ -47,6 +47,8 @@ PostgreSQL 18 引入了异步 I/O 机制，允许数据库在等待 I/O 操作�
     - [6.2 使用建议](#62-使用建议)
   - [7. 实际案例](#7-实际案例)
     - [7.1 案例：高并发查询优化（真实案例）](#71-案例高并发查询优化真实案例)
+  - [8. Python 代码示例](#8-python-代码示例)
+    - [8.1 异步I/O监控](#81-异步io监控)
   - [📊 总结](#-总结)
   - [📚 参考资料](#-参考资料)
     - [8.1 官方文档](#81-官方文档)
@@ -590,6 +592,58 @@ seq_page_cost = 1.0
 SET effective_io_concurrency = 200;
 
 -- 优化后：响应时间 350ms（提升 30%）
+```
+
+---
+
+## 8. Python 代码示例
+
+### 8.1 异步I/O监控
+
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import Dict
+
+class AsyncIOMonitor:
+    """PostgreSQL 18 异步I/O监控器"""
+
+    def __init__(self, conn_str: str):
+        """初始化异步I/O监控器"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def get_io_stats(self) -> Dict:
+        """获取I/O统计信息"""
+        sql = """
+        SELECT
+            object,
+            context,
+            reads,
+            writes
+        FROM pg_stat_io
+        ORDER BY reads DESC;
+        """
+
+        self.cur.execute(sql)
+        return self.cur.fetchall()
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    monitor = AsyncIOMonitor(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 获取I/O统计
+    stats = monitor.get_io_stats()
+    print(f"I/O统计: {len(stats)} 项")
+
+    monitor.close()
 ```
 
 ---

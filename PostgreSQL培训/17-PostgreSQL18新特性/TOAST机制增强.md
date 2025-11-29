@@ -48,6 +48,8 @@ PostgreSQL 18 对 TOAST（The Oversized-Attribute Storage Technique）机制进�
   - [7. 实际案例](#7-实际案例)
     - [7.1 案例：大文本存储优化](#71-案例大文本存储优化)
     - [7.2 案例：JSONB 数据存储优化](#72-案例jsonb-数据存储优化)
+  - [8. Python 代码示例](#8-python-代码示例)
+    - [8.1 TOAST监控](#81-toast监控)
   - [📊 总结](#-总结)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
@@ -512,6 +514,58 @@ CREATE INDEX idx_products_details_gin ON products USING GIN (details);
 - 更新性能提升 50%
 - 存储空间减少 25%
 - 查询性能提升 45%
+
+---
+
+## 8. Python 代码示例
+
+### 8.1 TOAST监控
+
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import Dict, List
+
+class ToastMonitor:
+    """PostgreSQL 18 TOAST监控器"""
+
+    def __init__(self, conn_str: str):
+        """初始化TOAST监控器"""
+        self.conn = psycopg2.connect(conn_str)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def get_toast_info(self, table_name: str) -> Dict:
+        """获取TOAST信息"""
+        sql = f"""
+        SELECT
+            pg_size_pretty(pg_total_relation_size('{table_name}')) AS total_size,
+            pg_size_pretty(pg_relation_size('{table_name}')) AS table_size,
+            pg_size_pretty(
+                pg_total_relation_size('{table_name}') - pg_relation_size('{table_name}')
+            ) AS toast_size;
+        """
+
+        self.cur.execute(sql)
+        result = self.cur.fetchone()
+        return dict(result) if result else {}
+
+    def close(self):
+        """关闭连接"""
+        self.cur.close()
+        self.conn.close()
+
+# 使用示例
+if __name__ == "__main__":
+    monitor = ToastMonitor(
+        "host=localhost dbname=testdb user=postgres password=secret"
+    )
+
+    # 获取TOAST信息
+    info = monitor.get_toast_info("documents")
+    print(f"TOAST信息: {info}")
+
+    monitor.close()
+```
 
 ---
 
