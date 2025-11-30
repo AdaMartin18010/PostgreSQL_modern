@@ -510,6 +510,7 @@ Apache AGE 为 PostgreSQL 提供了强大的图数据库能力，通过 Cypher �
 **安装方法**：
 
 1. **从源码编译安装**：
+
 ```bash
 git clone https://github.com/apache/age.git
 cd age
@@ -517,6 +518,7 @@ make install
 ```
 
 2. **创建扩展**：
+
 ```sql
 -- ✅ 好：创建Apache AGE扩展
 CREATE EXTENSION IF NOT EXISTS age;
@@ -524,6 +526,7 @@ CREATE EXTENSION IF NOT EXISTS age;
 ```
 
 3. **加载Cypher**：
+
 ```sql
 -- ✅ 好：加载Cypher查询语言
 LOAD 'age';
@@ -531,6 +534,7 @@ LOAD 'age';
 ```
 
 **验证方法**：
+
 ```sql
 -- 检查扩展是否安装
 SELECT * FROM pg_extension WHERE extname = 'age';
@@ -543,6 +547,7 @@ SELECT * FROM pg_extension WHERE extname = 'age';
 **使用方法**：
 
 1. **创建图**：
+
 ```sql
 -- ✅ 好：创建图
 SELECT create_graph('social_network');
@@ -550,6 +555,7 @@ SELECT create_graph('social_network');
 ```
 
 2. **创建节点和边**：
+
 ```sql
 -- ✅ 好：使用Cypher创建节点
 SELECT * FROM cypher('social_network', $$
@@ -560,6 +566,7 @@ $$) AS (u agtype);
 ```
 
 3. **查询图数据**：
+
 ```sql
 -- ✅ 好：使用Cypher查询
 SELECT * FROM cypher('social_network', $$
@@ -571,6 +578,7 @@ $$) AS (name agtype);
 ```
 
 **最佳实践**：
+
 - **使用Cypher**：使用Cypher查询语言查询图数据
 - **创建索引**：为节点属性创建索引
 - **优化查询**：使用MATCH和WHERE优化查询
@@ -584,6 +592,7 @@ $$) AS (name agtype);
 **优化方法**：
 
 1. **创建索引**：
+
 ```sql
 -- ✅ 好：为节点属性创建索引
 CREATE INDEX ON social_network."User" (name);
@@ -591,6 +600,7 @@ CREATE INDEX ON social_network."User" (name);
 ```
 
 2. **使用LIMIT限制结果**：
+
 ```sql
 -- ✅ 好：使用LIMIT限制结果
 SELECT * FROM cypher('social_network', $$
@@ -602,6 +612,7 @@ $$) AS (name agtype);
 ```
 
 3. **优化查询模式**：
+
 ```sql
 -- ✅ 好：使用具体节点开始查询
 SELECT * FROM cypher('social_network', $$
@@ -612,6 +623,7 @@ $$) AS (name agtype);
 ```
 
 **性能数据**：
+
 - 无优化：查询耗时 5秒
 - 优化后：查询耗时 0.1秒
 - **性能提升：50倍**

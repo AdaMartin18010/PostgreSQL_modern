@@ -565,29 +565,29 @@ pg_stat_statements 是 PostgreSQL 性能分析和优化的核心工具。通过�
 
 1. **创建扩展**：
 
-```sql
--- ✅ 好：创建pg_stat_statements扩展
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
--- 启用查询统计功能
-```
+    ```sql
+    -- ✅ 好：创建pg_stat_statements扩展
+    CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+    -- 启用查询统计功能
+    ```
 
 2. **配置参数**：
 
-```sql
--- ✅ 好：配置统计参数
-ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
-ALTER SYSTEM SET pg_stat_statements.track = 'all';
-ALTER SYSTEM SET pg_stat_statements.max = 10000;
-SELECT pg_reload_conf();
--- 重启PostgreSQL后生效
-```
+    ```sql
+    -- ✅ 好：配置统计参数
+    ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
+    ALTER SYSTEM SET pg_stat_statements.track = 'all';
+    ALTER SYSTEM SET pg_stat_statements.max = 10000;
+    SELECT pg_reload_conf();
+    -- 重启PostgreSQL后生效
+    ```
 
 3. **验证安装**：
 
-```sql
--- ✅ 好：验证扩展是否启用
-SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
-```
+    ```sql
+    -- ✅ 好：验证扩展是否启用
+    SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
+    ```
 
 **验证方法**：
 
@@ -604,50 +604,50 @@ SELECT count(*) FROM pg_stat_statements;
 
 1. **按总时间排序**：
 
-```sql
--- ✅ 好：查找总时间最长的查询
-SELECT
-    query,
-    calls,
-    total_exec_time,
-    mean_exec_time,
-    max_exec_time
-FROM pg_stat_statements
-ORDER BY total_exec_time DESC
-LIMIT 10;
--- 查找总时间最长的10个查询
-```
+    ```sql
+    -- ✅ 好：查找总时间最长的查询
+    SELECT
+        query,
+        calls,
+        total_exec_time,
+        mean_exec_time,
+        max_exec_time
+    FROM pg_stat_statements
+    ORDER BY total_exec_time DESC
+    LIMIT 10;
+    -- 查找总时间最长的10个查询
+    ```
 
 2. **按平均时间排序**：
 
-```sql
--- ✅ 好：查找平均时间最长的查询
-SELECT
-    query,
-    calls,
-    mean_exec_time,
-    max_exec_time
-FROM pg_stat_statements
-WHERE calls > 100
-ORDER BY mean_exec_time DESC
-LIMIT 10;
--- 查找平均时间最长的查询
-```
+    ```sql
+    -- ✅ 好：查找平均时间最长的查询
+    SELECT
+        query,
+        calls,
+        mean_exec_time,
+        max_exec_time
+    FROM pg_stat_statements
+    WHERE calls > 100
+    ORDER BY mean_exec_time DESC
+    LIMIT 10;
+    -- 查找平均时间最长的查询
+    ```
 
 3. **按调用次数排序**：
 
-```sql
--- ✅ 好：查找调用次数最多的查询
-SELECT
-    query,
-    calls,
-    total_exec_time,
-    mean_exec_time
-FROM pg_stat_statements
-ORDER BY calls DESC
-LIMIT 10;
--- 查找调用次数最多的查询
-```
+    ```sql
+    -- ✅ 好：查找调用次数最多的查询
+    SELECT
+        query,
+        calls,
+        total_exec_time,
+        mean_exec_time
+    FROM pg_stat_statements
+    ORDER BY calls DESC
+    LIMIT 10;
+    -- 查找调用次数最多的查询
+    ```
 
 **最佳实践**：
 
@@ -665,19 +665,19 @@ LIMIT 10;
 
 1. **重置所有统计信息**：
 
-```sql
--- ✅ 好：重置所有统计信息
-SELECT pg_stat_statements_reset();
--- 重置所有查询统计信息
-```
+    ```sql
+    -- ✅ 好：重置所有统计信息
+    SELECT pg_stat_statements_reset();
+    -- 重置所有查询统计信息
+    ```
 
 2. **重置特定数据库的统计信息**：
 
-```sql
--- ✅ 好：重置特定数据库的统计信息
-SELECT pg_stat_statements_reset(userid, dbid);
--- 重置特定用户和数据库的统计信息
-```
+    ```sql
+    -- ✅ 好：重置特定数据库的统计信息
+    SELECT pg_stat_statements_reset(userid, dbid);
+    -- 重置特定用户和数据库的统计信息
+    ```
 
 **最佳实践**：
 

@@ -303,31 +303,31 @@ repmgr 提供成熟的 PostgreSQL 复制管理方案：
 
 1. **使用包管理器安装**：
 
-```bash
-# Ubuntu/Debian
-sudo apt-get install repmgr
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install repmgr
 
-# 从源码编译
-git clone https://github.com/2ndQuadrant/repmgr.git
-cd repmgr
-make install
-```
+    # 从源码编译
+    git clone https://github.com/2ndQuadrant/repmgr.git
+    cd repmgr
+    make install
+    ```
 
 2. **创建扩展**：
 
-```sql
--- ✅ 好：创建repmgr扩展
-CREATE EXTENSION IF NOT EXISTS repmgr;
--- 启用复制管理功能
-```
+    ```sql
+    -- ✅ 好：创建repmgr扩展
+    CREATE EXTENSION IF NOT EXISTS repmgr;
+    -- 启用复制管理功能
+    ```
 
 3. **注册节点**：
 
-```bash
-# ✅ 好：注册主节点
-repmgr primary register
-# 注册主节点
-```
+    ```bash
+    # ✅ 好：注册主节点
+    repmgr primary register
+    # 注册主节点
+    ```
 
 **验证方法**：
 
@@ -344,22 +344,22 @@ repmgr cluster show
 
 1. **配置repmgr守护进程**：
 
-```bash
-# ✅ 好：启动repmgr守护进程
-repmgrd -d -f /etc/repmgr.conf
-# 启动守护进程，自动监控和故障转移
-```
+    ```bash
+    # ✅ 好：启动repmgr守护进程
+    repmgrd -d -f /etc/repmgr.conf
+    # 启动守护进程，自动监控和故障转移
+    ```
 
 2. **配置故障转移**：
 
-```conf
-# ✅ 好：repmgr配置文件
-node_id=1
-node_name=node1
-conninfo='host=node1 dbname=repmgr user=repmgr'
-failover=automatic
-monitoring_interval=2
-```
+    ```conf
+    # ✅ 好：repmgr配置文件
+    node_id=1
+    node_name=node1
+    conninfo='host=node1 dbname=repmgr user=repmgr'
+    failover=automatic
+    monitoring_interval=2
+    ```
 
 **最佳实践**：
 

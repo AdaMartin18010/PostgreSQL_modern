@@ -52,6 +52,12 @@ PostgreSQL 18 对 TOAST（The Oversized-Attribute Storage Technique）机制进�
   - [8. Python 代码示例](#8-python-代码示例)
     - [8.1 TOAST监控](#81-toast监控)
   - [📊 总结](#-总结)
+  - [9. 常见问题（FAQ）](#9-常见问题faq)
+    - [9.1 TOAST机制基础常见问题](#91-toast机制基础常见问题)
+      - [Q1: PostgreSQL 18的TOAST机制有哪些增强？](#q1-postgresql-18的toast机制有哪些增强)
+      - [Q2: 如何优化TOAST性能？](#q2-如何优化toast性能)
+    - [9.2 TOAST存储常见问题](#92-toast存储常见问题)
+      - [Q3: 如何选择TOAST存储策略？](#q3-如何选择toast存储策略)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
@@ -663,6 +669,7 @@ PostgreSQL 18 的 TOAST 机制增强显著提升了大数据类型存储和查�
    - TOAST表监控增强
 
 **验证方法**：
+
 ```sql
 -- 查看TOAST表大小
 SELECT
@@ -682,6 +689,7 @@ WHERE relname = 'large_text_table';
 **优化方法**：
 
 1. **选择存储策略**：
+
 ```sql
 -- ✅ 好：选择存储策略
 ALTER TABLE large_text_table
@@ -690,6 +698,7 @@ ALTER COLUMN text_data SET STORAGE EXTENDED;
 ```
 
 2. **优化压缩算法**：
+
 ```sql
 -- ✅ 好：优化压缩算法
 -- PostgreSQL 18自动优化压缩算法
@@ -697,6 +706,7 @@ ALTER COLUMN text_data SET STORAGE EXTENDED;
 ```
 
 3. **监控TOAST大小**：
+
 ```sql
 -- ✅ 好：监控TOAST大小
 SELECT
@@ -708,6 +718,7 @@ WHERE relname = 'large_text_table';
 ```
 
 **性能数据**：
+
 - 优化前：TOAST操作耗时 10秒
 - 优化后：TOAST操作耗时 5秒
 - **性能提升：50%**
@@ -728,6 +739,7 @@ WHERE relname = 'large_text_table';
 | **MAIN** | 中等数据 | 中等 | 中等 |
 
 **代码示例**：
+
 ```sql
 -- ✅ 好：使用EXTENDED存储策略（大数据）
 ALTER TABLE large_text_table
@@ -741,6 +753,7 @@ ALTER COLUMN text_data SET STORAGE PLAIN;
 ```
 
 **选择建议**：
+
 - **小数据**：使用PLAIN
 - **中等数据**：使用MAIN或EXTERNAL
 - **大数据**：使用EXTENDED

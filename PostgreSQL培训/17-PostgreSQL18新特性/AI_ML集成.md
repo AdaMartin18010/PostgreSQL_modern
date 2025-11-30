@@ -53,6 +53,13 @@ PostgreSQL 18 增强了对 AI/ML 应用的集成支持，包括改进的向量�
     - [8.2 AI函数使用](#82-ai函数使用)
     - [8.3 向量生成和搜索](#83-向量生成和搜索)
   - [📊 总结](#-总结)
+  - [9. 常见问题（FAQ）](#9-常见问题faq)
+    - [9.1 AI/ML集成基础常见问题](#91-aiml集成基础常见问题)
+      - [Q1: PostgreSQL 18的AI/ML集成有哪些特性？](#q1-postgresql-18的aiml集成有哪些特性)
+      - [Q2: 如何集成ML模型？](#q2-如何集成ml模型)
+    - [9.2 向量数据库常见问题](#92-向量数据库常见问题)
+      - [Q3: 如何优化向量搜索性能？](#q3-如何优化向量搜索性能)
+      - [Q4: 如何实现语义搜索？](#q4-如何实现语义搜索)
   - [📚 参考资料](#-参考资料)
     - [8.1 官方文档](#81-官方文档)
     - [8.2 技术论文](#82-技术论文)
@@ -1269,6 +1276,7 @@ PostgreSQL 18 的 AI/ML 集成显著增强了 PostgreSQL 在 AI/ML 应用场景�
    - 语义搜索支持
 
 **验证方法**：
+
 ```sql
 -- 使用AI函数生成向量
 SELECT ai.generate_embedding('text-embedding-3-small', 'text');
@@ -1282,6 +1290,7 @@ SELECT ai.generate_embedding('text-embedding-3-small', 'text');
 **集成方法**：
 
 1. **安装pg_ml扩展**：
+
 ```sql
 -- ✅ 好：安装pg_ml扩展
 CREATE EXTENSION IF NOT EXISTS pg_ml;
@@ -1289,6 +1298,7 @@ CREATE EXTENSION IF NOT EXISTS pg_ml;
 ```
 
 2. **加载ML模型**：
+
 ```sql
 -- ✅ 好：加载ML模型
 SELECT ml.load_model('my_model', '/path/to/model.pkl');
@@ -1296,6 +1306,7 @@ SELECT ml.load_model('my_model', '/path/to/model.pkl');
 ```
 
 3. **使用模型推理**：
+
 ```sql
 -- ✅ 好：使用模型推理
 SELECT ml.predict('my_model', features::jsonb) AS prediction
@@ -1304,6 +1315,7 @@ FROM data_table;
 ```
 
 **最佳实践**：
+
 - **模型管理**：使用pg_ml管理模型
 - **批量推理**：批量推理性能更好
 - **模型更新**：定期更新模型
@@ -1317,6 +1329,7 @@ FROM data_table;
 **优化策略**：
 
 1. **创建HNSW索引**：
+
 ```sql
 -- ✅ 好：创建HNSW索引
 CREATE INDEX idx_documents_embedding_hnsw
@@ -1327,6 +1340,7 @@ WITH (m = 32, ef_construction = 128);
 ```
 
 2. **优化索引参数**：
+
 ```sql
 -- ✅ 好：优化索引参数
 CREATE INDEX idx_documents_embedding_hnsw
@@ -1337,6 +1351,7 @@ WITH (m = 32, ef_construction = 128, ef_search = 64);
 ```
 
 3. **使用批量搜索**：
+
 ```sql
 -- ✅ 好：使用批量搜索
 SELECT * FROM documents
@@ -1347,6 +1362,7 @@ LIMIT 10;
 ```
 
 **性能数据**：
+
 - 无索引：搜索耗时 5秒
 - 有HNSW索引：搜索耗时 0.1秒
 - **性能提升：50倍**
@@ -1358,6 +1374,7 @@ LIMIT 10;
 **实现方法**：
 
 1. **生成向量**：
+
 ```sql
 -- ✅ 好：使用AI函数生成向量
 INSERT INTO documents (text, embedding)
@@ -1369,6 +1386,7 @@ VALUES (
 ```
 
 2. **向量搜索**：
+
 ```sql
 -- ✅ 好：向量搜索
 SELECT text, embedding <-> query_vector AS similarity
@@ -1379,6 +1397,7 @@ LIMIT 10;
 ```
 
 3. **结合全文搜索**：
+
 ```sql
 -- ✅ 好：结合向量搜索和全文搜索
 SELECT text,
@@ -1392,6 +1411,7 @@ LIMIT 10;
 ```
 
 **最佳实践**：
+
 - **向量生成**：使用AI函数生成向量
 - **索引优化**：创建HNSW索引
 - **混合搜索**：结合向量搜索和全文搜索

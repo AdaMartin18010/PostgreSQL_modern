@@ -666,30 +666,30 @@ pgvector 为 PostgreSQL 提供了强大的向量数据库能力，是构建 AI/M
 
 1. **使用包管理器安装**：
 
-```bash
-# Ubuntu/Debian
-sudo apt-get install postgresql-17-pgvector
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install postgresql-17-pgvector
 
-# macOS
-brew install pgvector
-```
+    # macOS
+    brew install pgvector
+    ```
 
 2. **从源码编译安装**：
 
-```bash
-git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git
-cd pgvector
-make
-sudo make install
-```
+    ```bash
+    git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git
+    cd pgvector
+    make
+    sudo make install
+    ```
 
 3. **创建扩展**：
 
-```sql
--- ✅ 好：创建pgvector扩展
-CREATE EXTENSION IF NOT EXISTS vector;
--- 启用向量数据库功能
-```
+    ```sql
+    -- ✅ 好：创建pgvector扩展
+    CREATE EXTENSION IF NOT EXISTS vector;
+    -- 启用向量数据库功能
+    ```
 
 **验证方法**：
 
@@ -739,31 +739,31 @@ WITH (lists = 100);
 
 1. **创建合适的索引**：
 
-```sql
--- ✅ 好：创建HNSW索引
-CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
--- 提升查询性能
-```
+    ```sql
+    -- ✅ 好：创建HNSW索引
+    CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+    -- 提升查询性能
+    ```
 
 2. **调整索引参数**：
 
-```sql
--- ✅ 好：调整HNSW参数
-CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops)
-WITH (m = 32, ef_construction = 128);
--- 增加m和ef_construction提升精度和性能
-```
+    ```sql
+    -- ✅ 好：调整HNSW参数
+    CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 32, ef_construction = 128);
+    -- 增加m和ef_construction提升精度和性能
+    ```
 
 3. **优化查询**：
 
-```sql
--- ✅ 好：使用LIMIT限制结果数量
-SELECT * FROM items
-ORDER BY embedding <=> '[0.1,0.2,0.3]'::vector
-LIMIT 10;
--- 限制返回结果数量，提升性能
-```
+    ```sql
+    -- ✅ 好：使用LIMIT限制结果数量
+    SELECT * FROM items
+    ORDER BY embedding <=> '[0.1,0.2,0.3]'::vector
+    LIMIT 10;
+    -- 限制返回结果数量，提升性能
+    ```
 
 **性能数据**：
 
