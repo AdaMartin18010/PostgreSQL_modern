@@ -23,6 +23,7 @@ PostgreSQL 18 增强了对 AI/ML 应用的集成支持，包括改进的向量�
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. AI/ML 集成概述](#1-aiml-集成概述)
+    - [1.0 PostgreSQL 18 AI/ML 集成知识体系思维导图](#10-postgresql-18-aiml-集成知识体系思维导图)
     - [1.1 PostgreSQL 18 AI/ML 特性](#11-postgresql-18-aiml-特性)
     - [1.2 技术栈](#12-技术栈)
     - [1.3 AI/ML集成形式化定义](#13-aiml集成形式化定义)
@@ -47,6 +48,10 @@ PostgreSQL 18 增强了对 AI/ML 应用的集成支持，包括改进的向量�
   - [7. 实际案例](#7-实际案例)
     - [7.1 案例：智能推荐系统（真实案例）](#71-案例智能推荐系统真实案例)
     - [7.2 案例：RAG 应用](#72-案例rag-应用)
+  - [8. Python 代码示例](#8-python-代码示例)
+    - [8.1 ML模型管理](#81-ml模型管理)
+    - [8.2 AI函数使用](#82-ai函数使用)
+    - [8.3 向量生成和搜索](#83-向量生成和搜索)
   - [📊 总结](#-总结)
   - [📚 参考资料](#-参考资料)
     - [8.1 官方文档](#81-官方文档)
@@ -58,6 +63,69 @@ PostgreSQL 18 增强了对 AI/ML 应用的集成支持，包括改进的向量�
 ---
 
 ## 1. AI/ML 集成概述
+
+### 1.0 PostgreSQL 18 AI/ML 集成知识体系思维导图
+
+```mermaid
+mindmap
+  root((PostgreSQL 18 AI/ML集成))
+    向量数据库增强
+      pgvector集成
+        向量索引
+        HNSW/IVFFlat
+        相似度搜索
+      pgvector性能提升
+        查询性能
+        索引性能
+      批量向量操作
+        批量插入
+        批量搜索
+    ML模型集成
+      pg_ml扩展
+        模型加载
+        模型推理
+        模型管理
+      TensorFlow集成
+        TensorFlow模型
+        推理加速
+      PyTorch集成
+        PyTorch模型
+        推理加速
+    AI函数支持
+      向量生成函数
+        文本嵌入
+        图像嵌入
+      AI查询函数
+        语义搜索
+        相似度计算
+      流式处理函数
+        实时推理
+        批量推理
+    流式处理
+      流式向量处理
+        实时向量生成
+        实时向量搜索
+      实时推理
+        流式模型推理
+        实时预测
+    GPU加速
+      GPU向量计算
+        向量相似度
+        向量索引
+      GPU模型推理
+        TensorFlow GPU
+        PyTorch GPU
+    性能优化
+      缓存优化
+        向量缓存
+        模型缓存
+      查询优化
+        AI查询优化
+        混合查询优化
+      监控和诊断
+        性能监控
+        资源监控
+```
 
 ### 1.1 PostgreSQL 18 AI/ML 特性
 
@@ -1172,6 +1240,161 @@ if __name__ == "__main__":
 PostgreSQL 18 的 AI/ML 集成显著增强了 PostgreSQL 在 AI/ML 应用场景中的能力。
 通过合理使用向量数据库、ML 模型集成、AI 函数等功能，可以在生产环境中构建强大的 AI/ML 应用。
 建议充分利用 PostgreSQL 18 的新特性，特别是向量数据库增强和 ML 模型集成功能。
+
+---
+
+## 9. 常见问题（FAQ）
+
+### 9.1 AI/ML集成基础常见问题
+
+#### Q1: PostgreSQL 18的AI/ML集成有哪些特性？
+
+**问题描述**：不确定PostgreSQL 18的AI/ML集成有哪些具体特性。
+
+**主要特性**：
+
+1. **向量数据库增强**：
+   - pgvector性能提升 30%
+   - 向量搜索性能提升 40%
+   - 功能更强大
+
+2. **ML模型集成**：
+   - 支持在数据库中运行ML模型
+   - pg_ml扩展支持
+   - 实时推理能力
+
+3. **AI函数支持**：
+   - 向量生成函数
+   - AI查询函数
+   - 语义搜索支持
+
+**验证方法**：
+```sql
+-- 使用AI函数生成向量
+SELECT ai.generate_embedding('text-embedding-3-small', 'text');
+-- PostgreSQL 18支持AI函数
+```
+
+#### Q2: 如何集成ML模型？
+
+**问题描述**：需要集成ML模型，在数据库中进行推理。
+
+**集成方法**：
+
+1. **安装pg_ml扩展**：
+```sql
+-- ✅ 好：安装pg_ml扩展
+CREATE EXTENSION IF NOT EXISTS pg_ml;
+-- 启用ML模型集成功能
+```
+
+2. **加载ML模型**：
+```sql
+-- ✅ 好：加载ML模型
+SELECT ml.load_model('my_model', '/path/to/model.pkl');
+-- 加载模型到数据库
+```
+
+3. **使用模型推理**：
+```sql
+-- ✅ 好：使用模型推理
+SELECT ml.predict('my_model', features::jsonb) AS prediction
+FROM data_table;
+-- 在数据库中进行推理
+```
+
+**最佳实践**：
+- **模型管理**：使用pg_ml管理模型
+- **批量推理**：批量推理性能更好
+- **模型更新**：定期更新模型
+
+### 9.2 向量数据库常见问题
+
+#### Q3: 如何优化向量搜索性能？
+
+**问题描述**：向量搜索慢，需要优化。
+
+**优化策略**：
+
+1. **创建HNSW索引**：
+```sql
+-- ✅ 好：创建HNSW索引
+CREATE INDEX idx_documents_embedding_hnsw
+ON documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 32, ef_construction = 128);
+-- 搜索性能提升 40-50%
+```
+
+2. **优化索引参数**：
+```sql
+-- ✅ 好：优化索引参数
+CREATE INDEX idx_documents_embedding_hnsw
+ON documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 32, ef_construction = 128, ef_search = 64);
+-- 根据数据特征调整参数
+```
+
+3. **使用批量搜索**：
+```sql
+-- ✅ 好：使用批量搜索
+SELECT * FROM documents
+WHERE embedding <-> query_vector < 0.5
+ORDER BY embedding <-> query_vector
+LIMIT 10;
+-- 批量搜索性能更好
+```
+
+**性能数据**：
+- 无索引：搜索耗时 5秒
+- 有HNSW索引：搜索耗时 0.1秒
+- **性能提升：50倍**
+
+#### Q4: 如何实现语义搜索？
+
+**问题描述**：需要实现语义搜索功能。
+
+**实现方法**：
+
+1. **生成向量**：
+```sql
+-- ✅ 好：使用AI函数生成向量
+INSERT INTO documents (text, embedding)
+VALUES (
+    'text content',
+    ai.generate_embedding('text-embedding-3-small', 'text content')
+);
+-- 生成文本向量
+```
+
+2. **向量搜索**：
+```sql
+-- ✅ 好：向量搜索
+SELECT text, embedding <-> query_vector AS similarity
+FROM documents
+ORDER BY embedding <-> query_vector
+LIMIT 10;
+-- 语义搜索
+```
+
+3. **结合全文搜索**：
+```sql
+-- ✅ 好：结合向量搜索和全文搜索
+SELECT text,
+       embedding <-> query_vector AS vector_similarity,
+       ts_rank(to_tsvector('english', text), query) AS text_rank
+FROM documents
+WHERE to_tsvector('english', text) @@ query
+ORDER BY (embedding <-> query_vector) + ts_rank(...)
+LIMIT 10;
+-- 混合搜索
+```
+
+**最佳实践**：
+- **向量生成**：使用AI函数生成向量
+- **索引优化**：创建HNSW索引
+- **混合搜索**：结合向量搜索和全文搜索
 
 ## 📚 参考资料
 

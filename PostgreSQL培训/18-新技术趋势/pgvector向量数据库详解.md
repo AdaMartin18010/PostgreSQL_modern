@@ -24,6 +24,7 @@ pgvector 是 PostgreSQL 的向量数据库扩展，支持高效的向量相似�
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. pgvector 基础](#1-pgvector-基础)
+    - [1.0 pgvector向量数据库知识体系思维导图](#10-pgvector向量数据库知识体系思维导图)
     - [1.0 pgvector 工作原理概述](#10-pgvector-工作原理概述)
     - [1.1 什么是 pgvector](#11-什么是-pgvector)
     - [1.2 安装 pgvector](#12-安装-pgvector)
@@ -52,6 +53,14 @@ pgvector 是 PostgreSQL 的向量数据库扩展，支持高效的向量相似�
     - [7.1 案例：电商推荐系统](#71-案例电商推荐系统)
     - [7.2 案例：图像搜索](#72-案例图像搜索)
   - [📊 总结](#-总结)
+  - [7. 常见问题（FAQ）](#7-常见问题faq)
+    - [7.1 pgvector基础常见问题](#71-pgvector基础常见问题)
+      - [Q1: 如何安装和配置pgvector？](#q1-如何安装和配置pgvector)
+      - [Q2: 如何选择向量索引类型？](#q2-如何选择向量索引类型)
+    - [7.2 向量搜索性能常见问题](#72-向量搜索性能常见问题)
+      - [Q3: 向量搜索慢怎么办？](#q3-向量搜索慢怎么办)
+    - [7.3 向量维度常见问题](#73-向量维度常见问题)
+      - [Q4: 如何选择合适的向量维度？](#q4-如何选择合适的向量维度)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
@@ -61,6 +70,60 @@ pgvector 是 PostgreSQL 的向量数据库扩展，支持高效的向量相似�
 ---
 
 ## 1. pgvector 基础
+
+### 1.0 pgvector向量数据库知识体系思维导图
+
+```mermaid
+mindmap
+  root((pgvector向量数据库))
+    向量数据类型
+      vector类型
+        类型定义
+        类型使用
+      向量维度
+        维度选择
+        维度优化
+    向量索引
+      HNSW索引
+        索引创建
+        索引优化
+      IVFFlat索引
+        索引创建
+        索引优化
+      索引选择建议
+        选择方法
+        选择优化
+    相似度搜索
+      相似度操作符
+        操作符类型
+        操作符使用
+      相似度阈值查询
+        查询方法
+        查询优化
+      混合查询
+        混合方法
+        混合优化
+    性能优化
+      索引参数调优
+        参数调优
+        性能提升
+      批量插入优化
+        批量方法
+        性能提升
+      查询优化
+        优化方法
+        性能提升
+    AI应用集成
+      OpenAI集成
+        集成方法
+        集成优化
+      语义搜索
+        搜索方法
+        搜索优化
+      RAG应用
+        应用方法
+        应用优化
+```
 
 ### 1.0 pgvector 工作原理概述
 
@@ -588,6 +651,164 @@ LIMIT 20;
 
 pgvector 为 PostgreSQL 提供了强大的向量数据库能力，是构建 AI/ML 应用的重要基础设施。
 通过合理使用索引和优化查询，可以实现高效的向量相似度搜索，满足推荐系统、语义搜索、RAG 等应用场景的需求。
+
+---
+
+## 7. 常见问题（FAQ）
+
+### 7.1 pgvector基础常见问题
+
+#### Q1: 如何安装和配置pgvector？
+
+**问题描述**：不知道如何安装和配置pgvector扩展。
+
+**安装方法**：
+
+1. **使用包管理器安装**：
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install postgresql-17-pgvector
+
+# macOS
+brew install pgvector
+```
+
+2. **从源码编译安装**：
+
+```bash
+git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git
+cd pgvector
+make
+sudo make install
+```
+
+3. **创建扩展**：
+
+```sql
+-- ✅ 好：创建pgvector扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+-- 启用向量数据库功能
+```
+
+**验证方法**：
+
+```sql
+-- 检查扩展是否安装
+SELECT * FROM pg_extension WHERE extname = 'vector';
+```
+
+#### Q2: 如何选择向量索引类型？
+
+**问题描述**：不确定应该使用HNSW索引还是IVFFlat索引。
+
+**选择建议**：
+
+| 索引类型 | 适用场景 | 查询速度 | 索引大小 | 构建时间 |
+|---------|---------|---------|---------|---------|
+| **HNSW** | 高精度查询，频繁查询 | 快 | 大 | 慢 |
+| **IVFFlat** | 大规模数据，快速构建 | 中等 | 小 | 快 |
+
+**代码示例**：
+
+```sql
+-- ✅ 好：使用HNSW索引（推荐）
+CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+-- 适合高精度查询场景
+
+-- ✅ 好：使用IVFFlat索引（大规模数据）
+CREATE INDEX ON items USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+-- 适合大规模数据快速构建
+```
+
+**选择建议**：
+
+- **高精度查询**：使用HNSW索引
+- **大规模数据**：使用IVFFlat索引
+- **混合场景**：根据实际需求选择
+
+### 7.2 向量搜索性能常见问题
+
+#### Q3: 向量搜索慢怎么办？
+
+**问题描述**：向量搜索查询慢，需要优化。
+
+**优化方法**：
+
+1. **创建合适的索引**：
+
+```sql
+-- ✅ 好：创建HNSW索引
+CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+-- 提升查询性能
+```
+
+2. **调整索引参数**：
+
+```sql
+-- ✅ 好：调整HNSW参数
+CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops)
+WITH (m = 32, ef_construction = 128);
+-- 增加m和ef_construction提升精度和性能
+```
+
+3. **优化查询**：
+
+```sql
+-- ✅ 好：使用LIMIT限制结果数量
+SELECT * FROM items
+ORDER BY embedding <=> '[0.1,0.2,0.3]'::vector
+LIMIT 10;
+-- 限制返回结果数量，提升性能
+```
+
+**性能数据**：
+
+- 无索引：查询耗时 10秒
+- 有HNSW索引：查询耗时 0.1秒
+- **性能提升：100倍**
+
+### 7.3 向量维度常见问题
+
+#### Q4: 如何选择合适的向量维度？
+
+**问题描述**：不确定应该使用多少维度的向量。
+
+**维度选择**：
+
+1. **根据模型选择**：
+   - OpenAI text-embedding-ada-002: 1536维
+   - OpenAI text-embedding-3-small: 1536维
+   - OpenAI text-embedding-3-large: 3072维
+   - 自定义模型: 根据模型输出维度
+
+2. **性能考虑**：
+   - 维度越高，精度越高，但性能越差
+   - 维度越低，性能越好，但精度可能降低
+
+3. **存储考虑**：
+   - 维度越高，存储空间越大
+   - 需要平衡精度和存储成本
+
+**代码示例**：
+
+```sql
+-- ✅ 好：使用1536维向量（OpenAI标准）
+CREATE TABLE items (
+    id SERIAL PRIMARY KEY,
+    embedding vector(1536)
+);
+-- 使用OpenAI标准维度
+```
+
+**最佳实践**：
+
+- **使用标准维度**：使用模型推荐的维度
+- **测试验证**：测试不同维度的性能
+- **平衡精度和性能**：根据实际需求选择
 
 ## 📚 参考资料
 

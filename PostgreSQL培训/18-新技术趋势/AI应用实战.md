@@ -23,6 +23,7 @@
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. AI 应用架构](#1-ai-应用架构)
+    - [1.0 AI应用实战知识体系思维导图](#10-ai应用实战知识体系思维导图)
     - [1.1 技术栈](#11-技术栈)
     - [1.2 核心组件](#12-核心组件)
   - [2. 推荐系统实现](#2-推荐系统实现)
@@ -44,6 +45,12 @@
     - [7.1 Docker 部署](#71-docker-部署)
     - [7.2 生产环境配置](#72-生产环境配置)
   - [📊 总结](#-总结)
+  - [8. 常见问题（FAQ）](#8-常见问题faq)
+    - [8.1 AI应用基础常见问题](#81-ai应用基础常见问题)
+      - [Q1: 如何构建基于PostgreSQL的AI应用？](#q1-如何构建基于postgresql的ai应用)
+      - [Q2: 如何实现推荐系统？](#q2-如何实现推荐系统)
+    - [8.2 RAG应用常见问题](#82-rag应用常见问题)
+      - [Q3: 如何实现RAG应用？](#q3-如何实现rag应用)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
@@ -53,6 +60,58 @@
 ---
 
 ## 1. AI 应用架构
+
+### 1.0 AI应用实战知识体系思维导图
+
+```mermaid
+mindmap
+  root((AI应用实战))
+    推荐系统实现
+      商品推荐系统
+        数据模型
+        推荐算法
+      推荐算法实现
+        协同过滤
+        内容推荐
+      混合推荐策略
+        策略组合
+        性能优化
+    语义搜索实现
+      文档语义搜索
+        文档处理
+        向量生成
+      语义搜索API
+        API设计
+        性能优化
+    RAG应用实现
+      RAG架构
+        架构设计
+        组件集成
+      RAG实现
+        实现方案
+        性能优化
+    图像搜索实现
+      图像特征提取
+        特征提取
+        向量生成
+      图像搜索
+        搜索算法
+        性能优化
+    性能优化
+      向量索引优化
+        索引选择
+        索引调优
+      缓存策略
+        缓存设计
+        缓存优化
+    部署方案
+      Docker部署
+        容器化
+        编排管理
+      生产环境配置
+        配置优化
+        监控告警
+```
 
 ### 1.1 技术栈
 
@@ -581,6 +640,155 @@ VECTOR_SIMILARITY_THRESHOLD = 0.7
 
 基于 PostgreSQL 和 pgvector 可以构建强大的 AI 应用，包括推荐系统、语义搜索、RAG 应用、图像搜索等。
 通过合理设计数据模型、优化向量索引、实现高效的检索算法，可以在生产环境中实现高性能的 AI 应用。
+
+---
+
+## 8. 常见问题（FAQ）
+
+### 8.1 AI应用基础常见问题
+
+#### Q1: 如何构建基于PostgreSQL的AI应用？
+
+**问题描述**：不知道如何开始构建AI应用。
+
+**构建步骤**：
+
+1. **安装pgvector扩展**：
+
+```sql
+-- ✅ 好：安装pgvector扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+-- 启用向量数据库功能
+```
+
+2. **创建向量表**：
+
+```sql
+-- ✅ 好：创建向量表
+CREATE TABLE documents (
+    id SERIAL PRIMARY KEY,
+    content TEXT,
+    embedding vector(1536)
+);
+-- 存储文档和向量
+```
+
+3. **创建向量索引**：
+
+```sql
+-- ✅ 好：创建HNSW索引
+CREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops);
+-- 提升向量搜索性能
+```
+
+4. **集成AI模型**：
+
+```python
+# ✅ 好：使用OpenAI生成向量
+import openai
+embedding = openai.Embedding.create(
+    input="文档内容",
+    model="text-embedding-ada-002"
+)
+```
+
+**最佳实践**：
+
+- **使用pgvector**：使用pgvector扩展存储向量
+- **创建索引**：为向量列创建HNSW索引
+- **集成AI模型**：使用OpenAI或其他模型生成向量
+
+#### Q2: 如何实现推荐系统？
+
+**问题描述**：需要实现基于向量的推荐系统。
+
+**实现方法**：
+
+1. **存储用户和商品向量**：
+
+```sql
+-- ✅ 好：创建商品向量表
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    embedding vector(1536)
+);
+
+-- ✅ 好：创建用户向量表
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    preferences vector(1536)
+);
+```
+
+2. **实现推荐查询**：
+
+```sql
+-- ✅ 好：基于向量相似度推荐
+SELECT
+    p.id,
+    p.name,
+    1 - (p.embedding <=> u.preferences) AS similarity
+FROM products p
+CROSS JOIN users u
+WHERE u.id = 1
+ORDER BY similarity DESC
+LIMIT 10;
+-- 推荐最相似的商品
+```
+
+**性能数据**：
+
+- 无索引：查询耗时 5秒
+- 有HNSW索引：查询耗时 0.1秒
+- **性能提升：50倍**
+
+### 8.2 RAG应用常见问题
+
+#### Q3: 如何实现RAG应用？
+
+**问题描述**：需要实现检索增强生成（RAG）应用。
+
+**实现方法**：
+
+1. **存储文档向量**：
+
+```sql
+-- ✅ 好：创建文档向量表
+CREATE TABLE knowledge_base (
+    id SERIAL PRIMARY KEY,
+    content TEXT,
+    embedding vector(1536)
+);
+```
+
+2. **检索相关文档**：
+
+```sql
+-- ✅ 好：检索相关文档
+SELECT
+    content,
+    1 - (embedding <=> query_vector) AS similarity
+FROM knowledge_base
+ORDER BY similarity DESC
+LIMIT 5;
+-- 检索最相关的5个文档
+```
+
+3. **结合LLM生成**：
+
+```python
+# ✅ 好：结合LLM生成回答
+relevant_docs = retrieve_documents(query_vector)
+context = "\n".join([doc['content'] for doc in relevant_docs])
+response = llm.generate(context + "\n问题: " + query)
+```
+
+**最佳实践**：
+
+- **存储文档向量**：为知识库文档生成向量
+- **检索相关文档**：使用向量搜索检索相关文档
+- **结合LLM**：将检索到的文档作为上下文输入LLM
 
 ## 📚 参考资料
 

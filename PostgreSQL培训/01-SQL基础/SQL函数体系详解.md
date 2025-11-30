@@ -34,10 +34,10 @@
     - [6.1 函数选择原则](#61-函数选择原则)
     - [6.2 函数组合原则](#62-函数组合原则)
   - [7. 参考资料](#7-参考资料)
-    - [7.1 官方文档](#71-官方文档)
+    - [8.1 官方文档](#81-官方文档)
     - [7.2 SQL标准文档](#72-sql标准文档)
-    - [7.3 技术博客](#73-技术博客)
-    - [7.4 社区资源](#74-社区资源)
+    - [8.3 技术博客](#83-技术博客)
+    - [8.4 社区资源](#84-社区资源)
     - [7.5 相关文档](#75-相关文档)
 
 ---
@@ -764,7 +764,7 @@ ORDER BY DATE_TRUNC('month', created_at) DESC, total_revenue DESC;
 
 ## 7. 参考资料
 
-### 7.1 官方文档
+### 8.1 官方文档
 
 - **[PostgreSQL 官方文档 - 函数](https://www.postgresql.org/docs/current/functions.html)**
   - SQL函数完整参考手册
@@ -796,7 +796,7 @@ ORDER BY DATE_TRUNC('month', created_at) DESC, total_revenue DESC;
   - PostgreSQL对SQL标准的支持
   - SQL标准函数对比
 
-### 7.3 技术博客
+### 8.3 技术博客
 
 - **[PostgreSQL 官方博客 - 函数优化](https://www.postgresql.org/about/newsarchive/)**
   - PostgreSQL 函数优化最新动态
@@ -810,7 +810,7 @@ ORDER BY DATE_TRUNC('month', created_at) DESC, total_revenue DESC;
   - PostgreSQL 函数优化实践
   - 性能优化案例
 
-### 7.4 社区资源
+### 8.4 社区资源
 
 - **[PostgreSQL Wiki - 函数](https://wiki.postgresql.org/wiki/Functions)**
   - PostgreSQL 函数Wiki

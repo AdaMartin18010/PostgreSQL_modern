@@ -24,6 +24,7 @@ pg_stat_statements 是 PostgreSQL 的查询统计扩展，用于跟踪服务器�
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. pg\_stat\_statements 基础](#1-pg_stat_statements-基础)
+    - [1.0 pg\_stat\_statements详解知识体系思维导图](#10-pg_stat_statements详解知识体系思维导图)
     - [1.1 什么是 pg\_stat\_statements](#11-什么是-pg_stat_statements)
     - [1.2 主要功能](#12-主要功能)
   - [2. 安装和配置](#2-安装和配置)
@@ -50,6 +51,12 @@ pg_stat_statements 是 PostgreSQL 的查询统计扩展，用于跟踪服务器�
     - [7.2 案例：优化高频查询](#72-案例优化高频查询)
     - [7.3 案例：监控查询性能趋势](#73-案例监控查询性能趋势)
   - [📊 总结](#-总结)
+  - [6. 常见问题（FAQ）](#6-常见问题faq)
+    - [6.1 pg\_stat\_statements基础常见问题](#61-pg_stat_statements基础常见问题)
+      - [Q1: 如何安装和启用pg\_stat\_statements？](#q1-如何安装和启用pg_stat_statements)
+      - [Q2: 如何查找慢查询？](#q2-如何查找慢查询)
+    - [6.2 性能分析常见问题](#62-性能分析常见问题)
+      - [Q3: 如何重置统计信息？](#q3-如何重置统计信息)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
@@ -59,6 +66,50 @@ pg_stat_statements 是 PostgreSQL 的查询统计扩展，用于跟踪服务器�
 ---
 
 ## 1. pg_stat_statements 基础
+
+### 1.0 pg_stat_statements详解知识体系思维导图
+
+```mermaid
+mindmap
+  root((pg_stat_statements详解))
+    统计信息查询
+      基本查询
+        查询方法
+        查询优化
+      查询字段说明
+        字段说明
+        字段应用
+    性能分析
+      慢查询分析
+        分析方法
+        分析工具
+      高频查询分析
+        分析方法
+        分析工具
+      I/O分析
+        分析方法
+        分析工具
+      临时文件使用分析
+        分析方法
+        分析工具
+    查询优化
+      识别优化机会
+        识别方法
+        识别工具
+      查询模式分析
+        分析方法
+        分析工具
+    最佳实践
+      定期重置统计信息
+        重置方法
+        重置策略
+      监控查询趋势
+        监控方法
+        监控工具
+      查询规范化
+        规范化方法
+        规范化应用
+```
 
 ### 1.1 什么是 pg_stat_statements
 
@@ -499,6 +550,140 @@ ORDER BY snapshot_time DESC, query_hash;
 ## 📊 总结
 
 pg_stat_statements 是 PostgreSQL 性能分析和优化的核心工具。通过合理使用统计信息查询、性能分析、查询优化等功能，可以在生产环境中及时发现和解决性能问题。建议定期查看统计信息，识别慢查询和高频查询，并根据统计数据进行针对性的优化。
+
+---
+
+## 6. 常见问题（FAQ）
+
+### 6.1 pg_stat_statements基础常见问题
+
+#### Q1: 如何安装和启用pg_stat_statements？
+
+**问题描述**：不知道如何安装和启用pg_stat_statements扩展。
+
+**安装方法**：
+
+1. **创建扩展**：
+
+```sql
+-- ✅ 好：创建pg_stat_statements扩展
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+-- 启用查询统计功能
+```
+
+2. **配置参数**：
+
+```sql
+-- ✅ 好：配置统计参数
+ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
+ALTER SYSTEM SET pg_stat_statements.track = 'all';
+ALTER SYSTEM SET pg_stat_statements.max = 10000;
+SELECT pg_reload_conf();
+-- 重启PostgreSQL后生效
+```
+
+3. **验证安装**：
+
+```sql
+-- ✅ 好：验证扩展是否启用
+SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
+```
+
+**验证方法**：
+
+```sql
+-- 查看统计信息
+SELECT count(*) FROM pg_stat_statements;
+```
+
+#### Q2: 如何查找慢查询？
+
+**问题描述**：需要查找慢查询。
+
+**查找方法**：
+
+1. **按总时间排序**：
+
+```sql
+-- ✅ 好：查找总时间最长的查询
+SELECT
+    query,
+    calls,
+    total_exec_time,
+    mean_exec_time,
+    max_exec_time
+FROM pg_stat_statements
+ORDER BY total_exec_time DESC
+LIMIT 10;
+-- 查找总时间最长的10个查询
+```
+
+2. **按平均时间排序**：
+
+```sql
+-- ✅ 好：查找平均时间最长的查询
+SELECT
+    query,
+    calls,
+    mean_exec_time,
+    max_exec_time
+FROM pg_stat_statements
+WHERE calls > 100
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+-- 查找平均时间最长的查询
+```
+
+3. **按调用次数排序**：
+
+```sql
+-- ✅ 好：查找调用次数最多的查询
+SELECT
+    query,
+    calls,
+    total_exec_time,
+    mean_exec_time
+FROM pg_stat_statements
+ORDER BY calls DESC
+LIMIT 10;
+-- 查找调用次数最多的查询
+```
+
+**最佳实践**：
+
+- **定期检查**：定期检查慢查询
+- **优化慢查询**：针对慢查询进行优化
+- **监控趋势**：监控查询性能趋势
+
+### 6.2 性能分析常见问题
+
+#### Q3: 如何重置统计信息？
+
+**问题描述**：需要重置统计信息。
+
+**重置方法**：
+
+1. **重置所有统计信息**：
+
+```sql
+-- ✅ 好：重置所有统计信息
+SELECT pg_stat_statements_reset();
+-- 重置所有查询统计信息
+```
+
+2. **重置特定数据库的统计信息**：
+
+```sql
+-- ✅ 好：重置特定数据库的统计信息
+SELECT pg_stat_statements_reset(userid, dbid);
+-- 重置特定用户和数据库的统计信息
+```
+
+**最佳实践**：
+
+- **定期重置**：定期重置统计信息，避免数据积累
+- **重置前备份**：重置前备份重要统计信息
+- **分析趋势**：分析重置前后的性能趋势
 
 ## 📚 参考资料
 

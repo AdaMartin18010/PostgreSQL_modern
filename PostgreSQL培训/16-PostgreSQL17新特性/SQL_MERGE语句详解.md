@@ -23,6 +23,7 @@ MERGE 语句允许在一个操作中同时执行 INSERT、UPDATE 和 DELETE 操�
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. MERGE 语句形式化定义](#1-merge-语句形式化定义)
+    - [1.0 SQL MERGE语句知识体系思维导图](#10-sql-merge语句知识体系思维导图)
     - [1.0 MERGE 语句形式化定义](#10-merge-语句形式化定义)
     - [1.1 MERGE vs INSERT ... ON CONFLICT对比矩阵](#11-merge-vs-insert--on-conflict对比矩阵)
   - [2. MERGE 语句基础](#2-merge-语句基础)
@@ -51,17 +52,65 @@ MERGE 语句允许在一个操作中同时执行 INSERT、UPDATE 和 DELETE 操�
     - [7.2 案例：用户画像更新（真实案例）](#72-案例用户画像更新真实案例)
   - [📊 总结](#-总结)
   - [📚 参考资料](#-参考资料)
-    - [8.1 官方文档](#81-官方文档)
-    - [8.2 SQL标准文档](#82-sql标准文档)
-    - [8.3 技术论文](#83-技术论文)
-    - [8.4 技术博客](#84-技术博客)
-    - [8.5 社区资源](#85-社区资源)
-    - [8.6 相关文档](#86-相关文档)
+    - [9.1 官方文档](#91-官方文档)
+    - [9.2 SQL标准文档](#92-sql标准文档)
+    - [9.3 技术论文](#93-技术论文)
+    - [9.4 技术博客](#94-技术博客)
+    - [9.5 社区资源](#95-社区资源)
+    - [9.6 相关文档](#96-相关文档)
     - [社区资源](#社区资源)
 
 ---
 
 ## 1. MERGE 语句形式化定义
+
+### 1.0 SQL MERGE语句知识体系思维导图
+
+```mermaid
+mindmap
+  root((SQL MERGE语句))
+    MERGE语句基础
+      什么是MERGE
+        概念说明
+        应用场景
+      MERGE基本语法
+        语法结构
+        语法示例
+    MERGE语法详解
+      完整语法结构
+        语法组件
+        语法规则
+      语法组件说明
+        组件类型
+        组件使用
+    MERGE使用场景
+      数据同步
+        同步方法
+        同步优化
+      数据仓库ETL
+        ETL方法
+        ETL优化
+      增量更新
+        更新方法
+        更新优化
+    MERGE性能优化
+      索引优化
+        索引策略
+        性能提升
+      批量处理
+        批量方法
+        性能提升
+      条件过滤
+        过滤方法
+        性能提升
+    MERGE与UPSERT对比
+      INSERT ... ON CONFLICT
+        语法说明
+        使用场景
+      MERGE的优势
+        优势分析
+        应用场景
+```
 
 ### 1.0 MERGE 语句形式化定义
 
@@ -750,7 +799,7 @@ PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化�
 
 ## 📚 参考资料
 
-### 8.1 官方文档
+### 9.1 官方文档
 
 - **[PostgreSQL 官方文档 - MERGE 语句](https://www.postgresql.org/docs/17/sql-merge.html)**
   - MERGE语句完整参考手册
@@ -760,7 +809,7 @@ PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化�
   - PostgreSQL 17新特性介绍
   - MERGE语句功能说明
 
-### 8.2 SQL标准文档
+### 9.2 SQL标准文档
 
 - **[ISO/IEC 9075 SQL 标准](https://www.iso.org/standard/76583.html)**
   - SQL标准MERGE语句定义
@@ -770,7 +819,7 @@ PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化�
   - PostgreSQL对SQL标准的支持
   - SQL标准MERGE对比
 
-### 8.3 技术论文
+### 9.3 技术论文
 
 - **[Date, C. J. (2003). "An Introduction to Database Systems."](https://www.amazon.com/Introduction-Database-Systems-8th/dp/0321197844)**
   - 数据库系统的经典教材
@@ -780,7 +829,7 @@ PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化�
   - 事务处理的经典教材
   - 原子操作在事务处理中的应用
 
-### 8.4 技术博客
+### 9.4 技术博客
 
 - **[PostgreSQL 官方博客 - MERGE Statement](https://www.postgresql.org/about/newsarchive/)**
   - PostgreSQL MERGE最新动态
@@ -794,7 +843,7 @@ PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化�
   - PostgreSQL MERGE优化实践
   - MERGE性能优化案例
 
-### 8.5 社区资源
+### 9.5 社区资源
 
 - **[PostgreSQL Wiki - MERGE Statement](https://wiki.postgresql.org/wiki/MERGE)**
   - PostgreSQL MERGE Wiki
@@ -808,7 +857,7 @@ PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化�
   - PostgreSQL 社区讨论
   - MERGE使用问题交流
 
-### 8.6 相关文档
+### 9.6 相关文档
 
 - [SQL基础培训](../01-SQL基础/SQL基础培训.md)
 - [查询优化体系详解](../01-SQL基础/查询优化体系详解.md)

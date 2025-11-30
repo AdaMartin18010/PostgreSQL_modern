@@ -32,12 +32,12 @@
     - [5.1 CTE 使用](#51-cte-使用)
     - [5.2 性能优化](#52-性能优化)
   - [6. 参考资料](#6-参考资料)
-    - [6.1 官方文档](#61-官方文档)
-    - [6.2 SQL标准文档](#62-sql标准文档)
-    - [6.3 技术论文](#63-技术论文)
-    - [6.4 技术博客](#64-技术博客)
-    - [6.5 社区资源](#65-社区资源)
-    - [6.6 相关文档](#66-相关文档)
+    - [7.1 官方文档](#71-官方文档)
+    - [7.2 SQL标准文档](#72-sql标准文档)
+    - [7.3 技术论文](#73-技术论文)
+    - [7.4 技术博客](#74-技术博客)
+    - [7.5 社区资源](#75-社区资源)
+    - [7.6 相关文档](#76-相关文档)
     - [SQL 标准](#sql-标准)
     - [技术论文](#技术论文)
     - [技术博客](#技术博客)
@@ -834,7 +834,7 @@ FROM validated_data;
 
 ## 6. 参考资料
 
-### 6.1 官方文档
+### 7.1 官方文档
 
 - **[PostgreSQL 官方文档 - CTE](https://www.postgresql.org/docs/current/queries-with.html)**
   - CTE完整参考手册
@@ -848,7 +848,7 @@ FROM validated_data;
   - 物化CTE详细说明
   - 物化CTE性能优化指南
 
-### 6.2 SQL标准文档
+### 7.2 SQL标准文档
 
 - **[ISO/IEC 9075 SQL 标准](https://www.iso.org/standard/76583.html)**
   - SQL CTE标准定义
@@ -858,7 +858,7 @@ FROM validated_data;
   - PostgreSQL对SQL标准的支持
   - SQL标准CTE对比
 
-### 6.3 技术论文
+### 7.3 技术论文
 
 - **[Leis, V., et al. (2015). "How Good Are Query Optimizers?"](https://arxiv.org/abs/1504.01155)**
   - 查询优化器性能评估研究
@@ -868,7 +868,7 @@ FROM validated_data;
   - CTE优化技术
   - CTE物化优化
 
-### 6.4 技术博客
+### 7.4 技术博客
 
 - **[PostgreSQL 官方博客 - CTE](https://www.postgresql.org/about/newsarchive/)**
   - PostgreSQL CTE最新动态
@@ -882,7 +882,7 @@ FROM validated_data;
   - PostgreSQL CTE优化实践
   - 性能优化案例
 
-### 6.5 社区资源
+### 7.5 社区资源
 
 - **[PostgreSQL Wiki - CTE](https://wiki.postgresql.org/wiki/Common_Table_Expressions)**
   - PostgreSQL CTE Wiki
@@ -896,7 +896,7 @@ FROM validated_data;
   - PostgreSQL 社区讨论
   - CTE使用问题交流
 
-### 6.6 相关文档
+### 7.6 相关文档
 
 - [窗口函数详解](./窗口函数详解.md)
 - [递归查询详解](./递归查询详解.md)

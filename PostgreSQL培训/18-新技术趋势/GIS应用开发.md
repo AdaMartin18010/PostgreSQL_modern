@@ -23,6 +23,7 @@ PostgreSQL 结合 PostGIS 扩展提供了强大的地理信息系统（GIS）开
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. GIS 基础](#1-gis-基础)
+    - [1.0 GIS应用开发知识体系思维导图](#10-gis应用开发知识体系思维导图)
     - [1.1 PostGIS 安装](#11-postgis-安装)
     - [1.2 空间数据类型](#12-空间数据类型)
     - [1.3 坐标系统](#13-坐标系统)
@@ -58,7 +59,14 @@ PostgreSQL 结合 PostGIS 扩展提供了强大的地理信息系统（GIS）开
     - [9.1 案例：地图应用开发](#91-案例地图应用开发)
     - [9.2 案例：地理分析系统](#92-案例地理分析系统)
   - [📊 总结](#-总结)
+  - [9. 常见问题（FAQ）](#9-常见问题faq)
+    - [9.1 GIS应用开发基础常见问题](#91-gis应用开发基础常见问题)
+      - [Q1: 如何存储和查询地理空间数据？](#q1-如何存储和查询地理空间数据)
+      - [Q2: 如何实现地理围栏功能？](#q2-如何实现地理围栏功能)
+    - [9.2 空间查询性能常见问题](#92-空间查询性能常见问题)
+      - [Q3: 如何优化空间查询性能？](#q3-如何优化空间查询性能)
   - [📚 参考资料](#-参考资料)
+  - [📚 参考资料](#-参考资料-1)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
     - [技术博客](#技术博客)
@@ -67,6 +75,63 @@ PostgreSQL 结合 PostGIS 扩展提供了强大的地理信息系统（GIS）开
 ---
 
 ## 1. GIS 基础
+
+### 1.0 GIS应用开发知识体系思维导图
+
+```mermaid
+mindmap
+  root((GIS应用开发))
+    空间数据存储
+      创建空间表
+        表设计
+        表创建
+      插入空间数据
+        数据插入
+        数据验证
+      空间数据导入
+        导入方法
+        导入工具
+    空间索引
+      GIST索引
+        索引创建
+        索引性能
+      SP-GiST索引
+        索引创建
+        索引性能
+      索引优化
+        优化策略
+        性能提升
+    空间查询
+      空间关系查询
+        关系判断
+        查询优化
+      空间距离查询
+        距离计算
+        查询优化
+      空间聚合查询
+        聚合方法
+        聚合优化
+    空间分析
+      缓冲区分析
+        分析功能
+        分析应用
+      叠加分析
+        分析功能
+        分析应用
+      网络分析
+        分析功能
+        分析应用
+    地图可视化
+      GeoJSON输出
+        输出格式
+        输出优化
+      KML输出
+        输出格式
+        输出优化
+      地图服务集成
+        服务集成
+        服务优化
+```
 
 ### 1.1 PostGIS 安装
 
@@ -777,6 +842,165 @@ PostgreSQL 结合 PostGIS 提供了强大的 GIS 应用开发能力：
 1. **空间数据类型**：支持点、线、面等空间数据类型
 2. **空间索引**：高效的 GIST 和 SP-GiST 空间索引
 3. **空间函数**：丰富的空间计算和分析函数
+
+---
+
+## 9. 常见问题（FAQ）
+
+### 9.1 GIS应用开发基础常见问题
+
+#### Q1: 如何存储和查询地理空间数据？
+
+**问题描述**：不知道如何存储和查询地理空间数据。
+
+**实现方法**：
+
+1. **创建空间表**：
+
+```sql
+-- ✅ 好：创建空间表
+CREATE TABLE locations (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    geom GEOMETRY(POINT, 4326)
+);
+-- 存储点数据
+```
+
+2. **创建空间索引**：
+
+```sql
+-- ✅ 好：创建空间索引
+CREATE INDEX idx_locations_geom
+ON locations USING GIST (geom);
+-- 提升空间查询性能
+```
+
+3. **插入空间数据**：
+
+```sql
+-- ✅ 好：插入空间数据
+INSERT INTO locations (name, geom)
+VALUES (
+    'Beijing',
+    ST_SetSRID(ST_MakePoint(116.4074, 39.9042), 4326)
+);
+-- 插入点数据
+```
+
+**最佳实践**：
+
+- **使用PostGIS**：使用PostGIS扩展处理空间数据
+- **创建索引**：为空间列创建GIST索引
+- **使用SRID**：指定正确的空间参考系统
+
+#### Q2: 如何实现地理围栏功能？
+
+**问题描述**：需要实现地理围栏（Geofencing）功能。
+
+**实现方法**：
+
+1. **创建围栏表**：
+
+```sql
+-- ✅ 好：创建围栏表
+CREATE TABLE geofences (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    area GEOMETRY(POLYGON, 4326)
+);
+CREATE INDEX ON geofences USING GIST (area);
+```
+
+2. **检查点是否在围栏内**：
+
+```sql
+-- ✅ 好：检查点是否在围栏内
+SELECT
+    g.name AS geofence_name,
+    l.name AS location_name
+FROM geofences g
+JOIN locations l ON ST_Within(l.geom, g.area)
+WHERE l.id = 1;
+-- 检查位置是否在围栏内
+```
+
+3. **查找附近的围栏**：
+
+```sql
+-- ✅ 好：查找附近的围栏
+SELECT
+    name,
+    ST_Distance(geom, ST_MakePoint(116.4074, 39.9042)::geography) AS distance
+FROM geofences
+WHERE ST_DWithin(
+    area::geography,
+    ST_MakePoint(116.4074, 39.9042)::geography,
+    1000
+)
+ORDER BY distance;
+-- 查找1公里内的围栏
+```
+
+**最佳实践**：
+
+- **使用空间函数**：使用ST_Within、ST_DWithin等函数
+- **创建索引**：为围栏区域创建索引
+- **优化查询**：使用边界框过滤优化查询
+
+### 9.2 空间查询性能常见问题
+
+#### Q3: 如何优化空间查询性能？
+
+**问题描述**：空间查询慢，需要优化。
+
+**优化方法**：
+
+1. **创建空间索引**：
+
+```sql
+-- ✅ 好：创建空间索引
+CREATE INDEX idx_locations_geom
+ON locations USING GIST (geom);
+-- 提升空间查询性能
+```
+
+2. **使用空间函数优化**：
+
+```sql
+-- ✅ 好：使用ST_DWithin函数
+SELECT * FROM locations
+WHERE ST_DWithin(
+    geom::geography,
+    ST_MakePoint(116.4074, 39.9042)::geography,
+    1000
+);
+-- 使用ST_DWithin，可以使用索引
+
+-- ❌ 不好：使用ST_Distance
+SELECT * FROM locations
+WHERE ST_Distance(geom::geography, ST_MakePoint(116.4074, 39.9042)::geography) < 1000;
+-- 无法使用索引，性能差
+```
+
+3. **使用边界框过滤**：
+
+```sql
+-- ✅ 好：使用边界框过滤
+SELECT * FROM locations
+WHERE geom && ST_MakeEnvelope(116.0, 39.0, 117.0, 40.0, 4326)
+AND ST_DWithin(geom::geography, center::geography, 1000);
+-- 先使用边界框过滤，再精确计算
+```
+
+**性能数据**：
+
+- 无优化：查询耗时 10秒
+- 优化后：查询耗时 0.1秒
+- **性能提升：100倍**
+
+## 📚 参考资料
+
 4. **坐标系统**：支持多种坐标系统和投影
 5. **高性能查询**：优化的空间查询性能
 

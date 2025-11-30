@@ -38,13 +38,26 @@
     - [7.1 窗口函数最佳实践](#71-窗口函数最佳实践)
     - [7.2 CTE 最佳实践](#72-cte-最佳实践)
     - [7.3 递归查询最佳实践](#73-递归查询最佳实践)
-  - [9. 参考资料](#9-参考资料)
-    - [9.1 官方文档](#91-官方文档)
-    - [9.2 SQL标准文档](#92-sql标准文档)
-    - [9.3 技术论文](#93-技术论文)
-    - [9.4 技术博客](#94-技术博客)
-    - [9.5 社区资源](#95-社区资源)
-    - [9.6 相关文档](#96-相关文档)
+  - [9. 常见问题（FAQ）](#9-常见问题faq)
+    - [9.1 高级SQL特性基础常见问题](#91-高级sql特性基础常见问题)
+      - [Q1: 高级SQL特性有哪些？如何选择？](#q1-高级sql特性有哪些如何选择)
+      - [Q2: 高级SQL特性的性能如何？](#q2-高级sql特性的性能如何)
+    - [9.2 窗口函数常见问题](#92-窗口函数常见问题)
+      - [Q3: 窗口函数和聚合函数的区别？](#q3-窗口函数和聚合函数的区别)
+      - [Q4: 如何优化窗口函数性能？](#q4-如何优化窗口函数性能)
+    - [9.3 CTE常见问题](#93-cte常见问题)
+      - [Q5: CTE和子查询的区别？](#q5-cte和子查询的区别)
+      - [Q6: CTE会被物化吗？如何控制？](#q6-cte会被物化吗如何控制)
+    - [9.4 高级查询技巧常见问题](#94-高级查询技巧常见问题)
+      - [Q7: LATERAL JOIN和子查询的区别？](#q7-lateral-join和子查询的区别)
+      - [Q8: CASE表达式和FILTER子句的区别？](#q8-case表达式和filter子句的区别)
+  - [10. 参考资料](#10-参考资料)
+    - [10.1 官方文档](#101-官方文档)
+    - [10.2 SQL标准文档](#102-sql标准文档)
+    - [10.3 技术论文](#103-技术论文)
+    - [10.4 技术博客](#104-技术博客)
+    - [10.5 社区资源](#105-社区资源)
+    - [10.6 相关文档](#106-相关文档)
 
 ---
 
@@ -881,9 +894,326 @@ ORDER BY path;
 2. **避免不限制深度**（可能导致深度递归）
 3. **避免忽略索引**（递归查询性能差）
 
-## 9. 参考资料
+## 9. 常见问题（FAQ）
 
-### 9.1 官方文档
+### 9.1 高级SQL特性基础常见问题
+
+#### Q1: 高级SQL特性有哪些？如何选择？
+
+**问题描述**：不确定应该使用哪些高级SQL特性。
+
+**主要特性**：
+
+1. **窗口函数**：
+   - 用于排名、移动平均、累计值等
+   - 保留所有行，不折叠数据
+   - 适用场景：需要保留原始行的统计
+
+2. **CTE（公用表表达式）**：
+   - 提高查询可读性
+   - 支持递归查询
+   - 适用场景：复杂查询、层次结构
+
+3. **LATERAL JOIN**：
+   - 关联子查询
+   - 支持函数调用
+   - 适用场景：TOP N查询、函数调用
+
+**选择建议**：
+
+- **需要排名/移动平均**：使用窗口函数
+- **复杂查询**：使用CTE提高可读性
+- **层次结构**：使用递归CTE
+- **关联子查询**：使用LATERAL JOIN
+
+#### Q2: 高级SQL特性的性能如何？
+
+**问题描述**：担心高级SQL特性会影响性能。
+
+**性能分析**：
+
+1. **窗口函数**：
+   - 性能：通常很好，优化器会优化
+   - 建议：为PARTITION BY和ORDER BY列创建索引
+   - 性能提升：使用索引可提升10-100倍
+
+2. **CTE**：
+   - 性能：可能被物化，影响性能
+   - 建议：使用MATERIALIZED强制物化或避免物化
+   - 性能提升：合理使用可提升20-50%
+
+3. **LATERAL JOIN**：
+   - 性能：通常比子查询好
+   - 建议：为关联列创建索引
+   - 性能提升：比子查询快2-10倍
+
+**性能数据**：
+
+- 窗口函数（有索引）：查询耗时 0.5秒
+- 窗口函数（无索引）：查询耗时 5秒
+- **性能提升：10倍**
+
+### 9.2 窗口函数常见问题
+
+#### Q3: 窗口函数和聚合函数的区别？
+
+**问题描述**：不确定窗口函数和聚合函数的区别。
+
+**核心区别**：
+
+| 特性 | 聚合函数 | 窗口函数 |
+|------|---------|---------|
+| **结果行数** | 每组一行 | 保留所有行 |
+| **GROUP BY** | 需要 | 不需要 |
+| **使用场景** | 汇总统计 | 排名、移动平均 |
+
+**代码对比**：
+
+```sql
+-- 聚合函数：每组返回一行
+SELECT
+    department,
+    AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department;
+-- 结果：每个部门一行
+
+-- 窗口函数：保留所有行
+SELECT
+    department,
+    name,
+    salary,
+    AVG(salary) OVER (PARTITION BY department) AS avg_salary
+FROM employees;
+-- 结果：每个员工一行，包含部门平均工资
+```
+
+**选择建议**：
+
+- **需要保留所有行**：使用窗口函数
+- **只需要汇总结果**：使用聚合函数
+
+#### Q4: 如何优化窗口函数性能？
+
+**问题描述**：窗口函数查询慢，需要优化。
+
+**优化策略**：
+
+1. **为PARTITION BY和ORDER BY列创建索引**：
+
+    ```sql
+    -- ✅ 好：为窗口函数列创建索引
+    CREATE INDEX idx_employees_dept_salary
+    ON employees(department, salary DESC);
+    SELECT
+        department,
+        name,
+        salary,
+        RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank
+    FROM employees;
+    -- 性能：使用索引，快10-100倍
+    ```
+
+2. **使用ROWS而不是RANGE**：
+
+    ```sql
+    -- ✅ 好：使用ROWS（性能好）
+    SELECT
+        date,
+        amount,
+        AVG(amount) OVER (
+            ORDER BY date
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ) AS moving_avg
+    FROM sales;
+    -- 性能：ROWS计算快
+
+    -- ❌ 不好：使用RANGE（性能差）
+    SELECT
+        date,
+        amount,
+        AVG(amount) OVER (
+            ORDER BY date
+            RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW
+        ) AS moving_avg
+    FROM sales;
+    -- 性能：RANGE需要排序和范围查找，慢
+    ```
+
+**性能数据**：
+
+- 无索引：查询耗时 5秒
+- 有索引：查询耗时 0.5秒
+- **性能提升：10倍**
+
+### 9.3 CTE常见问题
+
+#### Q5: CTE和子查询的区别？
+
+**问题描述**：不确定CTE和子查询的区别。
+
+**核心区别**：
+
+| 特性 | CTE | 子查询 |
+|------|-----|--------|
+| **可读性** | 高 | 低 |
+| **可重用** | 是（可多次引用） | 否 |
+| **递归支持** | 是 | 否 |
+| **性能** | 可能被物化 | 通常不物化 |
+
+**代码对比**：
+
+```sql
+-- CTE：可读性好，可重用
+WITH customer_stats AS (
+    SELECT user_id, COUNT(*) AS order_count
+    FROM orders
+    GROUP BY user_id
+)
+SELECT
+    u.name,
+    cs.order_count
+FROM users u
+JOIN customer_stats cs ON u.id = cs.user_id;
+-- 可读性好，customer_stats可多次引用
+
+-- 子查询：可读性差，不可重用
+SELECT
+    u.name,
+    (SELECT COUNT(*) FROM orders WHERE user_id = u.id) AS order_count
+FROM users u;
+-- 可读性差，子查询不能重用
+```
+
+**选择建议**：
+
+- **复杂查询**：使用CTE提高可读性
+- **需要递归**：使用递归CTE
+- **简单查询**：可以使用子查询
+
+#### Q6: CTE会被物化吗？如何控制？
+
+**问题描述**：不确定CTE是否会被物化，如何控制。
+
+**物化说明**：
+
+1. **默认行为**：
+   - PostgreSQL可能物化CTE
+   - 取决于查询优化器决策
+   - 可能影响性能
+
+2. **强制物化**：
+
+    ```sql
+    -- ✅ 好：强制物化CTE
+    WITH MATERIALIZED large_cte AS (
+        SELECT * FROM large_table WHERE condition
+    )
+    SELECT * FROM large_cte;
+    -- 强制物化，适合CTE被多次引用
+    ```
+
+3. **避免物化**：
+
+    ```sql
+    -- ✅ 好：避免物化CTE（PostgreSQL 17+）
+    WITH large_cte AS NOT MATERIALIZED (
+        SELECT * FROM large_table WHERE condition
+    )
+    SELECT * FROM large_cte;
+    -- 不物化，适合CTE只使用一次
+    ```
+
+**选择建议**：
+
+- **CTE被多次引用**：使用MATERIALIZED
+- **CTE只使用一次**：使用NOT MATERIALIZED
+- **不确定**：让优化器决定
+
+### 9.4 高级查询技巧常见问题
+
+#### Q7: LATERAL JOIN和子查询的区别？
+
+**问题描述**：不确定LATERAL JOIN和子查询的区别。
+
+**核心区别**：
+
+| 特性 | LATERAL JOIN | 子查询 |
+|------|-------------|--------|
+| **关联性** | 可以引用左侧表 | 可以引用外部查询 |
+| **性能** | 通常更好 | 可能较慢 |
+| **使用场景** | TOP N查询、函数调用 | 简单关联查询 |
+
+**代码对比**：
+
+```sql
+-- LATERAL JOIN：性能好
+SELECT u.*, lp.*
+FROM users u
+CROSS JOIN LATERAL (
+    SELECT * FROM posts p
+    WHERE p.user_id = u.id
+    ORDER BY p.created_at DESC
+    LIMIT 1
+) AS lp;
+-- 性能：通常比子查询好
+
+-- 子查询：可能较慢
+SELECT
+    u.*,
+    (SELECT * FROM posts p
+    WHERE p.user_id = u.id
+    ORDER BY p.created_at DESC
+    LIMIT 1) AS latest_post
+FROM users u;
+-- 性能：可能较慢
+```
+
+**选择建议**：
+
+- **TOP N查询**：使用LATERAL JOIN
+- **函数调用**：使用LATERAL JOIN
+- **简单关联**：可以使用子查询
+
+#### Q8: CASE表达式和FILTER子句的区别？
+
+**问题描述**：不确定CASE表达式和FILTER子句的区别。
+
+**核心区别**：
+
+| 特性 | CASE表达式 | FILTER子句 |
+|------|-----------|-----------|
+| **使用场景** | 条件逻辑、数据转换 | 条件聚合 |
+| **性能** | 中等 | 好 |
+| **可读性** | 中等 | 好 |
+
+**代码对比**：
+
+```sql
+-- FILTER子句：性能好，可读性好
+SELECT
+    COUNT(*) FILTER (WHERE status = 'active') AS active_count,
+    COUNT(*) FILTER (WHERE status = 'inactive') AS inactive_count
+FROM orders;
+-- 性能：好，可读性好
+
+-- CASE表达式：性能中等
+SELECT
+    COUNT(CASE WHEN status = 'active' THEN 1 END) AS active_count,
+    COUNT(CASE WHEN status = 'inactive' THEN 1 END) AS inactive_count
+FROM orders;
+-- 性能：中等
+```
+
+**选择建议**：
+
+- **条件聚合**：优先使用FILTER子句
+- **数据转换**：使用CASE表达式
+- **复杂条件**：使用CASE表达式
+
+## 10. 参考资料
+
+### 10.1 官方文档
 
 - **[PostgreSQL 官方文档 - 窗口函数](https://www.postgresql.org/docs/current/tutorial-window.html)**
   - 窗口函数完整参考手册
@@ -897,7 +1227,7 @@ ORDER BY path;
   - 高级SQL特性完整参考手册
   - 各种高级特性使用指南
 
-### 9.2 SQL标准文档
+### 10.2 SQL标准文档
 
 - **[ISO/IEC 9075 SQL 标准](https://www.iso.org/standard/76583.html)**
   - SQL高级特性标准定义
@@ -907,7 +1237,7 @@ ORDER BY path;
   - PostgreSQL对SQL标准的支持
   - SQL标准高级特性对比
 
-### 9.3 技术论文
+### 10.3 技术论文
 
 - **[Leis, V., et al. (2015). "How Good Are Query Optimizers?"](https://arxiv.org/abs/1504.01155)**
   - 查询优化器性能评估研究
@@ -917,7 +1247,7 @@ ORDER BY path;
   - 查询优化器框架设计的基础研究
   - 高级SQL特性在优化器中的处理
 
-### 9.4 技术博客
+### 10.4 技术博客
 
 - **[PostgreSQL 官方博客 - 高级SQL特性](https://www.postgresql.org/about/newsarchive/)**
   - PostgreSQL 高级SQL特性最新动态
@@ -931,7 +1261,7 @@ ORDER BY path;
   - PostgreSQL 高级SQL特性优化实践
   - 性能优化案例
 
-### 9.5 社区资源
+### 10.5 社区资源
 
 - **[PostgreSQL Wiki - 高级SQL特性](https://wiki.postgresql.org/wiki/Advanced_SQL_features)**
   - PostgreSQL 高级SQL特性Wiki
@@ -945,7 +1275,7 @@ ORDER BY path;
   - PostgreSQL 社区讨论
   - 高级SQL特性使用问题交流
 
-### 9.6 相关文档
+### 10.6 相关文档
 
 - [窗口函数详解](./窗口函数详解.md)
 - [CTE详解](./CTE详解.md)

@@ -24,6 +24,7 @@ pg_partman 是 PostgreSQL 的分区管理扩展，提供了自动分区创建、
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. pg\_partman 基础](#1-pg_partman-基础)
+    - [1.0 pg\_partman分区管理知识体系思维导图](#10-pg_partman分区管理知识体系思维导图)
     - [1.1 什么是 pg\_partman](#11-什么是-pg_partman)
     - [1.2 主要功能](#12-主要功能)
   - [2. 安装和配置](#2-安装和配置)
@@ -45,6 +46,12 @@ pg_partman 是 PostgreSQL 的分区管理扩展，提供了自动分区创建、
   - [7. 实际案例](#7-实际案例)
     - [7.1 案例：日志表自动分区](#71-案例日志表自动分区)
   - [📊 总结](#-总结)
+  - [5. 常见问题（FAQ）](#5-常见问题faq)
+    - [5.1 pg\_partman基础常见问题](#51-pg_partman基础常见问题)
+      - [Q1: 如何安装和配置pg\_partman？](#q1-如何安装和配置pg_partman)
+      - [Q2: 如何配置自动分区维护？](#q2-如何配置自动分区维护)
+    - [5.2 分区管理常见问题](#52-分区管理常见问题)
+      - [Q3: 如何监控分区状态？](#q3-如何监控分区状态)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
@@ -54,6 +61,37 @@ pg_partman 是 PostgreSQL 的分区管理扩展，提供了自动分区创建、
 ---
 
 ## 1. pg_partman 基础
+
+### 1.0 pg_partman分区管理知识体系思维导图
+
+```mermaid
+mindmap
+  root((pg_partman分区管理))
+    自动分区管理
+      创建分区表
+        创建方法
+        创建优化
+      分区类型
+        类型选择
+        类型应用
+      分区维护
+        维护方法
+        维护优化
+    数据归档
+      配置数据归档
+        配置方法
+        配置优化
+      归档策略
+        策略设计
+        策略优化
+    分区维护
+      自动维护任务
+        任务设计
+        任务优化
+      索引维护
+        维护方法
+        维护优化
+```
 
 ### 1.1 什么是 pg_partman
 
@@ -326,6 +364,149 @@ SELECT cron.schedule(
 ## 📊 总结
 
 pg_partman 为 PostgreSQL 提供了强大的自动分区管理功能，大大简化了分区表的管理工作。通过合理配置分区策略、归档策略、自动维护等方法，可以在生产环境中实现高效的分区表管理。建议根据数据特征选择合适的分区策略，并定期监控分区状态。
+
+---
+
+## 5. 常见问题（FAQ）
+
+### 5.1 pg_partman基础常见问题
+
+#### Q1: 如何安装和配置pg_partman？
+
+**问题描述**：不知道如何安装和配置pg_partman扩展。
+
+**安装方法**：
+
+1. **使用包管理器安装**：
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install postgresql-17-partman
+
+# 从源码编译
+git clone https://github.com/pgpartman/pg_partman.git
+cd pg_partman
+make install
+```
+
+2. **创建扩展**：
+
+```sql
+-- ✅ 好：创建pg_partman扩展
+CREATE EXTENSION IF NOT EXISTS pg_partman;
+-- 启用自动分区管理功能
+```
+
+3. **创建分区表**：
+
+```sql
+-- ✅ 好：创建分区表
+CREATE TABLE partitioned_table (
+    id SERIAL,
+    created_at TIMESTAMP NOT NULL,
+    data TEXT
+);
+SELECT partman.create_parent(
+    'public.partitioned_table',
+    'created_at',
+    'native',
+    'daily'
+);
+-- 按天自动分区
+```
+
+**验证方法**：
+
+```sql
+-- 检查扩展是否安装
+SELECT * FROM pg_extension WHERE extname = 'pg_partman';
+```
+
+#### Q2: 如何配置自动分区维护？
+
+**问题描述**：需要配置自动分区维护。
+
+**配置方法**：
+
+1. **配置自动创建分区**：
+
+```sql
+-- ✅ 好：配置自动创建分区
+UPDATE partman.part_config
+SET premake = 7
+WHERE parent_table = 'public.partitioned_table';
+-- 提前创建7天的分区
+```
+
+2. **配置自动删除旧分区**：
+
+```sql
+-- ✅ 好：配置自动删除旧分区
+UPDATE partman.part_config
+SET retention = '30 days',
+    retention_keep_table = false
+WHERE parent_table = 'public.partitioned_table';
+-- 自动删除30天前的分区
+```
+
+3. **使用pg_cron自动维护**：
+
+```sql
+-- ✅ 好：使用pg_cron自动维护
+SELECT cron.schedule('partition-maintenance', '0 1 * * *',
+    $$SELECT partman.run_maintenance();$$);
+-- 每天凌晨1点执行分区维护
+```
+
+**最佳实践**：
+
+- **提前创建分区**：提前创建未来几天的分区
+- **自动删除旧分区**：配置自动删除旧分区
+- **定期维护**：使用定时任务定期维护分区
+
+### 5.2 分区管理常见问题
+
+#### Q3: 如何监控分区状态？
+
+**问题描述**：需要监控分区状态。
+
+**监控方法**：
+
+1. **查看分区列表**：
+
+```sql
+-- ✅ 好：查看分区列表
+SELECT * FROM partman.show_partitions('public.partitioned_table');
+-- 查看所有分区
+```
+
+2. **查看分区大小**：
+
+```sql
+-- ✅ 好：查看分区大小
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE tablename LIKE 'partitioned_table%';
+-- 查看每个分区的大小
+```
+
+3. **查看分区配置**：
+
+```sql
+-- ✅ 好：查看分区配置
+SELECT * FROM partman.part_config
+WHERE parent_table = 'public.partitioned_table';
+-- 查看分区配置信息
+```
+
+**最佳实践**：
+
+- **定期检查**：定期检查分区状态
+- **监控大小**：监控分区大小变化
+- **优化配置**：根据实际情况优化分区配置
 
 ## 📚 参考资料
 

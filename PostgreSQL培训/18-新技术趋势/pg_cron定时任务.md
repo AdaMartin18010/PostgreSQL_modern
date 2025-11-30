@@ -24,6 +24,7 @@ pg_cron 是 PostgreSQL 的定时任务扩展，允许在 PostgreSQL 数据库中
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. pg\_cron 基础](#1-pg_cron-基础)
+    - [1.0 pg\_cron定时任务知识体系思维导图](#10-pg_cron定时任务知识体系思维导图)
     - [1.1 什么是 pg\_cron](#11-什么是-pg_cron)
     - [1.2 主要特性](#12-主要特性)
   - [2. 安装和配置](#2-安装和配置)
@@ -49,6 +50,12 @@ pg_cron 是 PostgreSQL 的定时任务扩展，允许在 PostgreSQL 数据库中
     - [6.3 案例：数据库维护任务](#63-案例数据库维护任务)
     - [6.4 案例：报表生成](#64-案例报表生成)
   - [📊 总结](#-总结)
+  - [6. 常见问题（FAQ）](#6-常见问题faq)
+    - [6.1 pg\_cron基础常见问题](#61-pg_cron基础常见问题)
+      - [Q1: 如何安装和配置pg\_cron？](#q1-如何安装和配置pg_cron)
+      - [Q2: 如何创建定时任务？](#q2-如何创建定时任务)
+    - [6.2 任务管理常见问题](#62-任务管理常见问题)
+      - [Q3: 如何监控和管理定时任务？](#q3-如何监控和管理定时任务)
   - [📚 参考资料](#-参考资料)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
@@ -58,6 +65,46 @@ pg_cron 是 PostgreSQL 的定时任务扩展，允许在 PostgreSQL 数据库中
 ---
 
 ## 1. pg_cron 基础
+
+### 1.0 pg_cron定时任务知识体系思维导图
+
+```mermaid
+mindmap
+  root((pg_cron定时任务))
+    任务调度
+      Cron语法
+        语法说明
+        语法应用
+      基本任务调度
+        调度方法
+        调度优化
+      复杂调度规则
+        规则设计
+        规则优化
+      执行SQL语句
+        语句执行
+        执行优化
+    任务管理
+      查看任务列表
+        列表查询
+        列表管理
+      查看任务执行历史
+        历史查询
+        历史分析
+      任务控制
+        控制方法
+        控制优化
+    最佳实践
+      任务命名规范
+        命名规范
+        命名应用
+      错误处理
+        处理方法
+        处理优化
+      任务监控
+        监控方法
+        监控工具
+```
 
 ### 1.1 什么是 pg_cron
 
@@ -449,6 +496,131 @@ SELECT cron.schedule(
 ## 📊 总结
 
 pg_cron 为 PostgreSQL 提供了强大的定时任务调度能力，可以在数据库内直接调度和执行 SQL 任务。通过合理使用 cron 语法、创建带错误处理的函数、监控任务执行等方法，可以在生产环境中实现可靠的定时任务管理。建议为任务使用描述性名称，添加错误处理，并定期监控任务执行状态。
+
+---
+
+## 6. 常见问题（FAQ）
+
+### 6.1 pg_cron基础常见问题
+
+#### Q1: 如何安装和配置pg_cron？
+
+**问题描述**：不知道如何安装和配置pg_cron扩展。
+
+**安装方法**：
+
+1. **使用包管理器安装**：
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install postgresql-17-cron
+
+# 从源码编译
+git clone https://github.com/citusdata/pg_cron.git
+cd pg_cron
+make install
+```
+
+2. **创建扩展**：
+
+```sql
+-- ✅ 好：创建pg_cron扩展
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- 启用定时任务功能
+```
+
+3. **配置worker进程**：
+
+```sql
+-- ✅ 好：配置worker进程
+ALTER SYSTEM SET shared_preload_libraries = 'pg_cron';
+-- 重启PostgreSQL后生效
+```
+
+**验证方法**：
+
+```sql
+-- 检查扩展是否安装
+SELECT * FROM pg_extension WHERE extname = 'pg_cron';
+```
+
+#### Q2: 如何创建定时任务？
+
+**问题描述**：不知道如何创建定时任务。
+
+**创建方法**：
+
+1. **创建简单任务**：
+
+```sql
+-- ✅ 好：创建定时任务
+SELECT cron.schedule('daily-vacuum', '0 2 * * *', 'VACUUM ANALYZE;');
+-- 每天凌晨2点执行VACUUM
+```
+
+2. **创建带参数的任务**：
+
+```sql
+-- ✅ 好：创建带参数的任务
+SELECT cron.schedule('hourly-stats', '0 * * * *',
+    $$SELECT update_statistics();$$);
+-- 每小时更新统计信息
+```
+
+3. **查看任务列表**：
+
+```sql
+-- ✅ 好：查看任务列表
+SELECT * FROM cron.job;
+-- 查看所有定时任务
+```
+
+**最佳实践**：
+
+- **使用描述性名称**：为任务使用有意义的名称
+- **添加错误处理**：在任务中添加错误处理
+- **监控任务执行**：定期检查任务执行状态
+
+### 6.2 任务管理常见问题
+
+#### Q3: 如何监控和管理定时任务？
+
+**问题描述**：需要监控和管理定时任务。
+
+**管理方法**：
+
+1. **查看任务执行历史**：
+
+```sql
+-- ✅ 好：查看任务执行历史
+SELECT * FROM cron.job_run_details
+ORDER BY start_time DESC
+LIMIT 10;
+-- 查看最近10次任务执行记录
+```
+
+2. **删除任务**：
+
+```sql
+-- ✅ 好：删除任务
+SELECT cron.unschedule('daily-vacuum');
+-- 删除定时任务
+```
+
+3. **修改任务**：
+
+```sql
+-- ✅ 好：修改任务（先删除再创建）
+SELECT cron.unschedule('daily-vacuum');
+SELECT cron.schedule('daily-vacuum', '0 3 * * *', 'VACUUM ANALYZE;');
+-- 修改任务执行时间
+```
+
+**最佳实践**：
+
+- **定期检查**：定期检查任务执行状态
+- **日志记录**：记录任务执行日志
+- **错误处理**：处理任务执行错误
 
 ## 📚 参考资料
 

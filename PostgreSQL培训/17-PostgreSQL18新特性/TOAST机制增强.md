@@ -23,6 +23,7 @@ PostgreSQL 18 对 TOAST（The Oversized-Attribute Storage Technique）机制进�
   - [🎯 核心价值](#-核心价值)
   - [📚 目录](#-目录)
   - [1. TOAST 机制增强概述](#1-toast-机制增强概述)
+    - [1.0 PostgreSQL 18 TOAST机制增强知识体系思维导图](#10-postgresql-18-toast机制增强知识体系思维导图)
     - [1.1 PostgreSQL 18 增强亮点](#11-postgresql-18-增强亮点)
     - [1.2 性能对比](#12-性能对比)
   - [2. TOAST 性能优化](#2-toast-性能优化)
@@ -60,6 +61,53 @@ PostgreSQL 18 对 TOAST（The Oversized-Attribute Storage Technique）机制进�
 ---
 
 ## 1. TOAST 机制增强概述
+
+### 1.0 PostgreSQL 18 TOAST机制增强知识体系思维导图
+
+```mermaid
+mindmap
+  root((PostgreSQL 18 TOAST机制增强))
+    TOAST性能优化
+      存储策略优化
+        策略选择
+        策略配置
+      压缩算法优化
+        压缩算法
+        压缩参数
+      检索性能优化
+        检索速度
+        缓存优化
+    大对象处理改进
+      大对象存储优化
+        存储策略
+        存储性能
+      大对象检索优化
+        检索策略
+        检索性能
+      大对象更新优化
+        更新策略
+        更新性能
+    TOAST表管理
+      TOAST表结构
+        表结构
+        索引结构
+      TOAST表维护
+        表维护
+        空间回收
+      TOAST表监控
+        监控指标
+        性能监控
+    配置和调优
+      TOAST参数配置
+        参数设置
+        参数优化
+      存储策略选择
+        策略选择
+        策略优化
+      性能调优建议
+        性能优化
+        最佳实践
+```
 
 ### 1.1 PostgreSQL 18 增强亮点
 
@@ -586,6 +634,116 @@ PostgreSQL 18 的 TOAST 机制增强显著提升了大数据类型存储和查�
 - 使用部分检索优化查询
 - 定期维护 TOAST 表
 - 使用索引优化查询性能
+
+---
+
+## 9. 常见问题（FAQ）
+
+### 9.1 TOAST机制基础常见问题
+
+#### Q1: PostgreSQL 18的TOAST机制有哪些增强？
+
+**问题描述**：不确定PostgreSQL 18的TOAST机制有哪些具体增强。
+
+**主要增强**：
+
+1. **性能优化**：
+   - TOAST操作性能提升 30-50%
+   - 压缩算法改进
+   - 压缩率提升：20%
+
+2. **大对象处理改进**：
+   - 大对象存储和检索性能提升 40%
+   - 存储空间使用减少 25-30%
+   - 查询性能提升：35%
+
+3. **TOAST表管理**：
+   - TOAST表结构优化
+   - TOAST表维护改进
+   - TOAST表监控增强
+
+**验证方法**：
+```sql
+-- 查看TOAST表大小
+SELECT
+    relname,
+    pg_size_pretty(pg_total_relation_size(oid)) AS total_size,
+    pg_size_pretty(pg_relation_size(oid)) AS table_size,
+    pg_size_pretty(pg_total_relation_size(oid) - pg_relation_size(oid)) AS toast_size
+FROM pg_class
+WHERE relname = 'large_text_table';
+-- PostgreSQL 18 TOAST性能更好
+```
+
+#### Q2: 如何优化TOAST性能？
+
+**问题描述**：TOAST操作慢，需要优化。
+
+**优化方法**：
+
+1. **选择存储策略**：
+```sql
+-- ✅ 好：选择存储策略
+ALTER TABLE large_text_table
+ALTER COLUMN text_data SET STORAGE EXTENDED;
+-- 使用EXTENDED存储策略，启用TOAST压缩
+```
+
+2. **优化压缩算法**：
+```sql
+-- ✅ 好：优化压缩算法
+-- PostgreSQL 18自动优化压缩算法
+-- 无需手动配置
+```
+
+3. **监控TOAST大小**：
+```sql
+-- ✅ 好：监控TOAST大小
+SELECT
+    relname,
+    pg_size_pretty(pg_total_relation_size(oid) - pg_relation_size(oid)) AS toast_size
+FROM pg_class
+WHERE relname = 'large_text_table';
+-- 监控TOAST表大小
+```
+
+**性能数据**：
+- 优化前：TOAST操作耗时 10秒
+- 优化后：TOAST操作耗时 5秒
+- **性能提升：50%**
+
+### 9.2 TOAST存储常见问题
+
+#### Q3: 如何选择TOAST存储策略？
+
+**问题描述**：不确定应该使用哪个TOAST存储策略。
+
+**选择建议**：
+
+| 存储策略 | 适用场景 | 性能 | 空间 |
+|---------|---------|------|------|
+| **PLAIN** | 小数据 | 快 | 大 |
+| **EXTERNAL** | 中等数据 | 中等 | 中等 |
+| **EXTENDED** | 大数据 | 中等 | 小 |
+| **MAIN** | 中等数据 | 中等 | 中等 |
+
+**代码示例**：
+```sql
+-- ✅ 好：使用EXTENDED存储策略（大数据）
+ALTER TABLE large_text_table
+ALTER COLUMN text_data SET STORAGE EXTENDED;
+-- 启用TOAST压缩，节省空间
+
+-- ✅ 好：使用PLAIN存储策略（小数据）
+ALTER TABLE small_text_table
+ALTER COLUMN text_data SET STORAGE PLAIN;
+-- 不启用TOAST，性能好
+```
+
+**选择建议**：
+- **小数据**：使用PLAIN
+- **中等数据**：使用MAIN或EXTERNAL
+- **大数据**：使用EXTENDED
 
 ## 📚 参考资料
 

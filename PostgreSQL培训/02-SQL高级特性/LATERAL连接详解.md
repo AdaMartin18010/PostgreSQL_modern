@@ -31,12 +31,12 @@
     - [5.1 LATERAL 连接使用](#51-lateral-连接使用)
     - [5.2 性能优化](#52-性能优化)
   - [6. 参考资料](#6-参考资料)
-    - [6.1 官方文档](#61-官方文档)
-    - [6.2 SQL标准文档](#62-sql标准文档)
-    - [6.3 技术论文](#63-技术论文)
-    - [6.4 技术博客](#64-技术博客)
-    - [6.5 社区资源](#65-社区资源)
-    - [6.6 相关文档](#66-相关文档)
+    - [7.1 官方文档](#71-官方文档)
+    - [7.2 SQL标准文档](#72-sql标准文档)
+    - [7.3 技术论文](#73-技术论文)
+    - [7.4 技术博客](#74-技术博客)
+    - [7.5 社区资源](#75-社区资源)
+    - [7.6 相关文档](#76-相关文档)
 
 ---
 
@@ -745,7 +745,7 @@ CROSS JOIN LATERAL (
 
 ## 6. 参考资料
 
-### 6.1 官方文档
+### 7.1 官方文档
 
 - **[PostgreSQL 官方文档 - LATERAL](https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-LATERAL)**
   - LATERAL连接完整参考手册
@@ -759,7 +759,7 @@ CROSS JOIN LATERAL (
   - 表表达式完整说明
   - LATERAL连接示例指南
 
-### 6.2 SQL标准文档
+### 7.2 SQL标准文档
 
 - **[ISO/IEC 9075 SQL 标准](https://www.iso.org/standard/76583.html)**
   - SQL LATERAL连接标准定义
@@ -769,7 +769,7 @@ CROSS JOIN LATERAL (
   - PostgreSQL对SQL标准的支持
   - SQL标准LATERAL连接对比
 
-### 6.3 技术论文
+### 7.3 技术论文
 
 - **[Leis, V., et al. (2015). "How Good Are Query Optimizers?"](https://arxiv.org/abs/1504.01155)**
   - 查询优化器性能评估研究
@@ -779,7 +779,7 @@ CROSS JOIN LATERAL (
   - 查询优化器框架设计的基础研究
   - LATERAL连接在优化器中的处理
 
-### 6.4 技术博客
+### 7.4 技术博客
 
 - **[PostgreSQL 官方博客 - LATERAL](https://www.postgresql.org/about/newsarchive/)**
   - PostgreSQL LATERAL连接最新动态
@@ -793,7 +793,7 @@ CROSS JOIN LATERAL (
   - PostgreSQL LATERAL连接优化实践
   - 性能优化案例
 
-### 6.5 社区资源
+### 7.5 社区资源
 
 - **[PostgreSQL Wiki - LATERAL](https://wiki.postgresql.org/wiki/Lateral_joins)**
   - PostgreSQL LATERAL连接Wiki
@@ -807,7 +807,7 @@ CROSS JOIN LATERAL (
   - PostgreSQL 社区讨论
   - LATERAL连接使用问题交流
 
-### 6.6 相关文档
+### 7.6 相关文档
 
 - [CTE详解](./CTE详解.md)
 - [窗口函数详解](./窗口函数详解.md)
