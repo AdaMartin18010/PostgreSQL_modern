@@ -258,7 +258,13 @@
     "Gantt",
     "jsons",
     "mbps",
-    "Mbps"
+    "Mbps",
+    "pgvector",
+    "TimescaleDB",
+    "Citus",
+    "pg_auto_failover",
+    "FULLTEXT",
+    "tsvector",
   ],
   "dictionaries": [
     "rust",
@@ -270,4 +276,3 @@
   ],
   "import": []
 }
-
