@@ -811,34 +811,34 @@ TimescaleDB 为 PostgreSQL 提供了强大的时序数据库能力，通过自�
 
 1. **使用包管理器安装**：
 
-```bash
-# Ubuntu/Debian
-sudo apt-get install timescaledb-2-postgresql-17
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install timescaledb-2-postgresql-17
 
-# macOS
-brew install timescaledb
-```
+    # macOS
+    brew install timescaledb
+    ```
 
 2. **创建扩展**：
 
-```sql
--- ✅ 好：创建TimescaleDB扩展
-CREATE EXTENSION IF NOT EXISTS timescaledb;
--- 启用时序数据库功能
-```
+    ```sql
+    -- ✅ 好：创建TimescaleDB扩展
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    -- 启用时序数据库功能
+    ```
 
 3. **创建超表**：
 
-```sql
--- ✅ 好：创建超表
-CREATE TABLE sensor_data (
-    time TIMESTAMPTZ NOT NULL,
-    sensor_id INTEGER,
-    temperature DOUBLE PRECISION
-);
-SELECT create_hypertable('sensor_data', 'time');
--- 将普通表转换为超表
-```
+    ```sql
+    -- ✅ 好：创建超表
+    CREATE TABLE sensor_data (
+        time TIMESTAMPTZ NOT NULL,
+        sensor_id INTEGER,
+        temperature DOUBLE PRECISION
+    );
+    SELECT create_hypertable('sensor_data', 'time');
+    -- 将普通表转换为超表
+    ```
 
 **验证方法**：
 
@@ -855,37 +855,37 @@ SELECT * FROM pg_extension WHERE extname = 'timescaledb';
 
 1. **创建连续聚合**：
 
-```sql
--- ✅ 好：创建连续聚合
-CREATE MATERIALIZED VIEW sensor_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', time) AS hour,
-    sensor_id,
-    AVG(temperature) AS avg_temp
-FROM sensor_data
-GROUP BY hour, sensor_id;
--- 预计算聚合，提升查询性能
-```
+    ```sql
+    -- ✅ 好：创建连续聚合
+    CREATE MATERIALIZED VIEW sensor_hourly
+    WITH (timescaledb.continuous) AS
+    SELECT
+        time_bucket('1 hour', time) AS hour,
+        sensor_id,
+        AVG(temperature) AS avg_temp
+    FROM sensor_data
+    GROUP BY hour, sensor_id;
+    -- 预计算聚合，提升查询性能
+    ```
 
 2. **启用数据压缩**：
 
-```sql
--- ✅ 好：启用数据压缩
-ALTER TABLE sensor_data SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'sensor_id'
-);
--- 压缩数据，节省存储空间
-```
+    ```sql
+    -- ✅ 好：启用数据压缩
+    ALTER TABLE sensor_data SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = 'sensor_id'
+    );
+    -- 压缩数据，节省存储空间
+    ```
 
 3. **创建索引**：
 
-```sql
--- ✅ 好：创建索引
-CREATE INDEX ON sensor_data (sensor_id, time DESC);
--- 提升查询性能
-```
+    ```sql
+    -- ✅ 好：创建索引
+    CREATE INDEX ON sensor_data (sensor_id, time DESC);
+    -- 提升查询性能
+    ```
 
 **性能数据**：
 
@@ -903,22 +903,22 @@ CREATE INDEX ON sensor_data (sensor_id, time DESC);
 
 1. **启用压缩**：
 
-```sql
--- ✅ 好：启用压缩
-ALTER TABLE sensor_data SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'sensor_id'
-);
--- 启用压缩，节省存储空间
-```
+    ```sql
+    -- ✅ 好：启用压缩
+    ALTER TABLE sensor_data SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = 'sensor_id'
+    );
+    -- 启用压缩，节省存储空间
+    ```
 
 2. **配置压缩策略**：
 
-```sql
--- ✅ 好：配置压缩策略
-SELECT add_compression_policy('sensor_data', INTERVAL '7 days');
--- 7天前的数据自动压缩
-```
+    ```sql
+    -- ✅ 好：配置压缩策略
+    SELECT add_compression_policy('sensor_data', INTERVAL '7 days');
+    -- 7天前的数据自动压缩
+    ```
 
 **压缩效果**：
 

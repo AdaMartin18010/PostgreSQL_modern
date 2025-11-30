@@ -304,34 +304,34 @@ pg_auto_failover 提供简单易用的 PostgreSQL 高可用解决方案：
 
 1. **使用包管理器安装**：
 
-```bash
-# Ubuntu/Debian
-sudo apt-get install postgresql-17-auto-failover
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install postgresql-17-auto-failover
 
-# macOS
-brew install pg_auto_failover
-```
+    # macOS
+    brew install pg_auto_failover
+    ```
 
 2. **初始化Monitor节点**：
 
-```bash
-# ✅ 好：初始化Monitor节点
-pg_auto_failover create monitor \
-    --pgdata /var/lib/postgresql/data \
-    --pgport 5432
-# 创建Monitor节点
-```
+    ```bash
+    # ✅ 好：初始化Monitor节点
+    pg_auto_failover create monitor \
+        --pgdata /var/lib/postgresql/data \
+        --pgport 5432
+    # 创建Monitor节点
+    ```
 
 3. **注册PostgreSQL节点**：
 
-```bash
-# ✅ 好：注册PostgreSQL节点
-pg_auto_failover create postgres \
-    --pgdata /var/lib/postgresql/data \
-    --pgport 5432 \
-    --monitor 'postgresql://monitor@monitor-host:5432/pg_auto_failover'
-# 注册PostgreSQL节点
-```
+    ```bash
+    # ✅ 好：注册PostgreSQL节点
+    pg_auto_failover create postgres \
+        --pgdata /var/lib/postgresql/data \
+        --pgport 5432 \
+        --monitor 'postgresql://monitor@monitor-host:5432/pg_auto_failover'
+    # 注册PostgreSQL节点
+    ```
 
 **验证方法**：
 
@@ -348,20 +348,20 @@ pg_auto_failover status
 
 1. **配置同步复制**：
 
-```sql
--- ✅ 好：配置同步复制
-ALTER SYSTEM SET synchronous_standby_names = 'ANY 1 (standby1)';
-SELECT pg_reload_conf();
--- 启用同步复制，零数据丢失
-```
+    ```sql
+    -- ✅ 好：配置同步复制
+    ALTER SYSTEM SET synchronous_standby_names = 'ANY 1 (standby1)';
+    SELECT pg_reload_conf();
+    -- 启用同步复制，零数据丢失
+    ```
 
 2. **配置故障转移**：
 
-```bash
-# ✅ 好：配置故障转移
-pg_auto_failover set formation.number_sync_standbys 1
-# 配置同步副本数量
-```
+    ```bash
+    # ✅ 好：配置故障转移
+    pg_auto_failover set formation.number_sync_standbys 1
+    # 配置同步副本数量
+    ```
 
 **最佳实践**：
 

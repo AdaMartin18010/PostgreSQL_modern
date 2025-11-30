@@ -66,7 +66,7 @@ PostgreSQL 结合 PostGIS 扩展提供了强大的地理信息系统（GIS）开
     - [9.2 空间查询性能常见问题](#92-空间查询性能常见问题)
       - [Q3: 如何优化空间查询性能？](#q3-如何优化空间查询性能)
   - [📚 参考资料](#-参考资料)
-  - [📚 参考资料](#-参考资料-1)
+  - [📚 参考资料1](#-参考资料1)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
     - [技术博客](#技术博客)
@@ -857,36 +857,36 @@ PostgreSQL 结合 PostGIS 提供了强大的 GIS 应用开发能力：
 
 1. **创建空间表**：
 
-```sql
--- ✅ 好：创建空间表
-CREATE TABLE locations (
-    id SERIAL PRIMARY KEY,
-    name TEXT,
-    geom GEOMETRY(POINT, 4326)
-);
--- 存储点数据
-```
+    ```sql
+    -- ✅ 好：创建空间表
+    CREATE TABLE locations (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        geom GEOMETRY(POINT, 4326)
+    );
+    -- 存储点数据
+    ```
 
 2. **创建空间索引**：
 
-```sql
--- ✅ 好：创建空间索引
-CREATE INDEX idx_locations_geom
-ON locations USING GIST (geom);
--- 提升空间查询性能
-```
+    ```sql
+    -- ✅ 好：创建空间索引
+    CREATE INDEX idx_locations_geom
+    ON locations USING GIST (geom);
+    -- 提升空间查询性能
+    ```
 
 3. **插入空间数据**：
 
-```sql
--- ✅ 好：插入空间数据
-INSERT INTO locations (name, geom)
-VALUES (
-    'Beijing',
-    ST_SetSRID(ST_MakePoint(116.4074, 39.9042), 4326)
-);
--- 插入点数据
-```
+    ```sql
+    -- ✅ 好：插入空间数据
+    INSERT INTO locations (name, geom)
+    VALUES (
+        'Beijing',
+        ST_SetSRID(ST_MakePoint(116.4074, 39.9042), 4326)
+    );
+    -- 插入点数据
+    ```
 
 **最佳实践**：
 
@@ -902,45 +902,45 @@ VALUES (
 
 1. **创建围栏表**：
 
-```sql
--- ✅ 好：创建围栏表
-CREATE TABLE geofences (
-    id SERIAL PRIMARY KEY,
-    name TEXT,
-    area GEOMETRY(POLYGON, 4326)
-);
-CREATE INDEX ON geofences USING GIST (area);
-```
+    ```sql
+    -- ✅ 好：创建围栏表
+    CREATE TABLE geofences (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        area GEOMETRY(POLYGON, 4326)
+    );
+    CREATE INDEX ON geofences USING GIST (area);
+    ```
 
 2. **检查点是否在围栏内**：
 
-```sql
--- ✅ 好：检查点是否在围栏内
-SELECT
-    g.name AS geofence_name,
-    l.name AS location_name
-FROM geofences g
-JOIN locations l ON ST_Within(l.geom, g.area)
-WHERE l.id = 1;
--- 检查位置是否在围栏内
-```
+    ```sql
+    -- ✅ 好：检查点是否在围栏内
+    SELECT
+        g.name AS geofence_name,
+        l.name AS location_name
+    FROM geofences g
+    JOIN locations l ON ST_Within(l.geom, g.area)
+    WHERE l.id = 1;
+    -- 检查位置是否在围栏内
+    ```
 
 3. **查找附近的围栏**：
 
-```sql
--- ✅ 好：查找附近的围栏
-SELECT
-    name,
-    ST_Distance(geom, ST_MakePoint(116.4074, 39.9042)::geography) AS distance
-FROM geofences
-WHERE ST_DWithin(
-    area::geography,
-    ST_MakePoint(116.4074, 39.9042)::geography,
-    1000
-)
-ORDER BY distance;
--- 查找1公里内的围栏
-```
+    ```sql
+    -- ✅ 好：查找附近的围栏
+    SELECT
+        name,
+        ST_Distance(geom, ST_MakePoint(116.4074, 39.9042)::geography) AS distance
+    FROM geofences
+    WHERE ST_DWithin(
+        area::geography,
+        ST_MakePoint(116.4074, 39.9042)::geography,
+        1000
+    )
+    ORDER BY distance;
+    -- 查找1公里内的围栏
+    ```
 
 **最佳实践**：
 
@@ -958,40 +958,40 @@ ORDER BY distance;
 
 1. **创建空间索引**：
 
-```sql
--- ✅ 好：创建空间索引
-CREATE INDEX idx_locations_geom
-ON locations USING GIST (geom);
--- 提升空间查询性能
-```
+    ```sql
+    -- ✅ 好：创建空间索引
+    CREATE INDEX idx_locations_geom
+    ON locations USING GIST (geom);
+    -- 提升空间查询性能
+    ```
 
 2. **使用空间函数优化**：
 
-```sql
--- ✅ 好：使用ST_DWithin函数
-SELECT * FROM locations
-WHERE ST_DWithin(
-    geom::geography,
-    ST_MakePoint(116.4074, 39.9042)::geography,
-    1000
-);
--- 使用ST_DWithin，可以使用索引
+    ```sql
+    -- ✅ 好：使用ST_DWithin函数
+    SELECT * FROM locations
+    WHERE ST_DWithin(
+        geom::geography,
+        ST_MakePoint(116.4074, 39.9042)::geography,
+        1000
+    );
+    -- 使用ST_DWithin，可以使用索引
 
--- ❌ 不好：使用ST_Distance
-SELECT * FROM locations
-WHERE ST_Distance(geom::geography, ST_MakePoint(116.4074, 39.9042)::geography) < 1000;
--- 无法使用索引，性能差
-```
+    -- ❌ 不好：使用ST_Distance
+    SELECT * FROM locations
+    WHERE ST_Distance(geom::geography, ST_MakePoint(116.4074, 39.9042)::geography) < 1000;
+    -- 无法使用索引，性能差
+    ```
 
 3. **使用边界框过滤**：
 
-```sql
--- ✅ 好：使用边界框过滤
-SELECT * FROM locations
-WHERE geom && ST_MakeEnvelope(116.0, 39.0, 117.0, 40.0, 4326)
-AND ST_DWithin(geom::geography, center::geography, 1000);
--- 先使用边界框过滤，再精确计算
-```
+    ```sql
+    -- ✅ 好：使用边界框过滤
+    SELECT * FROM locations
+    WHERE geom && ST_MakeEnvelope(116.0, 39.0, 117.0, 40.0, 4326)
+    AND ST_DWithin(geom::geography, center::geography, 1000);
+    -- 先使用边界框过滤，再精确计算
+    ```
 
 **性能数据**：
 
@@ -1012,7 +1012,7 @@ AND ST_DWithin(geom::geography, center::geography, 1000);
 - 优化空间查询
 - 简化复杂几何对象
 
-## 📚 参考资料
+## 📚 参考资料1
 
 ### 官方文档
 

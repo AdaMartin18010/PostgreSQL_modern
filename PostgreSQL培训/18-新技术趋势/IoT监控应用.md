@@ -62,7 +62,7 @@ IoT 监控应用是 PostgreSQL 在物联网领域的重要应用场景，涉及�
     - [8.2 性能优化常见问题](#82-性能优化常见问题)
       - [Q3: 如何优化IoT数据查询性能？](#q3-如何优化iot数据查询性能)
   - [📚 参考资料](#-参考资料)
-  - [📚 参考资料](#-参考资料-1)
+  - [📚 参考资料1](#-参考资料1)
     - [官方文档](#官方文档)
     - [技术论文](#技术论文)
     - [技术博客](#技术博客)
@@ -873,36 +873,36 @@ PostgreSQL IoT 监控应用提供了完整的 IoT 数据采集、监控、告警
 
 1. **使用批量插入**：
 
-```sql
--- ✅ 好：使用批量插入
-INSERT INTO sensor_data (time, sensor_id, value)
-VALUES
-    (NOW(), 1, 25.5),
-    (NOW(), 2, 30.2),
-    (NOW(), 3, 28.1);
--- 批量插入，性能好
-```
+    ```sql
+    -- ✅ 好：使用批量插入
+    INSERT INTO sensor_data (time, sensor_id, value)
+    VALUES
+        (NOW(), 1, 25.5),
+        (NOW(), 2, 30.2),
+        (NOW(), 3, 28.1);
+    -- 批量插入，性能好
+    ```
 
 2. **使用TimescaleDB超表**：
 
-```sql
--- ✅ 好：使用TimescaleDB超表
-CREATE TABLE sensor_data (
-    time TIMESTAMPTZ NOT NULL,
-    sensor_id INTEGER,
-    value DOUBLE PRECISION
-);
-SELECT create_hypertable('sensor_data', 'time');
--- 自动分区，提升写入性能
-```
+    ```sql
+    -- ✅ 好：使用TimescaleDB超表
+    CREATE TABLE sensor_data (
+        time TIMESTAMPTZ NOT NULL,
+        sensor_id INTEGER,
+        value DOUBLE PRECISION
+    );
+    SELECT create_hypertable('sensor_data', 'time');
+    -- 自动分区，提升写入性能
+    ```
 
 3. **使用连接池**：
 
-```sql
--- ✅ 好：使用连接池
--- 使用PgBouncer或PgPool-II
--- 减少连接开销，提升性能
-```
+    ```sql
+    -- ✅ 好：使用连接池
+    -- 使用PgBouncer或PgPool-II
+    -- 减少连接开销，提升性能
+    ```
 
 **性能数据**：
 
@@ -918,46 +918,46 @@ SELECT create_hypertable('sensor_data', 'time');
 
 1. **创建监控视图**：
 
-```sql
--- ✅ 好：创建监控视图
-CREATE VIEW device_status AS
-SELECT
-    device_id,
-    MAX(time) AS last_update,
-    AVG(value) AS avg_value
-FROM sensor_data
-WHERE time > NOW() - INTERVAL '5 minutes'
-GROUP BY device_id;
--- 实时监控设备状态
-```
+    ```sql
+    -- ✅ 好：创建监控视图
+    CREATE VIEW device_status AS
+    SELECT
+        device_id,
+        MAX(time) AS last_update,
+        AVG(value) AS avg_value
+    FROM sensor_data
+    WHERE time > NOW() - INTERVAL '5 minutes'
+    GROUP BY device_id;
+    -- 实时监控设备状态
+    ```
 
 2. **配置告警规则**：
 
-```sql
--- ✅ 好：配置告警规则
-CREATE FUNCTION check_alerts() RETURNS void AS $$
-BEGIN
-    INSERT INTO alerts (device_id, message, severity)
-    SELECT
-        device_id,
-        'Temperature too high',
-        'critical'
-    FROM sensor_data
-    WHERE value > 100
-    AND time > NOW() - INTERVAL '1 minute';
-END;
-$$ LANGUAGE plpgsql;
--- 检查告警条件
-```
+    ```sql
+    -- ✅ 好：配置告警规则
+    CREATE FUNCTION check_alerts() RETURNS void AS $$
+    BEGIN
+        INSERT INTO alerts (device_id, message, severity)
+        SELECT
+            device_id,
+            'Temperature too high',
+            'critical'
+        FROM sensor_data
+        WHERE value > 100
+        AND time > NOW() - INTERVAL '1 minute';
+    END;
+    $$ LANGUAGE plpgsql;
+    -- 检查告警条件
+    ```
 
 3. **使用pg_cron定时检查**：
 
-```sql
--- ✅ 好：使用pg_cron定时检查
-SELECT cron.schedule('check-alerts', '* * * * *',
-    $$SELECT check_alerts();$$);
--- 每分钟检查一次告警
-```
+    ```sql
+    -- ✅ 好：使用pg_cron定时检查
+    SELECT cron.schedule('check-alerts', '* * * * *',
+        $$SELECT check_alerts();$$);
+    -- 每分钟检查一次告警
+    ```
 
 **最佳实践**：
 
@@ -975,39 +975,39 @@ SELECT cron.schedule('check-alerts', '* * * * *',
 
 1. **创建时间索引**：
 
-```sql
--- ✅ 好：创建时间索引
-CREATE INDEX ON sensor_data (time DESC, sensor_id);
--- 提升时间范围查询性能
-```
+    ```sql
+    -- ✅ 好：创建时间索引
+    CREATE INDEX ON sensor_data (time DESC, sensor_id);
+    -- 提升时间范围查询性能
+    ```
 
 2. **使用连续聚合**：
 
-```sql
--- ✅ 好：使用连续聚合
-CREATE MATERIALIZED VIEW sensor_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', time) AS hour,
-    sensor_id,
-    AVG(value) AS avg_value,
-    MAX(value) AS max_value,
-    MIN(value) AS min_value
-FROM sensor_data
-GROUP BY hour, sensor_id;
--- 预计算聚合，提升查询性能
-```
+    ```sql
+    -- ✅ 好：使用连续聚合
+    CREATE MATERIALIZED VIEW sensor_hourly
+    WITH (timescaledb.continuous) AS
+    SELECT
+        time_bucket('1 hour', time) AS hour,
+        sensor_id,
+        AVG(value) AS avg_value,
+        MAX(value) AS max_value,
+        MIN(value) AS min_value
+    FROM sensor_data
+    GROUP BY hour, sensor_id;
+    -- 预计算聚合，提升查询性能
+    ```
 
 3. **启用数据压缩**：
 
-```sql
--- ✅ 好：启用数据压缩
-ALTER TABLE sensor_data SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'sensor_id'
-);
--- 压缩数据，节省存储空间
-```
+    ```sql
+    -- ✅ 好：启用数据压缩
+    ALTER TABLE sensor_data SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = 'sensor_id'
+    );
+    -- 压缩数据，节省存储空间
+    ```
 
 **性能数据**：
 
@@ -1028,7 +1028,7 @@ ALTER TABLE sensor_data SET (
 - 配置数据保留和压缩策略
 - 实现智能告警和通知机制
 
-## 📚 参考资料
+## 📚 参考资料1
 
 ### 官方文档
 

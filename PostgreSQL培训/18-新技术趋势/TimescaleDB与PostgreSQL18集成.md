@@ -772,29 +772,29 @@ TimescaleDB 3.0 与 PostgreSQL 18 的深度集成为时序数据应用带来了�
 
 1. **启用异步I/O**：
 
-```sql
--- ✅ 好：启用异步I/O
-ALTER SYSTEM SET data_sync_method = 'fdatasync';
-SELECT pg_reload_conf();
--- 启用异步I/O，提升I/O性能
-```
+    ```sql
+    -- ✅ 好：启用异步I/O
+    ALTER SYSTEM SET data_sync_method = 'fdatasync';
+    SELECT pg_reload_conf();
+    -- 启用异步I/O，提升I/O性能
+    ```
 
 2. **配置并行查询**：
 
-```sql
--- ✅ 好：配置并行查询
-ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
-SELECT pg_reload_conf();
--- 启用并行查询，提升查询性能
-```
+    ```sql
+    -- ✅ 好：配置并行查询
+    ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
+    SELECT pg_reload_conf();
+    -- 启用并行查询，提升查询性能
+    ```
 
 3. **验证集成**：
 
-```sql
--- ✅ 好：验证集成
-SELECT version();
--- 确保使用PostgreSQL 18
-```
+    ```sql
+    -- ✅ 好：验证集成
+    SELECT version();
+    -- 确保使用PostgreSQL 18
+    ```
 
 **性能数据**：
 
@@ -810,27 +810,27 @@ SELECT version();
 
 1. **使用连续聚合**：
 
-```sql
--- ✅ 好：使用连续聚合
-CREATE MATERIALIZED VIEW sensor_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', time) AS hour,
-    sensor_id,
-    AVG(value) AS avg_value
-FROM sensor_data
-GROUP BY hour, sensor_id;
--- 预计算聚合，提升查询性能
-```
+    ```sql
+    -- ✅ 好：使用连续聚合
+    CREATE MATERIALIZED VIEW sensor_hourly
+    WITH (timescaledb.continuous) AS
+    SELECT
+        time_bucket('1 hour', time) AS hour,
+        sensor_id,
+        AVG(value) AS avg_value
+    FROM sensor_data
+    GROUP BY hour, sensor_id;
+    -- 预计算聚合，提升查询性能
+    ```
 
 2. **启用并行查询**：
 
-```sql
--- ✅ 好：启用并行查询
-SET max_parallel_workers_per_gather = 4;
-SELECT * FROM sensor_data WHERE time > NOW() - INTERVAL '1 day';
--- 并行查询，提升性能
-```
+    ```sql
+    -- ✅ 好：启用并行查询
+    SET max_parallel_workers_per_gather = 4;
+    SELECT * FROM sensor_data WHERE time > NOW() - INTERVAL '1 day';
+    -- 并行查询，提升性能
+    ```
 
 **性能数据**：
 
@@ -848,21 +848,21 @@ SELECT * FROM sensor_data WHERE time > NOW() - INTERVAL '1 day';
 
 1. **性能测试**：
 
-```sql
--- ✅ 好：性能测试
-EXPLAIN ANALYZE
-SELECT * FROM sensor_data WHERE time > NOW() - INTERVAL '1 day';
--- 分析查询性能
-```
+    ```sql
+    -- ✅ 好：性能测试
+    EXPLAIN ANALYZE
+    SELECT * FROM sensor_data WHERE time > NOW() - INTERVAL '1 day';
+    -- 分析查询性能
+    ```
 
 2. **对比测试**：
 
-```sql
--- ✅ 好：对比测试
--- PostgreSQL 17: 查询耗时 10秒
--- PostgreSQL 18: 查询耗时 4秒
--- 性能提升：60%
-```
+    ```sql
+    -- ✅ 好：对比测试
+    -- PostgreSQL 17: 查询耗时 10秒
+    -- PostgreSQL 18: 查询耗时 4秒
+    -- 性能提升：60%
+    ```
 
 **最佳实践**：
 

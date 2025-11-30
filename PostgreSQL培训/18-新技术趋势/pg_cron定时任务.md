@@ -511,31 +511,31 @@ pg_cron 为 PostgreSQL 提供了强大的定时任务调度能力，可以在数
 
 1. **使用包管理器安装**：
 
-```bash
-# Ubuntu/Debian
-sudo apt-get install postgresql-17-cron
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install postgresql-17-cron
 
-# 从源码编译
-git clone https://github.com/citusdata/pg_cron.git
-cd pg_cron
-make install
-```
+    # 从源码编译
+    git clone https://github.com/citusdata/pg_cron.git
+    cd pg_cron
+    make install
+    ```
 
 2. **创建扩展**：
 
-```sql
--- ✅ 好：创建pg_cron扩展
-CREATE EXTENSION IF NOT EXISTS pg_cron;
--- 启用定时任务功能
-```
+    ```sql
+    -- ✅ 好：创建pg_cron扩展
+    CREATE EXTENSION IF NOT EXISTS pg_cron;
+    -- 启用定时任务功能
+    ```
 
 3. **配置worker进程**：
 
-```sql
--- ✅ 好：配置worker进程
-ALTER SYSTEM SET shared_preload_libraries = 'pg_cron';
--- 重启PostgreSQL后生效
-```
+    ```sql
+    -- ✅ 好：配置worker进程
+    ALTER SYSTEM SET shared_preload_libraries = 'pg_cron';
+    -- 重启PostgreSQL后生效
+    ```
 
 **验证方法**：
 
@@ -552,28 +552,28 @@ SELECT * FROM pg_extension WHERE extname = 'pg_cron';
 
 1. **创建简单任务**：
 
-```sql
--- ✅ 好：创建定时任务
-SELECT cron.schedule('daily-vacuum', '0 2 * * *', 'VACUUM ANALYZE;');
--- 每天凌晨2点执行VACUUM
-```
+    ```sql
+    -- ✅ 好：创建定时任务
+    SELECT cron.schedule('daily-vacuum', '0 2 * * *', 'VACUUM ANALYZE;');
+    -- 每天凌晨2点执行VACUUM
+    ```
 
 2. **创建带参数的任务**：
 
-```sql
--- ✅ 好：创建带参数的任务
-SELECT cron.schedule('hourly-stats', '0 * * * *',
-    $$SELECT update_statistics();$$);
--- 每小时更新统计信息
-```
+    ```sql
+    -- ✅ 好：创建带参数的任务
+    SELECT cron.schedule('hourly-stats', '0 * * * *',
+        $$SELECT update_statistics();$$);
+    -- 每小时更新统计信息
+    ```
 
 3. **查看任务列表**：
 
-```sql
--- ✅ 好：查看任务列表
-SELECT * FROM cron.job;
--- 查看所有定时任务
-```
+    ```sql
+    -- ✅ 好：查看任务列表
+    SELECT * FROM cron.job;
+    -- 查看所有定时任务
+    ```
 
 **最佳实践**：
 
@@ -591,30 +591,30 @@ SELECT * FROM cron.job;
 
 1. **查看任务执行历史**：
 
-```sql
--- ✅ 好：查看任务执行历史
-SELECT * FROM cron.job_run_details
-ORDER BY start_time DESC
-LIMIT 10;
--- 查看最近10次任务执行记录
-```
+    ```sql
+    -- ✅ 好：查看任务执行历史
+    SELECT * FROM cron.job_run_details
+    ORDER BY start_time DESC
+    LIMIT 10;
+    -- 查看最近10次任务执行记录
+    ```
 
 2. **删除任务**：
 
-```sql
--- ✅ 好：删除任务
-SELECT cron.unschedule('daily-vacuum');
--- 删除定时任务
-```
+    ```sql
+    -- ✅ 好：删除任务
+    SELECT cron.unschedule('daily-vacuum');
+    -- 删除定时任务
+    ```
 
 3. **修改任务**：
 
-```sql
--- ✅ 好：修改任务（先删除再创建）
-SELECT cron.unschedule('daily-vacuum');
-SELECT cron.schedule('daily-vacuum', '0 3 * * *', 'VACUUM ANALYZE;');
--- 修改任务执行时间
-```
+    ```sql
+    -- ✅ 好：修改任务（先删除再创建）
+    SELECT cron.unschedule('daily-vacuum');
+    SELECT cron.schedule('daily-vacuum', '0 3 * * *', 'VACUUM ANALYZE;');
+    -- 修改任务执行时间
+    ```
 
 **最佳实践**：
 
