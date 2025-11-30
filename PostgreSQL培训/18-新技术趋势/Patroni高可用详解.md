@@ -575,42 +575,42 @@ Patroni 是 PostgreSQL 高可用的首选方案，提供：
 
 1. **使用pip安装**：
 
-```bash
-pip install patroni[etcd]
-# 或使用其他后端
-pip install patroni[consul]
-pip install patroni[zookeeper]
-```
+    ```bash
+    pip install patroni[etcd]
+    # 或使用其他后端
+    pip install patroni[consul]
+    pip install patroni[zookeeper]
+    ```
 
 2. **配置文件**：
 
-```yaml
-# ✅ 好：Patroni配置文件
-scope: postgres
-name: postgresql1
+    ```yaml
+    # ✅ 好：Patroni配置文件
+    scope: postgres
+    name: postgresql1
 
-restapi:
-  listen: 0.0.0.0:8008
-  connect_address: 192.168.1.1:8008
+    restapi:
+      listen: 0.0.0.0:8008
+      connect_address: 192.168.1.1:8008
 
-etcd:
-  host: 192.168.1.1:2379
+    etcd:
+      host: 192.168.1.1:2379
 
-bootstrap:
-  dcs:
-    ttl: 30
-    loop_wait: 10
-    retry_timeout: 30
-    maximum_lag_on_failover: 1048576
-```
+    bootstrap:
+      dcs:
+        ttl: 30
+        loop_wait: 10
+        retry_timeout: 30
+        maximum_lag_on_failover: 1048576
+    ```
 
 3. **启动Patroni**：
 
-```bash
-# ✅ 好：启动Patroni
-patroni /path/to/patroni.yml
-# 启动Patroni服务
-```
+    ```bash
+    # ✅ 好：启动Patroni
+    patroni /path/to/patroni.yml
+    # 启动Patroni服务
+    ```
 
 **验证方法**：
 
@@ -627,27 +627,27 @@ curl http://localhost:8008/patroni
 
 1. **配置同步复制**：
 
-```yaml
-# ✅ 好：配置同步复制
-bootstrap:
-  dcs:
-    synchronous_mode: true
-    synchronous_mode_strict: true
-    synchronous_node_count: 1
-# 启用同步复制，零数据丢失
-```
+    ```yaml
+    # ✅ 好：配置同步复制
+    bootstrap:
+      dcs:
+        synchronous_mode: true
+        synchronous_mode_strict: true
+        synchronous_node_count: 1
+    # 启用同步复制，零数据丢失
+    ```
 
 2. **配置故障转移**：
 
-```yaml
-# ✅ 好：配置故障转移
-bootstrap:
-  dcs:
-    ttl: 30
-    loop_wait: 10
-    retry_timeout: 30
-# 配置故障检测和转移参数
-```
+    ```yaml
+    # ✅ 好：配置故障转移
+    bootstrap:
+      dcs:
+        ttl: 30
+        loop_wait: 10
+        retry_timeout: 30
+    # 配置故障检测和转移参数
+    ```
 
 **最佳实践**：
 
