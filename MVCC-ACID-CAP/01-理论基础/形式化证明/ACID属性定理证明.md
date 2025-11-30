@@ -200,11 +200,11 @@ MVCC机制通过WAL实现持久性：
   "Transactional Information Systems:
   Theory, Algorithms, and the Practice of Concurrency Control and Recovery"
 
-1. **原子性**：
+2. **原子性**：
    - Lampson, B. (1981). "Atomic Transactions"
    - Gray, J. (1978). "Notes on Database Operating Systems"
 
-2. **持久性**：
+3. **持久性**：
    - Mohan, C., et al. (1992).
   "ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and
   Partial Rollbacks Using Write-Ahead Logging"
