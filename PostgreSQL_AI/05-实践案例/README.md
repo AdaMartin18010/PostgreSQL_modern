@@ -16,7 +16,7 @@
   - [Qunar途家案例.md](./Qunar途家案例.md) ✅
   - [Neon AI Agent案例.md](./Neon-AI-Agent案例.md) ✅
   - [Timescale MarketReader案例.md](./Timescale-MarketReader案例.md) ✅
-  - 阿里云PolarDB案例 (待补充)
+  - [阿里云PolarDB案例.md](./阿里云PolarDB案例.md) ✅
 - **内容**:
   - Qunar途家案例 (向量搜索)
   - Neon AI Agent案例 (分支管理)
