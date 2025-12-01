@@ -11,7 +11,12 @@
 
 ### 1. 企业级应用案例
 
-- **状态**: ⏳ 待补充
+- **状态**: 🚧 进行中
+- **文档**: 
+  - [Qunar途家案例.md](./Qunar途家案例.md) ✅
+  - Neon AI Agent案例 (待补充)
+  - Timescale MarketReader案例 (待补充)
+  - 阿里云PolarDB案例 (待补充)
 - **内容**:
   - Qunar途家案例 (向量搜索)
   - Neon AI Agent案例 (分支管理)

@@ -3,14 +3,41 @@
 > **文档编号**: AI-04-01
 > **最后更新**: 2025年1月
 > **主题**: 04-应用场景
+> **子主题**: 01-RAG系统设计
 
-## 📋 概述
+## 📑 目录
+
+- [一、概述](#一概述)
+- [二、架构设计](#二架构设计)
+  - [2.1 核心架构](#21-核心架构)
+  - [2.2 数据流](#22-数据流)
+- [三、数据模型设计](#三数据模型设计)
+  - [3.1 知识库表结构](#31-知识库表结构)
+  - [3.2 查询历史表](#32-查询历史表)
+- [四、检索策略](#四检索策略)
+  - [4.1 基础向量检索](#41-基础向量检索)
+  - [4.2 混合检索](#42-混合检索)
+  - [4.3 带过滤的检索](#43-带过滤的检索)
+- [五、LLM集成](#五llm集成)
+  - [5.1 使用pgai扩展](#51-使用pgai扩展)
+  - [5.2 使用LangChain集成](#52-使用langchain集成)
+- [六、性能优化](#六性能优化)
+  - [6.1 索引优化](#61-索引优化)
+  - [6.2 缓存策略](#62-缓存策略)
+  - [6.3 批量处理](#63-批量处理)
+- [七、评估指标](#七评估指标)
+  - [7.1 检索质量指标](#71-检索质量指标)
+  - [7.2 生成质量指标](#72-生成质量指标)
+- [八、关联主题](#八关联主题)
+- [九、对标资源](#九对标资源)
+
+## 一、概述
 
 RAG (Retrieval-Augmented Generation) 检索增强生成系统，结合向量检索和LLM生成能力，为AI应用提供准确、可追溯的知识问答能力。
 
-## 🏗️ 架构设计
+## 二、架构设计
 
-### 核心架构
+### 2.1 核心架构
 
 ```mermaid
 graph TD
@@ -27,7 +54,7 @@ graph TD
     I --> J[知识库向量表]
 ```
 
-### 数据流
+### 2.2 数据流
 
 1. **文档处理阶段**:
    - 文档加载 → 文本分块 → Embedding生成 → 向量存储
@@ -38,9 +65,9 @@ graph TD
 3. **反馈阶段**:
    - 用户反馈 → 结果评估 → 检索策略优化
 
-## 💾 数据模型设计
+## 三、数据模型设计
 
-### 知识库表结构
+### 3.1 知识库表结构
 
 ```sql
 -- 文档表
@@ -73,7 +100,7 @@ WITH (m = 16, ef_construction = 100);
 CREATE INDEX ON document_chunks (document_id);
 ```
 
-### 查询历史表
+### 3.2 查询历史表
 
 ```sql
 CREATE TABLE query_history (
@@ -88,9 +115,9 @@ CREATE TABLE query_history (
 );
 ```
 
-## 🔍 检索策略
+## 四、检索策略
 
-### 1. 基础向量检索
+### 4.1 基础向量检索
 
 ```sql
 -- 简单向量检索
@@ -105,7 +132,7 @@ ORDER BY dc.embedding <=> :query_vector
 LIMIT 10;
 ```
 
-### 2. 混合检索 (向量 + 关键词)
+### 4.2 混合检索 (向量 + 关键词)
 
 ```sql
 -- 向量检索 + 全文搜索
@@ -139,7 +166,7 @@ ORDER BY combined_score DESC
 LIMIT 10;
 ```
 
-### 3. 带过滤的检索
+### 4.3 带过滤的检索
 
 ```sql
 -- 按部门/权限过滤
@@ -157,9 +184,9 @@ ORDER BY dc.embedding <=> :query_vector
 LIMIT 10;
 ```
 
-## 🤖 LLM集成
+## 五、LLM集成
 
-### 使用pgai扩展 (SQL内调用)
+### 5.1 使用pgai扩展 (SQL内调用)
 
 ```sql
 -- 创建RAG查询函数
@@ -198,7 +225,7 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
-### 使用LangChain集成
+### 5.2 使用LangChain集成
 
 ```python
 from langchain_postgres import PGVector
@@ -230,9 +257,9 @@ qa_chain = RetrievalQA.from_chain_type(
 result = qa_chain({"query": "PostgreSQL如何实现向量搜索?"})
 ```
 
-## 📊 性能优化
+## 六、性能优化
 
-### 1. 索引优化
+### 6.1 索引优化
 
 ```sql
 -- 复合索引优化混合查询
@@ -245,7 +272,7 @@ CREATE INDEX ON document_chunks
 USING gin (content_tsv);
 ```
 
-### 2. 缓存策略
+### 6.2 缓存策略
 
 ```sql
 -- 查询结果缓存
@@ -265,7 +292,7 @@ WHERE query_hash = md5(:query_text)
   AND expires_at > NOW();
 ```
 
-### 3. 批量处理
+### 6.3 批量处理
 
 ```python
 # 批量生成Embedding
@@ -281,37 +308,40 @@ def batch_embed_documents(chunks, batch_size=100):
     return embeddings
 ```
 
-## 📈 评估指标
+## 七、评估指标
 
-### 检索质量指标
+### 7.1 检索质量指标
 
 1. **召回率 (Recall)**: 检索到的相关文档比例
 2. **精确率 (Precision)**: 检索结果中相关文档比例
 3. **MRR (Mean Reciprocal Rank)**: 第一个相关结果的平均排名倒数
 
-### 生成质量指标
+### 7.2 生成质量指标
 
 1. **BLEU分数**: 生成文本与参考答案的相似度
 2. **ROUGE分数**: 生成文本的摘要质量
 3. **人工评估**: 相关性、准确性、流畅性评分
 
-## 🔗 关联主题
+## 八、关联主题
 
 - [向量处理能力 (pgvector)](../03-核心能力/向量处理能力-pgvector.md) - 向量检索实现
 - [AI原生调用 (pgai)](../03-核心能力/AI原生调用-pgai.md) - SQL内LLM调用
 - [智能客服系统](./智能客服系统.md) - RAG在客服场景的应用
 
-## 📚 对标资源
+## 九、对标资源
 
 ### 学术论文
+
 - **RAG论文**: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" (NeurIPS 2020)
 - **In-Context RAG**: "In-Context Retrieval-Augmented Language Models" (ACL 2023)
 
 ### 技术文档
+
 - [LangChain RAG文档](https://python.langchain.com/docs/use_cases/question_answering/)
 - [LlamaIndex RAG文档](https://docs.llamaindex.ai/en/stable/module_guides/deploying/query_engine/root.html)
 
 ### 企业案例
+
 - Timescale MarketReader: 自动化新闻Embedding生成
 - 开发周期: 3个月 → 2周
 
