@@ -10,6 +10,7 @@
 - [Timescale MarketReader案例：自动化Embedding生成](#timescale-marketreader案例自动化embedding生成)
   - [📑 目录](#-目录)
   - [一、案例概述](#一案例概述)
+    - [1.1 案例架构思维导图](#11-案例架构思维导图)
   - [二、业务背景](#二业务背景)
     - [2.1 业务需求](#21-业务需求)
     - [2.2 技术挑战](#22-技术挑战)
@@ -41,6 +42,42 @@
 ## 一、案例概述
 
 Timescale MarketReader使用PostgreSQL + pgai实现新闻文章的自动化Embedding生成，将开发周期从3个月缩短至2周，人力成本节约50%。
+
+### 1.1 案例架构思维导图
+
+```mermaid
+mindmap
+  root((Timescale MarketReader案例))
+    核心功能
+      自动化Embedding
+        pgai.vectorizer
+        批量处理
+      新闻文章处理
+        文章解析
+        向量生成
+      实时更新
+        增量处理
+        自动同步
+    技术架构
+      PostgreSQL
+        pgai扩展
+        TimescaleDB
+      数据模型
+        文章表
+        向量表
+    业务效果
+      开发周期缩短
+        3个月 → 2周
+      人力成本节约
+        50%节约
+      自动化程度
+        100%自动化
+    技术优势
+      统一技术栈
+        减少集成
+      原生支持
+        无需外部服务
+```
 
 **核心成果**:
 

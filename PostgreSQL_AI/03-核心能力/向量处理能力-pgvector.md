@@ -10,8 +10,11 @@
 - [向量处理能力 - pgvector](#向量处理能力---pgvector)
   - [📑 目录](#-目录)
   - [一、概述](#一概述)
+    - [1.1 pgvector能力思维导图](#11-pgvector能力思维导图)
   - [二、核心功能](#二核心功能)
-    - [2.1 向量数据类型](#21-向量数据类型)
+    - [2.1 pgvector架构图](#21-pgvector架构图)
+    - [2.2 索引选择决策树](#22-索引选择决策树)
+    - [2.3 向量数据类型](#23-向量数据类型)
     - [2.2 相似性搜索操作符](#22-相似性搜索操作符)
     - [2.3 向量索引](#23-向量索引)
       - [2.3.1 HNSW索引 (推荐用于大规模数据)](#231-hnsw索引-推荐用于大规模数据)
@@ -31,9 +34,99 @@
 
 pgvector是PostgreSQL的向量扩展，为PostgreSQL添加了高效的向量存储和相似性搜索能力，使其成为AI应用的原生向量数据库。
 
+### 1.1 pgvector能力思维导图
+
+```mermaid
+mindmap
+  root((pgvector能力))
+    数据类型
+      vector类型
+      维度支持
+      精度控制
+    索引类型
+      HNSW索引
+        高精度
+        快速检索
+        内存占用大
+      IVFFlat索引
+        内存友好
+        快速构建
+        精度可调
+    相似度计算
+      余弦相似度
+      L2距离
+      内积
+    性能优化
+      索引参数调优
+      查询优化
+      批量操作
+    应用场景
+      向量检索
+      相似度搜索
+      推荐系统
+      RAG系统
+```
+
 ## 二、核心功能
 
-### 2.1 向量数据类型
+### 2.1 pgvector架构图
+
+```mermaid
+classDiagram
+    class PostgreSQL {
+        +数据类型系统
+        +索引系统
+        +查询优化器
+    }
+    class pgvector {
+        +vector类型
+        +相似度操作符
+        +索引支持
+    }
+    class HNSWIndex {
+        +m参数
+        +ef_construction
+        +ef_search
+    }
+    class IVFFlatIndex {
+        +lists参数
+        +probes参数
+    }
+    class VectorOperations {
+        +<=> 余弦距离
+        +<-> L2距离
+        +<#> 内积
+    }
+
+    PostgreSQL --> pgvector
+    pgvector --> HNSWIndex
+    pgvector --> IVFFlatIndex
+    pgvector --> VectorOperations
+```
+
+### 2.2 索引选择决策树
+
+```mermaid
+flowchart TD
+    A[需要向量索引?] -->|是| B[数据规模?]
+    A -->|否| C[使用顺序扫描]
+
+    B -->|<100万| D[使用HNSW索引]
+    B -->|100万-1000万| E{精度要求?}
+    B -->|>1000万| F[使用IVFFlat索引]
+
+    E -->|高精度| D
+    E -->|可接受| F
+
+    D --> G[设置m=16, ef_construction=64]
+    F --> H[设置lists=100, probes=10]
+
+    G --> I[创建索引]
+    H --> I
+    C --> J[直接查询]
+```
+
+### 2.3 向量数据类型
 
 pgvector提供了`vector`数据类型，支持存储高维向量：
 

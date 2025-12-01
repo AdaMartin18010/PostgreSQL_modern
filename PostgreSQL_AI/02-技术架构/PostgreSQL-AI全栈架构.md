@@ -9,7 +9,9 @@
 
 - [PostgreSQL AI时代完整软件堆栈与生态体系论证](#postgresql-ai时代完整软件堆栈与生态体系论证)
   - [📑 目录](#-目录)
-  - [一、PostgreSQL AI全栈架构图](#一postgresql-ai全栈架构图)
+  - [一、PostgreSQL AI全栈架构](#一postgresql-ai全栈架构)
+    - [1.1 PostgreSQL AI技术栈思维导图](#11-postgresql-ai技术栈思维导图)
+    - [1.2 PostgreSQL AI全栈架构图](#12-postgresql-ai全栈架构图)
   - [二、上游堆栈：数据注入与治理层](#二上游堆栈数据注入与治理层)
     - [2.1 实时数据流接入](#21-实时数据流接入)
     - [2.2 批量数据预处理](#22-批量数据预处理)
@@ -42,7 +44,48 @@
     - [10.1 核心结论](#101-核心结论)
     - [10.2 战略实施建议](#102-战略实施建议)
 
-## 一、PostgreSQL AI全栈架构图
+## 一、PostgreSQL AI全栈架构
+
+### 1.1 PostgreSQL AI技术栈思维导图
+
+```mermaid
+mindmap
+  root((PostgreSQL AI技术栈))
+    上游层
+      数据采集
+        Kafka/Flink
+        Debezium CDC
+        Airflow/Spark
+      数据预处理
+        dbt转换
+        文档解析
+        Embedding生成
+    核心层
+      PostgreSQL
+        向量引擎
+        AI原生调用
+        内置ML
+      扩展生态
+        pgvector
+        pgai
+        PostgresML
+    下游层
+      RAG框架
+        LangChain
+        LlamaIndex
+      AI应用
+        AI Agent
+        Copilot
+        MCP Server
+      API层
+        PostgREST
+        Hasura
+      可视化
+        Streamlit
+        Gradio
+```
+
+### 1.2 PostgreSQL AI全栈架构图
 
 ```mermaid
 graph TB
@@ -318,7 +361,7 @@ graph LR
 
 2. **自然语言BI**: 非技术人员查询数据
 
-   ```
+   ```text
    用户: "上季度退货率>30%的商品"
    AI→SQL→结果: 自动关联商品表+订单表+向量相似度
    ```
@@ -365,7 +408,7 @@ if query:
 
 **技术栈**:
 
-```
+```text
 上游: 用户评论 → Debezium CDC → Kafka → Flink情感分析
 核心: PostgreSQL + pgvector(房源描述向量) + PostGIS(地理位置)
 下游: LangChain RAG → 推荐API → 移动端
@@ -416,7 +459,7 @@ graph TB
 
 **技术栈**:
 
-```
+```text
 数据层: 交易流水 → Flink → PostgreSQL(HyperLogLog近似计算)
 AI层: pgvector存储用户行为向量 + PostgresML训练XGBoost模型
 应用层: 实时决策引擎(延迟<50ms)
@@ -497,7 +540,7 @@ graph LR
 
 ### 6.2 决策树：何时选择PostgreSQL
 
-```
+```text
 开始: AI应用需求分析
 │
 ├─ Q1: 是否需要强事务?
@@ -533,14 +576,14 @@ PostgreSQL适用率: 78.5% (n=200 AI项目)
 
 ### 7.1 渐进式演进路线
 
-**阶段0: 传统PostgreSQL (现状)**
+**阶段0: 传统PostgreSQL (现状)**:
 
 ```sql
 -- 仅支持结构化查询
 SELECT * FROM products WHERE category='electronics' AND price<1000;
 ```
 
-**阶段1: 添加向量能力 (2周)**
+**阶段1: 添加向量能力 (2周)**:
 
 ```sql
 CREATE EXTENSION pgvector;
@@ -552,7 +595,7 @@ WHERE category='electronics'
   AND desc_vec <=> query_vec < 0.7;
 ```
 
-**阶段2: AI原生集成 (4周)**
+**阶段2: AI原生集成 (4周)**:
 
 ```sql
 CREATE EXTENSION pgai;
@@ -562,7 +605,7 @@ SELECT ai.create_vectorizer('products', 'description');
 SELECT ai.chat_complete('分析这些产品评论的情感');
 ```
 
-**阶段3: AI Agent就绪 (6周)**
+**阶段3: AI Agent就绪 (6周)**:
 
 ```sql
 -- MCP Server部署

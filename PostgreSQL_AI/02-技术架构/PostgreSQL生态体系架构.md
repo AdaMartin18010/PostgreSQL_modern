@@ -10,8 +10,9 @@
 - [PostgreSQL：AI时代数据库生态的终极解决方案](#postgresqlai时代数据库生态的终极解决方案)
   - [📑 目录](#-目录)
   - [一、PostgreSQL 生态体系架构](#一postgresql-生态体系架构)
-    - [1.1 核心生态组件与技术栈](#11-核心生态组件与技术栈)
-    - [1.2 核心组件详解](#12-核心组件详解)
+    - [1.1 PostgreSQL生态体系思维导图](#11-postgresql生态体系思维导图)
+    - [1.2 核心生态组件与技术栈](#12-核心生态组件与技术栈)
+    - [1.3 核心组件详解](#13-核心组件详解)
       - [1.2.1 pgvector：向量数据库扩展](#121-pgvector向量数据库扩展)
       - [1.2.2 Foreign Data Wrappers (FDW)](#122-foreign-data-wrappers-fdw)
       - [1.2.3 FDW 生态扩展](#123-fdw-生态扩展)
@@ -21,7 +22,7 @@
       - [1.3.3 pgml: PostgreSQL 机器学习](#133-pgml-postgresql-机器学习)
   - [二、技术架构与集成实践](#二技术架构与集成实践)
     - [2.1 基础架构](#21-基础架构)
-    - [2.2 典型AI架构](#22-典型ai架构)
+    - [2.3 典型AI架构](#23-典型ai架构)
       - [2.2.1 RAG（检索增强生成）架构](#221-rag检索增强生成架构)
       - [2.2.2 智能推荐系统](#222-智能推荐系统)
     - [2.3 实践案例与数据验证](#23-实践案例与数据验证)
@@ -58,7 +59,53 @@
 
 ## 一、PostgreSQL 生态体系架构
 
-### 1.1 核心生态组件与技术栈
+### 1.1 PostgreSQL生态体系思维导图
+
+```mermaid
+mindmap
+  root((PostgreSQL生态体系))
+    核心扩展
+      pgvector
+        向量存储
+        相似度搜索
+        HNSW索引
+      FDW
+        外部数据访问
+        数据联邦
+        多数据源集成
+      TimescaleDB
+        时序数据
+        自动分区
+        连续聚合
+      Citus
+        分布式扩展
+        水平分片
+        并行查询
+    AI能力
+      pgai
+        LLM调用
+        Embedding生成
+        自动向量化
+      PostgresML
+        模型训练
+        模型推理
+        特征工程
+    工具生态
+      客户端工具
+        psql
+        pgAdmin
+        DataGrip
+      监控工具
+        pg_stat_statements
+        Grafana
+        Prometheus
+    云平台
+      Supabase
+      Neon
+      AWS RDS
+```
+
+### 1.2 核心生态组件与技术栈
 
 ```mermaid
 graph TD
@@ -80,7 +127,7 @@ graph TD
     D --> D3[PostGIS];
 ```
 
-### 1.2 核心组件详解
+### 1.3 核心组件详解
 
 #### 1.2.1 pgvector：向量数据库扩展
 
@@ -248,7 +295,7 @@ graph TD
     U --> Z[实时数据];
 ```
 
-### 2.2 典型AI架构
+### 2.3 典型AI架构
 
 #### 2.2.1 RAG（检索增强生成）架构
 
@@ -331,7 +378,7 @@ graph TD
 
 #### 2.3.2 企业级应用案例
 
-**案例：某零售公司智能客服系统**
+**案例：某零售公司智能客服系统**:
 
 - **问题**：传统架构下，查询用户购买历史、访问记录和情绪分析需要调用5个系统
 - **解决方案**：
@@ -351,7 +398,7 @@ graph TD
   - TimescaleDB
 - **开源项目**：[https://github.com/ai-research/postgres-ai-demo](https://github.com/ai-research/postgres-ai-demo)
 
-**案例：某金融风控平台**
+**案例：某金融风控平台**:
 
 - **需求**：实时风险识别和决策
 - **技术实现**：

@@ -10,6 +10,8 @@
 - [AI原生调用 - pgai](#ai原生调用---pgai)
   - [📑 目录](#-目录)
   - [一、概述](#一概述)
+    - [1.1 pgai能力架构图](#11-pgai能力架构图)
+    - [1.2 AI调用决策树](#12-ai调用决策树)
   - [二、核心功能](#二核心功能)
     - [2.1 embedding() 函数](#21-embedding-函数)
     - [2.2 chat\_complete() 函数](#22-chat_complete-函数)
@@ -36,6 +38,56 @@
 ## 一、概述
 
 pgai是PostgreSQL的AI原生扩展，允许在SQL语句中直接调用OpenAI、Anthropic等LLM服务，实现Embedding生成、文本生成等AI功能，无需外部应用层代码。
+
+### 1.1 pgai能力架构图
+
+```mermaid
+graph TB
+    A[PostgreSQL] --> B[pgai扩展]
+    B --> C[AI函数层]
+
+    C --> D[embedding函数]
+    C --> E[chat_complete函数]
+    C --> F[vectorizer函数]
+
+    D --> G[OpenAI API]
+    D --> H[Anthropic API]
+    D --> I[本地模型]
+
+    E --> G
+    E --> H
+    E --> I
+
+    F --> J[自动向量化]
+    J --> K[pgvector存储]
+
+    style B fill:#bbf
+    style C fill:#bfb
+```
+
+### 1.2 AI调用决策树
+
+```mermaid
+flowchart TD
+    A[需要AI能力?] --> B{功能需求?}
+
+    B -->|文本向量化| C[使用embedding函数]
+    B -->|文本生成| D[使用chat_complete函数]
+    B -->|自动向量化| E[使用vectorizer函数]
+
+    C --> F{模型选择?}
+    F -->|OpenAI| G[text-embedding-3-small]
+    F -->|Anthropic| H[claude-embedding]
+    F -->|本地| I[本地embedding模型]
+
+    D --> J{模型选择?}
+    J -->|OpenAI| K[gpt-4]
+    J -->|Anthropic| L[claude-3]
+    J -->|本地| M[本地LLM]
+
+    E --> N[配置向量化策略]
+    N --> O[自动生成向量]
+```
 
 ## 二、核心功能
 
