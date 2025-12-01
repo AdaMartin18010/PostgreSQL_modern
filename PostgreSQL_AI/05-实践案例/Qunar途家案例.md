@@ -1,8 +1,8 @@
 # Qunar途家案例：向量搜索在旅游推荐中的应用
 
-> **文档编号**: AI-05-01  
-> **最后更新**: 2025年1月  
-> **主题**: 05-实践案例  
+> **文档编号**: AI-05-01
+> **最后更新**: 2025年1月
+> **主题**: 05-实践案例
 > **子主题**: 01-Qunar途家案例
 
 ## 📑 目录
@@ -35,12 +35,16 @@
     - [7.3 查询优化](#73-查询优化)
   - [八、关联主题](#八关联主题)
   - [九、对标资源](#九对标资源)
+    - [企业案例](#企业案例)
+    - [技术文档](#技术文档)
+    - [学术论文](#学术论文)
 
 ## 一、案例概述
 
 Qunar途家是中国领先的在线旅游平台，通过引入PostgreSQL + pgvector实现"以图搜房"和语义搜索功能，显著提升了用户体验和业务指标。
 
 **核心成果**:
+
 - 召回率提升30%
 - 查询延迟从120ms降至45ms
 - 用户点击率提升18%
@@ -86,7 +90,7 @@ graph TD
     E --> F[向量相似度搜索]
     F --> G[结果排序]
     G --> H[返回推荐房源]
-    
+
     I[房源数据] --> J[房源描述向量化]
     I --> K[房源图片向量化]
     J --> E
@@ -116,7 +120,7 @@ CREATE TABLE listings (
 );
 
 -- 文本向量索引
-CREATE INDEX ON listings 
+CREATE INDEX ON listings
 USING hnsw (description_vector vector_cosine_ops)
 WITH (m = 16, ef_construction = 100);
 
@@ -146,7 +150,7 @@ CREATE OR REPLACE FUNCTION search_listings(
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         l.id,
         l.title,
         ST_Distance(l.geom, p_user_location) / 1000.0 AS distance_km,
@@ -173,12 +177,14 @@ $$ LANGUAGE plpgsql;
 **时间**: 2周
 
 **工作内容**:
+
 1. 安装pgvector扩展
 2. 为现有房源数据生成向量
 3. 创建向量索引
 4. 实现基础向量搜索
 
 **技术实现**:
+
 ```python
 # 批量生成房源描述向量
 import openai
@@ -187,24 +193,24 @@ import psycopg2
 def generate_listing_vectors():
     conn = psycopg2.connect("postgresql://...")
     cur = conn.cursor()
-    
+
     # 获取所有房源描述
     cur.execute("SELECT id, description FROM listings WHERE description_vector IS NULL")
     listings = cur.fetchall()
-    
+
     # 批量生成向量
     for listing_id, description in listings:
         embedding = openai.Embedding.create(
             input=description,
             model="text-embedding-3-small"
         )
-        
+
         # 更新向量
         cur.execute(
             "UPDATE listings SET description_vector = %s WHERE id = %s",
             (embedding['data'][0]['embedding'], listing_id)
         )
-    
+
     conn.commit()
 ```
 
@@ -213,12 +219,14 @@ def generate_listing_vectors():
 **时间**: 1周
 
 **优化措施**:
+
 1. 调整HNSW索引参数
 2. 优化查询计划
 3. 添加缓存层
 4. 连接池优化
 
 **性能提升**:
+
 - 查询延迟: 120ms → 45ms (降低62.5%)
 - 吞吐量: 500 QPS → 1500 QPS (提升3倍)
 
@@ -227,6 +235,7 @@ def generate_listing_vectors():
 **时间**: 1周
 
 **新增功能**:
+
 1. 图片向量搜索（"以图搜房"）
 2. 混合搜索（文本+图片+地理）
 3. 个性化推荐
@@ -296,9 +305,10 @@ def generate_listing_vectors():
    - 使用`text-embedding-3-small` (1536维) 平衡性能和效果
 
 2. **索引参数调优**:
+
    ```sql
    -- 大规模数据使用更高参数
-   CREATE INDEX ON listings 
+   CREATE INDEX ON listings
    USING hnsw (description_vector vector_cosine_ops)
    WITH (m = 32, ef_construction = 200);
    ```
@@ -329,7 +339,7 @@ def generate_vectors_batch(texts):
 CREATE TABLE listings_beijing PARTITION OF listings
 FOR VALUES IN ('beijing');
 
-CREATE INDEX ON listings_beijing 
+CREATE INDEX ON listings_beijing
 USING hnsw (description_vector vector_cosine_ops);
 ```
 
@@ -338,7 +348,7 @@ USING hnsw (description_vector vector_cosine_ops);
 ```sql
 -- 使用物化视图预计算热门推荐
 CREATE MATERIALIZED VIEW popular_listings AS
-SELECT 
+SELECT
     l.*,
     COUNT(*) AS view_count
 FROM listings l
@@ -359,20 +369,22 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY popular_listings;
 ## 九、对标资源
 
 ### 企业案例
+
 - Qunar技术博客
 - 途家技术分享
 
 ### 技术文档
+
 - [pgvector官方文档](https://github.com/pgvector/pgvector)
 - [PostGIS空间数据文档](https://postgis.net/)
 
 ### 学术论文
+
 - 向量搜索在推荐系统中的应用
 - 多模态搜索技术研究
 
 ---
 
-**最后更新**: 2025年1月  
-**维护者**: PostgreSQL Modern Team  
+**最后更新**: 2025年1月
+**维护者**: PostgreSQL Modern Team
 **文档编号**: AI-05-01
-

@@ -12,7 +12,7 @@
   - [一、概述](#一概述)
   - [二、核心功能](#二核心功能)
     - [2.1 embedding() 函数](#21-embedding-函数)
-    - [2.2 chat_complete() 函数](#22-chat_complete-函数)
+    - [2.2 chat\_complete() 函数](#22-chat_complete-函数)
     - [2.3 vectorizer() 自动向量化](#23-vectorizer-自动向量化)
   - [三、使用场景](#三使用场景)
     - [3.1 实时Embedding生成](#31-实时embedding生成)
@@ -29,6 +29,9 @@
   - [六、最佳实践](#六最佳实践)
   - [七、关联主题](#七关联主题)
   - [八、对标资源](#八对标资源)
+    - [官方文档](#官方文档)
+    - [企业案例](#企业案例)
+    - [技术文档](#技术文档)
 
 ## 一、概述
 
@@ -51,6 +54,7 @@ SELECT ai.embedding(
 ```
 
 **支持的模型**:
+
 - OpenAI: `text-embedding-3-small`, `text-embedding-3-large`
 - 其他: 通过配置支持
 
@@ -70,6 +74,7 @@ SELECT ai.chat_complete(
 ```
 
 **支持的模型**:
+
 - OpenAI: `gpt-4`, `gpt-3.5-turbo`
 - Anthropic: `claude-3-opus`, `claude-3-sonnet`
 - 其他: 通过配置支持
@@ -226,6 +231,7 @@ FROM (SELECT array_agg(content) AS texts FROM documents) sub;
    - 选择合适的模型 (small vs large)
 
 3. **错误处理**:
+
    ```sql
    -- 添加错误处理
    BEGIN
@@ -237,6 +243,7 @@ FROM (SELECT array_agg(content) AS texts FROM documents) sub;
    ```
 
 4. **性能监控**:
+
    ```sql
    -- 监控API调用
    SELECT
@@ -257,15 +264,18 @@ FROM (SELECT array_agg(content) AS texts FROM documents) sub;
 ## 八、对标资源
 
 ### 官方文档
+
 - [pgai GitHub](https://github.com/pgai/pgai)
 - [Timescale pgai文档](https://docs.timescale.com/ai/)
 
 ### 企业案例
+
 - **Timescale MarketReader**: 使用pgai实现新闻Embedding自动化
 - **开发周期**: 3个月 → 2周 (缩短85%)
 - **人力成本**: 节约50%
 
 ### 技术文档
+
 - OpenAI Embeddings API文档
 - Anthropic Claude API文档
 

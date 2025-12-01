@@ -17,7 +17,7 @@
     - [3.1 向量引擎：pgvector生态](#31-向量引擎pgvector生态)
     - [3.2 AI原生调用：pgai套件](#32-ai原生调用pgai套件)
     - [3.3 内置机器学习：PostgresML](#33-内置机器学习postgresml)
-  - [四、下游堆栈：AI应用与服务层](#四下游堆栈ai应用与服务层)
+  - [四、下游堆栈：AI应用与工具生态](#四下游堆栈ai应用与工具生态)
     - [4.1 RAG框架集成](#41-rag框架集成)
     - [4.2 MCP (Model Context Protocol) 生态](#42-mcp-model-context-protocol-生态)
     - [4.3 API与可视化层](#43-api与可视化层)
