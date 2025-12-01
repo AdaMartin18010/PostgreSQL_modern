@@ -1,0 +1,214 @@
+name: PostgreSQL Benchmark Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type (baseline, hybrid, replication)'
+        required: true
+        default: 'baseline'
+        type: choice
+        options:
+          - baseline
+          - hybrid
+          - replication
+      scale_factor:
+        description: 'Scale factor for test data'
+        required: false
+        default: '10'
+      duration:
+        description: 'Test duration in seconds'
+        required: false
+        default: '300'
+      clients:
+        description: 'Number of clients'
+        required: false
+        default: '32'
+  schedule:
+    # 每周日 UTC 03:00 运行
+    - cron: '0 3 * * 0'
+  push:
+    branches:
+      - main
+    paths:
+      - 'bench/**'
+      - '.github/workflows/benchmark.yml'
+
+env:
+  POSTGRES_VERSION: '18'
+  POSTGRES_DB: 'pgbench_test'
+  POSTGRES_USER: 'postgres'
+  POSTGRES_PASSWORD: 'postgres'
+
+jobs:
+  baseline-benchmark:
+    name: Baseline OLTP Benchmark
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'baseline' || github.event_name == 'schedule' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[benchmark]'))
+    
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: pgbench_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Initialize test data
+        run: |
+          pgbench -i -s ${{ github.event.inputs.scale_factor || '10' }} \
+            -h localhost -U postgres -d pgbench_test
+
+      - name: Run baseline benchmark
+        run: |
+          pgbench -c ${{ github.event.inputs.clients || '32' }} \
+            -j ${{ github.event.inputs.clients || '32' }} \
+            -T ${{ github.event.inputs.duration || '300' }} \
+            -r -l \
+            -h localhost -U postgres -d pgbench_test \
+            > baseline_result.log 2>&1
+
+      - name: Extract metrics
+        run: |
+          cd bench/tools
+          chmod +x extract_pgbench_metrics.sh
+          ./extract_pgbench_metrics.sh ../../baseline_result.log > baseline_metrics.txt
+
+      - name: Analyze latency
+        if: always()
+        run: |
+          cd bench/tools
+          chmod +x analyze_pgbench_log.sh
+          if ls ../../pgbench_log.* 1> /dev/null 2>&1; then
+            ./analyze_pgbench_log.sh ../../pgbench_log.* > latency_analysis.txt
+          fi
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: baseline-benchmark-results
+          path: |
+            baseline_result.log
+            baseline_metrics.txt
+            latency_analysis.txt
+            pgbench_log.*
+
+  hybrid-query-benchmark:
+    name: Hybrid Query Benchmark
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'hybrid' || github.event_name == 'schedule'
+    
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_DB: pgbench_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Setup test data
+        run: |
+          psql -h localhost -U postgres -d pgbench_test -f ../sql/vector_examples.sql || true
+          # 这里应该创建测试表和索引
+          # 实际使用时需要根据具体情况调整
+
+      - name: Run hybrid query benchmark
+        run: |
+          cd bench/scripts
+          pgbench -c ${{ github.event.inputs.clients || '32' }} \
+            -j ${{ github.event.inputs.clients || '32' }} \
+            -T ${{ github.event.inputs.duration || '300' }} \
+            -r -l \
+            -h localhost -U postgres -d pgbench_test \
+            -f mix_basic.sql \
+            > hybrid_result.log 2>&1
+
+      - name: Extract metrics
+        run: |
+          cd bench/tools
+          chmod +x extract_pgbench_metrics.sh
+          ./extract_pgbench_metrics.sh ../../hybrid_result.log > hybrid_metrics.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hybrid-benchmark-results
+          path: |
+            hybrid_result.log
+            hybrid_metrics.txt
+            pgbench_log.*
+
+  benchmark-summary:
+    name: Benchmark Summary
+    runs-on: ubuntu-latest
+    needs: [baseline-benchmark, hybrid-query-benchmark]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+
+      - name: Generate summary
+        run: |
+          echo "# Benchmark Test Summary" > summary.md
+          echo "" >> summary.md
+          echo "Test Date: $(date)" >> summary.md
+          echo "" >> summary.md
+          echo "## Baseline Test" >> summary.md
+          if [ -f results/baseline-benchmark-results/baseline_metrics.txt ]; then
+            cat results/baseline-benchmark-results/baseline_metrics.txt >> summary.md
+          fi
+          echo "" >> summary.md
+          echo "## Hybrid Query Test" >> summary.md
+          if [ -f results/hybrid-benchmark-results/hybrid_metrics.txt ]; then
+            cat results/hybrid-benchmark-results/hybrid_metrics.txt >> summary.md
+          fi
+
+      - name: Upload summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-summary
+          path: summary.md

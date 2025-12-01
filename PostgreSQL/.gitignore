@@ -1,0 +1,66 @@
+# PostgreSQL 知识库 .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 数据库文件
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+
+# 测试文件
+test_*.db
+example_*.db
+
+# 文档生成
+_site/
+.jekyll-cache/
+.jekyll-metadata
+
+# 其他
+*.orig
+*.rej
+
+# 归档目录
+_archive/
+.structure_backup/

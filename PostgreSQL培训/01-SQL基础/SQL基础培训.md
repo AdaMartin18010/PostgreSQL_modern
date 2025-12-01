@@ -597,10 +597,12 @@ Query {
 
 **定义1（SQL解析算法复杂度）**：
 设 Parse(SQL) → QueryTree，解析算法复杂度为：
+
 - 时间复杂度：O(n)，n为SQL语句长度
 - 空间复杂度：O(n)，n为SQL语句长度
 
 **算法优化**：
+
 - 使用LR(1)解析器，线性时间复杂度
 - 缓存解析结果，避免重复解析
 
@@ -639,10 +641,12 @@ WHERE is_active = TRUE AND email = 'john@example.com';
 
 **定义2（查询重写算法复杂度）**：
 设 Rewrite(queryTree) → optimizedTree，重写算法复杂度为：
+
 - 时间复杂度：O(n × r)，n为查询树节点数，r为规则数
 - 空间复杂度：O(n)
 
 **重写规则应用**：
+
 - 视图展开：O(1)（查表）
 - 规则应用：O(r)，r为匹配规则数
 - 常量折叠：O(n)，n为表达式节点数
@@ -698,11 +702,13 @@ WHERE u.email = 'john@example.com';
 
 **定义3（查询优化算法复杂度）**：
 设 Optimize(queryTree) → executionPlan，优化算法复杂度为：
+
 - 时间复杂度：O(2^n × n^3)，n为表数量（动态规划）
 - 空间复杂度：O(2^n)
 - 优化策略：表数量 > 12时使用遗传算法，复杂度降为O(n^2)
 
 **成本估算复杂度**：
+
 - 单表扫描成本：O(1)
 - JOIN成本：O(n × m)，n和m为表大小
 - 总成本估算：O(k)，k为计划中的操作数
@@ -732,6 +738,7 @@ WHERE u.email = 'john@example.com';
 
 **定义4（执行算法复杂度）**：
 设 Execute(plan) → result，执行算法复杂度为：
+
 - Seq Scan：O(n)，n为表大小
 - Index Scan：O(log n + k)，n为索引大小，k为结果数量
 - Hash Join：O(n + m)，n和m为表大小
@@ -739,6 +746,7 @@ WHERE u.email = 'john@example.com';
 - Merge Join：O(n + m)，n和m为表大小（需要排序）
 
 **性能优化**：
+
 - 使用索引：将O(n)降为O(log n)
 - 使用Hash Join：将O(n × m)降为O(n + m)
 - 并行执行：将O(n)降为O(n/p)，p为并行度

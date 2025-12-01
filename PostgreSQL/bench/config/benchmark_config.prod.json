@@ -1,0 +1,50 @@
+{
+  "_comment": "生产环境模拟基准测试配置 - 完整性能测试",
+  "database": {
+    "name": "pgbench_test",
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres"
+  },
+  "test_data": {
+    "scale_factor": 1000,
+    "description": "约 1 亿行数据，模拟生产环境规模"
+  },
+  "benchmark": {
+    "clients": [32, 64, 128, 256],
+    "threads": 32,
+    "duration": 600,
+    "warmup_duration": 120
+  },
+  "tests": [
+    {
+      "name": "baseline",
+      "description": "标准 TPC-B 测试",
+      "enabled": true,
+      "options": []
+    },
+    {
+      "name": "readonly",
+      "description": "只读测试",
+      "enabled": true,
+      "options": ["-S"]
+    },
+    {
+      "name": "writeonly",
+      "description": "只写测试",
+      "enabled": true,
+      "options": ["-N"]
+    }
+  ],
+  "monitoring": {
+    "enabled": true,
+    "interval": 1,
+    "output_prefix": "prod"
+  },
+  "output": {
+    "directory": "./results/prod",
+    "include_timestamp": true,
+    "analyze_latency": true,
+    "extract_metrics": true
+  }
+}

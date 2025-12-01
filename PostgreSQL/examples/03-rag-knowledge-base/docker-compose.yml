@@ -1,0 +1,61 @@
+version: '3.8'
+
+# RAG知识库基础模式 - 仅PostgreSQL和Redis
+# 最后更新: 2025-01-15
+#
+# 使用说明:
+#   - 基础模式: docker-compose up -d (仅数据库和缓存)
+#   - 完整模式: docker-compose -f docker-compose.full.yml up -d (所有服务)
+#   - 启动脚本: ./start.sh (交互式选择模式)
+
+services:
+  # PostgreSQL 18 + pgvector 2.0 ⭐
+  postgres:
+    image: pgvector/pgvector:pg18  # PostgreSQL 18
+    container_name: pg-ai-rag
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rag_kb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=2GB
+      -c maintenance_work_mem=256MB
+      -c max_parallel_workers_per_gather=4
+    networks:
+      - ai-network
+
+  # Redis缓存（用于缓存查询结果和任务队列）
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ai-network:
+    driver: bridge

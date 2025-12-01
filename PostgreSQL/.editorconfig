@@ -1,0 +1,57 @@
+# EditorConfig配置
+# 统一不同编辑器的编码风格
+# https://editorconfig.org
+
+# 根配置文件
+root = true
+
+# 所有文件的默认配置
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown文件
+[*.md]
+indent_style = space
+indent_size = 2
+max_line_length = 120
+trim_trailing_whitespace = true
+
+# 允许Markdown表格对齐时的尾随空格
+[*.md]
+trim_trailing_whitespace = false
+
+# Python文件
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# Shell脚本
+[*.sh]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+
+# JSON文件
+[*.json]
+indent_style = space
+indent_size = 2
+
+# YAML文件
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# SQL文件
+[*.sql]
+indent_style = space
+indent_size = 2
+
+# Makefile
+[Makefile]
+indent_style = tab
+indent_size = 4
+

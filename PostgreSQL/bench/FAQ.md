@@ -1,0 +1,500 @@
+# 基准测试常见问题解答
+
+> **PostgreSQL版本**: 18 ⭐ | 17 | 16
+> **最后更新**: 2025-11-12
+
+---
+
+## 📋 目录
+
+- [环境准备](#环境准备)
+- [测试执行](#测试执行)
+- [结果分析](#结果分析)
+- [性能调优](#性能调优)
+- [工具使用](#工具使用)
+- [故障排查](#故障排查)
+
+---
+
+## 环境准备
+
+### Q1: pgbench 命令未找到？
+
+**A**: 安装 postgresql-contrib 包：
+
+**Ubuntu/Debian**:
+
+```bash
+sudo apt-get update
+sudo apt-get install postgresql-contrib
+```
+
+**CentOS/RHEL**:
+
+```bash
+sudo yum install postgresql-contrib
+```
+
+**macOS**:
+
+```bash
+brew install postgresql
+```
+
+**Windows**:
+pgbench 通常包含在 PostgreSQL 安装包中，确保 PostgreSQL bin 目录在 PATH 中。
+
+---
+
+### Q2: 如何检查 PostgreSQL 是否运行？
+
+**A**: 使用 `pg_isready` 命令：
+
+```bash
+# 检查默认连接
+pg_isready
+
+# 检查指定主机和端口
+pg_isready -h localhost -p 5432
+
+# 检查指定数据库
+pg_isready -h localhost -p 5432 -d postgres
+```
+
+---
+
+### Q3: 如何选择合适的 scale factor？
+
+**A**: 根据实际需求选择：
+
+| Scale Factor | 数据规模 | 适用场景 |
+|-------------|---------|---------|
+| 1 | 约 10 万行 | 快速验证 |
+| 10 | 约 100 万行 | 开发测试 |
+| 100 | 约 1000 万行 | 生产模拟 |
+| 1000 | 约 1 亿行 | 大规模测试 |
+
+**建议**: 从较小的 scale factor 开始，逐步增加。
+
+---
+
+## 测试执行
+
+### Q4: 测试结果不稳定，每次运行差异很大？
+
+**A**: 可能的原因和解决方法：
+
+1. **未预热缓存**
+
+   ```bash
+   # 先运行预热
+   pgbench -c 32 -j 32 -T 60 pgbench_test
+   # 再运行正式测试
+   pgbench -c 32 -j 32 -T 300 -r pgbench_test
+   ```
+
+2. **测试时间太短**
+   - 至少运行 5 分钟（300 秒）
+   - 多次运行取平均值
+
+3. **系统负载干扰**
+   - 关闭不必要的服务
+   - 确保测试期间没有其他负载
+
+4. **系统资源不足**
+   - 检查 CPU、内存、I/O 使用情况
+   - 确保有足够的系统资源
+
+---
+
+### Q5: 如何选择合适的并发数？
+
+**A**: 建议的测试方法：
+
+1. **从低并发开始**
+
+   ```bash
+   for clients in 8 16 32 64 128; do
+       pgbench -c $clients -j $clients -T 300 -r pgbench_test > result_c${clients}.log
+   done
+   ```
+
+2. **观察性能拐点**
+   - TPS 不再增加
+   - 延迟开始显著增加
+   - 错误率开始增加
+
+3. **参考生产环境**
+   - 使用与实际生产环境相近的并发数
+
+---
+
+### Q6: 测试运行很慢，如何加速？
+
+**A**: 优化建议：
+
+1. **减少测试数据规模**
+
+   ```bash
+   # 使用较小的 scale factor
+   pgbench -i -s 10 pgbench_test
+   ```
+
+2. **减少测试时长**
+
+   ```bash
+   # 使用较短的测试时间（不推荐用于正式测试）
+   pgbench -c 32 -j 32 -T 60 pgbench_test
+   ```
+
+3. **优化 PostgreSQL 配置**
+   - 增加 `shared_buffers`
+   - 增加 `work_mem`
+   - 优化检查点参数
+
+4. **使用更快的存储**
+   - 使用 SSD 而不是 HDD
+   - 使用本地存储而不是网络存储
+
+---
+
+## 结果分析
+
+### Q7: 如何理解 pgbench 输出？
+
+**A**: 关键指标说明：
+
+```text
+transaction type: <builtin: TPC-B (sort of)>
+scaling factor: 10
+query mode: simple
+number of clients: 32
+number of threads: 32
+duration: 300 s
+number of transactions actually processed: 123456
+latency average = 77.234 ms
+latency stddev = 12.456 ms
+tps = 411.234 (including connections establishing)
+tps = 412.567 (excluding connections establishing)
+```
+
+- **scaling factor**: 数据规模因子
+- **number of transactions**: 处理的事务总数
+- **latency average**: 平均延迟（毫秒）
+- **latency stddev**: 延迟标准差
+- **tps**: 每秒事务数（TPS）
+
+---
+
+### Q8: 如何分析延迟分布？
+
+**A**: 使用延迟日志分析工具：
+
+```bash
+# 运行测试时记录延迟日志
+pgbench -c 32 -j 32 -T 300 -l pgbench_test
+
+# 分析延迟日志
+cd tools
+./analyze_pgbench_log.sh ../pgbench_log.*
+```
+
+输出包括：
+
+- TP50（中位数延迟）
+- TP95（95% 的请求延迟低于此值）
+- TP99（99% 的请求延迟低于此值）
+- TP99.9（99.9% 的请求延迟低于此值）
+
+---
+
+### Q9: 如何对比两个测试结果？
+
+**A**: 使用对比工具：
+
+```bash
+# 对比两个结果
+cd tools
+./compare_results.sh result1.log result2.log "Before" "After"
+```
+
+工具会显示：
+
+- TPS 差异百分比
+- 延迟差异百分比
+- 彩色输出（绿色表示改进，红色表示退化）
+
+---
+
+## 性能调优
+
+### Q10: 如何优化 PostgreSQL 配置？
+
+**A**: 关键参数调优：
+
+```sql
+-- 内存参数（根据系统内存调整）
+shared_buffers = 256MB              -- 系统内存的 25%
+effective_cache_size = 1GB          -- 系统内存的 75%
+work_mem = 4MB                      -- 根据并发数调整
+
+-- 检查点参数
+checkpoint_completion_target = 0.9
+max_wal_size = 1GB
+
+-- 并发参数
+max_connections = 200
+max_parallel_workers = 8
+```
+
+**注意**: 一次只调整少量参数，验证效果后再继续。
+
+---
+
+### Q11: TPS 很低，如何提升？
+
+**A**: 排查和优化步骤：
+
+1. **检查系统资源**
+
+   ```bash
+   # 检查 CPU 使用率
+   top
+
+   # 检查内存使用
+   free -h
+
+   # 检查 I/O 使用
+   iostat -x 1
+   ```
+
+2. **检查数据库配置**
+
+   ```sql
+   -- 检查关键参数
+   SHOW shared_buffers;
+   SHOW work_mem;
+   SHOW max_connections;
+   ```
+
+3. **检查慢查询**
+
+   ```sql
+   -- 启用 pg_stat_statements
+   CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+   -- 查看慢查询
+   SELECT query, calls, total_time, mean_time
+   FROM pg_stat_statements
+   ORDER BY mean_time DESC
+   LIMIT 10;
+   ```
+
+4. **优化建议**
+   - 增加 `shared_buffers`
+   - 增加 `work_mem`
+   - 创建必要的索引
+   - 优化慢查询
+
+---
+
+### Q12: 延迟很高，如何降低？
+
+**A**: 优化建议：
+
+1. **检查 I/O 性能**
+
+   ```bash
+   # 检查磁盘 I/O
+   iostat -x 1
+   ```
+
+2. **优化索引**
+
+   ```sql
+   -- 检查索引使用情况
+   SELECT schemaname, tablename, indexname, idx_scan
+   FROM pg_stat_user_indexes
+   ORDER BY idx_scan DESC;
+   ```
+
+3. **优化查询**
+   - 使用 EXPLAIN ANALYZE 分析查询计划
+   - 重写慢查询
+   - 添加查询提示
+
+4. **调整参数**
+   - 增加 `shared_buffers`（减少磁盘 I/O）
+   - 增加 `effective_cache_size`（帮助查询优化器）
+   - 调整 `random_page_cost`（SSD 建议 1.1）
+
+---
+
+## 工具使用
+
+### Q13: 如何使用自动化测试套件？
+
+**A**: 使用 run_benchmark_suite 脚本：
+
+**Linux/macOS**:
+
+```bash
+cd tools
+chmod +x run_benchmark_suite.sh
+./run_benchmark_suite.sh pgbench_test
+```
+
+**Windows**:
+
+```powershell
+cd tools
+.\run_benchmark_suite.ps1 -DatabaseName "pgbench_test"
+```
+
+脚本会自动：
+
+- 初始化测试数据
+- 运行多个测试场景
+- 启动系统监控
+- 分析结果
+- 生成摘要报告
+
+---
+
+### Q14: 如何使用 Docker 环境？
+
+**A**: 使用 Docker Compose：
+
+```bash
+# 启动 PostgreSQL
+docker-compose up -d postgres
+
+# 等待数据库就绪
+docker-compose exec postgres pg_isready
+
+# 初始化数据
+docker-compose exec postgres pgbench -i -s 10 -U postgres -d pgbench_test
+
+# 运行测试
+docker-compose exec postgres pgbench -c 32 -j 32 -T 300 -U postgres -d pgbench_test
+```
+
+详见 [docker-compose.README.md](./docker-compose.README.md)
+
+---
+
+### Q15: 如何集成到 CI/CD？
+
+**A**: 使用 GitHub Actions：
+
+1. 将 `.github/workflows/benchmark.yml` 添加到仓库
+2. 在 GitHub Actions 页面手动触发或等待自动运行
+3. 查看测试结果和 artifacts
+
+详见 [.github/workflows/README.md](./.github/workflows/README.md)
+
+---
+
+## 故障排查
+
+### Q16: 测试过程中出现连接错误？
+
+**A**: 可能的原因和解决方法：
+
+1. **连接数不足**
+
+   ```sql
+   -- 检查最大连接数
+   SHOW max_connections;
+
+   -- 增加最大连接数（需要重启）
+   ALTER SYSTEM SET max_connections = 200;
+   ```
+
+2. **连接池问题**
+   - 检查连接池配置
+   - 确保连接池大小足够
+
+3. **网络问题**
+   - 检查网络连接
+   - 检查防火墙设置
+
+---
+
+### Q17: 测试过程中数据库崩溃？
+
+**A**: 排查步骤：
+
+1. **检查日志**
+
+   ```bash
+   # 查看 PostgreSQL 日志
+   tail -f /var/log/postgresql/postgresql-*.log
+   ```
+
+2. **检查系统资源**
+
+   ```bash
+   # 检查内存
+   free -h
+
+   # 检查磁盘空间
+   df -h
+   ```
+
+3. **检查配置**
+
+   ```sql
+   -- 检查关键参数
+   SHOW shared_buffers;
+   SHOW work_mem;
+   ```
+
+4. **常见原因**
+   - 内存不足（OOM）
+   - 磁盘空间不足
+   - 配置参数不合理
+
+---
+
+### Q18: 工具脚本无法执行？
+
+**A**: 解决方法：
+
+**Linux/macOS**:
+
+```bash
+# 赋予执行权限
+chmod +x tools/*.sh
+
+# 检查脚本语法
+bash -n tools/script.sh
+```
+
+**Windows**:
+
+```powershell
+# 检查执行策略
+Get-ExecutionPolicy
+
+# 如果需要，设置执行策略
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+---
+
+## 📚 相关资源
+
+- **快速开始**: [QUICK_START.md](./QUICK_START.md)
+- **最佳实践**: [BEST_PRACTICES.md](./BEST_PRACTICES.md)
+- **工具说明**: [tools/README.md](./tools/README.md)
+- **完整文档**: [README.md](./README.md)
+
+---
+
+**💡 提示**: 如果问题仍未解决，请检查：
+
+1. PostgreSQL 版本是否支持
+2. 系统资源是否充足
+3. 配置参数是否合理
+4. 日志文件中的错误信息
