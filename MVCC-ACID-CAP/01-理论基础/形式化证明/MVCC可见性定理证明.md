@@ -132,6 +132,118 @@ committed(xmin(v))
 
 ---
 
+## 🌳 第五部分：证明树
+
+### 5.1 可见性判定定理证明树
+
+**证明树结构**：
+
+```text
+定理1.1: visible(v, s) ⟺ 条件
+│
+├─ 公理2.4（可见性规则）
+│   │
+│   ├─ 条件1: xmin(v) ∈ s ∨ xmin(v) = ⊥
+│   │   ├─ xmin(v) ∈ s → 版本创建事务在快照中
+│   │   └─ xmin(v) = ⊥ → 版本创建事务未知（初始版本）
+│   │
+│   ├─ 条件2: xmax(v) = ⊥ ∨ xmax(v) ∉ s
+│   │   ├─ xmax(v) = ⊥ → 版本未被删除
+│   │   └─ xmax(v) ∉ s → 删除事务不在快照中
+│   │
+│   └─ 条件3: committed(xmin(v))
+│       └─ xmin(v)已提交 → 版本已提交
+│
+└─ 结论: 定理1.1直接由公理2.4得出
+    └─ □
+```
+
+### 5.2 可见性一致性定理证明树
+
+**证明树结构**：
+
+```text
+定理1.2: visible(v₁, s) ∧ visible(v₂, s) ⟹ v₁ = v₂
+│
+├─ 假设（反证法）
+│   └─ visible(v₁, s) ∧ visible(v₂, s) ∧ v₁ ≠ v₂
+│       │
+│       ├─ v₁和v₂属于同一元组r
+│       │
+│       └─ v₁和v₂在快照s中都可见
+│
+├─ 公理2.5（快照一致性）
+│   └─ visible(v₁, s) ∧ visible(v₂, s) ⟹ v₁ = v₂
+│
+├─ 矛盾
+│   └─ 假设v₁ ≠ v₂与公理2.5矛盾
+│
+└─ 结论: 假设不成立，定理1.2得证
+    └─ □
+```
+
+### 5.3 可见性传递性定理证明树
+
+**证明树结构**：
+
+```text
+定理1.3: visible(v, s) ∧ s ⊆ s' ⟹ visible(v, s')
+│
+├─ 前提
+│   ├─ visible(v, s)
+│   └─ s ⊆ s'
+│
+├─ 定理1.1（可见性判定定理）
+│   └─ visible(v, s) ⟹
+│       ├─ (xmin(v) ∈ s ∨ xmin(v) = ⊥)
+│       ├─ (xmax(v) = ⊥ ∨ xmax(v) ∉ s)
+│       └─ committed(xmin(v))
+│
+├─ 集合包含关系
+│   └─ s ⊆ s' ⟹
+│       ├─ xmin(v) ∈ s → xmin(v) ∈ s'
+│       └─ xmax(v) ∉ s → xmax(v) ∉ s'
+│
+├─ 推导
+│   └─ (xmin(v) ∈ s' ∨ xmin(v) = ⊥) ∧
+│       (xmax(v) = ⊥ ∨ xmax(v) ∉ s') ∧
+│       committed(xmin(v))
+│
+├─ 定理1.1（反向应用）
+│   └─ 条件满足 ⟹ visible(v, s')
+│
+└─ 结论: 定理1.3得证
+    └─ □
+```
+
+### 5.4 综合证明树
+
+**三个定理的依赖关系**：
+
+```text
+MVCC可见性定理体系
+│
+├─ 公理基础
+│   ├─ 公理2.4（可见性规则）
+│   └─ 公理2.5（快照一致性）
+│
+├─ 定理1.1（可见性判定定理）
+│   └─ 直接由公理2.4得出
+│       └─ 提供可见性判定规则
+│
+├─ 定理1.2（可见性一致性定理）
+│   ├─ 依赖：公理2.5
+│   └─ 方法：反证法
+│       └─ 保证快照中同一元组只有一个可见版本
+│
+└─ 定理1.3（可见性传递性定理）
+    ├─ 依赖：定理1.1
+    └─ 方法：直接证明
+        └─ 保证可见性在快照扩展时保持
+```
+
+---
+
 ## 📚 外部资源引用
 
 ### Wikipedia资源
@@ -149,7 +261,8 @@ committed(xmin(v))
 
 1. **MVCC可见性**：
    - Bernstein, P. A., & Goodman, N. (1983). "Multiversion Concurrency Control—Theory and Algorithms"
-   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+   - Adya, A. (1999). "Weak Consistency: A Generalized Theory and Optimistic
+     Implementations for Distributed Transactions"
 
 2. **快照隔离**：
    - Fekete, A., et al. (2005). "Making Snapshot Isolation Serializable"

@@ -165,9 +165,9 @@ python mapping_test.py --connection "dbname=testdb user=postgres" --setup --test
 
 **详细完成报告**：
 
-- [Phase 1完成总结报告](MVCC-ACID-CAP/06-后续规划/Phase1完成总结报告.md)
-- [项目全面完成报告](MVCC-ACID-CAP/06-后续规划/项目全面完成报告.md)
-- [Phase 2最终完成报告](MVCC-ACID-CAP/view/Phase2最终完成报告.md)
+- [Phase 1完成总结报告](MVCC-ACID-CAP/00-项目文件/项目报告/Phase1完成总结报告.md)
+- [项目全面完成报告](MVCC-ACID-CAP/00-项目文件/项目报告/项目全面完成报告.md)
+- [Phase 2最终完成报告](MVCC-ACID-CAP/00-项目文件/项目报告/Phase2最终完成报告.md)
 
 ---
 
@@ -187,5 +187,5 @@ python mapping_test.py --connection "dbname=testdb user=postgres" --setup --test
 ## 📄 项目状态报告
 
 - [项目最终状态报告](MVCC-ACID-CAP/00-项目文件/项目最终状态报告.md) - 完整的项目状态报告
-- [Phase 1执行完成最终报告](MVCC-ACID-CAP/06-后续规划/Phase1执行完成最终报告.md) - Phase 1详细完成报告
-- [Phase 2最终完成报告](MVCC-ACID-CAP/view/Phase2最终完成报告.md) - Phase 2详细完成报告
+- [Phase 1执行完成最终报告](MVCC-ACID-CAP/00-项目文件/项目报告/Phase1执行完成最终报告.md) - Phase 1详细完成报告
+- [Phase 2最终完成报告](MVCC-ACID-CAP/00-项目文件/项目报告/Phase2最终完成报告.md) - Phase 2详细完成报告

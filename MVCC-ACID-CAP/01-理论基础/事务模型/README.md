@@ -36,6 +36,14 @@
    - **内容**: 2PC、XA、Saga、TCC深度对比、实际系统案例、最佳实践
    - **文档编号**: TRANSACTION-DISTRIBUTED-PATTERNS-001
 
+8. ✅ [MVCC与锁机制](MVCC_Lock_Transaction/mvcc_lock00.md) ⭐ 新增
+   - **内容**: MVCC与锁机制对比、并发控制策略、形式化证明
+   - **文档编号**: TRANSACTION-MVCC-LOCK-001
+
+9. ✅ [MVCC与锁机制（补充）](MVCC_Lock_Transaction/mvcc_lock.md) ⭐ 新增
+   - **内容**: MVCC与锁机制深度分析、冲突处理、最佳实践
+   - **文档编号**: TRANSACTION-MVCC-LOCK-002
+
 ---
 
 ## 🎯 核心主题

@@ -162,6 +162,134 @@ structurally_isomorphic(MVCC, ACID)
 
 ---
 
+## 🌳 第五部分：证明树
+
+### 5.1 映射定理证明树
+
+**证明树结构**：
+
+```text
+定理1.1: 存在双射映射φ: MVCC → ACID
+│
+├─ 公理2.5（MVCC到ACID映射）
+│   └─ 存在映射φ: MVCC → ACID
+│       ├─ φ(version) = transaction
+│       ├─ φ(snapshot) = isolation
+│       └─ φ(visibility) = consistency
+│
+├─ 证明映射是双射
+│   │
+│   ├─ 单射性证明
+│   │   ├─ 假设：存在m₁ ≠ m₂，使得φ(m₁) = φ(m₂)
+│   │   ├─ 根据MVCC结构：不同概念对应不同ACID概念
+│   │   ├─ 矛盾：假设不成立
+│   │   └─ 结论：映射是单射的
+│   │
+│   └─ 满射性证明
+│       ├─ 对于任意ACID概念a
+│       ├─ 根据MVCC结构：存在MVCC概念m使得φ(m) = a
+│       └─ 结论：映射是满射的
+│
+└─ 结论: 映射是双射，定理1.1得证
+    └─ □
+```
+
+### 5.2 等价性定理证明树
+
+**证明树结构**：
+
+```text
+定理1.2: ∀o_mvcc ∈ MVCC_operations, ∃o_acid ∈ ACID_operations: equivalent(o_mvcc, o_acid)
+│
+├─ 公理2.9（操作等价性）
+│   └─ MVCC操作和ACID操作等价
+│
+├─ 具体操作对应关系
+│   │
+│   ├─ 版本创建 ↔ 事务开始
+│   │   ├─ MVCC: create_version(r, v)
+│   │   ├─ ACID: begin_transaction(τ)
+│   │   └─ 效果：开始一个新的事务/版本
+│   │
+│   ├─ 版本提交 ↔ 事务提交
+│   │   ├─ MVCC: commit_version(v)
+│   │   ├─ ACID: commit_transaction(τ)
+│   │   └─ 效果：使修改生效
+│   │
+│   └─ 版本回滚 ↔ 事务回滚
+│       ├─ MVCC: rollback_version(v)
+│       ├─ ACID: rollback_transaction(τ)
+│       └─ 效果：撤销修改
+│
+└─ 结论: MVCC操作和ACID操作等价，定理1.2得证
+    └─ □
+```
+
+### 5.3 同构性定理证明树
+
+**证明树结构**：
+
+```text
+定理1.3: structurally_isomorphic(MVCC, ACID)
+│
+├─ 公理2.1（MVCC-ACID结构同构）
+│   └─ MVCC和ACID在结构上同构
+│
+├─ 结构对应关系
+│   │
+│   ├─ 版本 ↔ 事务
+│   │   ├─ MVCC版本对应ACID事务
+│   │   └─ 版本生命周期对应事务生命周期
+│   │
+│   ├─ 快照 ↔ 隔离
+│   │   ├─ MVCC快照对应ACID隔离级别
+│   │   └─ 快照一致性对应隔离性保证
+│   │
+│   ├─ 可见性 ↔ 一致性
+│   │   ├─ MVCC可见性规则对应ACID一致性约束
+│   │   └─ 版本可见性对应数据一致性
+│   │
+│   └─ 版本链 ↔ 事务序列
+│       ├─ MVCC版本链对应ACID事务序列
+│       └─ 版本链顺序对应事务执行顺序
+│
+├─ 结构保持性
+│   └─ 结构对应关系存在且保持
+│
+└─ 结论: MVCC和ACID在结构上同构，定理1.3得证
+    └─ □
+```
+
+### 5.4 综合证明树
+
+**三个定理的依赖关系**：
+
+```text
+MVCC-ACID等价性定理体系
+│
+├─ 公理基础
+│   ├─ 公理2.1（MVCC-ACID结构同构）
+│   ├─ 公理2.5（MVCC到ACID映射）
+│   └─ 公理2.9（操作等价性）
+│
+├─ 定理1.1（映射定理）
+│   ├─ 依赖：公理2.5
+│   └─ 方法：双射证明（单射性+满射性）
+│       └─ 建立MVCC到ACID的双射映射
+│
+├─ 定理1.2（等价性定理）
+│   ├─ 依赖：公理2.9
+│   └─ 方法：操作对应证明
+│       └─ 证明MVCC操作和ACID操作等价
+│
+└─ 定理1.3（同构性定理）
+    ├─ 依赖：公理2.1
+    └─ 方法：结构对应证明
+        └─ 证明MVCC和ACID在结构上同构
+```
+
+---
+
 ## 📚 外部资源引用
 
 ### Wikipedia资源
@@ -189,10 +317,10 @@ structurally_isomorphic(MVCC, ACID)
 1. **ACID理论**：
    - Gray, J., & Reuter, A. (1993). "Transaction Processing: Concepts and Techniques"
    - Weikum, G., & Vossen, G. (2001).
-   "Transactional Information Systems: Theory, Algorithms,
-   and the Practice of Concurrency Control and Recovery"
+     "Transactional Information Systems: Theory, Algorithms,
+     and the Practice of Concurrency Control and Recovery"
 
-2. **同构性理论**：
+1. **同构性理论**：
    - Category Theory in Computer Science
    - Universal Algebra
 
