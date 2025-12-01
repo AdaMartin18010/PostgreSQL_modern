@@ -9,6 +9,7 @@
 - [PostgreSQL VACUUM 与维护](#postgresql-vacuum-与维护)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+    - [1.0 VACUUM 工作原理概述](#10-vacuum-工作原理概述)
     - [1.1 技术背景](#11-技术背景)
     - [1.2 核心价值](#12-核心价值)
     - [1.3 学习目标](#13-学习目标)
@@ -31,11 +32,87 @@
       - [Q2: VACUUM和VACUUM FULL有什么区别？](#q2-vacuum和vacuum-full有什么区别)
     - [6.2 自动VACUUM常见问题](#62-自动vacuum常见问题)
       - [Q3: 如何优化自动VACUUM性能？](#q3-如何优化自动vacuum性能)
-  - [7. 参考资料](#7-参考资料)
+  - [7. 最佳实践](#7-最佳实践)
+    - [7.1 推荐做法](#71-推荐做法)
+      - [✅ VACUUM 策略建议](#-vacuum-策略建议)
+    - [7.2 避免做法](#72-避免做法)
+      - [❌ VACUUM 反模式](#-vacuum-反模式)
+    - [7.3 性能建议](#73-性能建议)
+  - [8. 参考资料](#8-参考资料)
+    - [8.1 官方文档](#81-官方文档)
+    - [8.2 技术论文](#82-技术论文)
+    - [8.3 技术博客](#83-技术博客)
+    - [8.4 社区资源](#84-社区资源)
+    - [8.5 相关文档](#85-相关文档)
 
 ---
 
 ## 1. 概述
+
+### 1.0 VACUUM 工作原理概述
+
+**VACUUM 工作原理**：
+
+PostgreSQL 使用 MVCC（多版本并发控制）机制，当数据被更新或删除时，旧版本不会立即删除，而是标记为"死元组"。VACUUM 的作用是清理这些死元组，回收空间并更新统计信息。
+
+**VACUUM 执行流程**：
+
+```mermaid
+flowchart TD
+    A[开始VACUUM] --> B[扫描表页面]
+    B --> C[识别死元组]
+    C --> D{死元组数量}
+    D -->|少| E[标记空间可重用]
+    D -->|多| F[清理死元组]
+    E --> G[更新可见性映射]
+    F --> G
+    G --> H{是否ANALYZE?}
+    H -->|是| I[更新统计信息]
+    H -->|否| J[完成VACUUM]
+    I --> J
+
+    style A fill:#FFD700
+    style F fill:#90EE90
+    style J fill:#87CEEB
+```
+
+**VACUUM FULL 执行流程**：
+
+```mermaid
+flowchart TD
+    A[开始VACUUM FULL] --> B[获取排他锁]
+    B --> C[创建新表文件]
+    C --> D[复制活元组到新文件]
+    D --> E[重建索引]
+    E --> F[替换旧表文件]
+    F --> G[释放锁]
+    G --> H[完成VACUUM FULL]
+
+    style A fill:#FFD700
+    style B fill:#FF6B6B
+    style H fill:#87CEEB
+```
+
+**自动 VACUUM 触发流程**：
+
+```mermaid
+flowchart TD
+    A[自动VACUUM守护进程] --> B[检查表统计信息]
+    B --> C{死元组数量}
+    C -->|超过阈值| D[计算VACUUM成本]
+    C -->|未超过| E[等待下次检查]
+    D --> F{成本可接受?}
+    F -->|是| G[执行VACUUM]
+    F -->|否| H[延迟执行]
+    G --> I[更新统计信息]
+    H --> E
+    I --> E
+    E --> B
+
+    style A fill:#FFD700
+    style G fill:#90EE90
+    style I fill:#87CEEB
+```
 
 ### 1.1 技术背景
 
@@ -467,11 +544,153 @@ ALTER TABLE high_churn_table SET (
 - 优化配置：VACUUM执行时间 **5分钟**，对查询影响小
 - **性能提升：50%**
 
-## 7. 参考资料
+## 7. 最佳实践
 
-- [统计信息管理](./统计信息管理.md)
-- [性能调优深入](./性能调优深入.md)
-- [PostgreSQL 官方文档 - VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html)
+### 7.1 推荐做法
+
+#### ✅ VACUUM 策略建议
+
+1. **依赖自动 VACUUM**：
+
+   ```sql
+   -- ✅ 好：配置合理的自动VACUUM参数
+   -- postgresql.conf:
+   autovacuum = on
+   autovacuum_vacuum_threshold = 50
+   autovacuum_vacuum_scale_factor = 0.2
+   autovacuum_analyze_threshold = 50
+   autovacuum_analyze_scale_factor = 0.1
+   ```
+
+2. **定期手动 VACUUM**：
+
+   ```sql
+   -- ✅ 好：对高更新频率的表定期手动VACUUM
+   VACUUM ANALYZE orders;
+   VACUUM ANALYZE users;
+   ```
+
+3. **监控表膨胀**：
+
+   ```sql
+   -- ✅ 好：定期监控表膨胀情况
+   SELECT
+       schemaname,
+       tablename,
+       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
+       n_dead_tup,
+       n_live_tup,
+       round(n_dead_tup * 100.0 / NULLIF(n_live_tup + n_dead_tup, 0), 2) AS dead_pct
+   FROM pg_stat_user_tables
+   WHERE n_dead_tup > 0
+   ORDER BY n_dead_tup DESC;
+   ```
+
+### 7.2 避免做法
+
+#### ❌ VACUUM 反模式
+
+1. **频繁使用 VACUUM FULL**：
+
+   ```sql
+   -- ❌ 不好：频繁使用VACUUM FULL，锁表时间长
+   VACUUM FULL orders;  -- 会锁表，影响业务
+
+   -- ✅ 好：优先使用普通VACUUM
+   VACUUM ANALYZE orders;  -- 不锁表，适合生产环境
+   ```
+
+2. **禁用自动 VACUUM**：
+
+   ```sql
+   -- ❌ 不好：禁用自动VACUUM
+   -- autovacuum = off  -- 会导致表膨胀
+
+   -- ✅ 好：启用并配置自动VACUUM
+   autovacuum = on
+   ```
+
+3. **忽略表膨胀监控**：
+
+   ```sql
+   -- ❌ 不好：不监控表膨胀，导致性能问题
+   -- 表膨胀会导致查询性能下降
+
+   -- ✅ 好：定期监控表膨胀
+   -- 使用pg_stat_user_tables监控死元组数量
+   ```
+
+### 7.3 性能建议
+
+1. **VACUUM 性能优化**：
+   - 配置合理的自动VACUUM参数，平衡维护频率和性能影响
+   - 对高更新频率的表定期手动VACUUM
+   - 使用并行VACUUM（PostgreSQL 13+）提升大表VACUUM性能
+
+2. **表膨胀预防**：
+   - 定期监控表膨胀情况，及时发现和处理
+   - 配置合理的自动VACUUM阈值，及时清理死元组
+   - 对于历史数据，考虑使用分区表便于归档和清理
+
+3. **维护策略**：
+   - 在低峰期执行VACUUM FULL（如需要）
+   - 使用VACUUM VERBOSE监控VACUUM执行情况
+   - 定期检查pg_stat_progress_vacuum监控VACUUM进度
+
+## 8. 参考资料
+
+### 8.1 官方文档
+
+- **[PostgreSQL 官方文档 - VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html)**
+  - VACUUM 语法和选项说明
+
+- **[PostgreSQL 官方文档 - 自动 VACUUM](https://www.postgresql.org/docs/current/runtime-config-autovacuum.html)**
+  - 自动 VACUUM 配置参数说明
+
+- **[PostgreSQL 官方文档 - VACUUM 和 ANALYZE](https://www.postgresql.org/docs/current/maintenance.html#VACUUM)**
+  - VACUUM 和 ANALYZE 维护操作说明
+
+- **[PostgreSQL 官方文档 - 并行 VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html#VACUUM-PARALLEL)**
+  - 并行 VACUUM 语法和选项说明（PostgreSQL 13+）
+
+### 8.2 技术论文
+
+- **[ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging](https://www.cs.berkeley.edu/~brewer/cs262/Aries.pdf)**
+  - ARIES 恢复算法，为 MVCC 和 VACUUM 提供理论基础
+
+- **[PostgreSQL MVCC and VACUUM](https://www.postgresql.org/docs/current/mvcc.html)**
+  - PostgreSQL MVCC 机制和 VACUUM 原理
+
+### 8.3 技术博客
+
+- **[PostgreSQL VACUUM: Best Practices](https://www.postgresql.org/docs/current/maintenance.html#VACUUM)**
+  - PostgreSQL 官方博客：VACUUM 最佳实践
+
+- **[Understanding PostgreSQL VACUUM](https://www.enterprisedb.com/postgres-tutorials/understanding-postgresql-vacuum)**
+  - EnterpriseDB 博客：理解 PostgreSQL VACUUM
+
+- **[PostgreSQL VACUUM Performance Tips](https://www.citusdata.com/blog/2017/10/25/vacuum-performance-in-postgresql/)**
+  - Citus Data 博客：VACUUM 性能优化技巧
+
+- **[2ndQuadrant - PostgreSQL VACUUM Optimization](https://www.2ndquadrant.com/en/blog/postgresql-vacuum-optimization/)**
+  - 2ndQuadrant 博客：VACUUM 优化实战
+
+### 8.4 社区资源
+
+- **[PostgreSQL Wiki - VACUUM](https://wiki.postgresql.org/wiki/VACUUM)**
+  - PostgreSQL Wiki：VACUUM 相关讨论和示例
+
+- **[Stack Overflow - PostgreSQL VACUUM](https://stackoverflow.com/questions/tagged/postgresql+vacuum)**
+  - Stack Overflow：PostgreSQL VACUUM 相关问答
+
+- **[PostgreSQL Mailing Lists](https://www.postgresql.org/list/)**
+  - PostgreSQL 邮件列表：VACUUM 相关讨论
+
+### 8.5 相关文档
+
+- [统计信息管理](../13-运维管理/统计信息管理.md)
+- [性能调优深入](../11-性能调优/性能调优深入.md)
+- [存储管理体系详解](./存储管理体系详解.md)
 
 ---
 
