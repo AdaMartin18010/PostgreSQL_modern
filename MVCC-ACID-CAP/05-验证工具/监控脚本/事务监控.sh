@@ -25,9 +25,9 @@ echo "=================================="
 # 监控活跃事务
 monitor_active_transactions() {
     echo -e "${YELLOW}活跃事务监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     pid,
     usename,
     datname,
@@ -36,7 +36,7 @@ SELECT
     query_start,
     now() - query_start as duration,
     now() - state_change as state_duration,
-    CASE 
+    CASE
         WHEN now() - query_start > interval '${CRITICAL_THRESHOLD} seconds' THEN 'CRITICAL'
         WHEN now() - query_start > interval '${WARNING_THRESHOLD} seconds' THEN 'WARNING'
         ELSE 'OK'
@@ -52,9 +52,9 @@ EOF
 # 监控长事务
 monitor_long_transactions() {
     echo -e "${YELLOW}长事务监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     pid,
     usename,
     datname,
@@ -64,7 +64,7 @@ SELECT
     now() - xact_start as transaction_duration,
     query_start,
     now() - query_start as query_duration,
-    CASE 
+    CASE
         WHEN now() - xact_start > interval '${CRITICAL_THRESHOLD} seconds' THEN 'CRITICAL'
         WHEN now() - xact_start > interval '${WARNING_THRESHOLD} seconds' THEN 'WARNING'
         ELSE 'OK'
@@ -80,9 +80,9 @@ EOF
 # 监控阻塞事务
 monitor_blocked_transactions() {
     echo -e "${YELLOW}阻塞事务监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -95,7 +95,7 @@ SELECT
     now() - blocking_activity.query_start AS blocking_duration
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
     AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -116,9 +116,9 @@ EOF
 # 监控事务统计
 monitor_transaction_stats() {
     echo -e "${YELLOW}事务统计监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     datname,
     xact_commit as committed_transactions,
     xact_rollback as rolled_back_transactions,
@@ -138,9 +138,9 @@ EOF
 # 监控MVCC相关统计
 monitor_mvcc_stats() {
     echo -e "${YELLOW}MVCC统计监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     schemaname,
     relname,
     n_tup_ins as inserts,
@@ -164,12 +164,12 @@ EOF
 # 监控XID年龄
 monitor_xid_age() {
     echo -e "${YELLOW}XID年龄监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     datname,
     age(datfrozenxid) as xid_age,
-    CASE 
+    CASE
         WHEN age(datfrozenxid) > 2000000000 THEN 'CRITICAL'
         WHEN age(datfrozenxid) > 1000000000 THEN 'WARNING'
         ELSE 'OK'
@@ -177,11 +177,11 @@ SELECT
 FROM pg_database
 WHERE datname = current_database();
 
-SELECT 
+SELECT
     schemaname,
     relname,
     age(relfrozenxid) as xid_age,
-    CASE 
+    CASE
         WHEN age(relfrozenxid) > 2000000000 THEN 'CRITICAL'
         WHEN age(relfrozenxid) > 1000000000 THEN 'WARNING'
         ELSE 'OK'
@@ -198,22 +198,22 @@ EOF
 main() {
     monitor_active_transactions
     echo ""
-    
+
     monitor_long_transactions
     echo ""
-    
+
     monitor_blocked_transactions
     echo ""
-    
+
     monitor_transaction_stats
     echo ""
-    
+
     monitor_mvcc_stats
     echo ""
-    
+
     monitor_xid_age
     echo ""
-    
+
     echo -e "${GREEN}事务监控完成！${NC}"
 }
 

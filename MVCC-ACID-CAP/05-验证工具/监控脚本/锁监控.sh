@@ -23,9 +23,9 @@ echo "=================================="
 # 监控所有锁
 monitor_all_locks() {
     echo -e "${YELLOW}所有锁监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     locktype,
     database,
     relation::regclass,
@@ -48,9 +48,9 @@ EOF
 # 监控锁等待
 monitor_lock_waits() {
     echo -e "${YELLOW}锁等待监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -64,7 +64,7 @@ SELECT
     now() - blocked_activity.query_start AS wait_duration
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
     AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -85,9 +85,9 @@ EOF
 # 监控表级锁
 monitor_table_locks() {
     echo -e "${YELLOW}表级锁监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     l.locktype,
     l.relation::regclass AS table_name,
     l.mode,
@@ -106,9 +106,9 @@ EOF
 # 监控行级锁
 monitor_row_locks() {
     echo -e "${YELLOW}行级锁监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     l.locktype,
     l.relation::regclass AS table_name,
     l.page,
@@ -128,9 +128,9 @@ EOF
 # 监控事务锁
 monitor_transaction_locks() {
     echo -e "${YELLOW}事务锁监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     l.locktype,
     l.transactionid,
     l.mode,
@@ -148,9 +148,9 @@ EOF
 # 监控死锁统计
 monitor_deadlock_stats() {
     echo -e "${YELLOW}死锁统计监控...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     datname,
     deadlocks,
     round(deadlocks * 100.0 / NULLIF(xact_commit + xact_rollback, 0), 4) as deadlock_ratio
@@ -162,9 +162,9 @@ EOF
 # 监控锁模式统计
 monitor_lock_mode_stats() {
     echo -e "${YELLOW}锁模式统计...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     mode,
     locktype,
     COUNT(*) as lock_count,
@@ -180,25 +180,25 @@ EOF
 main() {
     monitor_all_locks
     echo ""
-    
+
     monitor_lock_waits
     echo ""
-    
+
     monitor_table_locks
     echo ""
-    
+
     monitor_row_locks
     echo ""
-    
+
     monitor_transaction_locks
     echo ""
-    
+
     monitor_deadlock_stats
     echo ""
-    
+
     monitor_lock_mode_stats
     echo ""
-    
+
     echo -e "${GREEN}锁监控完成！${NC}"
 }
 

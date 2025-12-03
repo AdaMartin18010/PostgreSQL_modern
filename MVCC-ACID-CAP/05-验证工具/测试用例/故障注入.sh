@@ -23,10 +23,10 @@ echo "=================================="
 # XID回卷模拟
 simulate_xid_wraparound() {
     echo -e "${YELLOW}模拟XID回卷...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
 -- 检查当前XID年龄
-SELECT 
+SELECT
     datname,
     age(datfrozenxid) as xid_age,
     pg_size_pretty(pg_database_size(datname)) as db_size
@@ -34,7 +34,7 @@ FROM pg_database
 WHERE datname = current_database();
 
 -- 检查表XID年龄
-SELECT 
+SELECT
     schemaname,
     relname,
     age(relfrozenxid) as xid_age,
@@ -47,8 +47,8 @@ LIMIT 10;
 
 -- 模拟接近XID回卷（警告阈值：2^31 - 1000000）
 -- 注意：实际环境中不要手动修改XID，这里仅用于演示
-SELECT 
-    CASE 
+SELECT
+    CASE
         WHEN age(datfrozenxid) > 2000000000 THEN 'CRITICAL: XID回卷风险'
         WHEN age(datfrozenxid) > 1000000000 THEN 'WARNING: XID年龄过高'
         ELSE 'OK: XID年龄正常'
@@ -56,14 +56,14 @@ SELECT
 FROM pg_database
 WHERE datname = current_database();
 EOF
-    
+
     echo -e "${GREEN}XID回卷模拟完成${NC}"
 }
 
 # 表膨胀模拟
 simulate_table_bloat() {
     echo -e "${YELLOW}模拟表膨胀...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
 -- 创建测试表
 CREATE TABLE IF NOT EXISTS bloat_test (
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS bloat_test (
 
 -- 插入初始数据
 TRUNCATE TABLE bloat_test;
-INSERT INTO bloat_test (value, data) 
+INSERT INTO bloat_test (value, data)
 SELECT generate_series(1, 10000), repeat('x', 100);
 
 -- 执行多次更新（产生版本链）
@@ -89,7 +89,7 @@ END;
 \$\$;
 
 -- 检查表膨胀
-SELECT 
+SELECT
     schemaname,
     relname,
     n_live_tup,
@@ -103,7 +103,7 @@ WHERE relname = 'bloat_test';
 VACUUM ANALYZE bloat_test;
 
 -- 再次检查
-SELECT 
+SELECT
     schemaname,
     relname,
     n_live_tup,
@@ -113,14 +113,14 @@ SELECT
 FROM pg_stat_user_tables
 WHERE relname = 'bloat_test';
 EOF
-    
+
     echo -e "${GREEN}表膨胀模拟完成${NC}"
 }
 
 # 死锁模拟
 simulate_deadlock() {
     echo -e "${YELLOW}模拟死锁...${NC}"
-    
+
     # 创建测试表
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
 CREATE TABLE IF NOT EXISTS deadlock_test (
@@ -131,36 +131,36 @@ CREATE TABLE IF NOT EXISTS deadlock_test (
 TRUNCATE TABLE deadlock_test;
 INSERT INTO deadlock_test (id, value) VALUES (1, 100), (2, 200);
 EOF
-    
+
     # 会话1：锁定id=1，然后尝试锁定id=2
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF &
 SESSION1_PID=\$!
 EOF
-    
+
     # 会话2：锁定id=2，然后尝试锁定id=1（死锁）
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF &
 SESSION2_PID=\$!
 EOF
-    
+
     echo -e "${YELLOW}死锁检测中...${NC}"
     sleep 5
-    
+
     # 检查死锁统计
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
-SELECT 
+SELECT
     datname,
     deadlocks
 FROM pg_stat_database
 WHERE datname = current_database();
 EOF
-    
+
     echo -e "${GREEN}死锁模拟完成${NC}"
 }
 
 # 长事务模拟
 simulate_long_transaction() {
     echo -e "${YELLOW}模拟长事务...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
 -- 创建测试表
 CREATE TABLE IF NOT EXISTS long_trans_test (
@@ -180,7 +180,7 @@ SELECT * FROM long_trans_test;
 -- 然后检查长事务的影响
 
 -- 检查长事务
-SELECT 
+SELECT
     pid,
     usename,
     datname,
@@ -193,14 +193,14 @@ WHERE state = 'active'
   AND query NOT LIKE '%pg_stat_activity%'
 ORDER BY query_start;
 EOF
-    
+
     echo -e "${GREEN}长事务模拟完成${NC}"
 }
 
 # 锁等待模拟
 simulate_lock_wait() {
     echo -e "${YELLOW}模拟锁等待...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
 -- 创建测试表
 CREATE TABLE IF NOT EXISTS lock_wait_test (
@@ -212,7 +212,7 @@ TRUNCATE TABLE lock_wait_test;
 INSERT INTO lock_wait_test (id, value) VALUES (1, 100);
 
 -- 检查锁等待
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -221,7 +221,7 @@ SELECT
     blocking_activity.query AS blocking_statement
 FROM pg_catalog.pg_locks blocked_locks
 JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
     AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -236,14 +236,14 @@ JOIN pg_catalog.pg_locks blocking_locks
 JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_activity.pid = blocking_locks.pid
 WHERE NOT blocked_locks.granted;
 EOF
-    
+
     echo -e "${GREEN}锁等待模拟完成${NC}"
 }
 
 # 版本链过长模拟
 simulate_long_version_chain() {
     echo -e "${YELLOW}模拟版本链过长...${NC}"
-    
+
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<EOF
 -- 创建测试表
 CREATE TABLE IF NOT EXISTS version_chain_test (
@@ -266,7 +266,7 @@ END;
 \$\$;
 
 -- 检查版本链
-SELECT 
+SELECT
     schemaname,
     relname,
     n_live_tup,
@@ -276,7 +276,7 @@ FROM pg_stat_user_tables
 WHERE relname = 'version_chain_test';
 
 -- 检查索引膨胀
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexname,
@@ -284,7 +284,7 @@ SELECT
 FROM pg_stat_user_indexes
 WHERE tablename = 'version_chain_test';
 EOF
-    
+
     echo -e "${GREEN}版本链过长模拟完成${NC}"
 }
 
@@ -293,22 +293,22 @@ main() {
     echo ""
     simulate_xid_wraparound
     echo ""
-    
+
     simulate_table_bloat
     echo ""
-    
+
     simulate_deadlock
     echo ""
-    
+
     simulate_long_transaction
     echo ""
-    
+
     simulate_lock_wait
     echo ""
-    
+
     simulate_long_version_chain
     echo ""
-    
+
     echo -e "${GREEN}所有故障注入测试完成！${NC}"
 }
 
