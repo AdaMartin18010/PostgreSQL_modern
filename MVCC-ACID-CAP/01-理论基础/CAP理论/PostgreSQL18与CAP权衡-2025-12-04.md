@@ -108,7 +108,7 @@ PostgreSQL 18:
 
 **CAP权衡分析**:
 
-```
+```text
 PostgreSQL 18策略:
 - 维持C（一致性不变）
 - 大幅提升A（连接池）
@@ -121,7 +121,7 @@ PostgreSQL 18策略:
 
 #### 异步I/O → 提升A
 
-```
+```text
 I/O阻塞对可用性的影响:
 
 PostgreSQL 17（同步I/O）:
@@ -143,7 +143,7 @@ PostgreSQL 18（异步I/O）:
 
 ### 2.3 分区容错（P）改进
 
-**场景：主从复制（伪分布式）**
+**场景：主从复制（伪分布式）**:
 
 #### 压缩复制 → 提升P
 
@@ -170,7 +170,7 @@ wal_compression = lz4
 
 **在保持C的前提下优化P**:
 
-```
+```text
 场景: 同步复制（强一致性）
 
 PostgreSQL 17:
@@ -192,7 +192,7 @@ PostgreSQL 18:
 
 **在单机环境下优化C和A**:
 
-```
+```text
 PostgreSQL 18核心策略:
 1. 内置连接池 → A↑（+899%可用性）
 2. 异步I/O → A↑（响应稳定性）
@@ -211,7 +211,7 @@ PostgreSQL 18核心策略:
 
 ### 决策树
 
-```
+```text
 场景需求?
     │
     ├─ 强一致性？
@@ -342,7 +342,7 @@ execute_values(cur, """
 
 **PostgreSQL 18**: 动态优化
 
-```
+```text
 场景1（正常）: 优化A
   - 内置连接池全开
   - 异步I/O
@@ -366,7 +366,7 @@ execute_values(cur, """
 
 **PostgreSQL 18**: 协同提升
 
-```
+```text
 内置连接池:
   - 提升A（可用性）
   - 不损害C（一致性）
@@ -391,7 +391,7 @@ execute_values(cur, """
 
 ### 量化模型
 
-```
+```text
 设:
 - C_score: 一致性得分（0-100）
 - A_score: 可用性得分（0-100）
@@ -484,7 +484,7 @@ enable_async_io = on  # 减少I/O等待
 
 ### 定量权衡模型
 
-```
+```text
 Utility = w_C × C_score + w_A × A_score + w_P × P_score - Cost
 
 约束:
@@ -526,7 +526,7 @@ Utility_PG18 = 1.3 × Utility_PG17
 
 ### CAP权衡创新
 
-```
+```text
 传统CAP: 三选二（互斥）
 PostgreSQL 18: 三者协同（协同提升）
 
@@ -549,7 +549,7 @@ PostgreSQL 18: 三者协同（协同提升）
 
 ### CAP权衡函数（PostgreSQL 18）
 
-```
+```text
 设系统状态为s = (c, a, p)
 其中: c, a, p ∈ [0, 1]
 

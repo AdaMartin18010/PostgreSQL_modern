@@ -37,7 +37,7 @@ void CommitTransaction_sync() {
 
 **性能瓶颈**:
 
-```
+```text
 10000 TPS场景:
 - 每秒10000次fsync
 - 每次fsync: 8ms
@@ -90,7 +90,7 @@ void group_leader_commit(GroupCommit *group) {
 
 **性能提升**:
 
-```
+```text
 平均组大小G=15:
 
 PostgreSQL 17:
@@ -114,7 +114,7 @@ PostgreSQL 18:
 
 ### 关键问题：组内某个事务失败怎么办？
 
-**答案：独立原子性**
+**答案：独立原子性**:
 
 ```c
 void CommitTransaction_group() {
@@ -142,7 +142,7 @@ void CommitTransaction_group() {
 
 **形式化证明**:
 
-```
+```text
 ∀ T ∈ Group:
     WAL(T)完整 ∧ fsync成功 ⇒ T恢复（原子成功）
     WAL(T)不完整 ∨ fsync失败 ⇒ T回滚（原子失败）
@@ -158,7 +158,7 @@ void CommitTransaction_group() {
 
 ### 组提交的一致性点
 
-```
+```text
 传统（PostgreSQL 17）:
 T1提交 → 一致性点1
 T2提交 → 一致性点2
@@ -223,7 +223,7 @@ join_commit_group();  // 加入同一组
 
 **隔离级别支持**:
 
-```
+```text
 组提交支持所有隔离级别:
 - READ UNCOMMITTED
 - READ COMMITTED
@@ -264,7 +264,7 @@ transaction_id_batch_set_committed(xids, 15, commit_ts);
 
 ### 一致性强化
 
-```
+```text
 组提交 → 批量一致性点
 
 场景: 银行转账

@@ -47,7 +47,7 @@
 
 ### 互补关系
 
-```
+```text
 MVCC-ACID-CAP              DataBaseTheory
 理论基础                  ←→  实战应用
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -152,7 +152,7 @@ CAP理论与权衡             ←→  CAP应用场景
 
 ### 初学者
 
-```
+```text
 Week 1-4: MVCC-ACID-CAP基础理论
   → MVCC-ACID-CAP项目/01-理论基础/
 
@@ -165,7 +165,7 @@ Week 9-12: 简单案例实践
 
 ### 进阶者
 
-```
+```text
 Month 4-6: 深入理论
   → MVCC-ACID-CAP项目/形式化证明
 
@@ -182,7 +182,7 @@ Month 10-12: 性能优化
 
 ### 1. 理论到实践的完整路径
 
-```
+```text
 理论 (MVCC-ACID-CAP)
   ↓ 形式化定义
   ↓ 定理证明
@@ -237,7 +237,7 @@ Month 10-12: 性能优化
 
 ### 从MVCC-ACID-CAP到DataBaseTheory
 
-```
+```text
 想学理论 → MVCC-ACID-CAP项目
 想看实现 → DataBaseTheory项目/PostgreSQL 18特性
 想动手做 → DataBaseTheory项目/场景案例库
@@ -247,7 +247,7 @@ Month 10-12: 性能优化
 
 ### 从DataBaseTheory到MVCC-ACID-CAP
 
-```
+```text
 想深入理论 → MVCC-ACID-CAP项目/理论基础
 想看证明 → MVCC-ACID-CAP项目/形式化证明
 想理解CAP → MVCC-ACID-CAP项目/CAP理论
@@ -260,7 +260,7 @@ Month 10-12: 性能优化
 
 ### 覆盖完整性
 
-```
+```text
 理论覆盖: 100% ✅
   - MVCC公理系统 ✅
   - ACID形式化证明 ✅

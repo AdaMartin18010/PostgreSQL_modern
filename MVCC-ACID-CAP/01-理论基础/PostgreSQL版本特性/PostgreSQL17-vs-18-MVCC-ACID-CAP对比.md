@@ -18,7 +18,7 @@
 
 **形式化差异**:
 
-```
+```text
 PG 17: ∀v, Visible(v, T) = SyncCheck(v, T)
 PG 18: ∀v, Visible(v, T) = AsyncCheck(v, T) = SyncCheck(v, T)
 
@@ -54,7 +54,7 @@ PG 18: ∀v, Visible(v, T) = AsyncCheck(v, T) = SyncCheck(v, T)
 
 **形式化分析**:
 
-```
+```text
 SkipScan效率:
 - PG 17: 需要遍历n个索引项，检查m个版本
   Cost = n × C_index + m × C_mvcc
@@ -255,7 +255,7 @@ SkipScan效率:
 
 ### ROI分析
 
-```
+```text
 升级成本: 2-5人天
 性能收益:
   - OLTP: +30-50%
@@ -277,7 +277,7 @@ ROI: 10-50倍
 
 ### MVCC视角
 
-```
+```text
 PostgreSQL 18 = PostgreSQL 17 MVCC理论 + 工程优化
 
 理论: 100%兼容
@@ -286,7 +286,7 @@ PostgreSQL 18 = PostgreSQL 17 MVCC理论 + 工程优化
 
 ### ACID视角
 
-```
+```text
 PostgreSQL 18 = 完整ACID保证 + 效率优化
 
 语义: 100%保持
@@ -295,7 +295,7 @@ PostgreSQL 18 = 完整ACID保证 + 效率优化
 
 ### CAP视角
 
-```
+```text
 PostgreSQL 18 = CP系统 + C和A协同提升
 
 C: +3%（一致性增强）
@@ -307,7 +307,7 @@ P: +25%（分区容错改善）
 
 ## 八、升级决策树
 
-```
+```text
 是否高并发场景(>1000 QPS)？
     ├─ 是 → 内置连接池收益大 → 强烈推荐升级
     └─ 否 ↓

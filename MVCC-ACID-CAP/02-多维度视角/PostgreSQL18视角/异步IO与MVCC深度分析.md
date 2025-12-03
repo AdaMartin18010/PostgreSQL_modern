@@ -34,7 +34,7 @@ HeapTuple read_tuple_sync(ItemPointer tid) {
 
 **性能瓶颈**:
 
-```
+```text
 扫描100个版本:
 - 磁盘I/O: 5ms/版本
 - MVCC检查: 0.05ms/版本
@@ -86,7 +86,7 @@ void async_read_tuples(AsyncIORequest requests[], int n) {
 
 **性能优化**:
 
-```
+```text
 扫描100个版本:
 阶段1（提交请求）: 0.1ms
 阶段2（批量等待）: 6ms（批量I/O，不是100×5ms）
@@ -106,7 +106,7 @@ void async_read_tuples(AsyncIORequest requests[], int n) {
 
 **PostgreSQL MVCC可见性规则**:
 
-```
+```text
 Visible(tuple, snapshot) ⟺
     (tuple.xmin < snapshot.xmin ∨ tuple.xmin = snapshot.xid) ∧
     (tuple.xmin ∉ snapshot.xip_list) ∧
@@ -158,7 +158,7 @@ COMMIT;
 
 ### 原子性
 
-```
+```text
 异步读取是原子的:
 - 要么所有I/O请求都完成
 - 要么遇到错误全部取消
@@ -173,7 +173,7 @@ if (!io_wait_completion()) {
 
 ### 隔离性
 
-```
+```text
 异步I/O不影响隔离:
 - 每个事务使用自己的snapshot
 - Snapshot在事务开始时获取
@@ -183,7 +183,7 @@ if (!io_wait_completion()) {
 
 ### 持久性
 
-```
+```text
 异步I/O只读取已提交数据:
 - 读取的tuple已fsync到磁盘
 - 异步读取不改变持久性
@@ -196,7 +196,7 @@ if (!io_wait_completion()) {
 
 ### 可用性提升
 
-```
+```text
 响应时间稳定性:
 
 PostgreSQL 17（同步I/O）:
@@ -299,7 +299,7 @@ HeapTuple find_visible_version_async(ItemPointer head_tid, Snapshot snap) {
 
 **PostgreSQL 17（同步I/O）**:
 
-```
+```text
 10000个查询并发:
 - 每个查询：顺序同步I/O
 - I/O队列：严重拥堵
@@ -313,7 +313,7 @@ HeapTuple find_visible_version_async(ItemPointer head_tid, Snapshot snap) {
 
 **PostgreSQL 18（异步I/O）**:
 
-```
+```text
 10000个查询并发:
 - 批量异步I/O请求
 - I/O队列：批量优化
@@ -469,7 +469,7 @@ HeapTuple aio_complete_and_check_mvcc(AsyncIORequest *req) {
 
 ### 延迟模型
 
-```
+```text
 Latency_sync = n × (T_io + T_check)
 Latency_async = T_submit + T_io_batch + n/P × T_check
 
@@ -519,7 +519,7 @@ SELECT * FROM test_versions WHERE id = ANY($1::int[]);
 
 **结果**:
 
-```
+```text
 PostgreSQL 17: 450ms
 PostgreSQL 18: 28ms
 提升: -94%
