@@ -102,4 +102,3 @@ SELECT cron.schedule('manage-partitions', '0 1 * * *',
     'SELECT manage_sensor_partitions()');
 
 ANALYZE sensor_data;
-

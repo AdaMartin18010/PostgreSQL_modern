@@ -147,4 +147,3 @@ $$ LANGUAGE plpgsql;
 
 SELECT cron.schedule('refresh-1min-agg', '* * * * *',
     'SELECT refresh_1min_aggregate()');
-
