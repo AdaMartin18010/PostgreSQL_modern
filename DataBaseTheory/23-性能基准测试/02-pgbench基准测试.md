@@ -49,6 +49,7 @@ pgbench -c 100 -j 10 -T 300 testdb
 | **最大延迟** | 125ms | 45ms | **-64%** |
 
 **⭐ 关键因素**:
+
 - 内置连接池：连接开销-97%
 - 异步I/O：写入延迟-30%
 - 事务提交优化：TPS+30%
@@ -128,7 +129,7 @@ BEGIN;
 -- 扣减库存
 UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid;
 -- 记录订单
-INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) 
+INSERT INTO pgbench_history (tid, bid, aid, delta, mtime)
 VALUES (:aid, :bid, :aid, :delta, CURRENT_TIMESTAMP);
 -- 更新统计
 UPDATE pgbench_tellers SET tbalance = tbalance + :delta WHERE tid = :bid;
@@ -252,6 +253,7 @@ grep "latency average" pg18_results.txt
 5. ✅ CPU效率提升12%
 
 **核心优化**：
+
 - **内置连接池**：-97%连接开销
 - **异步I/O**：+41% WAL吞吐
 - **事务优化**：+30% TPS
@@ -261,4 +263,3 @@ grep "latency average" pg18_results.txt
 ---
 
 **测试日期**: 2025-12-04
-

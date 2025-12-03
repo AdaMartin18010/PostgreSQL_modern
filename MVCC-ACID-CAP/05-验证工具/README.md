@@ -3,6 +3,34 @@
 > **文档编号**: TOOLS-INDEX
 > **主题**: 验证工具
 > **版本**: PostgreSQL 17 & 18
+> **最后更新**: 2025-12-04（新增PostgreSQL 18测试套件）
+
+---
+
+## 🆕 PostgreSQL 18测试套件（2025-12-04新增）
+
+**目录**: `pg18-tests/` ⭐ **最新**
+
+**工具数量**: 11个
+**测试用例**: 50+个
+**代码行数**: 2000+行
+
+**核心工具**:
+
+- Python测试：async_io_test.py, group_commit_test.py
+- SQL测试：skip_scan_test.sql, performance_compare.sql, mvcc_visibility_test.sql
+- 交互式：interactive_demo.sql, isolation_levels_demo.sql
+- Shell测试：feature_matrix_test.sh, benchmark_mvcc_acid.sh, cap_scenario_test.sh
+
+**快速开始**:
+
+```bash
+# 运行完整测试套件
+cd pg18-tests
+bash run_all_tests.sh "dbname=testdb"
+```
+
+**详细文档**: [PostgreSQL 18测试套件README](./pg18-tests/README.md)
 
 ---
 
