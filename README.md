@@ -43,7 +43,20 @@
 
 ## 🚀 快速开始
 
-### 3步入门
+### 🆕 新用户必看（推荐）
+
+```bash
+# 🔥 方式1: 5分钟快速上手（最推荐）
+cat 【🚀QUICK-START】5分钟快速上手指南.md
+
+# 🗺️ 方式2: 项目导航地图
+cat 【🗺️NAVIGATION】项目导航地图.md
+
+# 📖 方式3: 传统入门
+cat docs/00-START-HERE/00-项目已达100%完整度.md
+```
+
+### 3步入门（传统方式）
 
 ```bash
 # 1. 查看项目概况
@@ -56,12 +69,23 @@ cat docs/00-START-HERE/02-快速开始-5分钟上手.md
 cat docs/01-PostgreSQL18/01-AIO异步IO完整深度指南.md
 ```
 
-### 推荐学习路径
+### 按角色选择入口
 
-**初学者** → [START-HERE导航](./docs/00-START-HERE/)
-**DBA** → [PostgreSQL 18核心](./docs/01-PostgreSQL18/)
-**AI工程师** → [AI/ML + 知识图谱](./docs/02-AI-ML/)
-**架构师** → [所有深度指南](./docs/INDEX.md)
+| 角色 | 推荐入口 | 说明 |
+|------|---------|------|
+| **🆕 初学者** | [🚀快速上手](./【🚀QUICK-START】5分钟快速上手指南.md) | 5分钟了解全貌 |
+| **👨‍💼 DBA** | [PostgreSQL 18核心](./docs/01-PostgreSQL18/) | 28篇性能优化指南 |
+| **🤖 AI工程师** | [知识图谱+AI](./docs/03-KnowledgeGraph/) | 9篇AI深度集成 |
+| **🏗️ 架构师** | [完整索引](./docs/INDEX.md) | 47篇全部指南 |
+| **🔬 研究者** | [MVCC理论](./theory/MVCC-ACID-CAP/) | 35个形式化定理 |
+| **💻 开发者** | [实战案例](./theory/DataBaseTheory/19-场景案例库/) | 10个企业案例 |
+
+### 实用导航
+
+- 📖 [项目主页](./README.md) - 本文件
+- 🗺️ [导航地图](./【🗺️NAVIGATION】项目导航地图.md) - 一图看懂全项目
+- 📑 [完整索引](./docs/INDEX.md) - 47篇指南索引
+- ❓ [FAQ](./docs/00-START-HERE/05-FAQ常见问题.md) - 常见问题
 
 ---
 
