@@ -40,6 +40,7 @@
 **pgvector**是PostgreSQL的向量相似度搜索扩展，是AI应用的核心组件。
 
 **核心功能**：
+
 - ✅ **向量存储**：存储embedding向量
 - ✅ **相似度搜索**：快速找到最相似的向量
 - ✅ **多种距离函数**：L2、cosine、inner product
@@ -47,6 +48,7 @@
 - ✅ **SQL集成**：使用标准SQL查询
 
 **应用场景**：
+
 - 🔍 语义搜索
 - 💬 问答系统（RAG）
 - 🎨 图像搜索
@@ -121,13 +123,13 @@ CREATE TABLE documents (
 
 -- 插入测试数据（100万条）
 INSERT INTO documents (content, embedding)
-SELECT 
+SELECT
     'Document ' || i,
     ARRAY(SELECT random() FROM generate_series(1, 1536))::vector
 FROM generate_series(1, 1000000) i;
 
 -- 创建IVFFlat索引
-CREATE INDEX ON documents 
+CREATE INDEX ON documents
 USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 1000);  -- 聚类数量
 
@@ -188,7 +190,7 @@ SELECT ...;
 
 ```sql
 -- 创建HNSW索引（pgvector 0.7+）
-CREATE INDEX ON documents 
+CREATE INDEX ON documents
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
@@ -331,7 +333,7 @@ import asyncio
 # 批量并发查询
 async def batch_search(queries):
     conn = await asyncpg.connect(...)
-    
+
     tasks = []
     for query_vector in queries:
         task = conn.fetch("""
@@ -341,7 +343,7 @@ async def batch_search(queries):
             LIMIT 10
         """, query_vector)
         tasks.append(task)
-    
+
     results = await asyncio.gather(*tasks)
     return results
 
@@ -414,7 +416,7 @@ CREATE TABLE document_chunks (
 );
 
 -- 创建向量索引
-CREATE INDEX ON document_chunks 
+CREATE INDEX ON document_chunks
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
@@ -459,10 +461,10 @@ def ingest_document(conn, title, content, source, metadata=None):
             RETURNING id
         """, (title, content, source, metadata))
         doc_id = cur.fetchone()[0]
-        
+
         # 2. 分割文本
         chunks = chunk_text(content)
-        
+
         # 3. 批量生成embeddings和插入
         chunk_data = []
         for idx, chunk in enumerate(chunks):
@@ -474,14 +476,14 @@ def ingest_document(conn, title, content, source, metadata=None):
                 embedding,
                 metadata
             ))
-        
+
         # 4. 批量插入chunks
         execute_values(cur, """
-            INSERT INTO document_chunks 
+            INSERT INTO document_chunks
             (document_id, chunk_index, content, embedding, metadata)
             VALUES %s
         """, chunk_data)
-        
+
         conn.commit()
         return doc_id
 
@@ -503,11 +505,11 @@ def rag_search(conn, query, top_k=5):
     """RAG检索流程"""
     # 1. 生成查询embedding
     query_embedding = get_embedding(query)
-    
+
     # 2. 向量搜索
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT 
+            SELECT
                 c.id,
                 c.content,
                 c.embedding <=> %s::vector AS distance,
@@ -518,7 +520,7 @@ def rag_search(conn, query, top_k=5):
             ORDER BY c.embedding <=> %s::vector
             LIMIT %s
         """, (query_embedding, query_embedding, top_k))
-        
+
         results = cur.fetchall()
         return results
 
@@ -526,7 +528,7 @@ def generate_answer(query, context_chunks):
     """生成回答"""
     # 构建prompt
     context = "\n\n".join([chunk[1] for chunk in context_chunks])
-    
+
     prompt = f"""基于以下上下文回答问题。如果上下文中没有相关信息，请说"我不知道"。
 
 上下文：
@@ -535,7 +537,7 @@ def generate_answer(query, context_chunks):
 问题：{query}
 
 回答："""
-    
+
     # 调用LLM
     response = openai.ChatCompletion.create(
         model="gpt-4",
@@ -544,17 +546,17 @@ def generate_answer(query, context_chunks):
             {"role": "user", "content": prompt}
         ]
     )
-    
+
     return response['choices'][0]['message']['content']
 
 # 完整RAG流程
 def rag_query(conn, query):
     # 1. 检索
     chunks = rag_search(conn, query, top_k=5)
-    
+
     # 2. 生成
     answer = generate_answer(query, chunks)
-    
+
     return {
         "answer": answer,
         "sources": [(c[3], c[4]) for c in chunks]  # (title, source)
@@ -577,12 +579,12 @@ print("来源：", result["sources"])
 ```sql
 -- 测试不同参数组合
 -- m=16, ef_construction=64（默认，平衡）
-CREATE INDEX idx_1 ON documents 
+CREATE INDEX idx_1 ON documents
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
 -- m=32, ef_construction=128（高精度）
-CREATE INDEX idx_2 ON documents 
+CREATE INDEX idx_2 ON documents
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 32, ef_construction = 128);
 
@@ -604,6 +606,7 @@ LIMIT 10;
 | 48 | 256 | 90分钟 | 8GB | 40ms | 99.8% |
 
 **推荐配置**：
+
 - 开发/测试：m=8, ef_construction=32
 - 生产环境：m=16, ef_construction=64 ⭐
 - 高精度场景：m=32, ef_construction=128
@@ -620,7 +623,7 @@ LIMIT 10;
 SELECT id, embedding FROM document_chunks LIMIT 10000;
 
 -- 3. 监控查询性能
-SELECT 
+SELECT
     query,
     calls,
     mean_exec_time,
@@ -637,6 +640,7 @@ ORDER BY mean_exec_time DESC;
 ### 案例1：大规模文档搜索系统
 
 **场景**：
+
 - 公司：某法律科技公司
 - 数据：500万法律文档，30亿tokens
 - 需求：语义搜索，<100ms响应
@@ -653,17 +657,18 @@ CREATE TABLE legal_documents (
 );
 
 -- HNSW索引
-CREATE INDEX ON legal_documents 
+CREATE INDEX ON legal_documents
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
 -- 分区（按年份）
-CREATE TABLE legal_documents_2024 
+CREATE TABLE legal_documents_2024
 PARTITION OF legal_documents
 FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
 ```
 
 **性能**：
+
 - 查询延迟：P50=25ms, P99=80ms ✅
 - QPS：1000+ ✅
 - 召回率：98% ✅
@@ -673,6 +678,7 @@ FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
 ### 案例2：智能客服RAG系统
 
 **场景**：
+
 - 公司：某电商平台
 - 数据：10万篇客服文档
 - 需求：实时问答
@@ -680,6 +686,7 @@ FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
 **实现**：使用上述RAG架构
 
 **效果**：
+
 - 回答准确率：92%
 - 响应时间：<2秒
 - 客服工单减少：60%
@@ -690,4 +697,3 @@ FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
 **文档编号**: P5-1-PGVECTOR
 **版本**: v1.0
 **状态**: ✅ 第一版完成，持续深化中
-
