@@ -9,13 +9,49 @@
 
 ## 📑 目录
 
-- [1. 行级安全（RLS）完整指南](#1-行级安全rls完整指南)
-- [2. 审计日志系统](#2-审计日志系统)
-- [3. 数据脱敏](#3-数据脱敏)
-- [4. 安全加固实战](#4-安全加固实战)
-- [5. 渗透测试](#5-渗透测试)
-- [6. 合规性检查](#6-合规性检查)
-- [7. 完整实战案例](#7-完整实战案例)
+- [【深入】PostgreSQL安全深化 - RLS与审计完整指南](#深入postgresql安全深化---rls与审计完整指南)
+  - [📑 目录](#-目录)
+  - [1. 行级安全（RLS）完整指南](#1-行级安全rls完整指南)
+    - [1.1 RLS基础概念](#11-rls基础概念)
+    - [1.2 RLS快速开始（15分钟）](#12-rls快速开始15分钟)
+    - [1.3 RLS策略类型](#13-rls策略类型)
+      - [1.3.1 SELECT策略（查询控制）](#131-select策略查询控制)
+      - [1.3.2 INSERT策略（插入控制）](#132-insert策略插入控制)
+      - [1.3.3 UPDATE策略（更新控制）](#133-update策略更新控制)
+      - [1.3.4 DELETE策略（删除控制）](#134-delete策略删除控制)
+    - [1.4 RLS性能优化](#14-rls性能优化)
+      - [问题：RLS可能导致性能下降](#问题rls可能导致性能下降)
+      - [优化方案](#优化方案)
+    - [1.5 多租户RLS完整方案](#15-多租户rls完整方案)
+  - [2. 审计日志系统](#2-审计日志系统)
+    - [2.1 使用pgAudit扩展](#21-使用pgaudit扩展)
+    - [2.2 自定义审计触发器](#22-自定义审计触发器)
+    - [2.3 审计日志查询和分析](#23-审计日志查询和分析)
+    - [2.4 不可篡改审计日志](#24-不可篡改审计日志)
+  - [3. 数据脱敏](#3-数据脱敏)
+    - [3.1 静态脱敏（数据导出时）](#31-静态脱敏数据导出时)
+    - [3.2 动态脱敏（anon扩展）](#32-动态脱敏anon扩展)
+    - [3.3 差分隐私](#33-差分隐私)
+  - [4. 安全加固实战](#4-安全加固实战)
+    - [4.1 SSL/TLS加密](#41-ssltls加密)
+    - [4.2 数据加密（pgcrypto）](#42-数据加密pgcrypto)
+    - [4.3 密钥轮换](#43-密钥轮换)
+  - [5. 渗透测试](#5-渗透测试)
+    - [5.1 SQL注入测试](#51-sql注入测试)
+    - [5.2 权限提升测试](#52-权限提升测试)
+    - [5.3 DoS攻击测试](#53-dos攻击测试)
+  - [6. 合规性检查](#6-合规性检查)
+    - [6.1 GDPR合规](#61-gdpr合规)
+    - [6.2 数据保留策略](#62-数据保留策略)
+  - [7. 完整实战案例](#7-完整实战案例)
+    - [7.1 案例：多租户SaaS安全方案](#71-案例多租户saas安全方案)
+    - [7.2 案例：金融系统审计方案](#72-案例金融系统审计方案)
+  - [📊 安全检查清单](#-安全检查清单)
+    - [日常安全检查](#日常安全检查)
+  - [📚 参考资源](#-参考资源)
+    - [官方文档](#官方文档)
+    - [最佳实践](#最佳实践)
+    - [合规框架](#合规框架)
 
 ---
 
@@ -28,6 +64,7 @@
 行级安全（Row Level Security）允许在表级别定义安全策略，控制用户只能看到和修改特定的行。
 
 **适用场景**：
+
 - 多租户SaaS应用
 - 基于角色的数据访问控制
 - 数据隔离和权限管理
@@ -1363,6 +1400,7 @@ SELECT cron.schedule('apply_retention', '0 3 * * *', 'SELECT apply_retention_pol
 ### 7.1 案例：多租户SaaS安全方案
 
 **需求**：
+
 - 1000+租户，完全数据隔离
 - 每个租户有自己的用户和权限
 - 审计所有数据访问
@@ -1483,6 +1521,7 @@ SELECT * FROM tasks;     -- 只返回tenant_id=123的数据
 ### 7.2 案例：金融系统审计方案
 
 **需求**：
+
 - 所有交易必须审计
 - 审计日志不可篡改
 - 支持审计日志查询和分析
@@ -1548,17 +1587,20 @@ WHERE rolcanlogin = true
 ## 📚 参考资源
 
 ### 官方文档
+
 1. [Row Security Policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
 2. [pgAudit](https://github.com/pgaudit/pgaudit)
 3. [pgcrypto](https://www.postgresql.org/docs/current/pgcrypto.html)
 4. [postgresql_anonymizer](https://postgresql-anonymizer.readthedocs.io/)
 
 ### 最佳实践
+
 1. [OWASP PostgreSQL Security](https://cheatsheetseries.owasp.org/cheatsheets/PostgreSQL_Cheat_Sheet.html)
 2. [CIS PostgreSQL Benchmark](https://www.cisecurity.org/benchmark/postgresql)
 3. [PostgreSQL Security Best Practices](https://www.postgresql.org/docs/current/security.html)
 
 ### 合规框架
+
 1. **GDPR**: 数据保护条例
 2. **CCPA**: 加州消费者隐私法
 3. **SOC 2**: 服务组织控制

@@ -9,16 +9,59 @@
 
 ## 📑 目录
 
-- [1. 从零开始：第一个完整扩展](#1-从零开始第一个完整扩展)
-- [2. 开发环境搭建](#2-开发环境搭建)
-- [3. 扩展开发完整流程](#3-扩展开发完整流程)
-- [4. 高级特性开发](#4-高级特性开发)
-- [5. 调试技巧详解](#5-调试技巧详解)
-- [6. 测试策略](#6-测试策略)
-- [7. 性能优化](#7-性能优化)
-- [8. 发布流程](#8-发布流程)
-- [9. 完整实战案例](#9-完整实战案例)
-- [10. 常见陷阱和最佳实践](#10-常见陷阱和最佳实践)
+- [【深入】PostgreSQL扩展开发完整实战指南](#深入postgresql扩展开发完整实战指南)
+  - [📑 目录](#-目录)
+  - [1. 从零开始：第一个完整扩展](#1-从零开始第一个完整扩展)
+    - [1.1 项目目标](#11-项目目标)
+    - [1.2 项目结构](#12-项目结构)
+    - [1.3 快速开始（15分钟）](#13-快速开始15分钟)
+  - [2. 开发环境搭建](#2-开发环境搭建)
+    - [2.1 必需工具](#21-必需工具)
+    - [2.2 IDE配置（VS Code）](#22-ide配置vs-code)
+    - [2.3 调试配置](#23-调试配置)
+  - [3. 扩展开发完整流程](#3-扩展开发完整流程)
+    - [3.1 第一步：设计API](#31-第一步设计api)
+    - [3.2 第二步：实现C函数](#32-第二步实现c函数)
+    - [3.3 第三步：创建SQL包装](#33-第三步创建sql包装)
+    - [3.4 第四步：编写测试](#34-第四步编写测试)
+  - [4. 高级特性开发](#4-高级特性开发)
+    - [4.1 自定义聚合函数](#41-自定义聚合函数)
+    - [4.2 自定义索引类型（GiST）](#42-自定义索引类型gist)
+    - [4.3 后台工作进程（BGW）](#43-后台工作进程bgw)
+  - [5. 调试技巧详解](#5-调试技巧详解)
+    - [5.1 GDB调试完整流程](#51-gdb调试完整流程)
+    - [5.2 使用elog进行日志调试](#52-使用elog进行日志调试)
+    - [5.3 内存泄漏检测](#53-内存泄漏检测)
+    - [5.4 性能分析](#54-性能分析)
+  - [6. 测试策略](#6-测试策略)
+    - [6.1 单元测试（pgTAP）](#61-单元测试pgtap)
+    - [6.2 回归测试](#62-回归测试)
+    - [6.3 模糊测试](#63-模糊测试)
+  - [7. 性能优化](#7-性能优化)
+    - [7.1 避免内存分配](#71-避免内存分配)
+    - [7.2 使用缓存](#72-使用缓存)
+    - [7.3 并行化](#73-并行化)
+    - [7.4 SIMD优化（高级）](#74-simd优化高级)
+  - [8. 发布流程](#8-发布流程)
+    - [8.1 版本管理](#81-版本管理)
+    - [8.2 创建PGXN元数据](#82-创建pgxn元数据)
+    - [8.3 发布到PGXN](#83-发布到pgxn)
+    - [8.4 GitHub Release](#84-github-release)
+  - [9. 完整实战案例](#9-完整实战案例)
+    - [9.1 案例：pg\_prometheus - Prometheus指标存储](#91-案例pg_prometheus---prometheus指标存储)
+  - [10. 常见陷阱和最佳实践](#10-常见陷阱和最佳实践)
+    - [10.1 内存管理陷阱](#101-内存管理陷阱)
+    - [10.2 错误处理陷阱](#102-错误处理陷阱)
+    - [10.3 类型转换陷阱](#103-类型转换陷阱)
+    - [10.4 最佳实践清单](#104-最佳实践清单)
+  - [📚 参考资源](#-参考资源)
+    - [官方文档](#官方文档)
+    - [示例扩展](#示例扩展)
+    - [工具和库](#工具和库)
+  - [🎯 学习路径建议](#-学习路径建议)
+    - [初级（1-2周）](#初级1-2周)
+    - [中级（2-4周）](#中级2-4周)
+    - [高级（4-8周）](#高级4-8周)
 
 ---
 
@@ -29,6 +72,7 @@
 我们将开发一个完整的扩展 `pg_hashid`，用于生成和验证hashid（类似YouTube的短ID）。
 
 **功能特性**：
+
 - 生成短ID（如 "aB3xK"）
 - 解码短ID为整数
 - 支持自定义字符集
@@ -173,7 +217,8 @@ EOSQL
 ```
 
 **输出示例**：
-```
+
+```text
  hashid_encode
 ---------------
  dnh
@@ -303,6 +348,7 @@ export PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config
 ### 3.1 第一步：设计API
 
 **设计原则**：
+
 1. **简单性**：API应该直观易用
 2. **一致性**：与PostgreSQL风格一致
 3. **安全性**：防止SQL注入、溢出等
@@ -634,7 +680,7 @@ DROP EXTENSION pg_hashid CASCADE;
 
 **期望输出**（`test/expected/hashid_test.out`）：
 
-```
+```text
 CREATE EXTENSION
  hashid_encode
 ---------------
@@ -1374,7 +1420,7 @@ COMMENT ON EXTENSION pg_hashid IS 'Hashid encoding/decoding for PostgreSQL (v1.1
 
 **版本控制**（`.control`文件）：
 
-```
+```text
 # pg_hashid.control
 comment = 'Hashid encoding/decoding for PostgreSQL'
 default_version = '1.1'
@@ -1522,6 +1568,7 @@ jobs:
 这是一个真实的、生产级别的扩展案例。
 
 **功能**：
+
 - 存储Prometheus时序指标
 - 高效的时序查询
 - 自动数据压缩
@@ -1576,7 +1623,7 @@ Datum prometheus_query_range(PG_FUNCTION_ARGS)
 }
 ```
 
-**完整代码参考**：https://github.com/timescale/promscale
+**完整代码参考**：<https://github.com/timescale/promscale>
 
 ---
 
@@ -1683,6 +1730,7 @@ Datum good_cast(PG_FUNCTION_ARGS)
 ### 10.4 最佳实践清单
 
 ✅ **DO（应该做）**：
+
 1. 使用 `palloc`/`pfree` 而不是 `malloc`/`free`
 2. 使用 `ereport`/`elog` 报告错误
 3. 使用 `PG_TRY`/`PG_CATCH` 处理异常
@@ -1695,6 +1743,7 @@ Datum good_cast(PG_FUNCTION_ARGS)
 10. 提供清晰的文档和示例
 
 ❌ **DON'T（不应该做）**：
+
 1. 不要使用全局变量（除非必要且线程安全）
 2. 不要在扩展中使用 `printf`/`fprintf`
 3. 不要假设 `text` 是null结尾的
@@ -1711,17 +1760,20 @@ Datum good_cast(PG_FUNCTION_ARGS)
 ## 📚 参考资源
 
 ### 官方文档
+
 1. [PostgreSQL Server Programming](https://www.postgresql.org/docs/current/server-programming.html)
 2. [Extension Building Infrastructure](https://www.postgresql.org/docs/current/extend-pgxs.html)
 3. [Writing A Procedural Language Handler](https://www.postgresql.org/docs/current/plhandler.html)
 
 ### 示例扩展
+
 1. [pg_hashids](https://github.com/iCyberon/pg_hashids) - Hashid扩展
 2. [pg_roaringbitmap](https://github.com/ChenHuajun/pg_roaringbitmap) - Roaring Bitmap
 3. [pg_similarity](https://github.com/eulerto/pg_similarity) - 相似度函数
 4. [timescaledb](https://github.com/timescale/timescaledb) - 时序数据库（复杂示例）
 
 ### 工具和库
+
 1. [pgTAP](https://pgtap.org/) - PostgreSQL单元测试
 2. [pgrx](https://github.com/tcdi/pgrx) - Rust扩展框架
 3. [PGXN](https://pgxn.org/) - PostgreSQL扩展网络
@@ -1731,19 +1783,22 @@ Datum good_cast(PG_FUNCTION_ARGS)
 ## 🎯 学习路径建议
 
 ### 初级（1-2周）
+
 1. 完成"从零开始"章节的示例
 2. 理解C函数和SQL包装的关系
 3. 掌握基本的调试技巧
 
 ### 中级（2-4周）
-4. 开发自定义聚合函数
-5. 实现完整的测试套件
-6. 学习性能优化技巧
+
+1. 开发自定义聚合函数
+2. 实现完整的测试套件
+3. 学习性能优化技巧
 
 ### 高级（4-8周）
-7. 开发自定义索引类型
-8. 实现后台工作进程
-9. 发布到PGXN
+
+1. 开发自定义索引类型
+2. 实现后台工作进程
+3. 发布到PGXN
 
 ---
 
