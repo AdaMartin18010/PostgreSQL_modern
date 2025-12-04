@@ -85,9 +85,11 @@
 #### 第1周：SQL基础
 
 **文档**：
+
 - PostgreSQL培训/02-SQL基础/（原有文档）
 
 **学习内容**：
+
 ```text
 Day 1-2: SELECT查询
 - 基础查询
@@ -116,6 +118,7 @@ Day 6-7: 聚合与分组
 #### 第2周：表设计
 
 **学习内容**：
+
 ```text
 Day 1-2: 数据类型
 - 数值类型（INT、NUMERIC）
@@ -143,6 +146,7 @@ Day 7: 实践项目
 #### 第3-4周：进阶查询
 
 **学习内容**：
+
 ```text
 Week 3: 高级查询
 - 子查询（IN、EXISTS）
@@ -160,6 +164,7 @@ Week 4: 事务与性能
 ### 2.3 验收标准
 
 **能力测试**：
+
 - [ ] 能设计标准三范式数据库
 - [ ] 能编写复杂JOIN查询
 - [ ] 理解事务隔离级别
@@ -186,9 +191,11 @@ Week 4: 事务与性能
 #### 第1-2周：JSONB文档数据库
 
 **文档**：
+
 - [JSON/JSONB高级查询完整指南](./PostgreSQL培训/03-数据类型/【深入】JSON-JSONB高级查询完整指南.md)
 
 **学习内容**：
+
 ```text
 Week 1: JSONB基础
 - JSON vs JSONB
@@ -207,9 +214,11 @@ Week 2: JSONB高级
 #### 第3-4周：全文搜索
 
 **文档**：
+
 - [PostgreSQL全文搜索完整实战指南](./PostgreSQL培训/04-查询/【深入】PostgreSQL全文搜索完整实战指南.md)
 
 **学习内容**：
+
 ```text
 Week 3: FTS基础
 - tsvector/tsquery
@@ -228,9 +237,11 @@ Week 4: FTS高级
 #### 第5-6周：GraphQL API
 
 **文档**：
+
 - [PostgreSQL + GraphQL完整实战指南](./PostgreSQL培训/06-应用开发/【深入】PostgreSQL+GraphQL完整实战指南.md)
 
 **学习内容**：
+
 ```text
 Week 5: PostGraphile
 - 安装配置
@@ -248,6 +259,7 @@ Week 6: Hasura
 ### 3.3 验收标准
 
 **能力测试**：
+
 - [ ] 能设计JSONB字段存储灵活数据
 - [ ] 能实现全文搜索功能
 - [ ] 能快速生成GraphQL API
@@ -274,9 +286,11 @@ Week 6: Hasura
 #### 第1-3周：图数据库
 
 **文档**：
+
 - [Apache AGE图数据库完整实战指南](./PostgreSQL培训/12-扩展开发/【深入】Apache AGE图数据库完整实战指南.md)
 
 **学习内容**：
+
 ```text
 Week 1: AGE基础
 - 图模型概念
@@ -300,9 +314,11 @@ Week 3: 生产应用
 #### 第4-6周：空间数据库
 
 **文档**：
+
 - [PostGIS空间数据库完整实战指南](./PostgreSQL培训/03-数据类型/【深入】PostGIS空间数据库完整实战指南.md)
 
 **学习内容**：
+
 ```text
 Week 4: PostGIS基础
 - GEOMETRY vs GEOGRAPHY
@@ -326,9 +342,11 @@ Week 6: 生产应用
 #### 第7-9周：时序数据库
 
 **文档**：
+
 - [TimescaleDB时序数据库完整实战指南](./PostgreSQL培训/03-数据类型/【深入】TimescaleDB时序数据库完整实战指南.md)
 
 **学习内容**：
+
 ```text
 Week 7: TimescaleDB基础
 - Hypertable概念
@@ -352,6 +370,7 @@ Week 9: 生产应用
 ### 4.3 验收标准
 
 **能力测试**：
+
 - [ ] 能使用Cypher查询图数据
 - [ ] 能实现基于PostGIS的位置服务
 - [ ] 能设计时序数据存储方案
@@ -378,9 +397,11 @@ Week 9: 生产应用
 #### 第1-4周：分布式数据库
 
 **文档**：
+
 - [Citus分布式PostgreSQL完整实战指南](./PostgreSQL培训/05-部署架构/【深入】Citus分布式PostgreSQL完整实战指南.md)
 
 **学习内容**：
+
 ```text
 Week 1-2: Citus基础
 - 分片策略
@@ -404,10 +425,12 @@ Week 4: 生产实践
 #### 第5-7周：云原生与高可用
 
 **文档**：
+
 - [PostgreSQL云原生Kubernetes完整实战指南](./PostgreSQL培训/05-部署架构/【深入】PostgreSQL云原生Kubernetes完整实战指南.md)
 - [PostgreSQL逻辑复制高级特性与冲突解决](./PostgreSQL培训/09-高可用/【深入】PostgreSQL逻辑复制高级特性与冲突解决.md)
 
 **学习内容**：
+
 ```text
 Week 5: Kubernetes部署
 - StatefulSet
@@ -431,10 +454,12 @@ Week 7: 监控运维
 #### 第8-12周：性能优化与架构
 
 **文档**：
+
 - [慢查询优化完整实战手册](./PostgreSQL培训/11-性能调优/【案例集】PostgreSQL慢查询优化完整实战手册.md)
 - [PostgreSQL混合数据库完整能力图谱](./PostgreSQL培训/01-基础入门/【综合】PostgreSQL混合数据库完整能力图谱.md)
 
 **学习内容**：
+
 ```text
 Week 8-9: 深度性能优化
 - 查询计划分析
@@ -458,6 +483,7 @@ Week 12: 综合实践
 ### 5.3 验收标准
 
 **能力测试**：
+
 - [ ] 能设计和部署Citus分布式集群
 - [ ] 能在Kubernetes部署高可用PostgreSQL
 - [ ] 能独立进行慢查询优化
@@ -734,15 +760,18 @@ Week 12: 综合实践
 ### 8.2 认证建议
 
 **PostgreSQL官方认证**：
+
 - PostgreSQL Associate Certification
 - PostgreSQL Professional Certification
 
 **云厂商认证**：
+
 - AWS Certified Database Specialty
 - Azure Database Administrator Associate
 - Google Cloud Professional Database Engineer
 
 **社区贡献**：
+
 - 参与PostgreSQL开源项目
 - 编写技术博客
 - 分享生产实践
@@ -754,6 +783,7 @@ Week 12: 综合实践
 ### 必读文档（PostgreSQL_Modern）
 
 **入门级**：
+
 1. [PostgreSQL混合数据库完整能力图谱](./PostgreSQL培训/01-基础入门/【综合】PostgreSQL混合数据库完整能力图谱.md) - 了解全貌
 2. PostgreSQL培训/基础文档 - SQL基础
 
@@ -774,16 +804,19 @@ Week 12: 综合实践
 ### 外部资源
 
 **在线课程**：
+
 - 📹 PostgreSQL官方教程
 - 📹 Udemy PostgreSQL课程
 - 📹 YouTube技术频道
 
 **书籍**：
+
 - 📚 《PostgreSQL实战》
 - 📚 《High Performance PostgreSQL》
 - 📚 《Mastering PostgreSQL》
 
 **社区**：
+
 - 🌍 PostgreSQL中国社区
 - 🌍 PostgreSQL全球邮件列表
 - 🌍 Stack Overflow

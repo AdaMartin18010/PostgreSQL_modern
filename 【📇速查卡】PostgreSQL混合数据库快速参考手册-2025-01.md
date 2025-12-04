@@ -616,18 +616,22 @@ DELETE FROM logs WHERE created_at < NOW() - INTERVAL '90 days';
 ### 深度指南（按难度）
 
 **入门**：
+
 - [混合数据库能力图谱](./PostgreSQL培训/01-基础入门/【综合】PostgreSQL混合数据库完整能力图谱.md) ⭐
 
 **基础**：
+
 - [JSON/JSONB高级查询指南](./PostgreSQL培训/03-数据类型/【深入】JSON-JSONB高级查询完整指南.md)
 - [PostgreSQL全文搜索指南](./PostgreSQL培训/04-查询/【深入】PostgreSQL全文搜索完整实战指南.md)
 
 **进阶**：
+
 - [Apache AGE图数据库指南](./PostgreSQL培训/12-扩展开发/【深入】Apache AGE图数据库完整实战指南.md)
 - [PostGIS空间数据库指南](./PostgreSQL培训/03-数据类型/【深入】PostGIS空间数据库完整实战指南.md)
 - [TimescaleDB时序数据库指南](./PostgreSQL培训/03-数据类型/【深入】TimescaleDB时序数据库完整实战指南.md)
 
 **高级**：
+
 - [Citus分布式PostgreSQL指南](./PostgreSQL培训/05-部署架构/【深入】Citus分布式PostgreSQL完整实战指南.md)
 - [PostgreSQL + GraphQL完整实战指南](./PostgreSQL培训/06-应用开发/【深入】PostgreSQL+GraphQL完整实战指南.md)
 - [慢查询优化实战手册](./PostgreSQL培训/11-性能调优/【案例集】PostgreSQL慢查询优化完整实战手册.md)
@@ -635,18 +639,21 @@ DELETE FROM logs WHERE created_at < NOW() - INTERVAL '90 days';
 ### 工具与资源
 
 **官方**：
-- PostgreSQL Documentation: https://www.postgresql.org/docs/
-- PostGIS: https://postgis.net/
-- TimescaleDB: https://docs.timescale.com/
-- Apache AGE: https://age.apache.org/
+
+- PostgreSQL Documentation: <https://www.postgresql.org/docs/>
+- PostGIS: <https://postgis.net/>
+- TimescaleDB: <https://docs.timescale.com/>
+- Apache AGE: <https://age.apache.org/>
 
 **工具**：
+
 - pgAdmin: GUI管理工具
 - DBeaver: 跨平台数据库工具
 - QGIS: GIS可视化（PostGIS）
 - Grafana: 监控Dashboard（TimescaleDB）
 
 **社区**：
+
 - PostgreSQL中国社区
 - GitHub: postgresql/postgres
 - Stack Overflow: [postgresql]

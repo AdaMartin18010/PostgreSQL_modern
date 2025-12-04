@@ -82,6 +82,7 @@
 ```
 
 **注意**：AI主题有重叠，建议：
+
 - **理论和架构** → PostgreSQL_AI
 - **技术详解和案例** → PostgreSQL_View
 - **实战代码和工具** → PostgreSQL知识库
@@ -517,16 +518,19 @@ PostgreSQL_Modern（顶层）
 ### 建议2：避免迷失在重叠内容中
 
 **AI主题**：
+
 - 需要理论和架构 → PostgreSQL_AI
 - 需要技术和案例 → PostgreSQL_View
 - 需要实战代码 → PostgreSQL知识库
 
 **培训主题**：
+
 - 系统学习 → PostgreSQL培训
 - 快速查询 → PostgreSQL知识库
 - 实战案例 → PostgreSQL知识库
 
 **理论主题**：
+
 - 深度理论 → MVCC-ACID-CAP
 - 实践验证 → DataBaseTheory
 
