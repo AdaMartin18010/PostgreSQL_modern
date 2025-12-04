@@ -9,13 +9,50 @@
 
 ## 📑 目录
 
-- [1. PITR（时间点恢复）完整指南](#1-pitr时间点恢复完整指南)
-- [2. 灾备系统设计](#2-灾备系统设计)
-- [3. 备份策略设计](#3-备份策略设计)
-- [4. 自动化备份脚本](#4-自动化备份脚本)
-- [5. 灾备演练SOP](#5-灾备演练sop)
-- [6. 恢复测试](#6-恢复测试)
-- [7. 完整实战案例](#7-完整实战案例)
+- [【深入】PostgreSQL备份恢复完善 - PITR与灾备演练指南](#深入postgresql备份恢复完善---pitr与灾备演练指南)
+  - [📑 目录](#-目录)
+  - [1. PITR（时间点恢复）完整指南](#1-pitr时间点恢复完整指南)
+    - [1.1 PITR原理](#11-pitr原理)
+    - [1.2 PITR快速开始（30分钟）](#12-pitr快速开始30分钟)
+      - [步骤1：配置WAL归档](#步骤1配置wal归档)
+      - [步骤2：创建基础备份](#步骤2创建基础备份)
+      - [步骤3：模拟数据丢失](#步骤3模拟数据丢失)
+      - [步骤4：PITR恢复](#步骤4pitr恢复)
+    - [1.3 PITR高级场景](#13-pitr高级场景)
+      - [场景1：恢复到特定事务](#场景1恢复到特定事务)
+      - [场景2：恢复到特定LSN](#场景2恢复到特定lsn)
+      - [场景3：恢复到命名还原点](#场景3恢复到命名还原点)
+      - [场景4：时间线恢复（多次PITR）](#场景4时间线恢复多次pitr)
+  - [2. 灾备系统设计](#2-灾备系统设计)
+    - [2.1 RPO和RTO目标](#21-rpo和rto目标)
+    - [2.2 多层备份策略（3-2-1规则）](#22-多层备份策略3-2-1规则)
+    - [1.3 PITR恢复详细步骤](#13-pitr恢复详细步骤)
+      - [场景：恢复到误删除前](#场景恢复到误删除前)
+    - [1.4 PITR恢复监控](#14-pitr恢复监控)
+  - [3. 备份策略设计](#3-备份策略设计)
+    - [3.1 完整的备份策略矩阵](#31-完整的备份策略矩阵)
+    - [3.2 备份自动化完整方案](#32-备份自动化完整方案)
+  - [4. 自动化备份脚本](#4-自动化备份脚本)
+    - [4.1 备份目录（backup\_catalog）](#41-备份目录backup_catalog)
+    - [4.2 增量备份脚本（PostgreSQL 18+）](#42-增量备份脚本postgresql-18)
+    - [4.3 增量恢复脚本](#43-增量恢复脚本)
+  - [5. 灾备演练SOP](#5-灾备演练sop)
+    - [5.1 灾备演练计划](#51-灾备演练计划)
+    - [5.2 全面演练SOP](#52-全面演练sop)
+    - [5.3 灾备演练记录表](#53-灾备演练记录表)
+  - [6. 恢复测试](#6-恢复测试)
+    - [6.1 定期恢复测试（每月）](#61-定期恢复测试每月)
+    - [6.2 数据一致性验证](#62-数据一致性验证)
+  - [7. 完整实战案例](#7-完整实战案例)
+    - [7.1 案例：电商平台灾备方案](#71-案例电商平台灾备方案)
+    - [7.2 案例：灾难恢复实战](#72-案例灾难恢复实战)
+  - [📊 备份恢复最佳实践清单](#-备份恢复最佳实践清单)
+    - [✅ 必须做的](#-必须做的)
+    - [❌ 不要做的](#-不要做的)
+  - [📚 参考资源](#-参考资源)
+    - [官方文档](#官方文档)
+    - [备份工具](#备份工具)
+    - [最佳实践](#最佳实践)
 
 ---
 
@@ -28,6 +65,7 @@
 Point-In-Time Recovery（PITR）允许恢复数据库到过去任意时刻的状态，通过基础备份+WAL归档实现。
 
 **适用场景**：
+
 - 误操作恢复（删除了重要数据）
 - 数据损坏恢复
 - 审计和调查（查看历史状态）
@@ -237,6 +275,7 @@ recovery_target_timeline = 1  # 指定时间线
 ### 2.1 RPO和RTO目标
 
 **定义**：
+
 - **RPO（Recovery Point Objective）**：可接受的数据丢失时间
 - **RTO（Recovery Time Objective）**：可接受的恢复时间
 
@@ -250,6 +289,7 @@ recovery_target_timeline = 1  # 指定时间线
 ### 2.2 多层备份策略（3-2-1规则）
 
 **3-2-1规则**：
+
 - **3份**数据副本
 - **2种**不同存储介质
 - **1份**异地备份
@@ -375,6 +415,7 @@ echo "===== Backup completed at $(date) ====="
 #### 场景：恢复到误删除前
 
 **背景**：
+
 - 误删除时间：2025-01-01 15:30:45
 - 最新全备：2025-01-01 02:00:00
 - WAL归档：持续到当前
@@ -812,6 +853,7 @@ echo "Backup chain restored. Configure recovery and start PostgreSQL."
 ### 5.1 灾备演练计划
 
 **演练频率**：
+
 - **全面演练**：每季度1次（4小时）
 - **部分演练**：每月1次（1小时）
 - **桌面演练**：每周1次（30分钟）
@@ -1111,6 +1153,7 @@ WHERE current.row_count != backup.row_count
 ### 7.1 案例：电商平台灾备方案
 
 **业务需求**：
+
 - 数据库大小：500GB
 - 日增长：5GB
 - RPO：5分钟
@@ -1119,7 +1162,7 @@ WHERE current.row_count != backup.row_count
 
 **方案设计**：
 
-```
+```text
 架构：主-从-备
 ├── 主库（生产）：北京机房
 ├── 从库（热备）：上海机房
@@ -1293,16 +1336,19 @@ echo "$(date): 恢复完成，RTO: 30分钟，RPO: $(获取数据丢失时间)"
 ## 📚 参考资源
 
 ### 官方文档
+
 1. [Continuous Archiving and Point-in-Time Recovery (PITR)](https://www.postgresql.org/docs/current/continuous-archiving.html)
 2. [pg_basebackup](https://www.postgresql.org/docs/current/app-pgbasebackup.html)
 3. [pg_combinebackup (PG18+)](https://www.postgresql.org/docs/18/app-pgcombinebackup.html)
 
 ### 备份工具
+
 1. [pgBackRest](https://pgbackrest.org/) - 企业级备份工具
 2. [Barman](https://pgbarman.org/) - 备份和恢复管理
 3. [WAL-G](https://github.com/wal-g/wal-g) - WAL归档工具
 
 ### 最佳实践
+
 1. [PostgreSQL Backup Best Practices](https://www.postgresql.org/docs/current/backup.html)
 2. [Disaster Recovery Planning](https://wiki.postgresql.org/wiki/Disaster_recovery_planning)
 

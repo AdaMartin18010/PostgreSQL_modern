@@ -11,6 +11,7 @@
 > **本项目与 [PostgreSQL_AI](../PostgreSQL_AI/README.md) 存在约60%内容重叠**
 >
 > **如何选择**：
+>
 > - 💻 **需要技术详解和案例** → 本项目（PostgreSQL_View）
 >   - pgvector、pgai技术详解更深入
 >   - 代码示例更丰富（250+：125 Python + 125 SQL）

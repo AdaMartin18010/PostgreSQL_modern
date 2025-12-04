@@ -1429,47 +1429,47 @@ ORDER BY error_rate DESC, avg_latency DESC;
 
 1. **时间列使用TIMESTAMPTZ**
 
-```sql
--- ✅ 好：带时区
-CREATE TABLE metrics (
-    time TIMESTAMPTZ NOT NULL,
-    ...
-);
+    ```sql
+    -- ✅ 好：带时区
+    CREATE TABLE metrics (
+        time TIMESTAMPTZ NOT NULL,
+        ...
+    );
 
--- ❌ 坏：不带时区
-CREATE TABLE metrics (
-    time TIMESTAMP NOT NULL,  -- 可能导致时区混乱
-    ...
-);
-```
+    -- ❌ 坏：不带时区
+    CREATE TABLE metrics (
+        time TIMESTAMP NOT NULL,  -- 可能导致时区混乱
+        ...
+    );
+    ```
 
 2. **合理选择chunk间隔**
 
-```text
-数据量     |  建议chunk间隔
--------------------------------
-< 100GB   |  7 days
-100GB-1TB |  1 day
-1TB-10TB  |  6 hours
-> 10TB    |  1 hour
+    ```text
+    数据量     |  建议chunk间隔
+    -------------------------------
+    < 100GB   |  7 days
+    100GB-1TB |  1 day
+    1TB-10TB  |  6 hours
+    > 10TB    |  1 hour
 
-原则：每个chunk 100MB-1GB最佳
-```
+    原则：每个chunk 100MB-1GB最佳
+    ```
 
 3. **空间分区用于高并发写入**
 
-```sql
--- 单一时间分区：写入热点在最新chunk
-SELECT create_hypertable('metrics', 'time');
+    ```sql
+    -- 单一时间分区：写入热点在最新chunk
+    SELECT create_hypertable('metrics', 'time');
 
--- 多维分区：分散写入到多个chunk
-SELECT create_hypertable(
-    'metrics',
-    'time',
-    partitioning_column => 'device_id',
-    number_partitions => 4  -- 4个并发写入点
-);
-```
+    -- 多维分区：分散写入到多个chunk
+    SELECT create_hypertable(
+        'metrics',
+        'time',
+        partitioning_column => 'device_id',
+        number_partitions => 4  -- 4个并发写入点
+    );
+    ```
 
 4. **使用连续聚合替代重复查询**
 
