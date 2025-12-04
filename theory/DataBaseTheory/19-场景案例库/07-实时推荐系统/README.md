@@ -1,62 +1,32 @@
-# 实时推荐系统
+# 实时推荐系统案例
 
-> **PostgreSQL版本**: 18.x
-> **特点**: 实时计算、协同过滤、向量相似度
+## 案例概述
 
----
+- **难度**: ⭐⭐⭐⭐⭐
+- **技术**: Apache AGE + pgvector + 协同过滤
+- **数据规模**: 千万用户、亿级交互
+- **完成度**: ✅ 80%
 
-## 核心场景
+## 核心亮点
 
-### 商品推荐
+- 多策略融合推荐（协同过滤+图推荐+内容推荐）
+- Apache AGE图遍历推荐
+- pgvector向量相似搜索
+- 实时计算 + 离线预计算
 
-```sql
--- 用户行为表
-CREATE TABLE user_behaviors (
-    user_id BIGINT,
-    item_id BIGINT,
-    behavior_type VARCHAR(20),  -- view/click/buy
-    score NUMERIC(3,2),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+## 文档清单
 
--- 物品向量表（pgvector扩展）
-CREATE EXTENSION vector;
+1. ✅ [01-需求分析](./01-需求分析.md) - 推荐策略、算法设计
+2. ✅ [02-架构设计](./02-架构设计.md) - 系统架构、组件设计
+3. 🚧 [03-数据库设计](./03-数据库设计.md) - Schema、图模型
+4. 🚧 [04-性能优化](./04-性能优化.md) - 查询优化、缓存策略
+5. 🚧 [05-测试验证](./05-测试验证.md) - A/B测试、性能测试
 
-CREATE TABLE item_vectors (
-    item_id BIGINT PRIMARY KEY,
-    embedding vector(128),  -- 128维向量
-    category VARCHAR(50),
-    tags TEXT[]
-);
+## 关键成果
 
--- 创建向量索引（HNSW）
-CREATE INDEX idx_item_vectors_embedding
-ON item_vectors USING hnsw (embedding vector_cosine_ops);
-```
+- 推荐准确率: >35%
+- 推荐延迟: <100ms
+- CTR: >3%
+- Apache AGE图推荐验证
 
-### 相似度查询
-
-```sql
--- 查找相似商品（<5ms）
-SELECT
-    item_id,
-    1 - (embedding <=> $1::vector) as similarity
-FROM item_vectors
-ORDER BY embedding <=> $1::vector
-LIMIT 20;
-
--- ⭐ PostgreSQL 18：向量查询优化
--- HNSW索引性能提升30%
-```
-
----
-
-## PostgreSQL 18特性
-
-- **并行查询**: 协同过滤计算
-- **JSONB优化**: 存储用户画像
-- **Skip Scan**: 多维度过滤
-
----
-
-**完整文档待补充**
+**返回**: [案例库首页](../README.md)
