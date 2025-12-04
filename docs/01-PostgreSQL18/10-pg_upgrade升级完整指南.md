@@ -138,7 +138,7 @@ pg_upgrade_rollback \
 
 ### 3.1 升级前准备
 
-**1. 备份（必须！）**
+**1. 备份（必须！）**:
 
 ```bash
 # 全量备份
@@ -148,7 +148,7 @@ pg_basebackup -D /backup/pg17_backup -Ft -z -P
 pg_dumpall -U postgres > /backup/pg17_full.sql
 ```
 
-**2. 检查兼容性**
+**2. 检查兼容性**:
 
 ```bash
 # 运行兼容性检查
@@ -172,7 +172,7 @@ Checking for contrib/isn with bigint-passing mismatch       ok
 ...
 ```
 
-**3. 解决不兼容问题**
+**3. 解决不兼容问题**:
 
 ```sql
 -- 删除prepared transactions
@@ -186,7 +186,7 @@ DROP EXTENSION IF EXISTS tsearch2;  -- 已废弃
 -- （根据--check输出处理）
 ```
 
-**4. 停止应用**
+**4. 停止应用**:
 
 ```bash
 # 停止应用服务器
@@ -241,7 +241,7 @@ Once you start the new server, consider running:
 # 时间：5TB数据库，约85分钟（增量模式）
 ```
 
-**3. 启动新集群**
+**3. 启动新集群**:
 
 ```bash
 # 启动PostgreSQL 18
@@ -254,7 +254,7 @@ psql -U postgres -c "SELECT version();"
 
 ### 3.3 升级后优化
 
-**1. 更新统计信息（重要！）**
+**1. 更新统计信息（重要！）**:
 
 ```bash
 # 分阶段ANALYZE（推荐，不阻塞）
@@ -267,7 +267,7 @@ psql -U postgres -c "SELECT version();"
 vacuumdb --all --analyze --verbose -U postgres
 ```
 
-**2. 重建索引（可选）**
+**2. 重建索引（可选）**:
 
 ```sql
 -- 重建所有索引（提升性能）
@@ -277,7 +277,7 @@ REINDEX DATABASE mydb;
 REINDEX INDEX CONCURRENTLY idx_large_table;
 ```
 
-**3. 启用新特性**
+**3. 启用新特性**:
 
 ```sql
 -- 启用AIO
@@ -290,7 +290,7 @@ ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
 SELECT pg_reload_conf();
 ```
 
-**4. 监控性能**
+**4. 监控性能**:
 
 ```sql
 -- 监控查询性能
@@ -309,7 +309,7 @@ FROM pg_statio_user_tables;
 
 ### 4.1 常见问题
 
-**问题1：准备事务阻止升级**
+**问题1：准备事务阻止升级**:
 
 ```text
 错误：There are prepared transactions in the old cluster
@@ -327,7 +327,7 @@ COMMIT PREPARED 'transaction_id';
 ROLLBACK PREPARED 'transaction_id';
 ```
 
-**问题2：磁盘空间不足**
+**问题2：磁盘空间不足**:
 
 ```text
 错误：No space left on device
@@ -344,7 +344,7 @@ df -h
 # 删除不必要的文件
 ```
 
-**问题3：扩展不兼容**
+**问题3：扩展不兼容**:
 
 ```text
 错误：Extension "xxx" version "1.0" is not compatible
@@ -362,7 +362,7 @@ apt-get install postgresql-18-xxx
 
 ### 4.2 回滚方案
 
-**方案1：使用回滚快照（推荐）**
+**方案1：使用回滚快照（推荐）**:
 
 ```bash
 # 如果升级前创建了快照
@@ -373,7 +373,7 @@ pg_upgrade_rollback \
 systemctl start postgresql@17-main
 ```
 
-**方案2：从备份恢复**
+**方案2：从备份恢复**:
 
 ```bash
 # 停止新集群
@@ -399,7 +399,7 @@ systemctl start postgresql@17-main
 - 要求停机时间：<2小时
 - 挑战：数据量大
 
-**方案：增量升级**
+**方案：增量升级**:
 
 ```bash
 # 第1阶段：准备（在线，不停服务）
@@ -445,7 +445,7 @@ systemctl start postgresql@18-main
 - 数据量：2TB
 - 要求：高可用
 
-**方案：滚动升级**
+**方案：滚动升级**:
 
 ```bash
 # 步骤1：升级Standby-1（不停服务）
