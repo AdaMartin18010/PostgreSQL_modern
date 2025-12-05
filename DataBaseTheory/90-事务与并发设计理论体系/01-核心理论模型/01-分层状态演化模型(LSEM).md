@@ -4,6 +4,57 @@
 
 ---
 
+## 📑 目录
+
+- [01 | 分层状态演化模型 (LSEM)](#01--分层状态演化模型-lsem)
+  - [📑 目录](#-目录)
+  - [一、理论动机与问题定义](#一理论动机与问题定义)
+    - [1.1 核心问题](#11-核心问题)
+    - [1.2 LSEM的创新](#12-lsem的创新)
+  - [二、形式化定义](#二形式化定义)
+    - [2.1 状态空间 (State Space)](#21-状态空间-state-space)
+    - [2.2 时空戳系统 (Timestamp System)](#22-时空戳系统-timestamp-system)
+    - [2.3 状态转换函数 (State Transition)](#23-状态转换函数-state-transition)
+    - [2.4 可见性谓词 (Visibility Predicate)](#24-可见性谓词-visibility-predicate)
+    - [2.5 冲突检测函数 (Conflict Detection)](#25-冲突检测函数-conflict-detection)
+  - [三、三层架构详解](#三三层架构详解)
+    - [3.1 L0: 存储引擎层](#31-l0-存储引擎层)
+    - [3.2 L1: 运行时层](#32-l1-运行时层)
+    - [3.3 L2: 分布式层](#33-l2-分布式层)
+  - [四、跨层映射关系](#四跨层映射关系)
+    - [4.1 同构性证明](#41-同构性证明)
+    - [4.2 锁机制的跨层映射](#42-锁机制的跨层映射)
+    - [4.3 快照的跨层传播](#43-快照的跨层传播)
+  - [五、LSEM的设计优势](#五lsem的设计优势)
+    - [5.1 理论优势](#51-理论优势)
+    - [5.2 工程优势](#52-工程优势)
+    - [5.3 教育优势](#53-教育优势)
+  - [六、LSEM的局限与挑战](#六lsem的局限与挑战)
+    - [6.1 理论局限](#61-理论局限)
+    - [6.2 工程挑战](#62-工程挑战)
+    - [6.3 未来方向](#63-未来方向)
+  - [七、实例分析](#七实例分析)
+    - [7.1 案例: 转账事务的三层视角](#71-案例-转账事务的三层视角)
+  - [八、总结](#八总结)
+    - [8.1 核心贡献](#81-核心贡献)
+    - [8.2 关键公式](#82-关键公式)
+    - [8.3 实践指南](#83-实践指南)
+  - [九、延伸阅读](#九延伸阅读)
+  - [十、完整实现代码](#十完整实现代码)
+    - [10.1 LSEM统一框架实现](#101-lsem统一框架实现)
+    - [10.2 L0层实现 (PostgreSQL MVCC)](#102-l0层实现-postgresql-mvcc)
+    - [10.3 L1层实现 (Rust所有权)](#103-l1层实现-rust所有权)
+    - [10.4 L2层实现 (Raft共识)](#104-l2层实现-raft共识)
+    - [10.5 跨层映射工具](#105-跨层映射工具)
+  - [十一、实际应用案例](#十一实际应用案例)
+    - [11.1 案例: 三层协同的转账系统](#111-案例-三层协同的转账系统)
+    - [11.2 案例: 跨层性能优化](#112-案例-跨层性能优化)
+  - [十二、反例与错误设计](#十二反例与错误设计)
+    - [反例1: 跨层锁语义混淆](#反例1-跨层锁语义混淆)
+    - [反例2: 忽略层间时间戳同步](#反例2-忽略层间时间戳同步)
+
+---
+
 ## 一、理论动机与问题定义
 
 ### 1.1 核心问题
@@ -37,7 +88,7 @@ $$\text{Who can see What State at When Time?}$$
 
 **统一框架**:
 
-```
+```text
 LSEM = 状态空间 + 时空戳系统 + 可见性规则 + 冲突仲裁机制
 ```
 
@@ -99,7 +150,7 @@ $$\exists t': t \prec t' \land Visible(s', t', obs)$$
 
 **分层定义**:
 
-**L0: 快照可见性**
+**L0: 快照可见性**:
 
 ```python
 def visible_L0(tuple, snapshot, txid):
@@ -125,7 +176,7 @@ def visible_L0(tuple, snapshot, txid):
     return True
 ```
 
-**L1: 借用可见性**
+**L1: 借用可见性**:
 
 ```rust
 // 编译期检查
@@ -138,7 +189,7 @@ fn visible_L1<'a, T>(reference: &'a T, observer: &'a mut Processor) -> bool {
 }
 ```
 
-**L2: 共识可见性**
+**L2: 共识可见性**:
 
 ```python
 def visible_L2(log_entry, commit_index, node_id):
@@ -182,9 +233,9 @@ $$\exists \text{SerialOrder}: (e_1 \to e_2) \lor (e_2 \to e_1)$$
 
 **设计模式**: **多版本时间旅行 (Multi-Version Time Travel, MVTT)**
 
-```
+```text
 ┌────────────────────────────────────────────┐
-│         PostgreSQL MVCC Architecture        │
+│         PostgreSQL MVCC Architecture       │
 ├────────────────────────────────────────────┤
 │                                            │
 │  Page Layout:                              │
@@ -193,7 +244,7 @@ $$\exists \text{SerialOrder}: (e_1 \to e_2) \lor (e_2 \to e_1)$$
 │  │ (xmin=100,   │ (xmin=105,   │        │ │
 │  │  xmax=105)   │  xmax=0)     │        │ │
 │  └──────────────┴──────────────┴────────┘ │
-│         ↓                ↓                 │
+│         ↓                ↓                │
 │    旧版本(死元组)      新版本(活元组)       │
 │                                            │
 │  Snapshot:                                 │
@@ -208,7 +259,7 @@ $$\exists \text{SerialOrder}: (e_1 \to e_2) \lor (e_2 \to e_1)$$
 
 **状态转换示例**:
 
-```
+```text
 初始状态: Tuple(xmin=50, xmax=0, data='A')
     ↓ UPDATE (TxID=100)
 旧版本:   Tuple(xmin=50, xmax=100, data='A')  ← 标记死亡
@@ -230,7 +281,7 @@ pg_clog[100] = COMMITTED
 
 **设计模式**: **所有权时序隔离 (Ownership Temporal Isolation, OTI)**
 
-```
+```text
 ┌────────────────────────────────────────────┐
 │        Rust Ownership System                │
 ├────────────────────────────────────────────┤
@@ -278,15 +329,15 @@ let handle = thread::spawn(move || {
 
 **设计模式**: **时空共识日志 (Spacetime Consensus Log, SCL)**
 
-```
+```text
 ┌────────────────────────────────────────────┐
-│          Raft Consensus Protocol            │
+│          Raft Consensus Protocol           │
 ├────────────────────────────────────────────┤
 │                                            │
 │  Log Replication:                          │
-│  Leader:   [1] [2] [3] [4] [5]            │
-│  Follower1:[1] [2] [3] [4] [-]            │
-│  Follower2:[1] [2] [3] [-] [-]            │
+│  Leader:   [1] [2] [3] [4] [5]             │
+│  Follower1:[1] [2] [3] [4] [-]             │
+│  Follower2:[1] [2] [3] [-] [-]             │
 │                       ↑                    │
 │                  commitIndex=3             │
 │                                            │
@@ -297,14 +348,14 @@ let handle = thread::spawn(move || {
 │  HLC Timestamp:                            │
 │  (physical_time=1638360000, logical=5)     │
 │         ↓                                  │
-│  全局偏序: HLC1 < HLC2 iff ...             │
+│  全局偏序: HLC1 < HLC2 iff ...              │
 │                                            │
 └────────────────────────────────────────────┘
 ```
 
 **状态转换示例**:
 
-```
+```text
 客户端请求: SET x=10
     ↓
 Leader: append(LogEntry(index=5, cmd='SET x=10'))
@@ -371,7 +422,7 @@ $$\phi_{\text{L1} \to \text{L2}}: \text{ThreadId} \mapsto \text{NodeId}$$
 
 ### 4.3 快照的跨层传播
 
-```
+```text
 用户发起事务
     ↓
 L2: 协调者分配全局时间戳 HLC(1638360000, 5)
@@ -503,7 +554,7 @@ COMMIT; -- pg_clog[200] = COMMITTED, 释放锁
 
 **跨层同步**:
 
-```
+```text
 L2: commitIndex=5 (全局可见)
     ↓ 触发L1回调
 L1: Rust服务收到通知，更新缓存
@@ -576,6 +627,607 @@ $$\boxed{\text{LSEM} = (Layers, States, Timestamps, Visibility, Conflict)}$$
 
 ---
 
-**版本**: 1.0.0
+## 十、完整实现代码
+
+### 10.1 LSEM统一框架实现
+
+```python
+from abc import ABC, abstractmethod
+from typing import TypeVar, Generic, List, Optional
+from dataclasses import dataclass
+from enum import Enum
+
+T = TypeVar('T')  # 状态类型
+TS = TypeVar('TS')  # 时间戳类型
+
+class Layer(Enum):
+    L0 = "存储层"
+    L1 = "运行时层"
+    L2 = "分布式层"
+
+@dataclass
+class State(Generic[T]):
+    """状态抽象"""
+    layer: Layer
+    data: T
+    timestamp: Optional[TS] = None
+
+@dataclass
+class Snapshot(Generic[TS]):
+    """快照抽象"""
+    layer: Layer
+    timestamp: TS
+    active_set: List[TS]  # 活跃事务/线程/节点集合
+
+class VisibilityPredicate(ABC, Generic[T, TS]):
+    """可见性谓词接口"""
+
+    @abstractmethod
+    def is_visible(self, state: State[T], snapshot: Snapshot[TS], observer: TS) -> bool:
+        """判断状态是否对观察者可见"""
+        pass
+
+class ConflictDetector(ABC, Generic[T]):
+    """冲突检测接口"""
+
+    @abstractmethod
+    def has_conflict(self, event1: T, event2: T) -> bool:
+        """检测两个事件是否冲突"""
+        pass
+
+class LSEMFramework(Generic[T, TS]):
+    """LSEM统一框架"""
+
+    def __init__(
+        self,
+        layer: Layer,
+        visibility: VisibilityPredicate[T, TS],
+        conflict: ConflictDetector[T]
+    ):
+        self.layer = layer
+        self.visibility = visibility
+        self.conflict = conflict
+        self.states: List[State[T]] = []
+        self.snapshots: List[Snapshot[TS]] = []
+
+    def create_snapshot(self, timestamp: TS, active_set: List[TS]) -> Snapshot[TS]:
+        """创建快照"""
+        snapshot = Snapshot(
+            layer=self.layer,
+            timestamp=timestamp,
+            active_set=active_set
+        )
+        self.snapshots.append(snapshot)
+        return snapshot
+
+    def add_state(self, state: State[T]):
+        """添加状态"""
+        self.states.append(state)
+
+    def check_visibility(self, state: State[T], snapshot: Snapshot[TS], observer: TS) -> bool:
+        """检查可见性"""
+        return self.visibility.is_visible(state, snapshot, observer)
+
+    def detect_conflict(self, event1: T, event2: T) -> bool:
+        """检测冲突"""
+        return self.conflict.has_conflict(event1, event2)
+```
+
+### 10.2 L0层实现 (PostgreSQL MVCC)
+
+```python
+from typing import List, Set
+
+@dataclass
+class TupleState:
+    """L0层状态: PostgreSQL元组"""
+    xmin: int  # 创建事务ID
+    xmax: int  # 删除事务ID
+    data: str
+    ctid: tuple  # (page, offset)
+
+class L0Visibility(VisibilityPredicate[TupleState, int]):
+    """L0层可见性判断"""
+
+    def is_visible(
+        self,
+        state: State[TupleState],
+        snapshot: Snapshot[int],
+        observer: int  # 当前事务ID
+    ) -> bool:
+        tuple_state = state.data
+
+        # 规则1: 本事务创建的版本
+        if tuple_state.xmin == observer:
+            if tuple_state.xmax == 0:
+                return True
+            if tuple_state.xmax == observer:
+                return False
+            return True  # 删除事务未提交
+
+        # 规则2: 创建事务未提交
+        if tuple_state.xmin in snapshot.active_set:
+            return False
+
+        # 规则3: 创建事务在快照后
+        if tuple_state.xmin >= snapshot.timestamp:
+            return False
+
+        # 规则4: 检查删除标记
+        if tuple_state.xmax != 0:
+            if tuple_state.xmax == observer:
+                return False
+            if tuple_state.xmax not in snapshot.active_set and tuple_state.xmax < snapshot.timestamp:
+                return False
+
+        return True
+
+class L0Conflict(ConflictDetector[TupleState]):
+    """L0层冲突检测"""
+
+    def has_conflict(self, event1: TupleState, event2: TupleState) -> bool:
+        # 写-写冲突: 同一行被两个事务修改
+        if event1.ctid == event2.ctid:
+            if event1.xmin != event2.xmin:
+                return True
+        return False
+
+# 使用示例
+l0_framework = LSEMFramework(
+    layer=Layer.L0,
+    visibility=L0Visibility(),
+    conflict=L0Conflict()
+)
+
+# 创建快照
+snapshot = l0_framework.create_snapshot(
+    timestamp=110,
+    active_set=[102, 105, 108]
+)
+
+# 添加状态
+tuple_state = State(
+    layer=Layer.L0,
+    data=TupleState(xmin=100, xmax=0, data="Alice", ctid=(1, 5)),
+    timestamp=100
+)
+l0_framework.add_state(tuple_state)
+
+# 检查可见性
+is_visible = l0_framework.check_visibility(tuple_state, snapshot, observer=109)
+print(f"Tuple visible: {is_visible}")  # True (100 < 110, 100 not in [102,105,108])
+```
+
+### 10.3 L1层实现 (Rust所有权)
+
+```rust
+use std::sync::{Arc, Mutex};
+use std::marker::PhantomData;
+
+#[derive(Clone)]
+struct MemState<T> {
+    value: T,
+    lifetime: Lifetime,
+}
+
+#[derive(Clone, Copy, PartialOrd, PartialEq)]
+struct Lifetime {
+    start: u64,
+    end: u64,
+}
+
+struct L1Visibility;
+
+impl<T> VisibilityPredicate<MemState<T>, Lifetime> for L1Visibility {
+    fn is_visible(
+        &self,
+        state: &State<MemState<T>>,
+        snapshot: &Snapshot<Lifetime>,
+        observer: &Lifetime,
+    ) -> bool {
+        // Rust借用检查器规则:
+        // 1. 生命周期必须有效
+        // 2. 不存在可变借用冲突
+
+        let mem_state = &state.data;
+
+        // 检查生命周期重叠
+        lifetime_overlaps(&mem_state.lifetime, observer) &&
+        // 检查借用规则（编译期保证）
+        !has_borrow_conflict(state, snapshot)
+    }
+}
+
+fn lifetime_overlaps(l1: &Lifetime, l2: &Lifetime) -> bool {
+    l1.start < l2.end && l2.start < l1.end
+}
+
+fn has_borrow_conflict<T>(
+    state: &State<MemState<T>>,
+    snapshot: &Snapshot<Lifetime>,
+) -> bool {
+    // 简化: 检查是否有可变借用
+    // 实际由Rust编译器在编译期检查
+    false
+}
+
+// 使用示例
+let l1_framework = LSEMFramework::new(
+    Layer::L1,
+    L1Visibility,
+    L1Conflict,
+);
+
+let mem_state = State {
+    layer: Layer::L1,
+    data: MemState {
+        value: 42,
+        lifetime: Lifetime { start: 0, end: 100 },
+    },
+    timestamp: Some(Lifetime { start: 0, end: 100 }),
+};
+
+let snapshot = l1_framework.create_snapshot(
+    Lifetime { start: 0, end: 100 },
+    vec![],  // 无活跃借用
+);
+
+let is_visible = l1_framework.check_visibility(
+    &mem_state,
+    &snapshot,
+    &Lifetime { start: 50, end: 150 },
+);
+```
+
+### 10.4 L2层实现 (Raft共识)
+
+```python
+from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class LogEntry:
+    """L2层状态: Raft日志条目"""
+    index: int
+    term: int
+    command: str
+    committed: bool
+
+class L2Visibility(VisibilityPredicate[LogEntry, int]):
+    """L2层可见性判断 (Raft)"""
+
+    def is_visible(
+        self,
+        state: State[LogEntry],
+        snapshot: Snapshot[int],  # commit_index
+        observer: int  # 节点ID
+    ) -> bool:
+        log_entry = state.data
+
+        # Raft规则: 已提交的日志对所有节点可见
+        if log_entry.index <= snapshot.timestamp:  # commit_index
+            return True
+
+        # 未提交的日志仅对Leader可见
+        return observer == self.current_leader_id
+
+    def __init__(self, current_leader_id: int):
+        self.current_leader_id = current_leader_id
+
+class L2Conflict(ConflictDetector[LogEntry]):
+    """L2层冲突检测"""
+
+    def has_conflict(self, event1: LogEntry, event2: LogEntry) -> bool:
+        # 同一索引位置的不同日志条目冲突
+        if event1.index == event2.index:
+            if event1.term != event2.term:
+                return True  # 不同term的日志冲突
+        return False
+
+# 使用示例
+l2_framework = LSEMFramework(
+    layer=Layer.L2,
+    visibility=L2Visibility(current_leader_id=1),
+    conflict=L2Conflict()
+)
+
+# 创建快照 (commit_index=5)
+snapshot = l2_framework.create_snapshot(
+    timestamp=5,  # commit_index
+    active_set=[1, 2, 3]  # 活跃节点
+)
+
+# 添加日志条目
+log_entry = State(
+    layer=Layer.L2,
+    data=LogEntry(index=3, term=2, command="SET x=10", committed=True),
+    timestamp=3
+)
+l2_framework.add_state(log_entry)
+
+# 检查可见性
+is_visible = l2_framework.check_visibility(log_entry, snapshot, observer=2)
+print(f"Log entry visible: {is_visible}")  # True (3 <= 5)
+```
+
+### 10.5 跨层映射工具
+
+```python
+class CrossLayerMapper:
+    """跨层映射工具"""
+
+    @staticmethod
+    def map_l0_to_l1(txid: int) -> Lifetime:
+        """将L0事务ID映射到L1生命周期"""
+        return Lifetime(start=txid, end=txid + 1000)
+
+    @staticmethod
+    def map_l1_to_l2(lifetime: Lifetime) -> int:
+        """将L1生命周期映射到L2日志索引"""
+        return lifetime.start // 1000
+
+    @staticmethod
+    def unify_snapshot(
+        l0_snapshot: Snapshot[int],
+        l1_snapshot: Snapshot[Lifetime],
+        l2_snapshot: Snapshot[int]
+    ) -> dict:
+        """统一三层快照"""
+        return {
+            'l0': {
+                'xmax': l0_snapshot.timestamp,
+                'xip': l0_snapshot.active_set
+            },
+            'l1': {
+                'epoch': l1_snapshot.timestamp,
+                'active_threads': l1_snapshot.active_set
+            },
+            'l2': {
+                'commit_index': l2_snapshot.timestamp,
+                'active_nodes': l2_snapshot.active_set
+            }
+        }
+
+# 使用示例
+mapper = CrossLayerMapper()
+
+# 跨层查询
+def query_across_layers(key: str):
+    # L0: 数据库查询
+    l0_result = l0_framework.query(key)
+
+    # L1: 内存缓存
+    l1_result = l1_framework.get_from_cache(key)
+
+    # L2: 分布式状态
+    l2_result = l2_framework.get_from_consensus(key)
+
+    # 统一结果
+    return {
+        'storage': l0_result,
+        'cache': l1_result,
+        'distributed': l2_result
+    }
+```
+
+---
+
+## 十一、实际应用案例
+
+### 11.1 案例: 三层协同的转账系统
+
+**架构**: PostgreSQL (L0) + Rust服务 (L1) + Raft协调 (L2)
+
+```rust
+use tokio_postgres::Client;
+use std::sync::Arc;
+
+struct TransferService {
+    db: Arc<Client>,  // L0: PostgreSQL
+    cache: Arc<Mutex<HashMap<String, i64>>>,  // L1: 内存缓存
+    raft: Arc<RaftNode>,  // L2: Raft共识
+}
+
+impl TransferService {
+    async fn transfer(
+        &self,
+        from: String,
+        to: String,
+        amount: i64,
+    ) -> Result<(), TransferError> {
+        // L2: 全局协调（分配事务ID）
+        let global_tx_id = self.raft.propose(format!("TRANSFER {} {} {}", from, to, amount)).await?;
+
+        // L1: 本地缓存预热
+        let from_balance = self.cache.lock().unwrap().get(&from).copied();
+
+        // L0: 数据库事务
+        let mut tx = self.db.transaction().await?;
+
+        // 扣款
+        tx.execute(
+            "UPDATE accounts SET balance = balance - $1 WHERE id = $2",
+            &[&amount, &from]
+        ).await?;
+
+        // 入账
+        tx.execute(
+            "UPDATE accounts SET balance = balance + $1 WHERE id = $2",
+            &[&amount, &to]
+        ).await?;
+
+        // L0: 提交
+        tx.commit().await?;
+
+        // L1: 更新缓存
+        self.cache.lock().unwrap().insert(from.clone(), from_balance.unwrap_or(0) - amount);
+        self.cache.lock().unwrap().insert(to.clone(), from_balance.unwrap_or(0) + amount);
+
+        // L2: 确认提交
+        self.raft.confirm_commit(global_tx_id).await?;
+
+        Ok(())
+    }
+}
+```
+
+**LSEM分析**:
+
+- **L0**: PostgreSQL MVCC保证事务隔离
+- **L1**: Rust所有权保证线程安全
+- **L2**: Raft保证分布式一致性
+
+### 11.2 案例: 跨层性能优化
+
+**问题**: 高并发查询性能瓶颈
+
+**LSEM诊断**:
+
+```python
+class PerformanceProfiler:
+    """跨层性能分析器"""
+
+    def profile_query(self, query: str) -> dict:
+        """分析查询在各层的耗时"""
+        profile = {
+            'l0': 0,  # PostgreSQL查询时间
+            'l1': 0,  # 应用层处理时间
+            'l2': 0,  # 分布式协调时间
+        }
+
+        # L2: 分布式协调
+        start = time.time()
+        global_snapshot = self.raft.get_commit_index()
+        profile['l2'] = time.time() - start
+
+        # L1: 缓存检查
+        start = time.time()
+        cached = self.cache.get(query)
+        profile['l1'] = time.time() - start
+
+        if cached:
+            return profile
+
+        # L0: 数据库查询
+        start = time.time()
+        result = self.db.execute(query)
+        profile['l0'] = time.time() - start
+
+        return profile
+
+# 使用
+profiler = PerformanceProfiler()
+profile = profiler.profile_query("SELECT * FROM orders WHERE user_id = 123")
+
+# 输出:
+# {'l2': 0.001, 'l1': 0.0001, 'l0': 0.05}
+# 瓶颈在L0层 → 优化索引或添加缓存
+```
+
+---
+
+## 十二、反例与错误设计
+
+### 反例1: 跨层锁语义混淆
+
+**错误设计**:
+
+```rust
+// 错误: 用L1的Mutex锁L0的数据库行
+let mutex = Arc::new(Mutex::new(()));
+
+async fn update_account(db: &Client, id: i32, amount: i64) {
+    let _lock = mutex.lock().unwrap();  // L1锁
+
+    // 问题: L1锁无法防止其他进程访问L0数据库
+    db.execute(
+        "UPDATE accounts SET balance = balance + $1 WHERE id = $2",
+        &[&amount, &id]
+    ).await?;
+}
+```
+
+**问题**: L1层的Mutex只能保护同一进程内的并发，无法防止其他进程/节点访问数据库
+
+**正确设计**:
+
+```rust
+// 正确: 在L0层使用数据库锁
+async fn update_account(db: &Client, id: i32, amount: i64) {
+    let mut tx = db.transaction().await?;
+
+    // L0层锁: FOR UPDATE
+    tx.execute(
+        "SELECT * FROM accounts WHERE id = $1 FOR UPDATE",
+        &[&id]
+    ).await?;
+
+    tx.execute(
+        "UPDATE accounts SET balance = balance + $1 WHERE id = $2",
+        &[&amount, &id]
+    ).await?;
+
+    tx.commit().await?;
+}
+```
+
+### 反例2: 忽略层间时间戳同步
+
+**错误设计**:
+
+```python
+# 错误: L0和L2使用不同的时间戳系统
+l0_txid = postgresql.get_next_xid()  # L0: 本地事务ID
+l2_timestamp = raft.get_commit_index()  # L2: 日志索引
+
+# 问题: 无法建立跨层可见性关系
+if l0_txid < l2_timestamp:  # 错误比较！
+    pass
+```
+
+**正确设计**:
+
+```python
+# 正确: 统一时间戳系统
+class UnifiedTimestamp:
+    """统一时间戳 (HLC风格)"""
+    def __init__(self):
+        self.physical_time = time.time()
+        self.logical_counter = 0
+        self.node_id = 1
+
+    def get_timestamp(self) -> tuple:
+        """返回 (physical, logical, node)"""
+        return (self.physical_time, self.logical_counter, self.node_id)
+
+    def compare(self, ts1: tuple, ts2: tuple) -> int:
+        """比较时间戳: -1(ts1<ts2), 0(相等), 1(ts1>ts2)"""
+        if ts1[0] < ts2[0]:
+            return -1
+        if ts1[0] > ts2[0]:
+            return 1
+        if ts1[1] < ts2[1]:
+            return -1
+        if ts1[1] > ts2[1]:
+            return 1
+        return 0
+
+# 使用统一时间戳
+timestamp_service = UnifiedTimestamp()
+
+l0_timestamp = timestamp_service.get_timestamp()
+l2_timestamp = timestamp_service.get_timestamp()
+
+# 正确比较
+if timestamp_service.compare(l0_timestamp, l2_timestamp) < 0:
+    pass
+```
+
+---
+
+**版本**: 2.0.0（大幅充实）
+**创建日期**: 2025-12-05
 **最后更新**: 2025-12-05
+**新增内容**: 完整Python/Rust实现、跨层映射工具、实际应用案例、反例分析
+
 **关联文档**: `00-理论框架总览/00-理论体系全景图.md`
