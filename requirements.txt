@@ -1,0 +1,114 @@
+# PostgreSQL_Modern Python依赖
+
+# 核心依赖
+psycopg2-binary>=2.9.9
+psycopg2>=2.9.9
+
+# 性能和监控
+prometheus-client>=0.19.0
+psutil>=5.9.6
+
+# 数据处理
+pandas>=2.1.4
+numpy>=1.26.2
+
+# JSON处理
+orjson>=3.9.10
+
+# 命令行工具
+click>=8.1.7
+rich>=13.7.0
+colorama>=0.4.6
+
+# 测试
+pytest>=7.4.3
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.1
+
+# 代码质量
+black>=23.12.1
+flake8>=6.1.0
+pylint>=3.0.3
+mypy>=1.7.1
+
+# 文档
+mkdocs>=1.5.3
+mkdocs-material>=9.5.3
+
+# 工具库
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# AI/ML相关
+langchain>=0.1.0
+openai>=1.6.1
+tiktoken>=0.5.2
+
+# 向量数据库
+pgvector>=0.2.4
+
+# 数据验证
+pydantic>=2.5.3
+
+# 日期时间
+python-dateutil>=2.8.2
+pytz>=2023.3
+
+# 加密
+cryptography>=41.0.7
+
+# 备份工具
+boto3>=1.34.8  # AWS S3
+google-cloud-storage>=2.14.0  # Google Cloud Storage
+azure-storage-blob>=12.19.0  # Azure Blob Storage
+
+# 配置管理
+python-json-config>=1.2.3
+configparser>=6.0.0
+
+# 日志
+loguru>=0.7.2
+
+# 异步支持
+asyncio>=3.4.3
+asyncpg>=0.29.0
+
+# 数据可视化
+matplotlib>=3.8.2
+seaborn>=0.13.0
+
+# Excel支持
+openpyxl>=3.1.2
+xlsxwriter>=3.1.9
+
+# 性能分析
+py-spy>=0.3.14
+memray>=1.11.0
+
+# 开发工具
+ipython>=8.19.0
+jupyter>=1.0.0
+
+# HTTP客户端
+httpx>=0.26.0
+
+# 任务调度
+schedule>=1.2.0
+celery>=5.3.4
+
+# 消息队列
+redis>=5.0.1
+kombu>=5.3.4
+
+# 分布式追踪
+opentelemetry-api>=1.22.0
+opentelemetry-sdk>=1.22.0
+opentelemetry-instrumentation-psycopg2>=0.43b0
+
+# 健康检查
+healthcheck>=1.3.3
+
+# 版本信息
+setuptools>=69.0.3
+wheel>=0.42.0

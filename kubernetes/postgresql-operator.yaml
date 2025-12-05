@@ -1,0 +1,370 @@
+# CloudNativePG Operator部署配置
+# PostgreSQL 18 on Kubernetes生产级部署
+
+---
+# 1. Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: postgresql-system
+
+---
+# 2. 安装CloudNativePG Operator
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cnpg-operator
+  namespace: postgresql-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cnpg-operator
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["*"]
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters", "backups", "scheduledbackups"]
+    verbs: ["*"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind:ClusterRoleBinding
+metadata:
+  name: cnpg-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cnpg-operator
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-operator
+    namespace: postgresql-system
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cnpg-operator
+  namespace: postgresql-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cnpg-operator
+  template:
+    metadata:
+      labels:
+        app: cnpg-operator
+    spec:
+      serviceAccountName: cnpg-operator
+      containers:
+      - name: operator
+        image: ghcr.io/cloudnative-pg/cloudnative-pg:1.22.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# 3. PostgreSQL 18集群配置
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-cluster
+  namespace: postgresql-system
+spec:
+  # 实例配置
+  instances: 3  # 1主2从
+  imageName: postgres:18
+
+  # PostgreSQL 18优化配置
+  postgresql:
+    parameters:
+      # PostgreSQL 18新特性
+      io_direct: "data,wal"
+      io_combine_limit: "256kB"
+      enable_skip_scan: "on"
+
+      # 内存配置（16GB Pod）
+      shared_buffers: "4GB"
+      work_mem: "64MB"
+      maintenance_work_mem: "1GB"
+      effective_cache_size: "12GB"
+
+      # WAL配置
+      wal_level: "replica"
+      max_wal_size: "4GB"
+      min_wal_size: "1GB"
+      wal_compression: "on"
+
+      # 连接配置
+      max_connections: "200"
+
+      # 查询优化
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+
+      # 并行查询
+      max_parallel_workers_per_gather: "4"
+      max_parallel_workers: "8"
+
+      # JIT
+      jit: "on"
+
+      # 日志
+      log_statement: "ddl"
+      log_min_duration_statement: "1000"
+      log_connections: "on"
+      log_disconnections: "on"
+
+    pg_hba:
+      - host all all 0.0.0.0/0 scram-sha-256
+
+  # 存储配置
+  storage:
+    storageClass: fast-ssd
+    size: 500Gi
+    resizeInUseVolumes: true
+
+  # 资源配置
+  resources:
+    requests:
+      memory: "16Gi"
+      cpu: "4"
+    limits:
+      memory: "32Gi"
+      cpu: "8"
+
+  # 高可用配置
+  primaryUpdateStrategy: unsupervised
+  primaryUpdateMethod: switchover
+
+  # 监控配置
+  monitoring:
+    enabled: true
+    podMonitorEnabled: true
+
+  # 备份配置
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://my-bucket/postgres-backups
+      s3Credentials:
+        accessKeyId:
+          name: s3-credentials
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: s3-credentials
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+        maxParallel: 8
+    retentionPolicy: "30d"
+
+  # 引导配置
+  bootstrap:
+    initdb:
+      database: mydb
+      owner: app_user
+      secret:
+        name: postgres-app-user
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS vector
+        - CREATE EXTENSION IF NOT EXISTS pg_stat_statements
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm
+
+---
+# 4. 主服务（读写）
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-rw
+  namespace: postgresql-system
+spec:
+  type: ClusterIP
+  selector:
+    cnpg.io/cluster: postgres-cluster
+    role: primary
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+# 5. 从服务（只读）
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-ro
+  namespace: postgresql-system
+spec:
+  type: ClusterIP
+  selector:
+    cnpg.io/cluster: postgres-cluster
+    role: replica
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+# 6. 定时备份
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgres-backup-schedule
+  namespace: postgresql-system
+spec:
+  schedule: "0 2 * * *"  # 每天凌晨2点
+  backupOwnerReference: self
+  cluster:
+    name: postgres-cluster
+
+---
+# 7. PgBouncer连接池
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: postgresql-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+    spec:
+      containers:
+      - name: pgbouncer
+        image: edoburu/pgbouncer:latest
+        env:
+        - name: DATABASE_URL
+          value: "postgres://postgres:password@postgres-rw:5432/mydb"
+        - name: POOL_MODE
+          value: "transaction"
+        - name: MAX_CLIENT_CONN
+          value: "5000"
+        - name: DEFAULT_POOL_SIZE
+          value: "100"
+        ports:
+        - containerPort: 5432
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: postgresql-system
+spec:
+  selector:
+    app: pgbouncer
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# 8. HPA自动扩缩容
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pgbouncer-hpa
+  namespace: postgresql-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pgbouncer
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# 9. 监控配置
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-metrics
+  namespace: postgresql-system
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: postgres-cluster
+  endpoints:
+  - port: metrics
+    interval: 30s
+
+---
+# 部署说明
+#
+# 1. 安装Operator:
+#    kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.22/releases/cnpg-1.22.0.yaml
+#
+# 2. 创建Secrets:
+#    kubectl create secret generic postgres-app-user \
+#      --from-literal=username=app_user \
+#      --from-literal=password=strong_password \
+#      -n postgresql-system
+#
+#    kubectl create secret generic s3-credentials \
+#      --from-literal=ACCESS_KEY_ID=your_key \
+#      --from-literal=SECRET_ACCESS_KEY=your_secret \
+#      -n postgresql-system
+#
+# 3. 部署集群:
+#    kubectl apply -f postgresql-operator.yaml
+#
+# 4. 查看状态:
+#    kubectl get cluster -n postgresql-system
+#    kubectl get pods -n postgresql-system
+#
+# 5. 连接数据库:
+#    # 读写（主库）
+#    kubectl port-forward svc/postgres-rw 5432:5432 -n postgresql-system
+#
+#    # 只读（从库）
+#    kubectl port-forward svc/postgres-ro 5433:5432 -n postgresql-system
+#
+# 6. 执行备份:
+#    kubectl cnpg backup postgres-cluster -n postgresql-system
+#
+# 7. 故障转移测试:
+#    kubectl delete pod postgres-cluster-1 -n postgresql-system
+#    # Operator自动选举新主库
+#
+# 8. 扩容:
+#    kubectl cnpg scale postgres-cluster --replicas=5 -n postgresql-system

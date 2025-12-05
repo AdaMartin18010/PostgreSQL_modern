@@ -1,0 +1,233 @@
+# PostgreSQL 18 告警规则
+# Prometheus AlertManager配置
+
+groups:
+  # ============================================================================
+  # 关键告警（立即响应）
+  # ============================================================================
+  - name: postgresql_critical
+    interval: 30s
+    rules:
+      # PostgreSQL服务宕机
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: postgresql
+        annotations:
+          summary: "PostgreSQL实例宕机"
+          description: "PostgreSQL实例 {{ $labels.instance }} 已宕机超过1分钟"
+          runbook: "https://docs.postgresql.org/troubleshooting"
+
+      # 复制延迟过高
+      - alert: ReplicationLagHigh
+        expr: pg_replication_lag_seconds > 60
+        for: 5m
+        labels:
+          severity: critical
+          component: replication
+        annotations:
+          summary: "复制延迟过高"
+          description: "从服务器 {{ $labels.instance }} 复制延迟 {{ $value }}秒"
+
+      # 连接数接近上限
+      - alert: ConnectionsNearLimit
+        expr: (pg_stat_activity_count / pg_settings_max_connections) > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          component: connections
+        annotations:
+          summary: "连接数接近上限"
+          description: "连接数使用率 {{ $value | humanizePercentage }}，接近max_connections"
+
+      # 磁盘空间不足
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/var/lib/postgresql"} / node_filesystem_size_bytes{mountpoint="/var/lib/postgresql"}) < 0.10
+        for: 5m
+        labels:
+          severity: critical
+          component: storage
+        annotations:
+          summary: "磁盘空间严重不足"
+          description: "数据目录磁盘空间剩余 {{ $value | humanizePercentage }}"
+
+  # ============================================================================
+  # 重要告警（尽快响应）
+  # ============================================================================
+  - name: postgresql_warning
+    interval: 1m
+    rules:
+      # 缓存命中率低
+      - alert: CacheHitRatioLow
+        expr: |
+          rate(pg_stat_database_blks_hit{datname!~"template.*"}[5m]) / 
+          (rate(pg_stat_database_blks_hit{datname!~"template.*"}[5m]) + 
+           rate(pg_stat_database_blks_read{datname!~"template.*"}[5m])) < 0.95
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "缓存命中率过低"
+          description: "数据库 {{ $labels.datname }} 缓存命中率 {{ $value | humanizePercentage }}"
+
+      # 表膨胀
+      - alert: TableBloatHigh
+        expr: |
+          (pg_stat_user_tables_n_dead_tup / 
+           (pg_stat_user_tables_n_live_tup + pg_stat_user_tables_n_dead_tup)) > 0.20
+        for: 1h
+        labels:
+          severity: warning
+          component: maintenance
+        annotations:
+          summary: "表膨胀严重"
+          description: "表 {{ $labels.schemaname }}.{{ $labels.relname }} 死元组占比 {{ $value | humanizePercentage }}"
+
+      # 长事务
+      - alert: LongRunningTransaction
+        expr: |
+          max(pg_stat_activity_max_tx_duration) > 3600
+        for: 5m
+        labels:
+          severity: warning
+          component: queries
+        annotations:
+          summary: "存在长时间运行事务"
+          description: "事务运行时间 {{ $value }}秒"
+
+      # 检查点频繁
+      - alert: CheckpointsTooFrequent
+        expr: rate(pg_stat_bgwriter_checkpoints_req[5m]) > rate(pg_stat_bgwriter_checkpoints_timed[5m])
+        for: 15m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "请求检查点过于频繁"
+          description: "需要增大max_wal_size"
+
+      # 磁盘空间警告
+      - alert: DiskSpaceWarning
+        expr: (node_filesystem_avail_bytes{mountpoint="/var/lib/postgresql"} / node_filesystem_size_bytes{mountpoint="/var/lib/postgresql"}) < 0.20
+        for: 10m
+        labels:
+          severity: warning
+          component: storage
+        annotations:
+          summary: "磁盘空间不足"
+          description: "数据目录磁盘空间剩余 {{ $value | humanizePercentage }}"
+
+      # WAL文件堆积
+      - alert: WALFilesAccumulating
+        expr: pg_wal_count > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: wal
+        annotations:
+          summary: "WAL文件堆积"
+          description: "WAL文件数量 {{ $value }}，检查归档或复制槽"
+
+  # ============================================================================
+  # 性能告警
+  # ============================================================================
+  - name: postgresql_performance
+    interval: 1m
+    rules:
+      # 慢查询增加
+      - alert: SlowQueriesIncreasing
+        expr: |
+          rate(pg_stat_statements_mean_exec_time_seconds{query!~"^(COMMIT|BEGIN)"}[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "慢查询增加"
+          description: "平均查询时间 {{ $value }}秒"
+
+      # 锁等待
+      - alert: LockWaiting
+        expr: pg_locks_count{mode="AccessExclusiveLock",granted="false"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: locks
+        annotations:
+          summary: "存在锁等待"
+          description: "{{ $value }}个查询在等待锁"
+
+      # TPS异常下降
+      - alert: TPSDrop
+        expr: |
+          (rate(pg_stat_database_xact_commit[5m]) + rate(pg_stat_database_xact_rollback[5m])) < 
+          (avg_over_time((rate(pg_stat_database_xact_commit[5m]) + rate(pg_stat_database_xact_rollback[5m]))[1h:5m]) * 0.5)
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "TPS异常下降"
+          description: "当前TPS {{ $value }}，低于历史均值的50%"
+
+      # 连接数突增
+      - alert: ConnectionsSpike
+        expr: |
+          rate(pg_stat_activity_count[5m]) > 
+          (avg_over_time(pg_stat_activity_count[1h]) * 1.5)
+        for: 5m
+        labels:
+          severity: warning
+          component: connections
+        annotations:
+          summary: "连接数突然增加"
+          description: "当前连接数 {{ $value }}，超过历史均值的150%"
+
+  # ============================================================================
+  # 复制告警
+  # ============================================================================
+  - name: postgresql_replication
+    interval: 1m
+    rules:
+      # 从服务器断开
+      - alert: ReplicationSlotInactive
+        expr: pg_replication_slots_active == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: replication
+        annotations:
+          summary: "复制槽不活跃"
+          description: "复制槽 {{ $labels.slot_name }} 已断开"
+
+      # 逻辑复制延迟
+      - alert: LogicalReplicationLagHigh
+        expr: pg_stat_subscription_apply_lag_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+          component: replication
+        annotations:
+          summary: "逻辑复制延迟高"
+          description: "订阅 {{ $labels.subname }} 延迟 {{ $value }}秒"
+
+# ============================================================================
+# 告警规则使用说明
+# ============================================================================
+
+# 1. 将此文件放置在 /etc/prometheus/alerts/ 目录
+# 2. 在prometheus.yml中引用:
+#    rule_files:
+#      - '/etc/prometheus/alerts/*.yml'
+# 3. 重载Prometheus配置:
+#    curl -X POST http://localhost:9090/-/reload
+# 4. 配置AlertManager接收告警
+# 5. 根据实际情况调整阈值
+
+# 告警级别:
+# - critical: 需要立即处理（5分钟内）
+# - warning: 需要关注并尽快处理（30分钟内）
+# - info: 仅通知，无需立即处理

@@ -1,0 +1,115 @@
+# Prometheus配置文件
+# PostgreSQL 18监控配置
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'postgresql-cluster'
+    environment: 'production'
+
+# 告警规则
+rule_files:
+  - '/etc/prometheus/alerts/*.yml'
+
+# 告警管理器配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
+# 抓取配置
+scrape_configs:
+  # ============================================================================
+  # Prometheus自监控
+  # ============================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # ============================================================================
+  # PostgreSQL监控（通过postgres_exporter）
+  # ============================================================================
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          instance: 'postgres18'
+          role: 'primary'
+    
+    # 抓取间隔
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ============================================================================
+  # PostgreSQL从服务器监控（如果有）
+  # ============================================================================
+  - job_name: 'postgresql-replica'
+    static_configs:
+      - targets: 
+          # - 'postgres-replica1-exporter:9187'
+          # - 'postgres-replica2-exporter:9187'
+        labels:
+          service: 'postgresql'
+          role: 'replica'
+
+  # ============================================================================
+  # Node Exporter（系统指标）
+  # ============================================================================
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node'
+          instance: 'postgres-host'
+
+  # ============================================================================
+  # pgBouncer监控（如果有）
+  # ============================================================================
+  - job_name: 'pgbouncer'
+    static_configs:
+      - targets: ['pgbouncer-exporter:9127']
+        labels:
+          service: 'pgbouncer'
+
+  # ============================================================================
+  # 自定义应用监控
+  # ============================================================================
+  - job_name: 'application'
+    static_configs:
+      - targets: []
+        # - 'app-server1:9090'
+        # - 'app-server2:9090'
+        labels:
+          service: 'application'
+
+# ============================================================================
+# 关键指标说明
+# ============================================================================
+
+# PostgreSQL核心指标:
+# - pg_up: PostgreSQL运行状态（0=down, 1=up）
+# - pg_stat_database_*: 数据库统计
+# - pg_stat_activity_*: 连接和查询统计
+# - pg_stat_bgwriter_*: 后台写进程统计
+# - pg_stat_replication_*: 复制统计
+# - pg_locks_*: 锁统计
+# - pg_stat_user_tables_*: 表统计
+# - pg_stat_user_indexes_*: 索引统计
+# - pg_database_size_bytes: 数据库大小
+
+# 系统指标:
+# - node_cpu_*: CPU使用率
+# - node_memory_*: 内存使用
+# - node_disk_*: 磁盘I/O
+# - node_network_*: 网络流量
+
+# 查询示例:
+# - 缓存命中率: rate(pg_stat_database_blks_hit[5m]) / (rate(pg_stat_database_blks_hit[5m]) + rate(pg_stat_database_blks_read[5m]))
+# - TPS: rate(pg_stat_database_xact_commit[1m]) + rate(pg_stat_database_xact_rollback[1m])
+# - 活跃连接数: pg_stat_activity_count{state="active"}
+# - 复制延迟: pg_replication_lag_seconds

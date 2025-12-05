@@ -1,0 +1,262 @@
+version: '3.8'
+
+# PostgreSQL 18 生产级 Docker Compose 配置
+# 包含: PostgreSQL 18 + pgAdmin + Prometheus + Grafana
+
+services:
+  #------------------------------------------------------------------------------
+  # PostgreSQL 18 主服务
+  #------------------------------------------------------------------------------
+  postgres:
+    image: postgres:18
+    container_name: postgres18
+    hostname: postgres18
+    restart: always
+    
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: mydb
+      PGDATA: /var/lib/postgresql/data/pgdata
+      
+      # PostgreSQL 18 特性
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      
+    volumes:
+      # 数据持久化
+      - postgres_data:/var/lib/postgresql/data
+      
+      # 自定义配置
+      - ./postgresql-18-production.conf:/etc/postgresql/postgresql.conf:ro
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      
+      # 初始化脚本
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      
+      # 备份目录
+      - ./backups:/backups
+    
+    ports:
+      - "5432:5432"
+    
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    networks:
+      - postgres-network
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 32G
+        reservations:
+          cpus: '4'
+          memory: 16G
+
+  #------------------------------------------------------------------------------
+  # pgAdmin 4 (Web管理界面)
+  #------------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-changeme}
+      PGADMIN_CONFIG_SERVER_MODE: 'True'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'True'
+    
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+    
+    ports:
+      - "5050:80"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    networks:
+      - postgres-network
+
+  #------------------------------------------------------------------------------
+  # PostgreSQL Exporter (Prometheus监控)
+  #------------------------------------------------------------------------------
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    restart: always
+    
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/mydb?sslmode=disable"
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
+    
+    ports:
+      - "9187:9187"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    networks:
+      - postgres-network
+
+  #------------------------------------------------------------------------------
+  # Prometheus (指标收集)
+  #------------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    
+    ports:
+      - "9090:9090"
+    
+    networks:
+      - postgres-network
+
+  #------------------------------------------------------------------------------
+  # Grafana (可视化)
+  #------------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    
+    ports:
+      - "3000:3000"
+    
+    depends_on:
+      - prometheus
+    
+    networks:
+      - postgres-network
+
+  #------------------------------------------------------------------------------
+  # pgBouncer (连接池)
+  #------------------------------------------------------------------------------
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer
+    restart: always
+    
+    environment:
+      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/mydb"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 5
+    
+    ports:
+      - "6432:5432"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    networks:
+      - postgres-network
+
+#------------------------------------------------------------------------------
+# 网络配置
+#------------------------------------------------------------------------------
+networks:
+  postgres-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+#------------------------------------------------------------------------------
+# 数据卷
+#------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+#------------------------------------------------------------------------------
+# 使用说明
+#------------------------------------------------------------------------------
+
+# 1. 创建 .env 文件:
+#    POSTGRES_PASSWORD=your_strong_password
+#    PGADMIN_PASSWORD=your_admin_password
+#    GRAFANA_PASSWORD=your_grafana_password
+
+# 2. 启动所有服务:
+#    docker-compose up -d
+
+# 3. 访问服务:
+#    PostgreSQL:      localhost:5432
+#    pgAdmin:         http://localhost:5050
+#    pgBouncer:       localhost:6432
+#    Prometheus:      http://localhost:9090
+#    Grafana:         http://localhost:3000
+
+# 4. 查看日志:
+#    docker-compose logs -f postgres
+
+# 5. 备份数据库:
+#    docker-compose exec postgres pg_dump -U postgres mydb > backup.sql
+
+# 6. 恢复数据库:
+#    docker-compose exec -T postgres psql -U postgres mydb < backup.sql
+
+# 7. 停止服务:
+#    docker-compose down
+
+# 8. 停止并删除数据:
+#    docker-compose down -v
+
+#------------------------------------------------------------------------------
+# 生产环境建议
+#------------------------------------------------------------------------------
+
+# 1. 使用外部数据卷（NFS/云存储）
+# 2. 配置SSL证书
+# 3. 使用secrets管理密码
+# 4. 配置自动备份任务
+# 5. 设置告警规则
+# 6. 配置日志聚合（ELK）
+# 7. 使用反向代理（Nginx/Traefik）
+# 8. 配置防火墙规则
+# 9. 定期更新镜像
+# 10. 监控资源使用
