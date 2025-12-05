@@ -280,7 +280,7 @@ PostgreSQL与Rust虽都解决并发问题，但**处于不同抽象层次**：
 
 **状态单元**：磁盘页内的元组版本链
 
-```
+```text
 Page Header → ItemId Array → Tuple1 (xmin=102, xmax=105) → Tuple2 (xmin=105, xmax=∞)
 ```
 
@@ -348,7 +348,7 @@ where 'b: 'a  // 'b 包含 'a，构成偏序
 
 **设计模式**：**时空共识日志（Spacetime Consensus Log）**
 
-```
+```text
 客户端 → 协调者(Timestamp Oracle) → 参与者节点(Paxos组)
      ↓
   预写日志(WAL复制) → 提交标记(Commit Mark)
@@ -412,7 +412,7 @@ L0: 事务快照 (ActiveXid数组)
 
 ### 3.4 性能权衡的统一公式
 
-**吞吐量 ∝ 1 / (协调开销 + 冲突概率)**
+**吞吐量 ∝ 1 / (协调开销 + 冲突概率)**:
 
 各层优化策略：
 
@@ -501,7 +501,7 @@ pg_conn.execute("SET TRANSACTION SNAPSHOT $1", distributed_ts).await?;
 
 ### 架构示例：金融交易处理
 
-```
+```text
 客户端 → API网关 → Rust服务集群 (L1+L2协调)
                  ↓
         分布式事务协调器 (L2 Raft)
@@ -538,7 +538,7 @@ pg_conn.execute("SET TRANSACTION SNAPSHOT $1", distributed_ts).await?;
 
 基于此模型，设计系统时应遵循：**在冲突概率最高的层次使用最轻量的协调机制**——Rust内存竞争用编译期检查，数据库写写冲突用MVCC，跨分区一致性用共识。
 
-# 数据库写写冲突的MVCC解决机制深度解析
+## 数据库写写冲突的MVCC解决机制深度解析
 
 ## 核心原理：MVCC与锁的协同机制
 
@@ -578,7 +578,7 @@ PostgreSQL使用**行级锁**阻塞并发写：
 
 **锁冲突矩阵**：
 
-```
+```text
           已持有锁
 请求锁   | NoLock | FOR SHARE | FOR UPDATE
 ---------|--------|-----------|------------
@@ -691,7 +691,7 @@ function acquire_row_lock(tuple, lock_mode):
 
 ### 3.2 HOT（Heap-Only Tuple）优化
 
-```
+```text
 不更新索引的UPDATE：
 原始元组 → [HOT链] → 新版本元组
    ↓
@@ -716,7 +716,7 @@ function acquire_row_lock(tuple, lock_mode):
 
 ### 4.1 Percolator模型（Google）
 
-```
+```text
 分布式MVCC + 2PC（两阶段提交）
 
 1. 预写：Primary Lock + Secondary Locks
@@ -741,7 +741,7 @@ function acquire_row_lock(tuple, lock_mode):
 
 ### 5.1 核心公式
 
-```
+```text
 并发控制 = 版本链（解决读写）+ 锁（解决写写）+ 中止（解决死锁/SSI）
 ```
 
@@ -762,7 +762,7 @@ function acquire_row_lock(tuple, lock_mode):
 
 **结论**：MVCC通过**版本复制**优雅地解决了读写冲突，但**写写冲突**是并发控制的**硬边界**，必须通过**锁的互斥或事务中止**来保证正确性。选择何种策略取决于对**一致性、性能、可用性**的综合权衡。
 
-# PostgreSQL应用程序事务错误判断与重试策略
+## PostgreSQL应用程序事务错误判断与重试策略
 
 ## 一、错误分类：可重试 vs 不可重试
 
@@ -1017,7 +1017,7 @@ ON CONFLICT (id) DO NOTHING;
 
 ### 4.2 幂等实现模式
 
-**模式1：唯一请求ID表**
+**模式1：唯一请求ID表**:
 
 ```sql
 CREATE TABLE idempotency_keys (
@@ -1035,7 +1035,7 @@ INSERT INTO idempotency_keys (key, result) VALUES ($1, $2);
 COMMIT;
 ```
 
-**模式2：条件更新（基于版本号）**
+**模式2：条件更新（基于版本号）**:
 
 ```rust
 // 读取时获取版本号
@@ -1259,7 +1259,7 @@ RetryPolicy {
 
 **终极认知**：重试是**补偿机制**，不是解决方案。频繁重试意味着需要**优化事务设计**（减小粒度、避免热点）或**调整隔离级别**。
 
-# PostgreSQL MVCC完整逻辑解析：从单版本到多版本演化
+## PostgreSQL MVCC完整逻辑解析：从单版本到多版本演化
 
 ## 一、元组结构：版本链的物理载体
 
@@ -1277,7 +1277,7 @@ ctid: pointer -- 物理位置 (block_number, offset)
 
 **字段状态演化**：
 
-```
+```text
 原始元组: (xmin=100, xmax=0, data='A')
 UPDATE后: (xmin=100, xmax=105, data='A')  -- 旧版本标记死亡
 新版本:   (xmin=105, xmax=0, data='B')  -- 新版本插入
@@ -1455,7 +1455,7 @@ UPDATE accounts SET balance=300 WHERE id=1;  -- **检测到xmax=0且锁被持有
 
 **锁模式矩阵**：
 
-```
+```text
           已持有锁
 请求锁   NoLock | FOR SHARE | FOR UPDATE
 ---------|--------|-----------|------------
