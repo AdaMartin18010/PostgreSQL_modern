@@ -16,13 +16,13 @@
   - [二、CAP评分模型](#二cap评分模型)
     - [2.1 评分算法](#21-评分算法)
     - [2.2 系统匹配算法](#22-系统匹配算法)
-  - [四、使用指南](#四使用指南)
-    - [4.1 Web界面使用](#41-web界面使用)
-    - [4.2 API调用](#42-api调用)
   - [三、完整实现代码](#三完整实现代码)
     - [3.1 CAP评分算法完整实现](#31-cap评分算法完整实现)
     - [3.2 Web API实现](#32-web-api实现)
     - [3.3 实际案例](#33-实际案例)
+  - [四、使用指南](#四使用指南)
+    - [4.1 Web界面使用](#41-web界面使用)
+    - [4.2 API调用](#42-api调用)
 
 ---
 
@@ -166,38 +166,6 @@ def match_systems(cap_scores, requirements):
         })
 
     return sorted(matches, key=lambda x: x['match_score'], reverse=True)
-```
-
----
-
-## 四、使用指南
-
-### 4.1 Web界面使用
-
-```bash
-# 访问在线工具
-https://tools.db-theory.org/cap-analyzer
-
-# 或本地运行
-docker run -p 8080:8080 db-tools/cap-analyzer:latest
-```
-
-### 4.2 API调用
-
-```python
-import requests
-
-response = requests.post('https://api.db-theory.org/cap/analyze', json={
-    'requirements': {
-        'consistency': {'level': 'strong'},
-        'availability': {'target': 99.99},
-        'partition_tolerance': {'network_type': 'wan'}
-    }
-})
-
-result = response.json()
-print(f"Classification: {result['cap_analysis']['classification']}")
-print(f"Top recommendation: {result['recommendations'][0]['system']}")
 ```
 
 ---
@@ -562,6 +530,38 @@ result = analyzer.analyze(request.dict())
 # classification: 'AP System'
 # scores: {'C': 45, 'A': 90, 'P': 95}
 # Top recommendation: Cassandra (match_score: 95)
+```
+
+---
+
+## 四、使用指南
+
+### 4.1 Web界面使用
+
+```bash
+# 访问在线工具
+https://tools.db-theory.org/cap-analyzer
+
+# 或本地运行
+docker run -p 8080:8080 db-tools/cap-analyzer:latest
+```
+
+### 4.2 API调用
+
+```python
+import requests
+
+response = requests.post('https://api.db-theory.org/cap/analyze', json={
+    'requirements': {
+        'consistency': {'level': 'strong'},
+        'availability': {'target': 99.99},
+        'partition_tolerance': {'network_type': 'wan'}
+    }
+})
+
+result = response.json()
+print(f"Classification: {result['cap_analysis']['classification']}")
+print(f"Top recommendation: {result['recommendations'][0]['system']}")
 ```
 
 ---

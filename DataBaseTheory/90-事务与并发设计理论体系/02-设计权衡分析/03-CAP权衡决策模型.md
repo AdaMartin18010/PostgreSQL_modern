@@ -41,6 +41,15 @@
     - [9.2 关键公式](#92-关键公式)
     - [9.3 设计原则](#93-设计原则)
   - [十、延伸阅读](#十延伸阅读)
+  - [十一、完整实现代码](#十一完整实现代码)
+    - [11.1 CAP决策器完整实现](#111-cap决策器完整实现)
+    - [11.2 动态CAP切换实现](#112-动态cap切换实现)
+  - [十二、实际应用案例](#十二实际应用案例)
+    - [12.1 案例: 混合系统（Spanner风格）](#121-案例-混合系统spanner风格)
+    - [12.2 案例: 分层CAP策略](#122-案例-分层cap策略)
+  - [十三、反例与错误设计](#十三反例与错误设计)
+    - [反例1: 误用AP系统处理金融数据](#反例1-误用ap系统处理金融数据)
+    - [反例2: 过度追求一致性导致性能下降](#反例2-过度追求一致性导致性能下降)
 
 ---
 
@@ -666,8 +675,291 @@ $$T_{convergence} = O(\log n) \times RTT$$
 
 ---
 
-**版本**: 1.0.0
+## 十一、完整实现代码
+
+### 11.1 CAP决策器完整实现
+
+```python
+from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+
+class CAPChoice(Enum):
+    CP = "CP"  # 一致性 + 分区容错
+    AP = "AP"  # 可用性 + 分区容错
+    CA = "CA"  # 一致性 + 可用性（单机）
+    HYBRID = "HYBRID"  # 混合策略
+
+@dataclass
+class CAPRequirements:
+    """CAP需求"""
+    consistency_required: str  # 'strict' | 'eventual' | 'none'
+    availability_target: float  # 0.99, 0.999, 0.9999
+    partition_tolerance: bool  # 是否容忍分区
+    data_type: str  # 'financial' | 'social' | 'config' | 'log'
+    latency_budget_ms: int  # 延迟预算
+
+class CAPDecisionEngine:
+    """CAP决策引擎"""
+
+    def decide(self, requirements: CAPRequirements) -> CAPChoice:
+        """根据需求决策CAP选择"""
+
+        # 规则1: 金融数据必须CP
+        if requirements.data_type == 'financial':
+            return CAPChoice.CP
+
+        # 规则2: 社交数据可用AP
+        if requirements.data_type == 'social':
+            return CAPChoice.AP
+
+        # 规则3: 单机环境可用CA
+        if not requirements.partition_tolerance:
+            return CAPChoice.CA
+
+        # 规则4: 强一致性要求 → CP
+        if requirements.consistency_required == 'strict':
+            return CAPChoice.CP
+
+        # 规则5: 高可用性要求 → AP
+        if requirements.availability_target >= 0.9999:
+            return CAPChoice.AP
+
+        # 默认: 混合策略
+        return CAPChoice.HYBRID
+
+    def recommend_system(self, choice: CAPChoice) -> dict:
+        """推荐具体系统"""
+        recommendations = {
+            CAPChoice.CP: {
+                'system': 'PostgreSQL (同步复制)',
+                'config': 'synchronous_commit = on',
+                'consistency': '强一致',
+                'availability': '99.9%'
+            },
+            CAPChoice.AP: {
+                'system': 'Cassandra',
+                'config': 'CONSISTENCY LEVEL ONE',
+                'consistency': '最终一致',
+                'availability': '99.99%'
+            },
+            CAPChoice.CA: {
+                'system': 'PostgreSQL (单机)',
+                'config': '单机部署',
+                'consistency': '强一致',
+                'availability': '99%'
+            },
+            CAPChoice.HYBRID: {
+                'system': 'CockroachDB / Spanner',
+                'config': '分布式SQL',
+                'consistency': '可配置',
+                'availability': '99.99%'
+            }
+        }
+        return recommendations[choice]
+
+# 使用示例
+engine = CAPDecisionEngine()
+
+# 金融场景
+req1 = CAPRequirements(
+    consistency_required='strict',
+    availability_target=0.999,
+    partition_tolerance=True,
+    data_type='financial',
+    latency_budget_ms=100
+)
+choice1 = engine.decide(req1)  # CP
+system1 = engine.recommend_system(choice1)  # PostgreSQL同步复制
+
+# 社交场景
+req2 = CAPRequirements(
+    consistency_required='eventual',
+    availability_target=0.9999,
+    partition_tolerance=True,
+    data_type='social',
+    latency_budget_ms=50
+)
+choice2 = engine.decide(req2)  # AP
+system2 = engine.recommend_system(choice2)  # Cassandra
+```
+
+### 11.2 动态CAP切换实现
+
+```python
+from typing import Dict, Optional
+import time
+
+class DynamicCAPSwitcher:
+    """动态CAP切换器（PACELC）"""
+
+    def __init__(self, db_conn):
+        self.db = db_conn
+        self.current_mode = 'normal'  # 'normal' | 'partition'
+        self.metrics = {
+            'latency': deque(maxlen=100),
+            'error_rate': deque(maxlen=100)
+        }
+
+    def detect_partition(self) -> bool:
+        """检测网络分区"""
+        # 检查是否能连接到所有节点
+        try:
+            self.db.execute("SELECT 1 FROM standby1")
+            self.db.execute("SELECT 1 FROM standby2")
+            return False
+        except:
+            return True  # 分区发生
+
+    def switch_mode(self, mode: str):
+        """切换模式"""
+        if mode == 'partition':
+            # 分区时: 选择C或A
+            # 金融数据: 选择C（拒绝服务）
+            # 非关键数据: 选择A（继续服务）
+            self.db.execute("ALTER SYSTEM SET synchronous_commit = 'off'")
+        else:
+            # 正常时: 选择L或C
+            # 延迟高: 选择L（低延迟）
+            # 延迟低: 选择C（一致性）
+            avg_latency = sum(self.metrics['latency']) / len(self.metrics['latency'])
+            if avg_latency > 100:  # 100ms阈值
+                self.db.execute("ALTER SYSTEM SET synchronous_commit = 'off'")  # 选择L
+            else:
+                self.db.execute("ALTER SYSTEM SET synchronous_commit = 'on'")  # 选择C
+
+    def monitor_and_adjust(self):
+        """监控并自动调整"""
+        while True:
+            # 检测分区
+            if self.detect_partition():
+                if self.current_mode != 'partition':
+                    self.current_mode = 'partition'
+                    self.switch_mode('partition')
+            else:
+                if self.current_mode != 'normal':
+                    self.current_mode = 'normal'
+                    self.switch_mode('normal')
+
+            time.sleep(1)  # 每秒检查一次
+```
+
+---
+
+## 十二、实际应用案例
+
+### 12.1 案例: 混合系统（Spanner风格）
+
+**场景**: 全球分布式数据库
+
+**架构**: Spanner (CP/EC)
+
+**实现**:
+
+```text
+Spanner架构:
+├─ TrueTime: GPS+原子钟同步
+├─ Paxos: 多数派复制
+├─ 外部一致性: Commit Wait
+└─ 延迟: 50-200ms
+
+性能数据:
+├─ 一致性: 强一致（线性一致）✅
+├─ 可用性: 99.99% ✅
+├─ 延迟: P50=50ms, P99=200ms
+└─ 分区时: CP（选择一致性）
+```
+
+### 12.2 案例: 分层CAP策略
+
+**场景**: 电商系统
+
+**策略**: 不同数据用不同CAP选择
+
+```python
+# 分层策略
+cap_strategy = {
+    'inventory': CAPChoice.CP,  # 库存: CP（防止超卖）
+    'user_profile': CAPChoice.AP,  # 用户信息: AP（可容忍不一致）
+    'order_status': CAPChoice.CP,  # 订单状态: CP（必须准确）
+    'recommendation': CAPChoice.AP,  # 推荐: AP（最终一致即可）
+    'audit_log': CAPChoice.AP,  # 审计日志: AP（最终一致）
+}
+```
+
+**效果**:
+
+- 关键数据强一致
+- 非关键数据高可用
+- 整体性能最优
+
+---
+
+## 十三、反例与错误设计
+
+### 反例1: 误用AP系统处理金融数据
+
+**错误设计**:
+
+```python
+# 错误: 用AP系统处理金融转账
+ap_db = APCassandra(nodes)
+
+def transfer(from_account, to_account, amount):
+    # AP写入: 可能丢失
+    ap_db.write_async(f'account:{from_account}', balance - amount)
+    ap_db.write_async(f'account:{to_account}', balance + amount)
+    # 问题: 如果节点故障，可能只写入一个账户
+```
+
+**问题**: 金融数据要求强一致，AP系统无法保证
+
+**正确设计**:
+
+```python
+# 正确: 用CP系统
+cp_db = CPPostgreSQL(primary, standbys)
+
+def transfer(from_account, to_account, amount):
+    # CP写入: 强一致
+    with cp_db.transaction():
+        cp_db.execute("UPDATE accounts SET balance = balance - %s WHERE id = %s",
+                     (amount, from_account))
+        cp_db.execute("UPDATE accounts SET balance = balance + %s WHERE id = %s",
+                     (amount, to_account))
+    # 保证: 要么全部成功，要么全部失败
+```
+
+### 反例2: 过度追求一致性导致性能下降
+
+**错误设计**:
+
+```python
+# 错误: 所有操作都用最强一致性
+def read_data(key):
+    # 使用ALL一致性（等待所有节点）
+    return ap_db.read_all(key)  # 延迟: 100ms+
+```
+
+**问题**: 不必要的强一致性导致延迟高
+
+**正确设计**:
+
+```python
+# 正确: 按需求选择一致性级别
+def read_data(key, consistency_required):
+    if consistency_required == 'strong':
+        return ap_db.read_quorum(key)  # Quorum: 50ms
+    else:
+        return ap_db.read_one(key)  # ONE: 10ms
+```
+
+---
+
+**版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
+**新增内容**: 完整CAP决策器实现、动态切换、实际案例、反例分析
+
 **关联文档**:
 
 - `01-核心理论模型/04-CAP理论与权衡.md`
