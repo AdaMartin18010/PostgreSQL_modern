@@ -530,21 +530,71 @@ $$Safety = TypeSystem + ZeroCost$$
 **测试场景**: 多线程共享数据
 
 ```rust
+// 完整可运行的Arc性能测试代码
 use std::sync::Arc;
 use std::thread;
+use std::time::Instant;
 
 // 测试Arc克隆性能
 fn arc_clone_benchmark() {
     let data = Arc::new(vec![0u64; 1000]);
-    let start = std::time::Instant::now();
+    let iterations = 1_000_000;
 
-    for _ in 0..1_000_000 {
+    let start = Instant::now();
+    for _ in 0..iterations {
         let _clone = Arc::clone(&data);
+    }
+    let elapsed = start.elapsed();
+
+    let per_clone = elapsed.as_nanos() as f64 / iterations as f64;
+    println!("Arc clone: {:.2}ns per clone", per_clone);
+    println!("Total time: {:?} for {} clones", elapsed, iterations);
+    // 典型输出: ~50ns per clone
+}
+
+// 测试Arc多线程共享性能
+fn arc_concurrent_benchmark() {
+    let data = Arc::new(vec![0u64; 1000]);
+    let num_threads = 10;
+    let iterations_per_thread = 100_000;
+
+    let start = Instant::now();
+    let mut handles = vec![];
+
+    for _ in 0..num_threads {
+        let data_clone = Arc::clone(&data);
+        let handle = thread::spawn(move || {
+            for _ in 0..iterations_per_thread {
+                let _clone = Arc::clone(&data_clone);
+            }
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().expect("Thread panicked");
     }
 
     let elapsed = start.elapsed();
-    println!("Arc clone: {:?} per clone", elapsed / 1_000_000);
-    // 输出: ~50ns per clone
+    let total_ops = num_threads * iterations_per_thread;
+    let throughput = total_ops as f64 / elapsed.as_secs_f64();
+
+    println!("Arc concurrent clone:");
+    println!("  Threads: {}", num_threads);
+    println!("  Total operations: {}", total_ops);
+    println!("  Time: {:?}", elapsed);
+    println!("  Throughput: {:.0} ops/sec", throughput);
+}
+
+// 主函数
+fn main() {
+    println!("=== Arc Performance Benchmarks ===\n");
+
+    println!("1. Single-threaded clone test:");
+    arc_clone_benchmark();
+
+    println!("\n2. Multi-threaded concurrent clone test:");
+    arc_concurrent_benchmark();
 }
 ```
 
@@ -563,31 +613,103 @@ fn arc_clone_benchmark() {
 **测试场景**: 多线程竞争锁
 
 ```rust
+// 完整可运行的Mutex性能测试代码（带错误处理）
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Instant;
 
-fn mutex_contention_benchmark() {
+fn mutex_contention_benchmark() -> Result<(), Box<dyn std::error::Error>> {
     let data = Arc::new(Mutex::new(0u64));
-    let start = std::time::Instant::now();
+    let num_threads = 4;
+    let iterations_per_thread = 1_000_000;
 
-    let handles: Vec<_> = (0..4)
-        .map(|_| {
+    let start = Instant::now();
+
+    let handles: Vec<_> = (0..num_threads)
+        .map(|i| {
             let data = Arc::clone(&data);
             thread::spawn(move || {
-                for _ in 0..1_000_000 {
-                    *data.lock().unwrap() += 1;
+                for _ in 0..iterations_per_thread {
+                    match data.lock() {
+                        Ok(mut guard) => *guard += 1,
+                        Err(e) => {
+                            eprintln!("Thread {}: Mutex poisoned: {}", i, e);
+                            return;
+                        }
+                    }
                 }
             })
         })
         .collect();
 
     for handle in handles {
-        handle.join().unwrap();
+        handle.join().map_err(|e| format!("Thread panicked: {:?}", e))?;
     }
 
     let elapsed = start.elapsed();
-    println!("Mutex contention: {:?} per lock", elapsed / 4_000_000);
-    // 输出: ~200ns per lock (4线程竞争)
+    let total_ops = num_threads * iterations_per_thread;
+    let per_lock = elapsed.as_nanos() as f64 / total_ops as f64;
+
+    println!("Mutex contention benchmark:");
+    println!("  Threads: {}", num_threads);
+    println!("  Operations per thread: {}", iterations_per_thread);
+    println!("  Total operations: {}", total_ops);
+    println!("  Time: {:?}", elapsed);
+    println!("  Per lock: {:.2}ns", per_lock);
+    println!("  Throughput: {:.0} ops/sec", total_ops as f64 / elapsed.as_secs_f64());
+
+    // 验证结果
+    let final_value = data.lock().map_err(|e| format!("Mutex poisoned: {}", e))?;
+    println!("  Final value: {} (expected: {})", *final_value, total_ops);
+    assert_eq!(*final_value, total_ops as u64);
+
+    Ok(())
+}
+
+// 对比不同线程数的性能
+fn mutex_scalability_test() -> Result<(), Box<dyn std::error::Error>> {
+    println!("\n=== Mutex Scalability Test ===");
+
+    for num_threads in [1, 2, 4, 8, 16] {
+        let data = Arc::new(Mutex::new(0u64));
+        let iterations_per_thread = 100_000;
+
+        let start = Instant::now();
+        let mut handles = vec![];
+
+        for _ in 0..num_threads {
+            let data = Arc::clone(&data);
+            let handle = thread::spawn(move || {
+                for _ in 0..iterations_per_thread {
+                    if let Ok(mut guard) = data.lock() {
+                        *guard += 1;
+                    }
+                }
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            handle.join().map_err(|e| format!("Thread panicked: {:?}", e))?;
+        }
+
+        let elapsed = start.elapsed();
+        let total_ops = num_threads * iterations_per_thread;
+        let throughput = total_ops as f64 / elapsed.as_secs_f64();
+
+        println!("  {} threads: {:.0} ops/sec", num_threads, throughput);
+    }
+
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("=== Mutex Performance Benchmarks ===\n");
+
+    mutex_contention_benchmark()?;
+    mutex_scalability_test()?;
+
+    Ok(())
 }
 ```
 
@@ -606,31 +728,108 @@ fn mutex_contention_benchmark() {
 **测试场景**: 无锁计数器
 
 ```rust
+// 完整可运行的Atomic性能测试代码（带错误处理和对比）
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::thread;
+use std::time::Instant;
 
-fn atomic_counter_benchmark() {
+fn atomic_counter_benchmark() -> Result<(), Box<dyn std::error::Error>> {
     let counter = Arc::new(AtomicU64::new(0));
-    let start = std::time::Instant::now();
+    let num_threads = 8;
+    let iterations_per_thread = 1_000_000;
 
-    let handles: Vec<_> = (0..8)
-        .map(|_| {
+    let start = Instant::now();
+
+    let handles: Vec<_> = (0..num_threads)
+        .map(|i| {
             let counter = Arc::clone(&counter);
             thread::spawn(move || {
-                for _ in 0..1_000_000 {
+                for _ in 0..iterations_per_thread {
                     counter.fetch_add(1, Ordering::Relaxed);
                 }
+                println!("Thread {} completed", i);
             })
         })
         .collect();
 
     for handle in handles {
-        handle.join().unwrap();
+        handle.join().map_err(|e| format!("Thread panicked: {:?}", e))?;
     }
 
     let elapsed = start.elapsed();
-    println!("Atomic counter: {:?} per op", elapsed / 8_000_000);
-    // 输出: ~15ns per operation
+    let total_ops = num_threads * iterations_per_thread;
+    let per_op = elapsed.as_nanos() as f64 / total_ops as f64;
+    let throughput = total_ops as f64 / elapsed.as_secs_f64();
+
+    println!("Atomic counter benchmark:");
+    println!("  Threads: {}", num_threads);
+    println!("  Operations per thread: {}", iterations_per_thread);
+    println!("  Total operations: {}", total_ops);
+    println!("  Time: {:?}", elapsed);
+    println!("  Per operation: {:.2}ns", per_op);
+    println!("  Throughput: {:.0} ops/sec", throughput);
+
+    // 验证结果
+    let final_value = counter.load(Ordering::Acquire);
+    println!("  Final value: {} (expected: {})", final_value, total_ops);
+    assert_eq!(final_value, total_ops as u64);
+
+    Ok(())
+}
+
+// 对比不同Ordering的性能
+fn atomic_ordering_benchmark() -> Result<(), Box<dyn std::error::Error>> {
+    println!("\n=== Atomic Ordering Performance Comparison ===");
+
+    let orderings = [
+        ("Relaxed", Ordering::Relaxed),
+        ("Acquire", Ordering::Acquire),
+        ("Release", Ordering::Release),
+        ("AcqRel", Ordering::AcqRel),
+        ("SeqCst", Ordering::SeqCst),
+    ];
+
+    for (name, ordering) in &orderings {
+        let counter = Arc::new(AtomicU64::new(0));
+        let num_threads = 4;
+        let iterations_per_thread = 100_000;
+
+        let start = Instant::now();
+        let mut handles = vec![];
+
+        for _ in 0..num_threads {
+            let counter = Arc::clone(&counter);
+            let ord = *ordering;
+            let handle = thread::spawn(move || {
+                for _ in 0..iterations_per_thread {
+                    counter.fetch_add(1, ord);
+                }
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            handle.join().map_err(|e| format!("Thread panicked: {:?}", e))?;
+        }
+
+        let elapsed = start.elapsed();
+        let total_ops = num_threads * iterations_per_thread;
+        let throughput = total_ops as f64 / elapsed.as_secs_f64();
+
+        println!("  {}: {:.0} ops/sec", name, throughput);
+    }
+
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("=== Atomic Performance Benchmarks ===\n");
+
+    atomic_counter_benchmark()?;
+    atomic_ordering_benchmark()?;
+
+    Ok(())
 }
 ```
 
@@ -898,26 +1097,63 @@ impl<T> LockFreeStack<T> {
 **错误代码**:
 
 ```rust
-// 错误: 多线程修改共享数据
-let mut counter = 0;
+// 错误: 多线程修改共享数据（编译时错误）
+use std::thread;
 
-thread::spawn(|| {
-    counter += 1;  // 编译错误: 不能多线程修改
-});
+fn main() {
+    let mut counter = 0;
 
-// Rust编译器阻止数据竞争 ✓
+    // 编译错误: closure may outlive the current function
+    thread::spawn(|| {
+        counter += 1;  // 错误: 不能捕获可变引用
+    });
+
+    // Rust编译器在编译时阻止数据竞争 ✓
+    // 错误信息: cannot borrow `counter` as mutable, as it is a captured variable in a `Fn` closure
+}
 ```
 
 **正确代码**:
 
 ```rust
-// 正确: 使用Mutex保护
-let counter = Arc::new(Mutex::new(0));
+// 正确: 使用Mutex保护（带错误处理）
+use std::sync::{Arc, Mutex};
+use std::thread;
 
-let counter_clone = Arc::clone(&counter);
-thread::spawn(move || {
-    *counter_clone.lock().unwrap() += 1;  // 安全 ✓
-});
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let counter = Arc::new(Mutex::new(0));
+
+    let mut handles = vec![];
+
+    // 启动多个线程并发修改
+    for i in 0..5 {
+        let counter_clone = Arc::clone(&counter);
+        let handle = thread::spawn(move || {
+            match counter_clone.lock() {
+                Ok(mut guard) => {
+                    *guard += 1;
+                    println!("Thread {}: incremented to {}", i, *guard);
+                }
+                Err(e) => {
+                    eprintln!("Thread {}: Mutex poisoned: {}", i, e);
+                }
+            }
+        });
+        handles.push(handle);
+    }
+
+    // 等待所有线程完成
+    for handle in handles {
+        handle.join().map_err(|e| format!("Thread panicked: {:?}", e))?;
+    }
+
+    // 读取最终值
+    let final_value = counter.lock()
+        .map_err(|e| format!("Mutex poisoned: {}", e))?;
+    println!("Final counter value: {}", *final_value);
+
+    Ok(())
+}
 ```
 
 ### 反例2: Ordering错误
@@ -925,33 +1161,128 @@ thread::spawn(move || {
 **错误代码**:
 
 ```rust
-// 错误: Relaxed不保证同步
-let data = Arc::new(AtomicUsize::new(0));
-let flag = Arc::new(AtomicBool::new(false));
+// 错误: Relaxed不保证同步（可能导致数据竞争）
+use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
 
-// 线程1
-data.store(42, Ordering::Relaxed);
-flag.store(true, Ordering::Relaxed);  // 问题: 其他线程可能看不到顺序
+fn main() {
+    let data = Arc::new(AtomicUsize::new(0));
+    let flag = Arc::new(AtomicBool::new(false));
 
-// 线程2
-if flag.load(Ordering::Relaxed) {
-    let v = data.load(Ordering::Relaxed);
-    // 问题: v可能不是42（重排序）✗
+    // 线程1: 写入数据
+    let data1 = Arc::clone(&data);
+    let flag1 = Arc::clone(&flag);
+    let handle1 = thread::spawn(move || {
+        data1.store(42, Ordering::Relaxed);
+        flag1.store(true, Ordering::Relaxed);  // 问题: 其他线程可能看不到顺序
+    });
+
+    // 线程2: 读取数据
+    let data2 = Arc::clone(&data);
+    let flag2 = Arc::clone(&flag);
+    let handle2 = thread::spawn(move || {
+        // 等待标志位
+        while !flag2.load(Ordering::Relaxed) {
+            thread::yield_now();
+        }
+        let v = data2.load(Ordering::Relaxed);
+        // 问题: v可能不是42（由于内存重排序）✗
+        println!("Thread 2 read: {} (may not be 42!)", v);
+    });
+
+    handle1.join().unwrap();
+    handle2.join().unwrap();
 }
 ```
 
 **正确代码**:
 
 ```rust
-// 正确: 使用Acquire-Release
-// 线程1
-data.store(42, Ordering::Relaxed);
-flag.store(true, Ordering::Release);  // Release: 之前写入可见
+// 正确: 使用Acquire-Release保证同步
+use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
 
-// 线程2
-if flag.load(Ordering::Acquire) {  // Acquire: 看到Release之前的写入
-    let v = data.load(Ordering::Relaxed);
-    assert_eq!(v, 42);  // 保证: v = 42 ✓
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let data = Arc::new(AtomicUsize::new(0));
+    let flag = Arc::new(AtomicBool::new(false));
+
+    // 线程1: 写入数据（使用Release）
+    let data1 = Arc::clone(&data);
+    let flag1 = Arc::clone(&flag);
+    let handle1 = thread::spawn(move || {
+        data1.store(42, Ordering::Relaxed);
+        flag1.store(true, Ordering::Release);  // Release: 之前写入可见
+        println!("Thread 1: wrote data=42, flag=true");
+    });
+
+    // 线程2: 读取数据（使用Acquire）
+    let data2 = Arc::clone(&data);
+    let flag2 = Arc::clone(&flag);
+    let handle2 = thread::spawn(move || {
+        // 等待标志位（使用Acquire）
+        while !flag2.load(Ordering::Acquire) {
+            thread::yield_now();
+        }
+        // Acquire: 看到Release之前的写入
+        let v = data2.load(Ordering::Relaxed);
+        assert_eq!(v, 42, "Data should be 42");  // 保证: v = 42 ✓
+        println!("Thread 2: read data={} (correct!)", v);
+    });
+
+    handle1.join().map_err(|e| format!("Thread 1 panicked: {:?}", e))?;
+    handle2.join().map_err(|e| format!("Thread 2 panicked: {:?}", e))?;
+
+    Ok(())
+}
+```
+
+**错误处理示例**:
+
+```rust
+// 错误处理：处理Mutex中毒（Poisoned）
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let data = Arc::new(Mutex::new(0));
+
+    // 线程1: 正常操作
+    let data1 = Arc::clone(&data);
+    let handle1 = thread::spawn(move || {
+        if let Ok(mut guard) = data1.lock() {
+            *guard = 42;
+        }
+    });
+
+    // 线程2: 可能panic（模拟错误）
+    let data2 = Arc::clone(&data);
+    let handle2 = thread::spawn(move || {
+        let guard = data2.lock().unwrap();
+        panic!("Simulated error");  // 这会导致Mutex中毒
+    });
+
+    handle1.join().unwrap();
+
+    // 处理线程2的panic
+    if let Err(_) = handle2.join() {
+        println!("Thread 2 panicked, Mutex may be poisoned");
+    }
+
+    // 尝试访问数据（处理中毒情况）
+    match data.lock() {
+        Ok(guard) => {
+            println!("Data value: {}", *guard);
+        }
+        Err(poisoned) => {
+            // Mutex已中毒，但可以恢复数据
+            let guard = poisoned.into_inner();
+            println!("Mutex was poisoned, but recovered data: {}", *guard);
+        }
+    }
+
+    Ok(())
 }
 ```
 
