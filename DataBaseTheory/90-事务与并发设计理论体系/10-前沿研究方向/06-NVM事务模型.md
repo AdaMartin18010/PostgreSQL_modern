@@ -227,7 +227,7 @@ void nvm_recovery() {
 
 ## 四、理论证明
 
-### 4.1 原子性证明
+### 3.1 原子性证明
 
 **定理**: NVM Undo Logging保证原子性
 
