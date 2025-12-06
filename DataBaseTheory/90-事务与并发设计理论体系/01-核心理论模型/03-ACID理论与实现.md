@@ -191,7 +191,7 @@ $$\{R(x), W(y), ...\} \xrightarrow{ACID} \text{Database State Transition}$$
 
 ### 3.1 理论定义
 
-**定义2.1 (原子性)**:
+**定义3.1 (原子性)**:
 
 $$\forall T: T = \{op_1, op_2, ..., op_n\}$$
 
@@ -270,7 +270,7 @@ typedef struct XLogRecord {
 - **崩溃后**: 重放WAL恢复到一致状态
 - **ABORT**: 忽略WAL中的记录
 
-**定理3.1 (WAL保证原子性)**:
+**定理3.2 (WAL保证原子性)**:
 
 $$
 \forall T: \text{Crash} \implies \text{Recovery}(WAL) = \begin{cases}
@@ -333,7 +333,7 @@ def abort_transaction(txid):
 
 ### 3.1 理论定义
 
-**定义3.1 (一致性)**:
+**定义4.1 (一致性)**:
 
 $$\forall T, \forall \text{Constraint } C: $$
 
@@ -490,7 +490,7 @@ $$ LANGUAGE plpgsql;
 
 ### 5.1 理论定义
 
-**定义4.1 (隔离性)**:
+**定义5.1 (隔离性)**:
 
 $$\forall T_i, T_j: Concurrent(T_i, T_j) \implies$$
 
@@ -510,19 +510,19 @@ Read Uncommitted (PostgreSQL不支持)
 
 ### 5.2 异常现象定义
 
-**定义4.2 (脏读)**:
+**定义5.2 (脏读)**:
 
 $$T_i \text{ reads data written by uncommitted } T_j$$
 
-**定义4.3 (不可重复读)**:
+**定义5.3 (不可重复读)**:
 
 $$T_i \text{ reads } x \text{ twice, gets different values}$$
 
-**定义4.4 (幻读)**:
+**定义5.4 (幻读)**:
 
 $$T_i \text{ range query twice, gets different row sets}$$
 
-**定义4.5 (串行化异常)**:
+**定义5.5 (串行化异常)**:
 
 $$\exists \text{ cycle in serialization graph}$$
 
@@ -605,7 +605,7 @@ class SerializableTransaction:
 
 ### 6.1 理论定义
 
-**定义5.1 (持久性)**:
+**定义6.1 (持久性)**:
 
 $$\forall T: Commit(T) \implies \forall \text{Crash}: State_{\text{after\_recovery}} \models T$$
 

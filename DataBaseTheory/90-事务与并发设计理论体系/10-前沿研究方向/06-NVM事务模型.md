@@ -227,7 +227,7 @@ void nvm_recovery() {
 
 ## 四、理论证明
 
-### 3.1 原子性证明
+### 4.1 原子性证明
 
 **定理**: NVM Undo Logging保证原子性
 
@@ -256,7 +256,7 @@ Undo Log方案:
 
 ## 五、实现方案
 
-### 4.1 NVM B-Tree
+### 5.1 NVM B-Tree
 
 **持久化B-Tree**:
 
@@ -293,7 +293,7 @@ void nvm_btree_insert(nvm_btree_t *tree, uint64_t key, void *value) {
 
 ## 六、性能分析与优化
 
-### 5.1 NVM vs DRAM性能对比
+### 6.1 NVM vs DRAM性能对比
 
 **基准测试** (Intel Optane PMEM):
 
@@ -311,7 +311,7 @@ void nvm_btree_insert(nvm_btree_t *tree, uint64_t key, void *value) {
 - 随机写入性能下降明显（10×）
 - 顺序访问性能接近DRAM（3×）
 
-### 5.2 事务性能优化
+### 6.2 事务性能优化
 
 **优化1: 批量持久化**:
 
@@ -378,7 +378,7 @@ void nvm_btree_free_node(nvm_btree_node_pool *pool, nvm_btree_node *node) {
 
 ## 七、实际应用案例
 
-### 6.1 Redis on NVM
+### 7.1 Redis on NVM
 
 **场景**: Redis持久化到NVM
 
@@ -404,7 +404,7 @@ Redis on NVM:
 | 恢复时间 | 30s | 3s | 10× |
 | 吞吐量 | 100K ops/s | 150K ops/s | 1.5× |
 
-### 6.2 PostgreSQL on NVM
+### 7.2 PostgreSQL on NVM
 
 **场景**: WAL写入到NVM
 
@@ -627,7 +627,7 @@ void update_counter_good(wear_leveled_counter *wlc) {
 └─ 总延迟: 100ns (-67%)
 ```
 
-### 8.2 混合存储架构
+### 9.2 混合存储架构
 
 **DRAM + NVM + SSD三层架构**:
 
@@ -649,7 +649,7 @@ L3: SSD (冷数据，长期存储)
 
 ## 十、完整实现代码
 
-### 9.1 NVM事务管理器完整实现
+### 10.1 NVM事务管理器完整实现
 
 **完整实现**: Python模拟NVM事务管理器
 
@@ -789,7 +789,7 @@ if __name__ == "__main__":
     print(f"读取数据: {data}")
 ```
 
-### 9.2 NVM B-Tree完整实现
+### 10.2 NVM B-Tree完整实现
 
 **完整实现**: NVM B-Tree数据结构
 
@@ -942,7 +942,7 @@ if __name__ == "__main__":
     manager.commit(tx_id)
 ```
 
-### 9.3 崩溃恢复完整实现
+### 10.3 崩溃恢复完整实现
 
 **完整实现**: NVM崩溃恢复机制
 

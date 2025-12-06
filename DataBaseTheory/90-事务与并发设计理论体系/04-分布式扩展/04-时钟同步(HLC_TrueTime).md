@@ -141,7 +141,7 @@
 
 ## 二、时钟问题
 
-### 1.1 物理时钟漂移
+### 2.1 物理时钟漂移
 
 **问题**: 不同节点时钟不同步
 
@@ -149,7 +149,7 @@ $$|Clock_A - Clock_B| \leq \epsilon$$
 
 典型 $\epsilon \approx$ 1-100ms
 
-### 1.2 Lamport逻辑时钟
+### 2.2 Lamport逻辑时钟
 
 **定义**:
 
@@ -161,7 +161,7 @@ $$LC_i = \max(LC_i, LC_j) + 1$$
 
 ## 三、混合逻辑时钟(HLC)
 
-### 2.1 原理
+### 3.1 原理
 
 **HLC = 物理时钟 + 逻辑时钟**
 
@@ -170,7 +170,7 @@ $$HLC = (pt, lc)$$
 - pt: 物理时间戳
 - lc: 逻辑计数器
 
-### 2.2 算法
+### 3.2 算法
 
 ```python
 class HLC:
@@ -201,9 +201,9 @@ class HLC:
             self.lc += 1
 ```
 
-### 2.3 性质
+### 3.3 性质
 
-**定理2.1 (HLC保持因果关系)**:
+**定理3.1 (HLC保持因果关系)**:
 
 $$e_1 \to e_2 \implies HLC(e_1) < HLC(e_2)$$
 
@@ -217,7 +217,7 @@ $$e_1 \to e_2 \implies HLC(e_1) < HLC(e_2)$$
 
 ## 三、TrueTime
 
-### 3.1 Google Spanner方案
+### 4.1 Google Spanner方案
 
 **TrueTime API**:
 
@@ -243,7 +243,7 @@ void TT.wait_until(int64 timestamp) {
 }
 ```
 
-### 3.2 时钟同步
+### 4.2 时钟同步
 
 **硬件支持**:
 
@@ -252,7 +252,7 @@ void TT.wait_until(int64 timestamp) {
 
 **同步精度**: ±1-7ms
 
-### 3.3 事务协议
+### 4.3 事务协议
 
 ```python
 def spanner_transaction():
@@ -273,7 +273,7 @@ def spanner_transaction():
 
 ## 五、对比分析
 
-### 4.1 HLC vs TrueTime
+### 5.1 HLC vs TrueTime
 
 | 维度 | HLC | TrueTime |
 |-----|-----|----------|
@@ -283,7 +283,7 @@ def spanner_transaction():
 | **延迟** | 无 | +7ms(wait) |
 | **一致性** | 因果 | 线性 |
 
-### 4.2 适用场景
+### 5.2 适用场景
 
 **HLC**:
 
@@ -301,7 +301,7 @@ def spanner_transaction():
 
 ## 六、工程实践
 
-### 5.1 CockroachDB (HLC)
+### 6.1 CockroachDB (HLC)
 
 ```go
 // CockroachDB HLC实现
@@ -322,7 +322,7 @@ func (h *HLC) Update(other HLC) {
 }
 ```
 
-### 5.2 TiDB (混合方案)
+### 6.2 TiDB (混合方案)
 
 **TSO (Timestamp Oracle)**:
 
@@ -334,7 +334,7 @@ func (h *HLC) Update(other HLC) {
 
 ## 七、总结
 
-### 6.1 核心洞察
+### 7.1 核心洞察
 
 **时钟同步 = 分布式系统的全局顺序**
 
@@ -345,7 +345,7 @@ $$GlobalOrder = PhysicalTime + LogicalCorrection$$
 - HLC: 软件方案，因果一致
 - TrueTime: 硬件方案，线性一致
 
-### 6.2 选择建议
+### 7.2 选择建议
 
 **选HLC**: 通用场景，成本优先
 **选TrueTime**: 金融场景，一致性优先
@@ -458,7 +458,7 @@ func (t Timestamp) Compare(other Timestamp) int {
 }
 ```
 
-### 7.2 TrueTime模拟实现
+### 8.2 TrueTime模拟实现
 
 ```cpp
 #include <chrono>
@@ -529,7 +529,7 @@ void spanner_transaction_example() {
 
 ## 八、性能对比实测
 
-### 8.1 HLC性能测试
+### 9.1 HLC性能测试
 
 **测试环境**: 3节点集群，同城部署（RTT=1ms）
 
@@ -541,7 +541,7 @@ void spanner_transaction_example() {
 
 **结论**: HLC开销极小，适合高并发场景
 
-### 8.2 TrueTime性能测试
+### 9.2 TrueTime性能测试
 
 **测试环境**: Google Spanner集群
 
@@ -553,7 +553,7 @@ void spanner_transaction_example() {
 
 **结论**: TrueTime增加7ms延迟，但保证外部一致性
 
-### 8.3 对比总结
+### 9.3 对比总结
 
 | 维度 | HLC | TrueTime |
 |-----|-----|----------|
@@ -567,7 +567,7 @@ void spanner_transaction_example() {
 
 ## 十、实际生产案例
 
-### 案例1: CockroachDB使用HLC
+### 10.1 案例: CockroachDB使用HLC
 
 **架构**:
 
@@ -590,7 +590,7 @@ CockroachDB节点:
 
 **优势**: 无需硬件，成本低，性能好
 
-### 案例2: Google Spanner使用TrueTime
+### 10.2 案例: Google Spanner使用TrueTime
 
 **架构**:
 
@@ -672,7 +672,7 @@ void transaction_good() {
 
 ## 十一、时钟同步可视化
 
-### 11.1 时钟同步架构图
+### 12.1 时钟同步架构图
 
 **完整时钟同步系统架构** (Mermaid):
 
@@ -738,7 +738,7 @@ graph TB
 └──────────────┘
 ```
 
-### 11.2 HLC算法流程图
+### 12.2 HLC算法流程图
 
 **HLC算法完整流程** (Mermaid):
 
@@ -798,7 +798,7 @@ HLC更新规则:
         └─ lc++
 ```
 
-### 11.3 时钟同步方案选择决策树
+### 12.3 时钟同步方案选择决策树
 
 **时钟同步方案选择决策树**:
 
