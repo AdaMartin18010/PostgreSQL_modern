@@ -62,7 +62,11 @@
 
 **历史背景**:
 
-在分布式系统的发展中，Raft和Paxos是两种最重要的共识协议。1990年，Leslie Lamport提出了Paxos协议，虽然理论完备，但实现复杂，难以理解。2013年，Diego Ongaro和John Ousterhout提出了Raft协议，以可理解性为目标，将共识问题分解为Leader选举、日志复制和安全性三个子问题。Raft的提出使得共识协议在工程实践中得到广泛应用。
+在分布式系统的发展中，Raft和Paxos是两种最重要的共识协议。
+1990年，Leslie Lamport提出了Paxos协议，虽然理论完备，但实现复杂，难以理解。
+2013年，Diego Ongaro和John Ousterhout提出了Raft协议，以可理解性为目标，
+将共识问题分解为Leader选举、日志复制和安全性三个子问题。
+Raft的提出使得共识协议在工程实践中得到广泛应用。
 
 **理论基础**:
 

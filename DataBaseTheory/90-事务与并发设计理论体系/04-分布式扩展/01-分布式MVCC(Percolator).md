@@ -10,6 +10,8 @@
   - [📑 目录](#-目录)
   - [一、分布式MVCC (Percolator) 背景与演进](#一分布式mvcc-percolator-背景与演进)
     - [0.1 为什么需要分布式MVCC？](#01-为什么需要分布式mvcc)
+      - [硬件体系演进对分布式MVCC的影响](#硬件体系演进对分布式mvcc的影响)
+      - [语言机制对分布式MVCC实现的影响](#语言机制对分布式mvcc实现的影响)
     - [0.2 单机MVCC vs 分布式MVCC](#02-单机mvcc-vs-分布式mvcc)
   - [二、Percolator概述](#二percolator概述)
     - [1.1 背景与动机](#11-背景与动机)
