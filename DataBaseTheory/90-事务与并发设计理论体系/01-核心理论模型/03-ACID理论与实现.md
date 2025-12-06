@@ -329,11 +329,11 @@ def abort_transaction(txid):
 
 ---
 
-## 四、一致性 (Consistency)
+## 三、一致性 (Consistency)
 
-### 4.1 理论定义
+### 3.1 理论定义
 
-**定义4.1 (一致性)**:
+**定义3.1 (一致性)**:
 
 $$\forall T, \forall \text{Constraint } C: $$
 
@@ -346,7 +346,7 @@ $$\text{State}_{\text{before}} \models C \land Execute(T) \implies \text{State}_
 3. **参照完整性** (Referential Integrity): $\text{FOREIGN KEY} \subseteq \text{PRIMARY KEY}$
 4. **用户定义约束** (CHECK Constraints): $\text{Predicate}(x) = \text{TRUE}$
 
-### 3.2 PostgreSQL约束实现
+### 4.2 PostgreSQL约束实现
 
 #### 约束1: 主键约束
 
@@ -454,7 +454,7 @@ def evaluate_predicate(predicate, row):
         return row['balance'] >= 0
 ```
 
-### 3.3 触发器 (Triggers)
+### 4.3 触发器 (Triggers)
 
 **用途**: 实现复杂业务规则
 
@@ -486,9 +486,9 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-## 四、隔离性 (Isolation)
+## 五、隔离性 (Isolation)
 
-### 4.1 理论定义
+### 5.1 理论定义
 
 **定义4.1 (隔离性)**:
 
@@ -508,7 +508,7 @@ Read Committed
 Read Uncommitted (PostgreSQL不支持)
 ```
 
-### 4.2 异常现象定义
+### 5.2 异常现象定义
 
 **定义4.2 (脏读)**:
 
@@ -526,7 +526,7 @@ $$T_i \text{ range query twice, gets different row sets}$$
 
 $$\exists \text{ cycle in serialization graph}$$
 
-### 4.3 隔离级别矩阵
+### 5.3 隔离级别矩阵
 
 | 隔离级别 | 脏读 | 不可重复读 | 幻读 | 串行化异常 |
 |---------|-----|-----------|------|-----------|
@@ -535,7 +535,7 @@ $$\exists \text{ cycle in serialization graph}$$
 | **Repeatable Read** | ✓ | ✓ | ✓ (PG扩展) | ✗ |
 | **Serializable** | ✓ | ✓ | ✓ | ✓ |
 
-### 4.4 PostgreSQL实现
+### 5.4 PostgreSQL实现
 
 **Read Committed**:
 
@@ -601,9 +601,9 @@ class SerializableTransaction:
 
 ---
 
-## 五、持久性 (Durability)
+## 六、持久性 (Durability)
 
-### 5.1 理论定义
+### 6.1 理论定义
 
 **定义5.1 (持久性)**:
 
@@ -611,7 +611,7 @@ $$\forall T: Commit(T) \implies \forall \text{Crash}: State_{\text{after\_recove
 
 **关键性质**: **Survive System Failures**
 
-### 5.2 PostgreSQL实现机制
+### 6.2 PostgreSQL实现机制
 
 #### 机制1: WAL持久化
 
@@ -757,7 +757,7 @@ def undo_phase(undo_list):
 
 ---
 
-## 六、ACID之间的关系
+## 七、ACID之间的关系
 
 ### 6.1 依赖关系图
 
@@ -797,7 +797,7 @@ $$Concurrency \propto \frac{1}{IsolationLevel}$$
 
 ---
 
-## 七、形式化证明
+## 八、形式化证明
 
 ### 7.1 定理: ACID保证正确性
 
@@ -834,7 +834,7 @@ $$\implies Correctness \quad \square$$
 
 ---
 
-## 八、实践指南
+## 九、实践指南
 
 ### 8.1 选择合适的隔离级别
 
@@ -898,7 +898,7 @@ SET checkpoint_completion_target = 0.9;  -- 90%时间内完成
 
 ---
 
-## 九、总结
+## 十、总结
 
 ### 9.1 核心贡献
 
@@ -956,7 +956,7 @@ $$T_{\text{recovery}} = \frac{\text{WAL\_Size\_Since\_Checkpoint}}{\text{Redo\_S
 
 ---
 
-## 十一、完整实现代码
+## 十二、完整实现代码
 
 ### 11.1 WAL机制完整实现
 
@@ -1308,7 +1308,7 @@ except IntegrityError as e:
 
 ---
 
-## 十二、实际应用案例
+## 十三、实际应用案例
 
 ### 12.1 案例: 金融转账系统（强一致性）
 
@@ -1381,7 +1381,7 @@ ALTER SYSTEM SET synchronous_commit = 'off';  -- 异步
 
 ---
 
-## 十三、反例与错误设计
+## 十四、反例与错误设计
 
 ### 反例1: 关闭fsync导致数据丢失
 
@@ -1543,7 +1543,7 @@ def transfer(from_account, to_account, amount):
 
 ---
 
-## 十四、ACID理论可视化
+## 十五、ACID理论可视化
 
 ### 14.1 ACID架构设计图
 
