@@ -8,7 +8,10 @@
 
 - [01 | 分布式MVCC (Percolator)](#01--分布式mvcc-percolator)
   - [📑 目录](#-目录)
-  - [一、Percolator概述](#一percolator概述)
+  - [一、分布式MVCC (Percolator) 背景与演进](#一分布式mvcc-percolator-背景与演进)
+    - [0.1 为什么需要分布式MVCC？](#01-为什么需要分布式mvcc)
+    - [0.2 单机MVCC vs 分布式MVCC](#02-单机mvcc-vs-分布式mvcc)
+  - [二、Percolator概述](#二percolator概述)
     - [1.1 背景与动机](#11-背景与动机)
     - [1.2 核心思想](#12-核心思想)
   - [二、架构设计](#二架构设计)
