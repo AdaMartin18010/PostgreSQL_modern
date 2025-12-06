@@ -8,7 +8,12 @@
 
 - [03 | PostgreSQL-VACUUM机制](#03--postgresql-vacuum机制)
   - [📑 目录](#-目录)
-  - [一、VACUUM概述](#一vacuum概述)
+  - [一、PostgreSQL VACUUM机制实现背景与演进](#一postgresql-vacuum机制实现背景与演进)
+    - [0.1 为什么需要深入理解PostgreSQL VACUUM机制实现？](#01-为什么需要深入理解postgresql-vacuum机制实现)
+      - [硬件体系演进对VACUUM实现的影响](#硬件体系演进对vacuum实现的影响)
+      - [语言机制对VACUUM实现的影响](#语言机制对vacuum实现的影响)
+    - [0.2 PostgreSQL VACUUM机制的核心挑战](#02-postgresql-vacuum机制的核心挑战)
+  - [二、VACUUM概述](#二vacuum概述)
     - [1.1 目的](#11-目的)
     - [1.2 类型](#12-类型)
   - [二、触发机制](#二触发机制)
@@ -65,7 +70,10 @@
 
 **历史背景**:
 
-PostgreSQL的VACUUM机制是MVCC的重要组成部分，用于清理死元组、更新统计信息、防止事务ID回卷。从PostgreSQL早期版本开始，就实现了VACUUM机制，但早期版本性能较差。随着版本演进，PostgreSQL不断优化VACUUM机制，包括Visibility Map、HOT剪枝、并行VACUUM等。理解PostgreSQL VACUUM机制的源码实现，有助于优化数据库性能、避免存储膨胀、诊断VACUUM问题。
+PostgreSQL的VACUUM机制是MVCC的重要组成部分，用于清理死元组、更新统计信息、防止事务ID回卷。
+从PostgreSQL早期版本开始，就实现了VACUUM机制，但早期版本性能较差。
+随着版本演进，PostgreSQL不断优化VACUUM机制，包括Visibility Map、HOT剪枝、并行VACUUM等。
+理解PostgreSQL VACUUM机制的源码实现，有助于优化数据库性能、避免存储膨胀、诊断VACUUM问题。
 
 **深度历史演进与硬件背景**:
 
@@ -187,7 +195,7 @@ PostgreSQL VACUUM机制实现演进:
 3. **问题诊断**: 理解实现，诊断存储膨胀和VACUUM问题
 4. **系统设计**: 为设计新系统提供参考
 
-**反例: 不理解VACUUM实现导致的问题**
+**反例: 不理解VACUUM实现导致的问题**:
 
 ```text
 错误设计: 不理解VACUUM实现，盲目配置
