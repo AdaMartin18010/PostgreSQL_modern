@@ -46,6 +46,19 @@
   - [十二、实际应用案例](#十二实际应用案例)
     - [12.1 案例: 高并发Web服务（借用检查器保护）](#121-案例-高并发web服务借用检查器保护)
     - [12.2 案例: 数据库连接池（所有权管理）](#122-案例-数据库连接池所有权管理)
+  - [十三、反例与错误使用](#十三反例与错误使用)
+    - [反例1: 滥用unsafe绕过所有权检查](#反例1-滥用unsafe绕过所有权检查)
+    - [反例2: 忽略生命周期导致悬垂指针](#反例2-忽略生命周期导致悬垂指针)
+    - [反例3: 过度使用Arc导致性能下降](#反例3-过度使用arc导致性能下降)
+  - [十四、完整实现代码](#十四完整实现代码)
+    - [14.1 简化版借用检查器完整实现](#141-简化版借用检查器完整实现)
+    - [14.2 生命周期推断器完整实现](#142-生命周期推断器完整实现)
+    - [14.3 数据流分析框架完整实现](#143-数据流分析框架完整实现)
+    - [14.4 实际使用示例](#144-实际使用示例)
+  - [十五、Rust所有权实现可视化](#十五rust所有权实现可视化)
+    - [15.1 借用检查器架构图](#151-借用检查器架构图)
+    - [15.2 借用检查流程图](#152-借用检查流程图)
+    - [15.3 生命周期推导决策树](#153-生命周期推导决策树)
 
 ---
 
@@ -511,7 +524,7 @@ println!("{}", x);  // 错误
 
 **编译器输出**:
 
-```
+```text
 error[E0382]: borrow of moved value: `x`
  --> src/main.rs:4:20
   |
@@ -538,7 +551,7 @@ let z = &mut x;  // 错误
 
 **编译器输出**:
 
-```
+```text
 error[E0499]: cannot borrow `x` as mutable more than once at a time
  --> src/main.rs:4:13
   |
@@ -568,7 +581,7 @@ println!("{}", result);
 
 **编译器输出**:
 
-```
+```text
 error[E0597]: `x` does not live long enough
  --> src/main.rs:8:28
   |
@@ -588,7 +601,7 @@ error[E0597]: `x` does not live long enough
 
 ### 10.1 借用检查优化
 
-**优化1: 增量检查**
+**优化1: 增量检查**:
 
 ```rust
 // 仅检查变更的函数
@@ -605,7 +618,7 @@ pub fn incremental_borrow_check(
 
 **性能提升**: 大型项目编译时间减少70%
 
-**优化2: 并行检查**
+**优化2: 并行检查**:
 
 ```rust
 use rayon::prelude::*;
@@ -777,9 +790,773 @@ impl ConnectionPool {
 
 ---
 
+---
+
+## 十三、反例与错误使用
+
+### 反例1: 滥用unsafe绕过所有权检查
+
+**错误使用**:
+
+```rust
+// 错误: 使用unsafe绕过所有权检查
+unsafe {
+    let ptr = raw_ptr as *mut i32;
+    *ptr = 42;  // 可能导致内存安全问题
+}
+```
+
+**问题**: 绕过Rust的安全保证，可能导致内存错误
+
+**正确使用**:
+
+```rust
+// 正确: 使用安全的API
+let value = Arc::new(Mutex::new(42));
+let value_clone = Arc::clone(&value);
+// 编译期保证安全
+```
+
+### 反例2: 忽略生命周期导致悬垂指针
+
+**错误使用**:
+
+```rust
+// 错误: 返回局部变量的引用
+fn get_ref() -> &str {
+    let s = String::from("hello");
+    &s  // 编译错误: 返回局部变量的引用
+}
+```
+
+**问题**: 生命周期检查失败，编译期报错
+
+**正确使用**:
+
+```rust
+// 正确: 返回所有权或使用生命周期参数
+fn get_string() -> String {
+    String::from("hello")
+}
+
+// 或
+fn get_ref<'a>(s: &'a str) -> &'a str {
+    s
+}
+```
+
+### 反例3: 过度使用Arc导致性能下降
+
+**错误使用**:
+
+```rust
+// 错误: 所有数据都用Arc包装
+let data = Arc::new(Mutex::new(vec![1, 2, 3]));
+let data2 = Arc::clone(&data);
+let data3 = Arc::clone(&data);
+// 不必要的引用计数开销
+```
+
+**问题**: 增加不必要的开销
+
+**正确使用**:
+
+```rust
+// 正确: 只在需要共享时使用Arc
+let data = vec![1, 2, 3];
+// 单线程使用，不需要Arc
+```
+
+---
+
+## 十四、完整实现代码
+
+### 14.1 简化版借用检查器完整实现
+
+**完整实现**: 一个简化版的借用检查器，展示核心算法
+
+```rust
+use std::collections::{HashMap, HashSet};
+use std::fmt;
+
+/// 变量标识符
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Variable(String);
+
+/// 借用类型
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BorrowKind {
+    Shared,    // &T
+    Mutable,    // &mut T
+    Move,       // T (移动)
+}
+
+/// 借用信息
+#[derive(Debug, Clone)]
+pub struct Borrow {
+    pub variable: Variable,
+    pub kind: BorrowKind,
+    pub location: usize,  // 代码位置
+}
+
+/// 借用检查器
+pub struct BorrowChecker {
+    // 当前活跃的借用
+    active_borrows: HashMap<Variable, Vec<Borrow>>,
+
+    // 变量作用域
+    scopes: Vec<HashSet<Variable>>,
+
+    // 错误列表
+    errors: Vec<String>,
+}
+
+impl BorrowChecker {
+    pub fn new() -> Self {
+        Self {
+            active_borrows: HashMap::new(),
+            scopes: Vec::new(),
+            errors: Vec::new(),
+        }
+    }
+
+    /// 进入新作用域
+    pub fn enter_scope(&mut self) {
+        self.scopes.push(HashSet::new());
+    }
+
+    /// 退出作用域，清理该作用域的所有借用
+    pub fn exit_scope(&mut self) {
+        if let Some(scope) = self.scopes.pop() {
+            for var in scope {
+                self.active_borrows.remove(&var);
+            }
+        }
+    }
+
+    /// 创建共享借用
+    pub fn borrow_shared(&mut self, var: Variable, location: usize) -> Result<(), String> {
+        self.check_borrow(&var, BorrowKind::Mutable, location)?;
+
+        let borrow = Borrow {
+            variable: var.clone(),
+            kind: BorrowKind::Shared,
+            location,
+        };
+
+        self.active_borrows
+            .entry(var)
+            .or_insert_with(Vec::new)
+            .push(borrow);
+
+        Ok(())
+    }
+
+    /// 创建可变借用
+    pub fn borrow_mutable(&mut self, var: Variable, location: usize) -> Result<(), String> {
+        self.check_borrow(&var, BorrowKind::Mutable, location)?;
+
+        // 清除所有现有借用
+        self.active_borrows.remove(&var);
+
+        let borrow = Borrow {
+            variable: var.clone(),
+            kind: BorrowKind::Mutable,
+            location,
+        };
+
+        self.active_borrows
+            .entry(var)
+            .or_insert_with(Vec::new)
+            .push(borrow);
+
+        Ok(())
+    }
+
+    /// 移动变量
+    pub fn move_var(&mut self, var: Variable, location: usize) -> Result<(), String> {
+        // 检查是否有活跃借用
+        if let Some(borrows) = self.active_borrows.get(&var) {
+            if !borrows.is_empty() {
+                return Err(format!(
+                    "cannot move `{}`: variable is borrowed at location {}",
+                    var.0,
+                    borrows[0].location
+                ));
+            }
+        }
+
+        // 标记为已移动（从作用域移除）
+        for scope in &mut self.scopes {
+            scope.remove(&var);
+        }
+
+        Ok(())
+    }
+
+    /// 检查借用冲突
+    fn check_borrow(
+        &self,
+        var: &Variable,
+        kind: BorrowKind,
+        location: usize,
+    ) -> Result<(), String> {
+        if let Some(borrows) = self.active_borrows.get(var) {
+            for borrow in borrows {
+                match (&borrow.kind, &kind) {
+                    // 可变借用与任何借用冲突
+                    (BorrowKind::Mutable, _) | (_, BorrowKind::Mutable) => {
+                        return Err(format!(
+                            "cannot borrow `{}` as {:?} because it is already borrowed as {:?} at location {}",
+                            var.0, kind, borrow.kind, borrow.location
+                        ));
+                    }
+                    // 共享借用之间不冲突
+                    (BorrowKind::Shared, BorrowKind::Shared) => {
+                        // 允许
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// 获取所有错误
+    pub fn errors(&self) -> &[String] {
+        &self.errors
+    }
+}
+
+// 使用示例
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shared_borrows() {
+        let mut checker = BorrowChecker::new();
+        checker.enter_scope();
+
+        let var = Variable("x".to_string());
+
+        // 允许多个共享借用
+        assert!(checker.borrow_shared(var.clone(), 1).is_ok());
+        assert!(checker.borrow_shared(var.clone(), 2).is_ok());
+        assert!(checker.borrow_shared(var.clone(), 3).is_ok());
+
+        checker.exit_scope();
+    }
+
+    #[test]
+    fn test_mutable_borrow_conflict() {
+        let mut checker = BorrowChecker::new();
+        checker.enter_scope();
+
+        let var = Variable("x".to_string());
+
+        // 先创建共享借用
+        assert!(checker.borrow_shared(var.clone(), 1).is_ok());
+
+        // 再创建可变借用应该失败
+        assert!(checker.borrow_mutable(var.clone(), 2).is_err());
+
+        checker.exit_scope();
+    }
+
+    #[test]
+    fn test_move_after_borrow() {
+        let mut checker = BorrowChecker::new();
+        checker.enter_scope();
+
+        let var = Variable("x".to_string());
+
+        // 先创建借用
+        assert!(checker.borrow_shared(var.clone(), 1).is_ok());
+
+        // 移动应该失败
+        assert!(checker.move_var(var.clone(), 2).is_err());
+
+        checker.exit_scope();
+    }
+}
+```
+
+### 14.2 生命周期推断器完整实现
+
+**完整实现**: 简化的生命周期推断算法
+
+```rust
+use std::collections::{HashMap, HashSet};
+
+/// 生命周期变量
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LifetimeVar(usize);
+
+/// 生命周期约束
+#[derive(Debug, Clone)]
+pub enum LifetimeConstraint {
+    Outlives(LifetimeVar, LifetimeVar),  // 'a: 'b 表示 'a 比 'b 活得更久
+}
+
+/// 生命周期推断器
+pub struct LifetimeInferencer {
+    constraints: Vec<LifetimeConstraint>,
+    lifetime_vars: HashMap<String, LifetimeVar>,
+    next_var_id: usize,
+}
+
+impl LifetimeInferencer {
+    pub fn new() -> Self {
+        Self {
+            constraints: Vec::new(),
+            lifetime_vars: HashMap::new(),
+            next_var_id: 0,
+        }
+    }
+
+    /// 创建新的生命周期变量
+    pub fn new_lifetime_var(&mut self, name: String) -> LifetimeVar {
+        let var = LifetimeVar(self.next_var_id);
+        self.next_var_id += 1;
+        self.lifetime_vars.insert(name, var.clone());
+        var
+    }
+
+    /// 添加约束
+    pub fn add_constraint(&mut self, constraint: LifetimeConstraint) {
+        self.constraints.push(constraint);
+    }
+
+    /// 求解生命周期约束
+    pub fn solve(&self) -> Result<HashMap<LifetimeVar, HashSet<LifetimeVar>>, String> {
+        // 构建约束图
+        let mut graph: HashMap<LifetimeVar, HashSet<LifetimeVar>> = HashMap::new();
+
+        for constraint in &self.constraints {
+            if let LifetimeConstraint::Outlives(ref a, ref b) = constraint {
+                graph
+                    .entry(a.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(b.clone());
+            }
+        }
+
+        // 使用传递闭包计算所有约束
+        let mut result = graph.clone();
+
+        // Floyd-Warshall算法计算传递闭包
+        let all_vars: Vec<LifetimeVar> = result.keys().cloned().collect();
+
+        for k in &all_vars {
+            for i in &all_vars {
+                if let Some(ik_set) = result.get(i).cloned() {
+                    if ik_set.contains(k) {
+                        if let Some(kj_set) = result.get(k).cloned() {
+                            let i_entry = result.entry(i.clone()).or_insert_with(HashSet::new);
+                            for j in kj_set {
+                                i_entry.insert(j);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// 检查生命周期是否有效
+    pub fn check_lifetime(&self, var: &LifetimeVar) -> Result<(), String> {
+        let solution = self.solve()?;
+
+        // 检查是否存在循环依赖
+        if let Some(deps) = solution.get(var) {
+            if deps.contains(var) {
+                return Err(format!("lifetime {:?} has circular dependency", var));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+// 使用示例
+#[cfg(test)]
+mod lifetime_tests {
+    use super::*;
+
+    #[test]
+    fn test_lifetime_constraints() {
+        let mut inferencer = LifetimeInferencer::new();
+
+        let 'a = inferencer.new_lifetime_var("'a".to_string());
+        let 'b = inferencer.new_lifetime_var("'b".to_string());
+        let 'c = inferencer.new_lifetime_var("'c".to_string());
+
+        // 'a: 'b, 'b: 'c
+        inferencer.add_constraint(LifetimeConstraint::Outlives('a.clone(), 'b.clone()));
+        inferencer.add_constraint(LifetimeConstraint::Outlives('b.clone(), 'c.clone()));
+
+        let solution = inferencer.solve().unwrap();
+
+        // 'a 应该 outlive 'b 和 'c
+        assert!(solution.get(&'a).unwrap().contains(&'b));
+        assert!(solution.get(&'a).unwrap().contains(&'c));
+    }
+}
+```
+
+### 14.3 数据流分析框架完整实现
+
+**完整实现**: 通用的数据流分析框架
+
+```rust
+use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
+
+/// 控制流图节点
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BasicBlock(usize);
+
+/// 数据流值
+pub trait DataFlowValue: Clone + Debug + PartialEq {
+    fn join(&self, other: &Self) -> Self;
+    fn bottom() -> Self;
+}
+
+/// 数据流分析器
+pub struct DataFlowAnalyzer<V: DataFlowValue> {
+    cfg: HashMap<BasicBlock, Vec<BasicBlock>>,  // 控制流图
+    in_values: HashMap<BasicBlock, V>,
+    out_values: HashMap<BasicBlock, V>,
+    transfer: Box<dyn Fn(&BasicBlock, &V) -> V>,
+}
+
+impl<V: DataFlowValue> DataFlowAnalyzer<V> {
+    pub fn new(
+        cfg: HashMap<BasicBlock, Vec<BasicBlock>>,
+        transfer: Box<dyn Fn(&BasicBlock, &V) -> V>,
+    ) -> Self {
+        Self {
+            cfg,
+            in_values: HashMap::new(),
+            out_values: HashMap::new(),
+            transfer,
+        }
+    }
+
+    /// 前向数据流分析（到达定义）
+    pub fn forward_analysis(&mut self, entry: BasicBlock, initial: V) {
+        // 初始化
+        for block in self.cfg.keys() {
+            self.in_values.insert(block.clone(), V::bottom());
+            self.out_values.insert(block.clone(), V::bottom());
+        }
+
+        self.out_values.insert(entry.clone(), initial);
+
+        // 迭代直到收敛
+        let mut changed = true;
+        while changed {
+            changed = false;
+
+            for block in self.cfg.keys() {
+                // 计算 IN[block] = join(OUT[pred]) for all pred
+                let mut in_val = V::bottom();
+                for (pred, succs) in &self.cfg {
+                    if succs.contains(block) {
+                        if let Some(pred_out) = self.out_values.get(pred) {
+                            in_val = in_val.join(pred_out);
+                        }
+                    }
+                }
+
+                self.in_values.insert(block.clone(), in_val.clone());
+
+                // 计算 OUT[block] = transfer(block, IN[block])
+                let out_val = (self.transfer)(block, &in_val);
+
+                if let Some(old_out) = self.out_values.get(block) {
+                    if out_val != *old_out {
+                        changed = true;
+                    }
+                } else {
+                    changed = true;
+                }
+
+                self.out_values.insert(block.clone(), out_val);
+            }
+        }
+    }
+
+    /// 获取块的数据流值
+    pub fn get_in_value(&self, block: &BasicBlock) -> Option<&V> {
+        self.in_values.get(block)
+    }
+
+    pub fn get_out_value(&self, block: &BasicBlock) -> Option<&V> {
+        self.out_values.get(block)
+    }
+}
+
+// 实现示例：到达定义分析
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReachingDefs(HashSet<usize>);
+
+impl DataFlowValue for ReachingDefs {
+    fn join(&self, other: &Self) -> Self {
+        ReachingDefs(self.0.union(&other.0).cloned().collect())
+    }
+
+    fn bottom() -> Self {
+        ReachingDefs(HashSet::new())
+    }
+}
+```
+
+### 14.4 实际使用示例
+
+**完整示例**: 使用借用检查器分析代码
+
+```rust
+use borrow_checker::*;
+
+fn main() {
+    let mut checker = BorrowChecker::new();
+
+    // 模拟代码:
+    // let x = vec![1, 2, 3];
+    // let y = &x;
+    // let z = &x;
+    // x.push(4);  // 错误！
+
+    checker.enter_scope();
+
+    let x = Variable("x".to_string());
+    let y = Variable("y".to_string());
+    let z = Variable("z".to_string());
+
+    // 创建共享借用
+    assert!(checker.borrow_shared(x.clone(), 1).is_ok());
+    assert!(checker.borrow_shared(x.clone(), 2).is_ok());
+
+    // 尝试可变借用（应该失败）
+    match checker.borrow_mutable(x.clone(), 3) {
+        Err(e) => println!("正确捕获错误: {}", e),
+        Ok(_) => println!("错误: 应该失败！"),
+    }
+
+    checker.exit_scope();
+}
+```
+
+---
+
+## 十五、Rust所有权实现可视化
+
+### 15.1 借用检查器架构图
+
+**完整借用检查器系统架构** (Mermaid):
+
+```mermaid
+graph TB
+    subgraph "编译流程层"
+        AST[AST<br/>抽象语法树]
+        HIR[HIR<br/>高级中间表示]
+        MIR[MIR<br/>中级中间表示]
+    end
+
+    subgraph "借用检查层"
+        BORROW[借用检查器<br/>Borrow Checker]
+        LIFETIME[生命周期推导<br/>Lifetime Inference]
+        NLL[NLL<br/>Non-Lexical Lifetimes]
+    end
+
+    subgraph "数据流分析层"
+        CFG[控制流图<br/>Control Flow Graph]
+        DATAFLOW[数据流分析<br/>Data Flow Analysis]
+        REACH[到达定义<br/>Reaching Definitions]
+    end
+
+    subgraph "错误报告层"
+        ERROR[错误生成<br/>Error Generation]
+        SUGGEST[建议生成<br/>Suggestion Generation]
+    end
+
+    AST --> HIR
+    HIR --> MIR
+    MIR --> BORROW
+
+    BORROW --> LIFETIME
+    BORROW --> NLL
+    LIFETIME --> CFG
+    NLL --> CFG
+
+    CFG --> DATAFLOW
+    DATAFLOW --> REACH
+
+    BORROW --> ERROR
+    ERROR --> SUGGEST
+```
+
+**借用检查器层次架构**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 编译流程层                          │
+│  ├─ AST (抽象语法树)                     │
+│  ├─ HIR (高级中间表示)                   │
+│  └─ MIR (中级中间表示)                   │
+└───────┬───────────────────┬──────────────┘
+        │                   │
+        │ 借用检查           │ 生命周期推导
+        ▼                   ▼
+┌──────────────┐  ┌──────────────────┐
+│  L2: 检查层  │  │  L2: 分析层      │
+│  借用检查器   │  │  控制流图        │
+│  NLL         │  │  数据流分析      │
+└──────┬───────┘  └──────────────────┘
+       │
+       │ 错误报告
+       ▼
+┌──────────────┐
+│  L1: 报告层  │
+│  错误生成     │
+│  建议生成     │
+└──────────────┘
+```
+
+### 15.2 借用检查流程图
+
+**借用检查完整流程** (Mermaid):
+
+```mermaid
+flowchart TD
+    START([代码输入]) --> PARSE[解析AST]
+    PARSE --> HIR[转换为HIR]
+    HIR --> MIR[转换为MIR]
+
+    MIR --> BUILD_CFG[构建控制流图]
+    BUILD_CFG --> INFER_LIFETIME[生命周期推断]
+
+    INFER_LIFETIME --> CHECK_BORROW{借用检查}
+
+    CHECK_BORROW -->|发现借用| CHECK_CONFLICT{检查冲突}
+    CHECK_BORROW -->|无借用| PASS[通过]
+
+    CHECK_CONFLICT -->|冲突| ERROR[生成错误]
+    CHECK_CONFLICT -->|无冲突| CHECK_LIFETIME{检查生命周期}
+
+    CHECK_LIFETIME -->|生命周期错误| ERROR
+    CHECK_LIFETIME -->|生命周期正确| PASS
+
+    ERROR --> SUGGEST[生成建议]
+    SUGGEST --> END([编译失败])
+
+    PASS --> OPTIMIZE[优化]
+    OPTIMIZE --> LLVM[生成LLVM IR]
+    LLVM --> END_SUCCESS([编译成功])
+```
+
+**借用检查算法流程**:
+
+```text
+借用检查算法:
+├─ 阶段1: 构建控制流图
+│   ├─ 分析函数体
+│   ├─ 识别基本块
+│   └─ 构建CFG
+│
+├─ 阶段2: 生命周期推断
+│   ├─ 收集生命周期约束
+│   ├─ 求解约束系统
+│   └─ 分配生命周期参数
+│
+├─ 阶段3: 借用检查
+│   ├─ 遍历MIR语句
+│   ├─ 检查借用冲突
+│   └─ 验证生命周期
+│
+└─ 阶段4: 错误报告
+    ├─ 生成错误消息
+    ├─ 提供修复建议
+    └─ 高亮错误位置
+```
+
+### 15.3 生命周期推导决策树
+
+**生命周期推导决策树**:
+
+```text
+                生命周期推导策略
+                      │
+          ┌───────────┴───────────┐
+          │   代码复杂度分析      │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   简单代码        中等代码        复杂代码
+   (单函数)        (多函数)        (泛型+闭包)
+      │               │               │
+      ▼               ▼               ▼
+   自动推导        显式标注        复杂推导
+   (省略)          ('a, 'b)        (HRTB)
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   零开销          低开销          高开销
+   编译器推导      部分推导        复杂推导
+```
+
+**借用检查错误处理决策树**:
+
+```text
+                处理借用检查错误
+                      │
+          ┌───────────┴───────────┐
+          │   错误类型分析        │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   借用冲突        生命周期错误    所有权错误
+   (&mut冲突)      (悬垂引用)      (移动后使用)
+      │               │               │
+      ▼               ▼               ▼
+   重构代码        添加生命周期    克隆或引用
+   (分离借用)      ('a标注)       (Arc/Clone)
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   避免冲突        延长生命周期    共享所有权
+   安全保证        正确标注        性能权衡
+```
+
+**借用检查器对比矩阵**:
+
+| 检查阶段 | 检查内容 | 时间复杂度 | 空间复杂度 | 优化策略 |
+|---------|---------|-----------|-----------|---------|
+| **生命周期推断** | 生命周期约束 | O(n²) | O(n) | 约束图优化 |
+| **借用冲突检测** | 借用重叠 | O(n) | O(n) | 借用集优化 |
+| **NLL分析** | 控制流敏感 | O(n×m) | O(n×m) | 数据流分析 |
+| **错误生成** | 错误消息 | O(1) | O(1) | 缓存优化 |
+
+**Rust借用检查与数据库MVCC对应矩阵**:
+
+| Rust机制 | 数据库对应 | 保证内容 | 检查时机 |
+|---------|-----------|---------|---------|
+| **借用检查** | 锁检查 | 无数据竞争 | 编译期 |
+| **生命周期** | 事务ID | 引用有效性 | 编译期 |
+| **所有权** | 版本链 | 资源管理 | 编译期 |
+| **Arc/Mutex** | 共享锁 | 线程安全 | 运行时 |
+
+---
+
 **文档版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 完整算法实现、NLL详解、编译器输出、性能优化、边界情况、实际案例
+**新增内容**: 完整算法实现、NLL详解、编译器输出、性能优化、边界情况、实际案例、反例分析、完整实现代码、Rust所有权实现可视化（借用检查器架构图、借用检查流程图、生命周期推导决策树）
 
 **关联文档**:
 

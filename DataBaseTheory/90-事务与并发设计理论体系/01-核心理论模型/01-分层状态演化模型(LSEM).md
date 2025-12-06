@@ -19,7 +19,9 @@
     - [2.5 冲突检测函数 (Conflict Detection)](#25-冲突检测函数-conflict-detection)
   - [三、三层架构详解](#三三层架构详解)
     - [3.1 L0: 存储引擎层](#31-l0-存储引擎层)
+      - [3.1.1 硬件体系结构背景模型](#311-硬件体系结构背景模型)
     - [3.2 L1: 运行时层](#32-l1-运行时层)
+      - [3.2.1 Read提交等概念的背景解释与论证](#321-read提交等概念的背景解释与论证)
     - [3.3 L2: 分布式层](#33-l2-分布式层)
   - [四、跨层映射关系](#四跨层映射关系)
     - [4.1 同构性证明](#41-同构性证明)
@@ -52,6 +54,10 @@
   - [十二、反例与错误设计](#十二反例与错误设计)
     - [反例1: 跨层锁语义混淆](#反例1-跨层锁语义混淆)
     - [反例2: 忽略层间时间戳同步](#反例2-忽略层间时间戳同步)
+  - [十三、LSEM可视化](#十三lsem可视化)
+    - [13.1 LSEM三层架构图](#131-lsem三层架构图)
+    - [13.2 跨层映射关系图](#132-跨层映射关系图)
+    - [13.3 LSEM应用决策树](#133-lsem应用决策树)
 
 ---
 
@@ -233,6 +239,102 @@ $$\exists \text{SerialOrder}: (e_1 \to e_2) \lor (e_2 \to e_1)$$
 
 **设计模式**: **多版本时间旅行 (Multi-Version Time Travel, MVTT)**
 
+#### 3.1.1 硬件体系结构背景模型
+
+**L0层的硬件基础**:
+
+现代数据库存储引擎的设计必须考虑底层硬件特性，这些特性深刻影响了MVCC的实现策略：
+
+```text
+┌────────────────────────────────────────────┐
+│         硬件存储层次结构 (Memory Hierarchy)  │
+├────────────────────────────────────────────┤
+│                                            │
+│  L1 Cache (CPU寄存器)                      │
+│  ├─ 延迟: ~1ns                             │
+│  ├─ 容量: ~32KB/core                       │
+│  └─ 用途: 热数据访问                        │
+│         ↓                                  │
+│  L2/L3 Cache (CPU缓存)                     │
+│  ├─ 延迟: ~10ns                            │
+│  ├─ 容量: ~1-32MB/core                      │
+│  └─ 用途: 缓存行对齐优化                    │
+│         ↓                                  │
+│  DRAM (主内存)                              │
+│  ├─ 延迟: ~100ns                            │
+│  ├─ 容量: ~16-512GB                         │
+│  └─ 用途: 缓冲池 (Buffer Pool)              │
+│         ↓                                  │
+│  SSD/NVMe (持久化存储)                      │
+│  ├─ 延迟: ~10-100μs                         │
+│  ├─ 容量: ~1-100TB                          │
+│  └─ 用途: 数据文件 + WAL                    │
+│         ↓                                  │
+│  HDD (归档存储)                             │
+│  ├─ 延迟: ~5-10ms                           │
+│  ├─ 容量: ~10-100TB                         │
+│  └─ 用途: 冷数据归档                        │
+│                                            │
+└────────────────────────────────────────────┘
+```
+
+**硬件特性对MVCC设计的影响**:
+
+1. **缓存行对齐 (Cache Line Alignment)**:
+   - 现代CPU缓存行大小: 64字节
+   - PostgreSQL元组头: 24字节 (HeapTupleHeaderData)
+   - **优化**: 元组数据尽量对齐，减少缓存未命中
+
+2. **写时复制 (Copy-on-Write) 的硬件支持**:
+   - CPU支持原子操作 (Compare-and-Swap)
+   - **MVCC优势**: UPDATE操作创建新版本，旧版本可被其他事务并发读取
+   - **硬件加速**: 利用CPU缓存一致性协议 (MESI)
+
+3. **内存屏障 (Memory Barrier)**:
+   - **Release语义**: 确保写操作在后续读操作之前完成
+   - **Acquire语义**: 确保读操作在后续写操作之前完成
+   - **MVCC应用**: 事务提交时使用内存屏障，确保pg_clog状态可见
+
+4. **NUMA架构 (Non-Uniform Memory Access)**:
+   - 多CPU插槽系统，本地内存 vs 远程内存延迟差异
+   - **PostgreSQL优化**: 进程绑定到特定NUMA节点，减少跨节点访问
+
+**I/O子系统对事务提交的影响**:
+
+```text
+事务提交的硬件路径:
+├─ 1. CPU执行COMMIT指令
+│   └─ 触发WAL写入
+│
+├─ 2. WAL写入路径
+│   ├─ 应用层缓冲区 (PostgreSQL WAL Buffer)
+│   ├─ OS页缓存 (Page Cache)
+│   ├─ 块设备层 (Block Device Layer)
+│   └─ 存储设备 (SSD/NVMe)
+│
+├─ 3. fsync()调用
+│   ├─ 强制刷新OS页缓存到存储设备
+│   ├─ 等待存储设备确认写入完成
+│   └─ 返回成功 (保证持久性)
+│
+└─ 4. 存储设备确认
+    ├─ NVMe: 写入NAND闪存
+    ├─ 写入确认返回
+    └─ 事务提交完成
+```
+
+**硬件性能参数对MVCC的影响**:
+
+| 硬件参数 | 典型值 | MVCC设计影响 |
+|---------|-------|------------|
+| **CPU缓存行大小** | 64字节 | 元组对齐，减少缓存未命中 |
+| **内存带宽** | ~50GB/s | 版本链遍历性能瓶颈 |
+| **SSD随机读延迟** | ~10-50μs | 索引扫描性能 |
+| **SSD随机写延迟** | ~10-50μs | WAL写入性能 |
+| **fsync延迟** | ~100-1000μs | 事务提交延迟 |
+
+**PostgreSQL MVCC架构**:
+
 ```text
 ┌────────────────────────────────────────────┐
 │         PostgreSQL MVCC Architecture       │
@@ -280,6 +382,106 @@ pg_clog[100] = COMMITTED
 ### 3.2 L1: 运行时层
 
 **设计模式**: **所有权时序隔离 (Ownership Temporal Isolation, OTI)**
+
+#### 3.2.1 Read提交等概念的背景解释与论证
+
+**为什么需要Read Committed隔离级别？**
+
+Read Committed (读已提交) 是数据库事务隔离的基础级别，其设计动机源于对**一致性**和**性能**的权衡：
+
+**理论基础**:
+
+1. **脏读问题 (Dirty Read)**:
+
+   ```text
+   事务T1:                   事务T2:
+   BEGIN;                    BEGIN;
+   UPDATE x SET v=100;       SELECT v FROM x;  -- 读到v=100 (脏读)
+   (未提交)                  COMMIT;
+   ROLLBACK;                 -- T2基于错误数据做决策
+   ```
+
+   - **问题**: 读取到未提交的数据，可能导致业务逻辑错误
+   - **Read Committed保证**: 只读取已提交的数据
+
+2. **语句级快照 (Statement-Level Snapshot)**:
+
+   ```text
+   Read Committed的可见性规则:
+   ├─ 每个SQL语句开始时获取快照
+   ├─ 快照包含: xmin, xmax, xip (活跃事务列表)
+   └─ 语句执行期间快照不变
+
+   示例:
+   BEGIN;  -- 事务T1开始 (xid=100)
+   SELECT * FROM t;  -- 语句1: 快照(xmin=100, xmax=110, xip=[])
+   -- 此时T2 (xid=105) 提交了UPDATE
+   SELECT * FROM t;  -- 语句2: 新快照(xmin=100, xmax=115, xip=[])
+                    -- 可以看到T2的更新！
+   ```
+
+   - **设计动机**: 允许事务看到其他事务的提交，提高并发性
+   - **与Repeatable Read对比**: RR在事务开始时获取快照，整个事务期间不变
+
+3. **写写冲突检测 (Write-Write Conflict)**:
+
+   ```text
+   事务T1:                   事务T2:
+   BEGIN;                    BEGIN;
+   SELECT * FROM t           SELECT * FROM t
+    WHERE id=1;               WHERE id=1;
+   UPDATE t SET v=10         UPDATE t SET v=20
+    WHERE id=1;                WHERE id=1;
+   -- T1先提交              -- T2后提交
+   COMMIT;                   -- T2检测到冲突，等待或重试
+   ```
+
+   - **Read Committed行为**: 后提交的事务检测到冲突，等待或重试
+   - **理论基础**: 基于锁的冲突检测，保证写操作的原子性
+
+**Read Committed的可见性证明**:
+
+**定理3.2.1 (Read Committed可见性)**:
+
+$$\forall \text{stmt} \in T, \forall \text{tuple } t: \text{Visible}(t, \text{Snapshot}(\text{stmt})) \iff$$
+
+$$(\text{Committed}(t.\text{xmin}) \land t.\text{xmin} < \text{Snapshot}.\text{xmax} \land t.\text{xmin} \notin \text{Snapshot}.\text{xip}) \land$$
+
+$$(\neg \text{Committed}(t.\text{xmax}) \lor t.\text{xmax} \geq \text{Snapshot}.\text{xmax} \lor t.\text{xmax} \in \text{Snapshot}.\text{xip})$$
+
+**证明**:
+
+1. **充分性**: 如果tuple满足上述条件，则对当前语句可见
+   - $t.\text{xmin}$已提交且在当前快照之前 → 创建事务已完成
+   - $t.\text{xmax}$未提交或大于快照 → 删除事务未完成或未开始
+   - 因此tuple对当前语句可见 ✓
+
+2. **必要性**: 如果tuple对当前语句可见，则必须满足上述条件
+   - 如果$t.\text{xmin}$未提交 → tuple创建未完成，不可见 ✗
+   - 如果$t.\text{xmax}$已提交且小于快照 → tuple已被删除，不可见 ✗
+   - 因此必须满足条件 ✓
+
+**Read Committed与硬件内存模型的对应**:
+
+```text
+数据库隔离级别 ↔ CPU内存模型:
+├─ Read Committed ↔ Release-Acquire语义
+│   ├─ 事务提交 = Release操作
+│   ├─ 语句开始 = Acquire操作
+│   └─ 保证: 提交后的数据对后续语句可见
+│
+├─ Repeatable Read ↔ Sequential Consistency
+│   ├─ 事务开始 = 获取全局快照
+│   ├─ 整个事务期间快照不变
+│   └─ 保证: 事务内一致性视图
+│
+└─ Serializable ↔ Linearizability
+    ├─ 全局顺序执行
+    ├─ 写偏斜检测
+    └─ 保证: 可序列化执行
+```
+
+**Rust所有权系统**:
 
 ```text
 ┌────────────────────────────────────────────┐
@@ -1225,9 +1427,193 @@ if timestamp_service.compare(l0_timestamp, l2_timestamp) < 0:
 
 ---
 
+## 十三、LSEM可视化
+
+### 13.1 LSEM三层架构图
+
+**完整LSEM三层架构** (Mermaid):
+
+```mermaid
+graph TB
+    subgraph "L2: 分布式层"
+        L2_N1[节点1<br/>Raft Leader]
+        L2_N2[节点2<br/>Raft Follower]
+        L2_N3[节点3<br/>Raft Follower]
+        L2_TS[全局时间戳<br/>HLC/TrueTime]
+    end
+
+    subgraph "L1: 运行时层"
+        L1_T1[线程1<br/>Rust所有权]
+        L1_T2[线程2<br/>Rust所有权]
+        L1_ARC[Arc<Mutex<T>>]
+        L1_TS[逻辑时钟<br/>Lamport Clock]
+    end
+
+    subgraph "L0: 存储引擎层"
+        L0_TXN1[事务T1<br/>PostgreSQL MVCC]
+        L0_TXN2[事务T2<br/>PostgreSQL MVCC]
+        L0_HEAP[堆表<br/>版本链]
+        L0_TS[事务ID<br/>TransactionId]
+    end
+
+    L2_N1 --> L2_TS
+    L2_N2 --> L2_TS
+    L2_N3 --> L2_TS
+
+    L1_T1 --> L1_ARC
+    L1_T2 --> L1_ARC
+    L1_T1 --> L1_TS
+    L1_T2 --> L1_TS
+
+    L0_TXN1 --> L0_HEAP
+    L0_TXN2 --> L0_HEAP
+    L0_TXN1 --> L0_TS
+    L0_TXN2 --> L0_TS
+
+    L2_TS -.->|时间戳映射| L1_TS
+    L1_TS -.->|时间戳映射| L0_TS
+```
+
+**LSEM统一框架层次**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L2: 分布式层                            │
+│  ├─ 节点状态 (Raft Leader/Follower)      │
+│  ├─ 全局时间戳 (HLC/TrueTime)            │
+│  └─ 共识协议 (Raft/Paxos)                │
+└───────┬───────────────────┬─────────────┘
+        │                   │
+        │ 时间戳映射         │ 状态映射
+        ▼                   ▼
+┌──────────────┐  ┌──────────────────┐
+│  L1: 运行时层 │  │  L1: 运行时层    │
+│  线程状态     │  │  内存所有权      │
+│  逻辑时钟     │  │  并发原语        │
+└──────┬───────┘  └──────────────────┘
+       │
+       │ 时间戳映射
+       ▼
+┌──────────────┐
+│  L0: 存储层  │
+│  事务状态     │
+│  版本链       │
+│  事务ID       │
+└──────────────┘
+```
+
+### 13.2 跨层映射关系图
+
+**LSEM跨层映射关系** (Mermaid):
+
+```mermaid
+graph LR
+    subgraph "L0: 存储层"
+        L0_MVCC[MVCC<br/>版本链]
+        L0_TXID[事务ID<br/>xid]
+        L0_SNAP[快照<br/>Snapshot]
+    end
+
+    subgraph "L1: 运行时层"
+        L1_OWN[所有权<br/>Ownership]
+        L1_BOR[借用<br/>Borrow]
+        L1_ARC[Arc<Mutex>]
+    end
+
+    subgraph "L2: 分布式层"
+        L2_RAFT[Raft<br/>共识]
+        L2_HLC[HLC<br/>混合逻辑时钟]
+        L2_LOG[日志<br/>Log]
+    end
+
+    L0_MVCC -.->|同构| L1_OWN
+    L0_TXID -.->|映射| L1_BOR
+    L0_SNAP -.->|映射| L1_ARC
+
+    L1_OWN -.->|同构| L2_RAFT
+    L1_BOR -.->|映射| L2_HLC
+    L1_ARC -.->|映射| L2_LOG
+
+    style L0_MVCC fill:#ffcccc
+    style L1_OWN fill:#ccffcc
+    style L2_RAFT fill:#ccccff
+```
+
+**跨层概念映射矩阵**:
+
+| L0 (存储层) | L1 (运行时层) | L2 (分布式层) | 核心概念 |
+|-----------|-------------|-------------|---------|
+| **版本链** | 所有权转移 | 日志复制 | 状态演化 |
+| **事务ID** | 生命周期 | 逻辑时钟 | 时间戳 |
+| **快照** | 不可变引用 | 一致性视图 | 可见性 |
+| **冲突检测** | 借用检查 | 共识协议 | 仲裁机制 |
+
+### 13.3 LSEM应用决策树
+
+**LSEM层选择决策树**:
+
+```text
+                选择LSEM层
+                      │
+          ┌───────────┴───────────┐
+          │   系统类型分析        │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   单机系统        多线程系统      分布式系统
+   (单进程)        (多进程)        (多节点)
+      │               │               │
+      ▼               ▼               ▼
+    L0层            L1层            L2层
+  (存储层)        (运行时层)      (分布式层)
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+  PostgreSQL      Rust所有权      Raft共识
+  MVCC           并发原语         分布式协议
+```
+
+**LSEM跨层协同决策树**:
+
+```text
+                是否需要跨层协同?
+                      │
+          ┌───────────┴───────────┐
+          │   系统复杂度分析      │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   简单系统        中等系统        复杂系统
+   (单层)          (两层)          (三层)
+      │               │               │
+      ▼               ▼               ▼
+   单层实现        L0+L1          L0+L1+L2
+  (PostgreSQL)    (PostgreSQL    (分布式
+                  + Rust)         PostgreSQL)
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   无需映射        时间戳映射      完整映射
+                 状态映射          跨层协同
+```
+
+**LSEM实现对比矩阵**:
+
+| 实现层次 | 典型系统 | 时间戳系统 | 状态管理 | 冲突处理 | 适用场景 |
+|---------|---------|-----------|---------|---------|---------|
+| **L0** | PostgreSQL | TransactionId | 版本链 | MVCC | 单机数据库 |
+| **L1** | Rust | 生命周期 | 所有权 | 借用检查 | 内存安全 |
+| **L2** | Raft | HLC | 日志复制 | 共识协议 | 分布式系统 |
+| **L0+L1** | PostgreSQL + Rust | 统一时间戳 | 跨层状态 | 混合机制 | 数据库+应用 |
+| **L0+L1+L2** | 分布式PostgreSQL | 全局时间戳 | 三层状态 | 完整映射 | 分布式数据库 |
+
+---
+
 **版本**: 2.0.0（大幅充实）
 **创建日期**: 2025-12-05
 **最后更新**: 2025-12-05
-**新增内容**: 完整Python/Rust实现、跨层映射工具、实际应用案例、反例分析
+**新增内容**: 完整Python/Rust实现、跨层映射工具、实际应用案例、反例分析、LSEM可视化（LSEM三层架构图、跨层映射关系图、LSEM应用决策树）
 
 **关联文档**: `00-理论框架总览/00-理论体系全景图.md`

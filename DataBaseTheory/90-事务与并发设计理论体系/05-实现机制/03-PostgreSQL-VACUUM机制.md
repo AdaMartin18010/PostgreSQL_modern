@@ -43,6 +43,15 @@
   - [十一、反例与错误配置](#十一反例与错误配置)
     - [反例1: VACUUM过于频繁](#反例1-vacuum过于频繁)
     - [反例2: 忽略Freeze](#反例2-忽略freeze)
+  - [十二、完整实现代码](#十二完整实现代码)
+    - [12.1 VACUUM核心流程完整实现](#121-vacuum核心流程完整实现)
+    - [12.2 Autovacuum守护进程完整实现](#122-autovacuum守护进程完整实现)
+    - [12.3 Visibility Map优化完整实现](#123-visibility-map优化完整实现)
+    - [12.4 HOT剪枝完整实现](#124-hot剪枝完整实现)
+  - [十三、VACUUM机制可视化](#十三vacuum机制可视化)
+    - [13.1 VACUUM架构设计图](#131-vacuum架构设计图)
+    - [13.2 VACUUM流程图](#132-vacuum流程图)
+    - [13.3 VACUUM优化决策树](#133-vacuum优化决策树)
 
 ---
 
@@ -685,9 +694,626 @@ SELECT age(datfrozenxid) FROM pg_database WHERE datname = current_database();
 
 ---
 
+## 十二、完整实现代码
+
+### 12.1 VACUUM核心流程完整实现
+
+**完整实现**: Python模拟PostgreSQL VACUUM核心流程
+
+```python
+from dataclasses import dataclass
+from typing import List, Dict, Set, Optional
+from enum import Enum
+import time
+
+class TupleStatus(Enum):
+    LIVE = "live"
+    DEAD = "dead"
+    FROZEN = "frozen"
+
+@dataclass
+class HeapTuple:
+    """堆元组"""
+    t_xmin: int  # 插入事务ID
+    t_xmax: int  # 删除事务ID (0表示未删除)
+    ctid: int    # 元组位置
+    data: dict   # 实际数据
+    status: TupleStatus = TupleStatus.LIVE
+
+@dataclass
+class VacuumStats:
+    """VACUUM统计信息"""
+    pages_scanned: int = 0
+    pages_removed: int = 0
+    tuples_scanned: int = 0
+    tuples_removed: int = 0
+    tuples_frozen: int = 0
+    indexes_vacuumed: int = 0
+    start_time: float = 0
+    end_time: float = 0
+
+class VacuumExecutor:
+    """VACUUM执行器"""
+
+    def __init__(self, table_name: str, oldest_xid: int):
+        self.table_name = table_name
+        self.oldest_xid = oldest_xid
+        self.stats = VacuumStats()
+        self.stats.start_time = time.time()
+
+    def vacuum_table(self, heap_pages: List[List[HeapTuple]]) -> VacuumStats:
+        """执行VACUUM"""
+        print(f"开始VACUUM表: {self.table_name}")
+
+        # 1. 扫描堆表
+        dead_tuples = []
+        for page_num, page in enumerate(heap_pages):
+            self.stats.pages_scanned += 1
+
+            for tuple in page:
+                self.stats.tuples_scanned += 1
+
+                # 判断死元组
+                if self.is_dead_tuple(tuple):
+                    dead_tuples.append((page_num, tuple))
+                    self.stats.tuples_removed += 1
+
+                # 判断是否需要FREEZE
+                if self.needs_freeze(tuple):
+                    tuple.status = TupleStatus.FROZEN
+                    self.stats.tuples_frozen += 1
+
+        # 2. 清理死元组
+        if dead_tuples:
+            self.remove_dead_tuples(heap_pages, dead_tuples)
+
+        # 3. 更新统计信息
+        self.update_statistics()
+
+        self.stats.end_time = time.time()
+        return self.stats
+
+    def is_dead_tuple(self, tuple: HeapTuple) -> bool:
+        """判断是否为死元组"""
+        # 规则1: xmax不为0且已提交
+        if tuple.t_xmax != 0:
+            # 简化: 假设xmax < oldest_xid表示已提交
+            if tuple.t_xmax < self.oldest_xid:
+                return True
+
+        # 规则2: xmin未提交（回滚的事务）
+        # 简化处理
+        return False
+
+    def needs_freeze(self, tuple: HeapTuple) -> bool:
+        """判断是否需要FREEZE"""
+        # 如果xmin太老，需要FREEZE
+        age = self.oldest_xid - tuple.t_xmin
+        return age > 200000000  # 2亿事务ID
+
+    def remove_dead_tuples(
+        self,
+        heap_pages: List[List[HeapTuple]],
+        dead_tuples: List[tuple]
+    ):
+        """移除死元组"""
+        for page_num, tuple in dead_tuples:
+            page = heap_pages[page_num]
+            if tuple in page:
+                page.remove(tuple)
+                self.stats.pages_removed += 1
+
+    def update_statistics(self):
+        """更新统计信息"""
+        print(f"VACUUM完成:")
+        print(f"  扫描页数: {self.stats.pages_scanned}")
+        print(f"  移除页数: {self.stats.pages_removed}")
+        print(f"  扫描元组: {self.stats.tuples_scanned}")
+        print(f"  移除元组: {self.stats.tuples_removed}")
+        print(f"  FREEZE元组: {self.stats.tuples_frozen}")
+        print(f"  耗时: {self.stats.end_time - self.stats.start_time:.2f}秒")
+
+# 使用示例
+if __name__ == "__main__":
+    # 模拟表数据
+    heap_pages = [
+        [
+            HeapTuple(t_xmin=100, t_xmax=0, ctid=1, data={"id": 1, "name": "Alice"}),
+            HeapTuple(t_xmin=150, t_xmax=200, ctid=2, data={"id": 2, "name": "Bob"}),  # 死元组
+            HeapTuple(t_xmin=180, t_xmax=0, ctid=3, data={"id": 3, "name": "Charlie"}),
+        ],
+        [
+            HeapTuple(t_xmin=200, t_xmax=0, ctid=4, data={"id": 4, "name": "David"}),
+        ]
+    ]
+
+    # 执行VACUUM
+    executor = VacuumExecutor("users", oldest_xid=250)
+    stats = executor.vacuum_table(heap_pages)
+```
+
+### 12.2 Autovacuum守护进程完整实现
+
+**完整实现**: Python模拟autovacuum守护进程
+
+```python
+import threading
+import time
+from typing import Dict, List
+from dataclasses import dataclass
+
+@dataclass
+class TableStats:
+    """表统计信息"""
+    name: str
+    live_tuples: int
+    dead_tuples: int
+    last_vacuum: float
+    last_autovacuum: float
+
+class AutovacuumDaemon:
+    """Autovacuum守护进程"""
+
+    def __init__(
+        self,
+        vacuum_threshold: int = 50,
+        vacuum_scale_factor: float = 0.2,
+        check_interval: int = 60
+    ):
+        self.vacuum_threshold = vacuum_threshold
+        self.vacuum_scale_factor = vacuum_scale_factor
+        self.check_interval = check_interval
+        self.running = False
+        self.tables: Dict[str, TableStats] = {}
+
+    def start(self):
+        """启动守护进程"""
+        self.running = True
+        thread = threading.Thread(target=self._run, daemon=True)
+        thread.start()
+        print("Autovacuum守护进程已启动")
+
+    def stop(self):
+        """停止守护进程"""
+        self.running = False
+        print("Autovacuum守护进程已停止")
+
+    def _run(self):
+        """主循环"""
+        while self.running:
+            self.check_and_vacuum()
+            time.sleep(self.check_interval)
+
+    def check_and_vacuum(self):
+        """检查并执行VACUUM"""
+        for table_name, stats in self.tables.items():
+            if self.should_vacuum(stats):
+                print(f"触发autovacuum: {table_name}")
+                self.vacuum_table(table_name)
+                stats.last_autovacuum = time.time()
+
+    def should_vacuum(self, stats: TableStats) -> bool:
+        """判断是否需要VACUUM"""
+        threshold = (
+            self.vacuum_threshold +
+            self.vacuum_scale_factor * stats.live_tuples
+        )
+        return stats.dead_tuples > threshold
+
+    def vacuum_table(self, table_name: str):
+        """执行VACUUM"""
+        print(f"执行VACUUM: {table_name}")
+        # 实际实现会调用VacuumExecutor
+        time.sleep(1)  # 模拟VACUUM耗时
+        print(f"VACUUM完成: {table_name}")
+
+    def update_table_stats(self, table_name: str, stats: TableStats):
+        """更新表统计信息"""
+        self.tables[table_name] = stats
+
+# 使用示例
+if __name__ == "__main__":
+    daemon = AutovacuumDaemon()
+    daemon.start()
+
+    # 添加表
+    daemon.update_table_stats("orders", TableStats(
+        name="orders",
+        live_tuples=10000,
+        dead_tuples=3000,  # 超过阈值
+        last_vacuum=0,
+        last_autovacuum=0
+    ))
+
+    # 运行一段时间
+    time.sleep(65)  # 等待检查
+    daemon.stop()
+```
+
+### 12.3 Visibility Map优化完整实现
+
+**完整实现**: Visibility Map数据结构和管理
+
+```python
+from typing import List, Set
+from dataclasses import dataclass
+
+@dataclass
+class VisibilityMapPage:
+    """Visibility Map页"""
+    page_number: int
+    all_visible: bool  # 该页所有元组对所有事务可见
+    all_frozen: bool   # 该页所有元组已冻结
+
+class VisibilityMap:
+    """Visibility Map管理器"""
+
+    def __init__(self):
+        self.map: Dict[int, VisibilityMapPage] = {}
+
+    def is_all_visible(self, page_number: int) -> bool:
+        """检查页是否全可见"""
+        if page_number in self.map:
+            return self.map[page_number].all_visible
+        return False
+
+    def set_all_visible(self, page_number: int, value: bool):
+        """设置页的全可见标志"""
+        if page_number not in self.map:
+            self.map[page_number] = VisibilityMapPage(
+                page_number=page_number,
+                all_visible=False,
+                all_frozen=False
+            )
+        self.map[page_number].all_visible = value
+
+    def mark_page_visible(self, page_number: int):
+        """标记页为全可见（VACUUM后调用）"""
+        self.set_all_visible(page_number, True)
+
+    def clear_page_visible(self, page_number: int):
+        """清除页的全可见标志（有更新后调用）"""
+        self.set_all_visible(page_number, False)
+
+    def get_visible_pages(self) -> Set[int]:
+        """获取所有全可见页"""
+        return {
+            page_num
+            for page_num, page in self.map.items()
+            if page.all_visible
+        }
+
+# 使用示例
+if __name__ == "__main__":
+    vm = VisibilityMap()
+
+    # VACUUM后标记页为全可见
+    vm.mark_page_visible(1)
+    vm.mark_page_visible(2)
+
+    # 检查
+    assert vm.is_all_visible(1)
+    assert vm.is_all_visible(2)
+
+    # 有更新后清除
+    vm.clear_page_visible(1)
+    assert not vm.is_all_visible(1)
+```
+
+### 12.4 HOT剪枝完整实现
+
+**完整实现**: HOT (Heap-Only Tuple) 剪枝算法
+
+```python
+from typing import List, Optional
+
+@dataclass
+class HOTChain:
+    """HOT链"""
+    root_ctid: int
+    chain: List[HeapTuple]
+
+    def is_hot(self) -> bool:
+        """判断是否为HOT链"""
+        # HOT条件: 所有更新都不修改索引列
+        # 简化: 检查是否有索引列被修改
+        return len(self.chain) > 1
+
+    def prune(self) -> List[HeapTuple]:
+        """剪枝: 移除死版本"""
+        pruned = []
+        for tuple in self.chain:
+            if tuple.status != TupleStatus.DEAD:
+                pruned.append(tuple)
+        return pruned
+
+class HOTPruner:
+    """HOT剪枝器"""
+
+    def __init__(self):
+        self.chains: Dict[int, HOTChain] = {}
+
+    def build_hot_chains(self, tuples: List[HeapTuple]) -> List[HOTChain]:
+        """构建HOT链"""
+        chains = []
+        root_tuples = [t for t in tuples if t.ctid == t.ctid]  # 简化
+
+        for root in root_tuples:
+            chain = self._find_chain(root, tuples)
+            if chain:
+                chains.append(chain)
+
+        return chains
+
+    def _find_chain(self, root: HeapTuple, all_tuples: List[HeapTuple]) -> Optional[HOTChain]:
+        """查找HOT链"""
+        chain = [root]
+        current = root
+
+        # 查找后续版本
+        while True:
+            next_tuple = self._find_next_version(current, all_tuples)
+            if next_tuple:
+                chain.append(next_tuple)
+                current = next_tuple
+            else:
+                break
+
+        if len(chain) > 1:
+            return HOTChain(root_ctid=root.ctid, chain=chain)
+        return None
+
+    def _find_next_version(self, tuple: HeapTuple, all_tuples: List[HeapTuple]) -> Optional[HeapTuple]:
+        """查找下一个版本"""
+        # 简化: 根据ctid查找
+        for t in all_tuples:
+            if t.ctid == tuple.ctid + 1:  # 简化逻辑
+                return t
+        return None
+
+    def prune_chains(self, chains: List[HOTChain]) -> List[HeapTuple]:
+        """剪枝所有链"""
+        pruned_tuples = []
+        for chain in chains:
+            pruned = chain.prune()
+            pruned_tuples.extend(pruned)
+        return pruned_tuples
+
+# 使用示例
+if __name__ == "__main__":
+    # 模拟HOT链
+    tuples = [
+        HeapTuple(t_xmin=100, t_xmax=0, ctid=1, data={"id": 1, "name": "Alice"}),
+        HeapTuple(t_xmin=150, t_xmax=0, ctid=2, data={"id": 1, "name": "Alice Updated"}),  # HOT更新
+    ]
+
+    pruner = HOTPruner()
+    chains = pruner.build_hot_chains(tuples)
+    pruned = pruner.prune_chains(chains)
+
+    print(f"原始元组数: {len(tuples)}")
+    print(f"HOT链数: {len(chains)}")
+    print(f"剪枝后元组数: {len(pruned)}")
+```
+
+---
+
+## 十三、VACUUM机制可视化
+
+### 13.1 VACUUM架构设计图
+
+**完整VACUUM系统架构** (Mermaid):
+
+```mermaid
+graph TB
+    subgraph "触发层"
+        AUTO[AutoVacuum守护进程]
+        MANUAL[手动VACUUM]
+        THRESHOLD[阈值检查]
+    end
+
+    subgraph "执行层"
+        SCAN[堆表扫描<br/>lazy_scan_heap]
+        DEAD[死元组识别]
+        FREEZE[Freeze操作]
+        INDEX[索引清理]
+    end
+
+    subgraph "优化层"
+        VM[Visibility Map<br/>可见性映射]
+        HOT[HOT剪枝<br/>Heap-Only Tuple]
+        PARALLEL[并行VACUUM]
+    end
+
+    subgraph "存储层"
+        HEAP[堆表<br/>Heap]
+        INDEXES[索引<br/>Indexes]
+        STATS[统计信息<br/>Statistics]
+    end
+
+    AUTO --> THRESHOLD
+    MANUAL --> SCAN
+    THRESHOLD --> SCAN
+
+    SCAN --> DEAD
+    SCAN --> FREEZE
+    DEAD --> INDEX
+    FREEZE --> INDEX
+
+    SCAN --> VM
+    DEAD --> HOT
+    INDEX --> PARALLEL
+
+    DEAD --> HEAP
+    INDEX --> INDEXES
+    SCAN --> STATS
+```
+
+**VACUUM执行层次**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 触发层                              │
+│  ├─ AutoVacuum守护进程                    │
+│  ├─ 手动VACUUM                           │
+│  └─ 阈值检查                              │
+└───────┬───────────────────┬──────────────┘
+        │                   │
+        │ 执行               │ 优化
+        ▼                   ▼
+┌──────────────┐  ┌──────────────────┐
+│  L2: 执行层  │  │  L2: 优化层      │
+│  堆表扫描     │  │  Visibility Map │
+│  死元组识别   │  │  HOT剪枝        │
+│  Freeze操作  │  │  并行VACUUM      │
+│  索引清理     │  │                  │
+└──────┬───────┘  └──────────────────┘
+       │
+       │ 存储更新
+       ▼
+┌──────────────┐
+│  L1: 存储层  │
+│  堆表        │
+│  索引        │
+│  统计信息    │
+└──────────────┘
+```
+
+### 13.2 VACUUM流程图
+
+**VACUUM完整流程** (Mermaid):
+
+```mermaid
+flowchart TD
+    START([VACUUM开始]) --> CHECK_TYPE{VACUUM类型?}
+
+    CHECK_TYPE -->|AutoVacuum| CHECK_THRESHOLD{死元组 > 阈值?}
+    CHECK_TYPE -->|手动| SCAN
+
+    CHECK_THRESHOLD -->|否| END([结束])
+    CHECK_THRESHOLD -->|是| SCAN
+
+    SCAN[扫描堆表] --> CHECK_TUPLE{检查元组}
+
+    CHECK_TUPLE -->|死元组| MARK_DEAD[标记死元组]
+    CHECK_TUPLE -->|需要Freeze| MARK_FREEZE[标记Freeze]
+    CHECK_TUPLE -->|活元组| NEXT[下一个元组]
+
+    MARK_DEAD --> CHECK_VM{检查Visibility Map}
+    MARK_FREEZE --> CHECK_VM
+
+    CHECK_VM -->|全可见页| SKIP[跳过页]
+    CHECK_VM -->|非全可见| PROCESS[处理元组]
+
+    PROCESS --> CHECK_HOT{是否HOT链?}
+    CHECK_HOT -->|是| HOT_PRUNE[HOT剪枝]
+    CHECK_HOT -->|否| NORMAL[正常清理]
+
+    HOT_PRUNE --> INDEX_VACUUM[索引VACUUM]
+    NORMAL --> INDEX_VACUUM
+
+    INDEX_VACUUM --> UPDATE_VM[更新Visibility Map]
+    UPDATE_VM --> UPDATE_STATS[更新统计信息]
+    UPDATE_STATS --> END
+
+    SKIP --> NEXT
+    NEXT --> CHECK_TUPLE
+```
+
+**VACUUM优化流程**:
+
+```text
+VACUUM优化策略:
+├─ Visibility Map优化
+│   ├─ 检查页是否全可见
+│   ├─ 全可见页 → 跳过扫描
+│   └─ 非全可见页 → 正常扫描
+│
+├─ HOT剪枝优化
+│   ├─ 识别HOT链
+│   ├─ 剪枝死版本
+│   └─ 保留活版本
+│
+└─ 并行VACUUM
+    ├─ 并行扫描堆表
+    ├─ 并行清理索引
+    └─ 并行更新统计信息
+```
+
+### 13.3 VACUUM优化决策树
+
+**VACUUM优化选择决策树**:
+
+```text
+                选择VACUUM优化策略
+                      │
+          ┌───────────┴───────────┐
+          │   表特征分析          │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   大表            中等表          小表
+   (>100GB)        (1-100GB)       (<1GB)
+      │               │               │
+      ▼               ▼               ▼
+   并行VACUUM       Visibility Map  普通VACUUM
+   + Visibility    + HOT剪枝       (无优化)
+   Map             + 并行VACUUM
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   最高性能        平衡方案        简单实现
+   多进程并行      单进程优化      无额外开销
+```
+
+**VACUUM配置选择决策树**:
+
+```text
+                选择VACUUM配置
+                      │
+          ┌───────────┴───────────┐
+          │   写入频率分析        │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   高写入频率      中等写入频率    低写入频率
+   (>1k TPS)      (100-1k TPS)    (<100 TPS)
+      │               │               │
+      ▼               ▼               ▼
+   频繁VACUUM      定期VACUUM      按需VACUUM
+   (scale=0.02)   (scale=0.1)     (scale=0.2)
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   低阈值          中阈值          高阈值
+   及时清理        平衡方案        延迟清理
+```
+
+**VACUUM优化策略对比矩阵**:
+
+| 优化策略 | 性能提升 | 适用场景 | 实施难度 | 副作用 |
+|---------|---------|---------|---------|--------|
+| **Visibility Map** | 高 (10-100×) | 读多写少 | 低 | 需要维护Map |
+| **HOT剪枝** | 中 (2-5×) | 频繁更新非索引列 | 中 | 需要HOT条件 |
+| **并行VACUUM** | 高 (4-8×) | 大表 | 中 | 资源消耗 |
+| **Freeze优化** | 中 (避免回卷) | 长事务 | 低 | 需要定期执行 |
+
+**VACUUM类型对比矩阵**:
+
+| VACUUM类型 | 阻塞性 | 性能 | 清理程度 | 适用场景 |
+|-----------|-------|------|---------|---------|
+| **普通VACUUM** | 不阻塞 | 高 | 部分清理 | 日常维护 |
+| **VACUUM FULL** | 阻塞 | 低 | 完全清理 | 严重膨胀 |
+| **VACUUM ANALYZE** | 不阻塞 | 高 | 更新统计 | 查询优化 |
+| **AutoVacuum** | 不阻塞 | 高 | 自动清理 | 生产环境 |
+
+---
+
 **文档版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 完整源码分析、HOT优化、Visibility Map、性能优化实战、实际案例、反例
+**新增内容**: 完整源码分析、HOT优化、Visibility Map、性能优化实战、实际案例、反例、完整实现代码、VACUUM机制可视化（VACUUM架构设计图、VACUUM流程图、VACUUM优化决策树）
 
 **关联文档**:
 

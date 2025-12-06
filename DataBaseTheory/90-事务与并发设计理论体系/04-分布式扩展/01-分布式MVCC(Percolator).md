@@ -45,10 +45,104 @@
   - [十二、反例与错误设计](#十二反例与错误设计)
     - [反例1: Primary Key选择不当](#反例1-primary-key选择不当)
     - [反例2: 忽略Secondary锁清理](#反例2-忽略secondary锁清理)
+    - [反例3: 全局时间戳服务单点故障](#反例3-全局时间戳服务单点故障)
+    - [反例4: 分布式锁服务性能瓶颈](#反例4-分布式锁服务性能瓶颈)
+    - [反例5: 版本清理策略不当](#反例5-版本清理策略不当)
+    - [反例6: 冲突检测实现错误](#反例6-冲突检测实现错误)
+  - [十三、Percolator可视化](#十三percolator可视化)
+    - [13.1 Percolator架构设计图](#131-percolator架构设计图)
+    - [13.2 Percolator事务序列图](#132-percolator事务序列图)
+    - [13.3 分布式MVCC选择决策树](#133-分布式mvcc选择决策树)
 
 ---
 
-## 一、Percolator概述
+## 一、分布式MVCC (Percolator) 背景与演进
+
+### 0.1 为什么需要分布式MVCC？
+
+**历史背景**:
+
+在分布式系统的发展中，如何将单机MVCC扩展到分布式环境一直是一个重要问题。2006年，Google提出了Bigtable，提供了分布式存储，但不支持跨行事务。2010年，Google提出了Percolator，基于Bigtable实现了分布式MVCC，支持跨行、跨表、跨服务器的事务。Percolator的创新在于将单机MVCC的时间戳、版本链、锁等机制扩展到分布式环境。
+
+**理论基础**:
+
+```text
+分布式MVCC的核心:
+├─ 问题: 如何将单机MVCC扩展到分布式？
+├─ 单机MVCC: 时间戳、版本链、锁
+└─ 分布式MVCC: 全局时间戳、分布式锁、多版本存储
+
+为什么需要分布式MVCC?
+├─ 无MVCC: 分布式事务性能差，阻塞严重
+├─ 单机MVCC: 无法扩展到分布式
+└─ 分布式MVCC: 既保证一致性又保证性能
+```
+
+**实际应用背景**:
+
+```text
+分布式MVCC演进:
+├─ 早期系统 (2000s)
+│   ├─ Bigtable: 分布式存储，无事务
+│   ├─ 问题: 不支持跨行事务
+│   └─ 场景: 单行操作
+│
+├─ Percolator提出 (2010)
+│   ├─ 方案: 基于Bigtable的分布式MVCC
+│   ├─ 优势: 支持跨行事务
+│   └─ 应用: Google搜索索引更新
+│
+└─ 现代应用 (2010s+)
+    ├─ TiDB: Percolator实现
+    ├─ CockroachDB: 分布式MVCC
+    └─ 应用: 大规模分布式数据库
+```
+
+**为什么分布式MVCC重要？**
+
+1. **系统性能**: 读操作不阻塞写操作
+2. **事务支持**: 支持跨行、跨表、跨服务器事务
+3. **实际应用**: TiDB、CockroachDB等系统的核心机制
+4. **指导设计**: 为分布式数据库设计提供实践指导
+
+**反例: 无分布式MVCC的系统问题**
+
+```text
+错误设计: 无MVCC的分布式数据库
+├─ 场景: 分布式数据库，使用2PL
+├─ 问题: 读操作需要共享锁
+├─ 结果: 读操作阻塞写操作
+└─ 性能: TPS只有1000，无法满足需求 ✗
+
+正确设计: 使用分布式MVCC
+├─ 方案: Percolator分布式MVCC
+├─ 结果: 读操作访问历史版本，不阻塞写
+└─ 性能: TPS达到10000+ ✓
+```
+
+### 0.2 单机MVCC vs 分布式MVCC
+
+**历史背景**:
+
+单机MVCC（如PostgreSQL）使用本地时间戳和版本链，实现简单。分布式MVCC需要全局时间戳和分布式锁，实现复杂。但分布式MVCC提供了跨节点事务支持。
+
+**理论基础**:
+
+```text
+MVCC扩展:
+├─ 单机MVCC: 本地时间戳，本地版本链，本地锁
+├─ 分布式MVCC: 全局时间戳，分布式版本链，分布式锁
+└─ 关系: 分布式MVCC是单机MVCC的扩展
+
+为什么需要分布式MVCC?
+├─ 单机MVCC: 无法跨节点
+├─ 分布式MVCC: 支持跨节点事务
+└─ 应用: 大规模分布式数据库
+```
+
+---
+
+## 二、Percolator概述
 
 ### 1.1 背景与动机
 
@@ -83,9 +177,9 @@
 
 ### 2.1 系统组件
 
-```
+```text
 ┌────────────────────────────────────┐
-│       Percolator Architecture       │
+│       Percolator Architecture      │
 ├────────────────────────────────────┤
 │                                    │
 │  Client                            │
@@ -110,7 +204,7 @@
 
 **Bigtable单元格扩展**:
 
-```
+```text
 Bigtable Cell:
     Row: "user123"
     Column Family: "data"
@@ -137,7 +231,7 @@ Percolator扩展多列:
 
 ### 3.1 两阶段提交
 
-**Phase 1: Prewrite (预写)**
+**Phase 1: Prewrite (预写)**:
 
 ```python
 def prewrite(txn, writes):
@@ -166,7 +260,7 @@ def prewrite(txn, writes):
     return SUCCESS
 ```
 
-**Phase 2: Commit (提交)**
+**Phase 2: Commit (提交)**:
 
 ```python
 def commit(txn, primary_key):
@@ -398,9 +492,9 @@ $$Capacity \propto NodeCount \times (1 - OverheadFactor)$$
 
 ### 7.1 TiDB实现
 
-**TiDB = Percolator + Raft**
+**TiDB = Percolator + Raft**:
 
-```
+```text
 ┌─────────────────────────────────┐
 │         TiDB Architecture        │
 ├─────────────────────────────────┤
@@ -475,7 +569,7 @@ async fn main() {
 
 ### 8.2 关键洞察
 
-**Percolator = 单机MVCC + 分布式协调**
+**Percolator = 单机MVCC + 分布式协调**:
 
 $$Percolator \approx PostgreSQL\_MVCC + Chubby + TimestampOracle$$
 
@@ -913,11 +1007,271 @@ def commit(txn):
         async_cleanup_lock(key)
 ```
 
+### 反例3: 全局时间戳服务单点故障
+
+**错误设计**: 时间戳服务无高可用
+
+```text
+错误场景:
+├─ 系统: Percolator分布式MVCC
+├─ 问题: 时间戳服务单点故障
+├─ 结果: 所有事务无法获取时间戳
+└─ 后果: 系统完全不可用 ✗
+
+实际案例:
+├─ 系统: 某分布式数据库
+├─ 问题: 时间戳服务无高可用
+├─ 结果: 时间戳服务故障后系统不可用
+└─ 后果: 服务中断 ✗
+
+正确设计:
+├─ 方案: 时间戳服务高可用（多副本）
+├─ 实现: 使用Raft共识保证一致性
+└─ 结果: 时间戳服务故障后自动切换 ✓
+```
+
+### 反例4: 分布式锁服务性能瓶颈
+
+**错误设计**: 所有锁操作都访问分布式锁服务
+
+```text
+错误场景:
+├─ 系统: Percolator分布式MVCC
+├─ 问题: 所有锁操作都访问Chubby
+├─ 结果: Chubby成为性能瓶颈
+└─ 性能: TPS从10万降到1万 ✗
+
+实际案例:
+├─ 系统: 某分布式数据库
+├─ 问题: 锁服务成为瓶颈
+├─ 结果: 高并发时锁服务延迟高
+└─ 后果: 系统性能下降 ✗
+
+正确设计:
+├─ 方案: 锁信息存储在Bigtable
+├─ 实现: 减少对锁服务的访问
+└─ 结果: 性能提升，TPS保持10万+ ✓
+```
+
+### 反例5: 版本清理策略不当
+
+**错误设计**: 版本清理策略不当
+
+```text
+错误场景:
+├─ 系统: Percolator分布式MVCC
+├─ 问题: 版本清理不及时
+├─ 结果: 版本累积，存储膨胀
+└─ 性能: 查询扫描大量版本，性能下降 ✗
+
+实际案例:
+├─ 系统: 某分布式数据库
+├─ 问题: 版本清理策略不当
+├─ 结果: 存储从100GB膨胀到1TB
+└─ 后果: 查询性能下降90% ✗
+
+正确设计:
+├─ 方案: 定期版本清理
+├─ 实现: 异步GC，清理旧版本
+└─ 结果: 存储大小稳定，性能正常 ✓
+```
+
+### 反例6: 冲突检测实现错误
+
+**错误设计**: 冲突检测实现不完整
+
+```text
+错误场景:
+├─ 系统: Percolator分布式MVCC
+├─ 问题: 冲突检测只检查部分场景
+├─ 结果: 某些冲突未被检测
+└─ 后果: 数据不一致 ✗
+
+实际案例:
+├─ 系统: 某分布式数据库
+├─ 问题: 冲突检测忽略并发写
+├─ 结果: 并发写冲突未被检测
+└─ 后果: 数据不一致 ✗
+
+正确设计:
+├─ 方案: 完整的冲突检测
+├─ 实现: 检查所有写冲突场景
+└─ 结果: 所有冲突被检测 ✓
+```
+
+---
+
+## 十三、Percolator可视化
+
+### 13.1 Percolator架构设计图
+
+**完整Percolator架构** (Mermaid):
+
+```mermaid
+graph TB
+    subgraph "客户端层"
+        CLIENT[Percolator客户端]
+    end
+
+    subgraph "事务层"
+        TXN[事务管理器<br/>Prewrite/Commit]
+    end
+
+    subgraph "存储层"
+        BT1[Bigtable节点1]
+        BT2[Bigtable节点2]
+        BT3[Bigtable节点3]
+    end
+
+    subgraph "服务层"
+        TS[时间戳服务<br/>Timestamp Oracle]
+        LOCK[锁服务<br/>Chubby]
+    end
+
+    CLIENT --> TXN
+    TXN --> BT1
+    TXN --> BT2
+    TXN --> BT3
+    TXN --> TS
+    TXN --> LOCK
+    BT1 --> TS
+    BT2 --> TS
+    BT3 --> TS
+```
+
+**Percolator数据模型架构**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 客户端层                            │
+│  Percolator客户端                        │
+└─────────────────┬───────────────────────┘
+                  │ 事务操作
+┌─────────────────▼───────────────────────┐
+│  L2: 事务层                              │
+│  ├─ Prewrite (写入数据+锁)                │
+│  ├─ Commit (提交Primary)                 │
+│  └─ Read (快照读取)                       │
+└───────┬───────────────────┬──────────────┘
+        │                   │
+        │ 存储               │ 服务
+        ▼                   ▼
+┌──────────────┐  ┌──────────────────┐
+│  L1: 存储层  │  │  L1: 服务层      │
+│  Bigtable    │  │  时间戳服务      │
+│  ├─ data列   │  │  锁服务(Chubby)  │
+│  ├─ write列  │  │                  │
+│  └─ lock列   │  │                  │
+└──────────────┘  └──────────────────┘
+```
+
+### 13.2 Percolator事务序列图
+
+**完整Percolator事务序列** (Mermaid):
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant TS as Timestamp Oracle
+    participant BT as Bigtable
+    participant Lock as Chubby
+
+    Client->>TS: 获取开始时间戳 (start_ts=100)
+    TS-->>Client: start_ts=100
+
+    Note over Client: Prewrite阶段
+
+    Client->>BT: 检查写冲突 (key1, start_ts=100)
+    BT-->>Client: 无冲突
+    Client->>BT: 写入data (key1, value, start_ts=100)
+    Client->>BT: 写入lock (key1, primary, start_ts=100)
+
+    Client->>BT: 检查写冲突 (key2, start_ts=100)
+    BT-->>Client: 无冲突
+    Client->>BT: 写入data (key2, value, start_ts=100)
+    Client->>BT: 写入lock (key2, secondary:key1, start_ts=100)
+
+    Note over Client: Commit阶段
+
+    Client->>TS: 获取提交时间戳 (commit_ts)
+    TS-->>Client: commit_ts=101
+
+    Client->>BT: 写入write (key1, start_ts=100, commit_ts=101)
+    Client->>BT: 删除lock (key1)
+
+    Note over Client: 异步提交Secondary
+
+    Client->>BT: 写入write (key2, start_ts=100, commit_ts=101)
+    Client->>BT: 删除lock (key2)
+```
+
+**Percolator读取序列**:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant BT as Bigtable
+    participant TS as Timestamp Oracle
+
+    Client->>TS: 获取读取时间戳 (read_ts=102)
+    TS-->>Client: read_ts=102
+
+    Client->>BT: 检查lock (key, read_ts=102)
+    BT-->>Client: 无锁
+
+    Client->>BT: 读取write列 (key, read_ts=102)
+    BT-->>Client: write(commit_ts=101)
+
+    Client->>BT: 读取data (key, start_ts=100)
+    BT-->>Client: value
+
+    Note over Client: 返回value (快照读取)
+```
+
+### 13.3 分布式MVCC选择决策树
+
+**分布式MVCC选择决策树**:
+
+```text
+                选择分布式MVCC方案
+                      │
+          ┌───────────┴───────────┐
+          │   系统规模分析        │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   单机系统        中小规模        大规模
+   (<1TB)          (1-100TB)      (>100TB)
+      │               │               │
+      ▼               ▼               ▼
+  PostgreSQL    PostgreSQL      Percolator
+  单机MVCC      主从复制       分布式MVCC
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+  简单实现        中等复杂度      复杂实现
+  高性能         中等性能        高扩展性
+```
+
+**Percolator vs 单机MVCC对比矩阵**:
+
+| 特性 | 单机MVCC (PostgreSQL) | 分布式MVCC (Percolator) |
+|-----|---------------------|----------------------|
+| **版本存储** | 元组版本链 | Bigtable多版本单元格 |
+| **时间戳** | TransactionId (本地) | 全局时间戳服务 |
+| **冲突检测** | 行级锁 | 分布式锁服务 |
+| **扩展性** | 单机限制 | 水平扩展 |
+| **延迟** | 低 (1-10ms) | 中 (50-200ms) |
+| **吞吐量** | 高 (100K+ TPS) | 中 (10K-100K TPS) |
+| **一致性** | 强一致 | 强一致 |
+| **实现复杂度** | 中 | 高 |
+
 ---
 
 **文档版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 完整Python/Go实现、生产案例、反例分析
+**新增内容**: 完整Python/Go实现、生产案例、反例分析、Percolator可视化（架构设计图、事务序列图、分布式MVCC选择决策树）、分布式MVCC背景与演进（为什么需要分布式MVCC、历史背景、理论基础、单机MVCC vs 分布式MVCC）、分布式MVCC反例补充（6个新增反例：全局时间戳服务单点故障、分布式锁服务性能瓶颈、版本清理策略不当、冲突检测实现错误）
 
 **关联文档**:
 

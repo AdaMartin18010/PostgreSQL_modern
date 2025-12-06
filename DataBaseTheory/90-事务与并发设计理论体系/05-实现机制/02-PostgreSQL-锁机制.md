@@ -42,6 +42,14 @@
   - [十、反例与错误设计](#十反例与错误设计)
     - [反例1: 长事务持有锁](#反例1-长事务持有锁)
     - [反例2: 锁粒度不当](#反例2-锁粒度不当)
+  - [十一、完整实现代码](#十一完整实现代码)
+    - [11.1 锁管理器完整实现](#111-锁管理器完整实现)
+    - [11.2 死锁检测算法完整实现](#112-死锁检测算法完整实现)
+    - [11.3 快速路径锁完整实现](#113-快速路径锁完整实现)
+  - [十二、实现架构可视化](#十二实现架构可视化)
+    - [12.1 锁管理器架构图](#121-锁管理器架构图)
+    - [12.2 加锁流程设计图](#122-加锁流程设计图)
+    - [12.3 死锁检测流程图](#123-死锁检测流程图)
 
 ---
 
@@ -856,9 +864,629 @@ COMMIT;  -- 只锁定id=1的行
 
 ---
 
+## 十一、完整实现代码
+
+### 11.1 锁管理器完整实现
+
+**完整实现**: Python模拟PostgreSQL锁管理器
+
+```python
+from dataclasses import dataclass
+from typing import Dict, List, Set, Optional
+from enum import Enum
+from collections import defaultdict
+import threading
+
+class LockMode(Enum):
+    """锁模式"""
+    ACCESS_SHARE = "AccessShareLock"
+    ROW_SHARE = "RowShareLock"
+    ROW_EXCLUSIVE = "RowExclusiveLock"
+    SHARE_UPDATE_EXCLUSIVE = "ShareUpdateExclusiveLock"
+    SHARE = "ShareLock"
+    SHARE_ROW_EXCLUSIVE = "ShareRowExclusiveLock"
+    EXCLUSIVE = "ExclusiveLock"
+    ACCESS_EXCLUSIVE = "AccessExclusiveLock"
+
+# 锁兼容性矩阵
+LOCK_COMPATIBILITY = {
+    LockMode.ACCESS_SHARE: {
+        LockMode.ACCESS_SHARE, LockMode.ROW_SHARE, LockMode.ROW_EXCLUSIVE,
+        LockMode.SHARE_UPDATE_EXCLUSIVE, LockMode.SHARE, LockMode.SHARE_ROW_EXCLUSIVE,
+        LockMode.EXCLUSIVE
+    },
+    LockMode.ROW_SHARE: {
+        LockMode.ACCESS_SHARE, LockMode.ROW_SHARE, LockMode.ROW_EXCLUSIVE,
+        LockMode.SHARE_UPDATE_EXCLUSIVE, LockMode.SHARE, LockMode.SHARE_ROW_EXCLUSIVE
+    },
+    LockMode.ROW_EXCLUSIVE: {
+        LockMode.ACCESS_SHARE, LockMode.ROW_SHARE, LockMode.ROW_EXCLUSIVE,
+        LockMode.SHARE_UPDATE_EXCLUSIVE
+    },
+    LockMode.SHARE_UPDATE_EXCLUSIVE: {
+        LockMode.ACCESS_SHARE, LockMode.ROW_SHARE, LockMode.ROW_EXCLUSIVE
+    },
+    LockMode.SHARE: {
+        LockMode.ACCESS_SHARE, LockMode.ROW_SHARE, LockMode.SHARE
+    },
+    LockMode.SHARE_ROW_EXCLUSIVE: {
+        LockMode.ACCESS_SHARE, LockMode.ROW_SHARE
+    },
+    LockMode.EXCLUSIVE: {
+        LockMode.ACCESS_SHARE
+    },
+    LockMode.ACCESS_EXCLUSIVE: set()  # 不兼容任何锁
+}
+
+@dataclass
+class LockRequest:
+    """锁请求"""
+    transaction_id: int
+    lock_mode: LockMode
+    resource_id: str
+    granted: bool = False
+
+class LockManager:
+    """锁管理器"""
+
+    def __init__(self):
+        self.locks: Dict[str, Dict[LockMode, Set[int]]] = defaultdict(lambda: defaultdict(set))
+        self.wait_queue: Dict[str, List[LockRequest]] = defaultdict(list)
+        self.lock = threading.Lock()
+
+    def acquire_lock(
+        self,
+        transaction_id: int,
+        resource_id: str,
+        lock_mode: LockMode
+    ) -> bool:
+        """获取锁"""
+        with self.lock:
+            # 检查是否已持有兼容锁
+            if self._has_compatible_lock(transaction_id, resource_id, lock_mode):
+                return True
+
+            # 检查是否可以立即获取
+            if self._can_grant_immediately(resource_id, lock_mode):
+                self._grant_lock(transaction_id, resource_id, lock_mode)
+                return True
+
+            # 添加到等待队列
+            request = LockRequest(transaction_id, lock_mode, resource_id)
+            self.wait_queue[resource_id].append(request)
+            return False
+
+    def release_lock(
+        self,
+        transaction_id: int,
+        resource_id: str,
+        lock_mode: LockMode
+    ):
+        """释放锁"""
+        with self.lock:
+            if resource_id in self.locks and lock_mode in self.locks[resource_id]:
+                self.locks[resource_id][lock_mode].discard(transaction_id)
+
+                # 清理空锁
+                if not self.locks[resource_id][lock_mode]:
+                    del self.locks[resource_id][lock_mode]
+                if not self.locks[resource_id]:
+                    del self.locks[resource_id]
+
+            # 唤醒等待队列
+            self._wakeup_waiters(resource_id)
+
+    def _has_compatible_lock(
+        self,
+        transaction_id: int,
+        resource_id: str,
+        lock_mode: LockMode
+    ) -> bool:
+        """检查是否已持有兼容锁"""
+        if resource_id not in self.locks:
+            return False
+
+        for mode, holders in self.locks[resource_id].items():
+            if transaction_id in holders:
+                # 检查是否兼容
+                if lock_mode in LOCK_COMPATIBILITY.get(mode, set()):
+                    return True
+        return False
+
+    def _can_grant_immediately(
+        self,
+        resource_id: str,
+        lock_mode: LockMode
+    ) -> bool:
+        """检查是否可以立即授予锁"""
+        if resource_id not in self.locks:
+            return True
+
+        # 检查与现有锁的兼容性
+        compatible_modes = LOCK_COMPATIBILITY.get(lock_mode, set())
+        for mode in self.locks[resource_id]:
+            if mode not in compatible_modes:
+                return False
+
+        return True
+
+    def _grant_lock(
+        self,
+        transaction_id: int,
+        resource_id: str,
+        lock_mode: LockMode
+    ):
+        """授予锁"""
+        self.locks[resource_id][lock_mode].add(transaction_id)
+
+    def _wakeup_waiters(self, resource_id: str):
+        """唤醒等待者"""
+        if resource_id not in self.wait_queue:
+            return
+
+        # 检查等待队列中的请求
+        granted = []
+        remaining = []
+
+        for request in self.wait_queue[resource_id]:
+            if self._can_grant_immediately(resource_id, request.lock_mode):
+                self._grant_lock(request.transaction_id, resource_id, request.lock_mode)
+                request.granted = True
+                granted.append(request)
+            else:
+                remaining.append(request)
+
+        self.wait_queue[resource_id] = remaining
+        return granted
+
+    def detect_deadlock(self) -> Optional[List[int]]:
+        """检测死锁（返回死锁环）"""
+        # 构建等待图
+        wait_graph = defaultdict(set)
+
+        for resource_id, requests in self.wait_queue.items():
+            # 获取当前持有锁的事务
+            holders = set()
+            if resource_id in self.locks:
+                for mode, txs in self.locks[resource_id].items():
+                    holders.update(txs)
+
+            # 等待者 -> 持有者
+            for request in requests:
+                if not request.granted:
+                    for holder in holders:
+                        wait_graph[request.transaction_id].add(holder)
+
+        # DFS检测环
+        visited = set()
+        rec_stack = set()
+        cycle = []
+
+        def dfs(node):
+            visited.add(node)
+            rec_stack.add(node)
+            cycle.append(node)
+
+            for neighbor in wait_graph.get(node, []):
+                if neighbor not in visited:
+                    if dfs(neighbor):
+                        return True
+                elif neighbor in rec_stack:
+                    # 找到环
+                    cycle.append(neighbor)
+                    return True
+
+            rec_stack.remove(node)
+            cycle.pop()
+            return False
+
+        for node in wait_graph:
+            if node not in visited:
+                if dfs(node):
+                    return cycle
+
+        return None
+
+# 使用示例
+if __name__ == "__main__":
+    lock_mgr = LockManager()
+
+    # 事务1获取AccessShareLock
+    lock_mgr.acquire_lock(1, "table1", LockMode.ACCESS_SHARE)
+    print("事务1获取AccessShareLock成功")
+
+    # 事务2尝试获取AccessExclusiveLock（应该等待）
+    result = lock_mgr.acquire_lock(2, "table1", LockMode.ACCESS_EXCLUSIVE)
+    print(f"事务2获取AccessExclusiveLock: {'成功' if result else '等待'}")
+
+    # 检测死锁
+    cycle = lock_mgr.detect_deadlock()
+    if cycle:
+        print(f"检测到死锁: {cycle}")
+
+    # 释放锁
+    lock_mgr.release_lock(1, "table1", LockMode.ACCESS_SHARE)
+    print("事务1释放锁")
+```
+
+### 11.2 死锁检测算法完整实现
+
+**完整实现**: 死锁检测的完整实现
+
+```python
+from typing import Dict, List, Set, Optional
+from collections import defaultdict
+
+class DeadlockDetector:
+    """死锁检测器"""
+
+    def __init__(self):
+        self.wait_graph: Dict[int, Set[int]] = defaultdict(set)
+
+    def add_wait(self, waiter: int, holder: int):
+        """添加等待关系"""
+        self.wait_graph[waiter].add(holder)
+
+    def remove_wait(self, waiter: int, holder: int):
+        """移除等待关系"""
+        if waiter in self.wait_graph:
+            self.wait_graph[waiter].discard(holder)
+            if not self.wait_graph[waiter]:
+                del self.wait_graph[waiter]
+
+    def detect_cycle(self) -> Optional[List[int]]:
+        """检测死锁环"""
+        visited = set()
+        rec_stack = set()
+        path = []
+
+        def dfs(node):
+            visited.add(node)
+            rec_stack.add(node)
+            path.append(node)
+
+            for neighbor in self.wait_graph.get(node, []):
+                if neighbor not in visited:
+                    if dfs(neighbor):
+                        return True
+                elif neighbor in rec_stack:
+                    # 找到环
+                    # 找到环的起始位置
+                    start_idx = path.index(neighbor)
+                    cycle = path[start_idx:] + [neighbor]
+                    return cycle
+
+            rec_stack.remove(node)
+            path.pop()
+            return False
+
+        for node in self.wait_graph:
+            if node not in visited:
+                result = dfs(node)
+                if result:
+                    if isinstance(result, list):
+                        return result
+                    # 如果返回True，从path中提取环
+                    return path
+
+        return None
+
+    def find_victim(self, cycle: List[int]) -> int:
+        """选择死锁牺牲者（选择持有锁最少的事务）"""
+        # 简化: 选择第一个事务
+        return cycle[0]
+
+# 使用示例
+if __name__ == "__main__":
+    detector = DeadlockDetector()
+
+    # 构建等待图: T1等待T2, T2等待T3, T3等待T1
+    detector.add_wait(1, 2)
+    detector.add_wait(2, 3)
+    detector.add_wait(3, 1)
+
+    # 检测死锁
+    cycle = detector.detect_cycle()
+    if cycle:
+        print(f"检测到死锁环: {cycle}")
+        victim = detector.find_victim(cycle)
+        print(f"选择牺牲者: 事务{victim}")
+```
+
+### 11.3 快速路径锁完整实现
+
+**完整实现**: Fast Path Locking实现
+
+```python
+from typing import Dict, Set
+from dataclasses import dataclass
+
+@dataclass
+class FastPathLock:
+    """快速路径锁"""
+    rel_id: int
+    lock_mode: LockMode
+
+    def __hash__(self):
+        return hash((self.rel_id, self.lock_mode))
+
+    def __eq__(self, other):
+        return (self.rel_id, self.lock_mode) == (other.rel_id, other.lock_mode)
+
+class FastPathLockManager:
+    """快速路径锁管理器"""
+
+    def __init__(self, max_fast_path_locks: int = 16):
+        self.max_fast_path_locks = max_fast_path_locks
+        self.fast_path_locks: Set[FastPathLock] = set()
+        self.slow_path_locks: Dict[int, Set[LockMode]] = {}
+
+    def acquire_fast_path_lock(
+        self,
+        transaction_id: int,
+        rel_id: int,
+        lock_mode: LockMode
+    ) -> bool:
+        """尝试快速路径获取锁"""
+        # 快速路径只支持特定锁模式
+        if lock_mode not in [LockMode.ACCESS_SHARE, LockMode.ROW_EXCLUSIVE]:
+            return False
+
+        # 检查快速路径是否已满
+        if len(self.fast_path_locks) >= self.max_fast_path_locks:
+            return False
+
+        lock = FastPathLock(rel_id, lock_mode)
+
+        # 检查是否已持有
+        if lock in self.fast_path_locks:
+            return True
+
+        # 添加到快速路径
+        self.fast_path_locks.add(lock)
+        return True
+
+    def release_fast_path_lock(
+        self,
+        transaction_id: int,
+        rel_id: int,
+        lock_mode: LockMode
+    ):
+        """释放快速路径锁"""
+        lock = FastPathLock(rel_id, lock_mode)
+        self.fast_path_locks.discard(lock)
+
+    def promote_to_slow_path(
+        self,
+        transaction_id: int,
+        rel_id: int,
+        lock_mode: LockMode
+    ):
+        """提升到慢速路径"""
+        # 从快速路径移除
+        self.release_fast_path_lock(transaction_id, rel_id, lock_mode)
+
+        # 添加到慢速路径
+        if rel_id not in self.slow_path_locks:
+            self.slow_path_locks[rel_id] = set()
+        self.slow_path_locks[rel_id].add(lock_mode)
+
+# 使用示例
+if __name__ == "__main__":
+    fast_mgr = FastPathLockManager()
+
+    # 快速路径获取锁
+    result = fast_mgr.acquire_fast_path_lock(1, 100, LockMode.ACCESS_SHARE)
+    print(f"快速路径获取锁: {'成功' if result else '失败'}")
+
+    # 释放锁
+    fast_mgr.release_fast_path_lock(1, 100, LockMode.ACCESS_SHARE)
+    print("快速路径释放锁")
+```
+
+---
+
+## 十二、实现架构可视化
+
+### 12.1 锁管理器架构图
+
+**完整锁管理器架构** (Mermaid):
+
+```mermaid
+classDiagram
+    class Lock {
+        +LOCKTAG tag
+        +LOCKMODE grantMask
+        +LOCKMODE waitMask
+        +SHM_QUEUE waitProcs
+        +int nRequested
+        +int nGranted
+    }
+
+    class PROCLOCK {
+        +LOCK* lock
+        +PGPROC* groupLeader
+        +LOCKMODE holdMask
+        +SHM_QUEUE lockLink
+    }
+
+    class PGPROC {
+        +TransactionId xid
+        +LOCKMODE waitLockMode
+        +PROCLOCK* waitProcLock
+        +SHM_QUEUE lockLink
+    }
+
+    class LockMethod {
+        +int numLockModes
+        +LOCKMASK* conflictTab
+    }
+
+    Lock -->|管理| PROCLOCK : 持有者列表
+    PROCLOCK -->|关联| PGPROC : 进程结构
+    LockMethod -->|控制| Lock : 锁模式规则
+```
+
+**锁管理器层次说明**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 锁对象层                            │
+│  Lock (锁对象)                           │
+│  ├─ tag: 锁标识 (关系/事务/对象)         │
+│  ├─ grantMask: 已授予的锁模式           │
+│  ├─ waitMask: 等待的锁模式              │
+│  └─ waitProcs: 等待队列                 │
+└─────────────────┬───────────────────────┘
+                  │ 关联
+┌─────────────────▼───────────────────────┐
+│  L2: 进程锁关联层                        │
+│  PROCLOCK (进程-锁关联)                  │
+│  ├─ lock: 指向锁对象                     │
+│  ├─ groupLeader: 组领导者               │
+│  └─ holdMask: 持有的锁模式              │
+└─────────────────┬───────────────────────┘
+                  │ 关联
+┌─────────────────▼───────────────────────┐
+│  L1: 进程层                              │
+│  PGPROC (后端进程)                       │
+│  ├─ xid: 事务ID                         │
+│  ├─ waitLockMode: 等待的锁模式          │
+│  └─ waitProcLock: 等待的锁关联          │
+└─────────────────┬───────────────────────┘
+                  │ 控制
+┌─────────────────▼───────────────────────┐
+│  L0: 锁方法层                            │
+│  LockMethod (锁方法表)                   │
+│  ├─ numLockModes: 锁模式数量            │
+│  └─ conflictTab: 冲突表                 │
+└─────────────────────────────────────────┘
+```
+
+### 12.2 加锁流程设计图
+
+**完整加锁流程** (Mermaid):
+
+```mermaid
+flowchart TD
+    START([请求加锁]) --> CHECK_FAST{快速路径?}
+
+    CHECK_FAST -->|是| FAST_PATH[快速路径加锁]
+    CHECK_FAST -->|否| SLOW_PATH[慢速路径加锁]
+
+    FAST_PATH --> CHECK_FAST_COMPAT{兼容性检查}
+    CHECK_FAST_COMPAT -->|兼容| GRANT_FAST[授予锁]
+    CHECK_FAST_COMPAT -->|不兼容| PROMOTE[提升到慢速路径]
+
+    SLOW_PATH --> CHECK_SLOW_COMPAT{兼容性检查}
+    CHECK_SLOW_COMPAT -->|兼容| GRANT_SLOW[授予锁]
+    CHECK_SLOW_COMPAT -->|不兼容| WAIT[加入等待队列]
+
+    WAIT --> DEADLOCK_CHECK{死锁检测}
+    DEADLOCK_CHECK -->|检测到死锁| ABORT[中止事务]
+    DEADLOCK_CHECK -->|无死锁| WAIT_TIMEOUT{等待超时?}
+
+    WAIT_TIMEOUT -->|超时| TIMEOUT_ERROR[超时错误]
+    WAIT_TIMEOUT -->|未超时| RETRY[重试获取锁]
+
+    GRANT_FAST --> END([完成])
+    GRANT_SLOW --> END
+    ABORT --> END
+    TIMEOUT_ERROR --> END
+    RETRY --> CHECK_SLOW_COMPAT
+    PROMOTE --> CHECK_SLOW_COMPAT
+```
+
+**加锁决策树**:
+
+```text
+                请求加锁
+                      │
+          ┌───────────┴───────────┐
+          │   锁类型判断          │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   快速路径锁      慢速路径锁      特殊锁
+  (AccessShare)   (其他模式)     (AccessExclusive)
+      │               │               │
+      ▼               ▼               ▼
+  检查兼容性      检查兼容性      直接慢速路径
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+  兼容→授予      兼容→授予      检查冲突
+  不兼容→提升    不兼容→等待    冲突→等待
+```
+
+### 12.3 死锁检测流程图
+
+**死锁检测完整流程** (Mermaid):
+
+```mermaid
+sequenceDiagram
+    participant Proc1 as 进程1
+    participant Proc2 as 进程2
+    participant LockMgr as 锁管理器
+    participant DeadlockDetector as 死锁检测器
+
+    Proc1->>LockMgr: 请求锁A (已持有锁B)
+    LockMgr->>LockMgr: 检查冲突
+    LockMgr-->>Proc1: 等待锁A
+
+    Proc2->>LockMgr: 请求锁B (已持有锁A)
+    LockMgr->>LockMgr: 检查冲突
+    LockMgr-->>Proc2: 等待锁B
+
+    Note over Proc1,Proc2: 检测到等待超时
+
+    LockMgr->>DeadlockDetector: 触发死锁检测
+    DeadlockDetector->>DeadlockDetector: 构建等待图
+    DeadlockDetector->>DeadlockDetector: DFS搜索环
+
+    alt 检测到环
+        DeadlockDetector->>DeadlockDetector: 选择牺牲者 (最新事务)
+        DeadlockDetector->>Proc1: 中止事务
+        Proc1->>LockMgr: 释放锁B
+        LockMgr->>Proc2: 授予锁B
+        Proc2-->>Proc2: 继续执行
+    else 未检测到环
+        DeadlockDetector-->>LockMgr: 继续等待
+    end
+```
+
+**死锁检测算法流程**:
+
+```text
+死锁检测流程:
+├─ Step 1: 触发条件
+│   └─ deadlock_timeout (默认1秒)
+│
+├─ Step 2: 构建等待图
+│   ├─ 节点: 事务 (PGPROC)
+│   └─ 边: 等待关系 (A等待B持有的锁)
+│
+├─ Step 3: DFS搜索环
+│   ├─ 从每个节点开始DFS
+│   ├─ 记录访问路径
+│   └─ 检测回边 (形成环)
+│
+├─ Step 4: 选择牺牲者
+│   ├─ 选择最新事务 (xid最大)
+│   └─ 或选择代价最小的事务
+│
+└─ Step 5: 解除死锁
+    ├─ 中止牺牲者事务
+    ├─ 释放其持有的锁
+    └─ 唤醒等待的进程
+```
+
+---
+
 **文档版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 完整源码分析、实际案例、性能优化、反例
+**新增内容**: 完整源码分析、实际案例、性能优化、反例、完整实现代码、实现架构可视化（锁管理器架构图、加锁流程设计图、死锁检测流程图）
 
 **关联文档**:
 

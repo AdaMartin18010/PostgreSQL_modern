@@ -58,6 +58,10 @@
   - [十三、反例与错误设计](#十三反例与错误设计)
     - [反例1: 关闭fsync导致数据丢失](#反例1-关闭fsync导致数据丢失)
     - [反例2: 忽略约束检查导致数据不一致](#反例2-忽略约束检查导致数据不一致)
+  - [十四、ACID理论可视化](#十四acid理论可视化)
+    - [14.1 ACID架构设计图](#141-acid架构设计图)
+    - [14.2 ACID保证流程图](#142-acid保证流程图)
+    - [14.3 ACID特性对比矩阵](#143-acid特性对比矩阵)
 
 ---
 
@@ -135,9 +139,9 @@ typedef struct XLogRecord {
 
 **事务日志流程**:
 
-```
+```text
 ┌──────────────────────────────────────┐
-│         Transaction T1                │
+│         Transaction T1               │
 ├──────────────────────────────────────┤
 │                                      │
 │  BEGIN                               │
@@ -198,7 +202,7 @@ typedef enum {
 
 **状态转换图**:
 
-```
+```text
         BEGIN
           ↓
     IN_PROGRESS ──COMMIT──→ COMMITTED
@@ -399,7 +403,7 @@ $$\exists \text{SerialSchedule } S: Effect(T_i \parallel T_j) = Effect(S)$$
 
 **隔离级别层次**:
 
-```
+```text
 Serializable (最强)
     ↓
 Repeatable Read
@@ -550,15 +554,15 @@ void XLogFlush(XLogRecPtr record) {
 
 **流程**:
 
-```
+```text
 ┌──────────────────────────────────────┐
-│         Checkpoint Process            │
+│         Checkpoint Process           │
 ├──────────────────────────────────────┤
 │                                      │
 │  [1] 记录Checkpoint起始LSN            │
 │      checkpoint_start_lsn            │
 │         ↓                            │
-│  [2] 扫描Shared Buffer                │
+│  [2] 扫描Shared Buffer               │
 │      找到所有脏页                     │
 │         ↓                            │
 │  [3] 按顺序刷盘                       │
@@ -607,7 +611,7 @@ def recover_from_crash():
 
 **ARIES算法** (Algorithms for Recovery and Isolation Exploiting Semantics):
 
-**阶段1: 分析 (Analysis)**
+**阶段1: 分析 (Analysis)**:
 
 ```python
 def analysis_phase():
@@ -632,7 +636,7 @@ def analysis_phase():
     return redo_list, undo_list
 ```
 
-**阶段2: 重做 (Redo)**
+**阶段2: 重做 (Redo)**:
 
 ```python
 def redo_phase(redo_list):
@@ -642,7 +646,7 @@ def redo_phase(redo_list):
             apply_modification(record)
 ```
 
-**阶段3: 回滚 (Undo)**
+**阶段3: 回滚 (Undo)**:
 
 ```python
 def undo_phase(undo_list):
@@ -662,7 +666,7 @@ def undo_phase(undo_list):
 
 ### 6.1 依赖关系图
 
-```
+```text
         Atomicity (WAL + pg_clog)
               ↓
          Consistency (Constraints)
@@ -741,7 +745,7 @@ $$\implies Correctness \quad \square$$
 
 **决策树**:
 
-```
+```text
 需要串行化吗？
 ├─ 是 → Serializable
 └─ 否 → 需要可重复读吗？
@@ -1352,9 +1356,186 @@ def transfer(from_account, to_account, amount):
 
 ---
 
+## 十四、ACID理论可视化
+
+### 14.1 ACID架构设计图
+
+**完整ACID架构** (Mermaid):
+
+```mermaid
+graph TB
+    subgraph "事务层"
+        TXN[事务<br/>Transaction]
+    end
+
+    subgraph "ACID保证层"
+        A[原子性<br/>Atomicity<br/>WAL]
+        C[一致性<br/>Consistency<br/>约束检查]
+        I[隔离性<br/>Isolation<br/>MVCC+锁]
+        D[持久性<br/>Durability<br/>WAL+Checkpoint]
+    end
+
+    subgraph "实现层"
+        WAL[WAL日志<br/>Write-Ahead Log]
+        MVCC[MVCC<br/>多版本并发控制]
+        LOCK[锁机制<br/>Lock]
+        CONSTRAINT[约束系统<br/>Constraint]
+        CHECKPOINT[Checkpoint<br/>检查点]
+    end
+
+    subgraph "存储层"
+        HEAP[堆表<br/>Heap]
+        INDEX[索引<br/>Index]
+        DISK[磁盘<br/>Disk]
+    end
+
+    TXN --> A
+    TXN --> C
+    TXN --> I
+    TXN --> D
+
+    A --> WAL
+    C --> CONSTRAINT
+    I --> MVCC
+    I --> LOCK
+    D --> WAL
+    D --> CHECKPOINT
+
+    WAL --> DISK
+    MVCC --> HEAP
+    LOCK --> HEAP
+    CONSTRAINT --> HEAP
+    CHECKPOINT --> DISK
+    HEAP --> INDEX
+```
+
+**ACID实现层次**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 事务层                              │
+│  事务 (Transaction)                      │
+└───────┬───────────────────┬──────────────┘
+        │                   │
+        │ ACID保证           │ ACID保证
+        ▼                   ▼
+┌──────────────┐  ┌──────────────────┐
+│  L2: ACID层  │  │  L2: ACID层      │
+│  原子性      │  │  一致性          │
+│  隔离性      │  │  持久性          │
+└──────┬───────┘  └──────────────────┘
+       │
+       │ 实现机制
+       ▼
+┌──────────────┐
+│  L1: 实现层  │
+│  WAL         │
+│  MVCC        │
+│  锁          │
+│  约束        │
+└──────┬───────┘
+       │
+       │ 存储
+       ▼
+┌──────────────┐
+│  L0: 存储层  │
+│  堆表        │
+│  索引        │
+│  磁盘        │
+└──────────────┘
+```
+
+### 14.2 ACID保证流程图
+
+**ACID保证完整流程** (Mermaid):
+
+```mermaid
+flowchart TD
+    START([事务开始]) --> BEGIN[BEGIN TRANSACTION]
+    BEGIN --> WAL_WRITE[写入WAL日志]
+    WAL_WRITE --> EXEC[执行操作]
+
+    EXEC --> CHECK_CONSTRAINT{约束检查}
+    CHECK_CONSTRAINT -->|违反| ABORT[ABORT]
+    CHECK_CONSTRAINT -->|通过| CHECK_ISOLATION{隔离性检查}
+
+    CHECK_ISOLATION -->|冲突| WAIT[等待/重试]
+    WAIT --> CHECK_ISOLATION
+    CHECK_ISOLATION -->|无冲突| UPDATE[更新数据]
+
+    UPDATE --> COMMIT_DECIDE{提交决定?}
+    COMMIT_DECIDE -->|COMMIT| WAL_COMMIT[写入COMMIT到WAL]
+    COMMIT_DECIDE -->|ABORT| WAL_ABORT[写入ABORT到WAL]
+
+    WAL_COMMIT --> FLUSH[WAL刷盘 fsync]
+    FLUSH --> UPDATE_STATUS[更新事务状态]
+    UPDATE_STATUS --> SUCCESS([事务成功])
+
+    WAL_ABORT --> ROLLBACK[回滚数据]
+    ROLLBACK --> ABORT_END([事务中止])
+
+    ABORT --> ROLLBACK
+```
+
+**ACID特性保证流程**:
+
+```text
+原子性保证:
+├─ BEGIN → 记录开始
+├─ 操作 → 写入WAL
+├─ COMMIT → 写入COMMIT到WAL
+└─ 故障 → 从WAL恢复
+
+一致性保证:
+├─ 约束检查 → 主键/外键/CHECK
+├─ 触发器 → 业务规则
+└─ 事务内 → 所有约束满足
+
+隔离性保证:
+├─ MVCC → 快照隔离
+├─ 锁 → 写写冲突
+└─ SSI → 写偏斜检测
+
+持久性保证:
+├─ WAL → 先写日志
+├─ fsync → 强制刷盘
+└─ Checkpoint → 定期持久化
+```
+
+### 14.3 ACID特性对比矩阵
+
+**ACID特性对比矩阵**:
+
+| 特性 | 英文 | 保证内容 | 实现机制 | 失败后果 | 性能影响 |
+|-----|------|---------|---------|---------|---------|
+| **原子性** | Atomicity | 全部成功或全部失败 | WAL日志 | 部分执行 → 数据不一致 | 中等 (WAL写入) |
+| **一致性** | Consistency | 满足完整性约束 | 约束检查/触发器 | 违反约束 → 无效数据 | 低 (检查开销) |
+| **隔离性** | Isolation | 并发事务互不干扰 | MVCC+锁 | 读脏数据 → 错误决策 | 高 (MVCC开销) |
+| **持久性** | Durability | 提交后永久保存 | WAL+fsync | 数据丢失 → 业务损失 | 高 (fsync延迟) |
+
+**PostgreSQL ACID实现对比矩阵**:
+
+| 配置 | 原子性 | 一致性 | 隔离性 | 持久性 | 性能 | 适用场景 |
+|-----|-------|-------|-------|-------|------|---------|
+| **默认配置** | ✓ | ✓ | RC | 异步 | 高 | 一般应用 |
+| **同步提交** | ✓ | ✓ | RC | 同步 | 中 | 金融系统 |
+| **Serializable** | ✓ | ✓ | SSI | 同步 | 低 | 强一致性 |
+| **异步提交** | ✓ | ✓ | RC | 异步 | 最高 | 高性能场景 |
+
+**ACID与CAP关系对比矩阵**:
+
+| 特性 | ACID | CAP | 关系 |
+|-----|------|-----|------|
+| **原子性** | 全部成功/失败 | - | 单机特性 |
+| **一致性** | 完整性约束 | 线性一致性 | 不同含义 |
+| **隔离性** | 事务隔离 | - | 单机特性 |
+| **持久性** | 永久保存 | - | 单机特性 |
+
+---
+
 **版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 完整WAL实现、事务状态管理、约束检查、实际案例、反例分析
+**新增内容**: 完整WAL实现、事务状态管理、约束检查、实际案例、反例分析、ACID理论可视化（ACID架构设计图、ACID保证流程图、ACID特性对比矩阵）
 
 **关联文档**:
 

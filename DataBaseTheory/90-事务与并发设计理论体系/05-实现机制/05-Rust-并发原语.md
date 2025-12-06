@@ -37,6 +37,15 @@
   - [九、反例与错误使用](#九反例与错误使用)
     - [反例1: 数据竞争](#反例1-数据竞争)
     - [反例2: Ordering错误](#反例2-ordering错误)
+  - [十、完整实现代码](#十完整实现代码)
+    - [10.1 简化版Arc完整实现](#101-简化版arc完整实现)
+    - [10.2 简化版Mutex完整实现](#102-简化版mutex完整实现)
+    - [10.3 无锁队列完整实现](#103-无锁队列完整实现)
+    - [10.4 连接池完整实现](#104-连接池完整实现)
+  - [十一、Rust并发原语可视化](#十一rust并发原语可视化)
+    - [11.1 并发原语架构图](#111-并发原语架构图)
+    - [11.2 并发原语使用流程图](#112-并发原语使用流程图)
+    - [11.3 并发原语选择决策树](#113-并发原语选择决策树)
 
 ---
 
@@ -691,9 +700,663 @@ if flag.load(Ordering::Acquire) {  // Acquire: 看到Release之前的写入
 
 ---
 
+## 十、完整实现代码
+
+### 10.1 简化版Arc完整实现
+
+**完整实现**: 一个简化版的Arc，展示核心机制
+
+```rust
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::ptr::NonNull;
+
+/// 简化版Arc
+pub struct MyArc<T> {
+    ptr: NonNull<ArcInner<T>>,
+}
+
+struct ArcInner<T> {
+    count: AtomicUsize,
+    data: T,
+}
+
+impl<T> MyArc<T> {
+    pub fn new(data: T) -> Self {
+        let inner = Box::new(ArcInner {
+            count: AtomicUsize::new(1),
+            data,
+        });
+
+        let ptr = Box::into_raw(inner);
+        Self {
+            ptr: unsafe { NonNull::new_unchecked(ptr) },
+        }
+    }
+
+    fn inner(&self) -> &ArcInner<T> {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
+impl<T> Clone for MyArc<T> {
+    fn clone(&self) -> Self {
+        // 原子递增引用计数
+        let old_count = self.inner().count.fetch_add(1, Ordering::Relaxed);
+
+        // 防止溢出
+        if old_count > usize::MAX / 2 {
+            std::process::abort();
+        }
+
+        Self {
+            ptr: self.ptr,
+        }
+    }
+}
+
+impl<T> Drop for MyArc<T> {
+    fn drop(&mut self) {
+        // 原子递减引用计数
+        if self.inner().count.fetch_sub(1, Ordering::Release) != 1 {
+            return;  // 还有其他引用
+        }
+
+        // 最后一个引用，释放内存
+        std::sync::atomic::fence(Ordering::Acquire);
+        unsafe {
+            let _ = Box::from_raw(self.ptr.as_ptr());
+        }
+    }
+}
+
+impl<T> std::ops::Deref for MyArc<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner().data
+    }
+}
+
+// 使用示例
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread;
+
+    #[test]
+    fn test_arc_clone() {
+        let arc = MyArc::new(42);
+        let arc2 = arc.clone();
+
+        assert_eq!(*arc, 42);
+        assert_eq!(*arc2, 42);
+    }
+
+    #[test]
+    fn test_arc_thread_safe() {
+        let arc = MyArc::new(0);
+        let arc2 = arc.clone();
+
+        let handle = thread::spawn(move || {
+            // 在另一个线程中使用
+            let _value = *arc2;
+        });
+
+        handle.join().unwrap();
+    }
+}
+```
+
+### 10.2 简化版Mutex完整实现
+
+**完整实现**: 一个简化版的Mutex，展示核心机制
+
+```rust
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::cell::UnsafeCell;
+use std::ops::{Deref, DerefMut};
+
+/// 简化版Mutex
+pub struct MyMutex<T> {
+    locked: AtomicBool,
+    data: UnsafeCell<T>,
+}
+
+unsafe impl<T: Send> Send for MyMutex<T> {}
+unsafe impl<T: Send> Sync for MyMutex<T> {}
+
+impl<T> MyMutex<T> {
+    pub fn new(data: T) -> Self {
+        Self {
+            locked: AtomicBool::new(false),
+            data: UnsafeCell::new(data),
+        }
+    }
+
+    pub fn lock(&self) -> MutexGuard<T> {
+        // 自旋锁
+        while self.locked.compare_and_swap(false, true, Ordering::Acquire) {
+            // 自旋等待
+            std::hint::spin_loop();
+        }
+
+        MutexGuard { mutex: self }
+    }
+}
+
+/// MutexGuard (RAII)
+pub struct MutexGuard<'a, T> {
+    mutex: &'a MyMutex<T>,
+}
+
+impl<'a, T> Drop for MutexGuard<'a, T> {
+    fn drop(&mut self) {
+        // 释放锁
+        self.mutex.locked.store(false, Ordering::Release);
+    }
+}
+
+impl<'a, T> Deref for MutexGuard<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.mutex.data.get() }
+    }
+}
+
+impl<'a, T> DerefMut for MutexGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.mutex.data.get() }
+    }
+}
+
+// 使用示例
+#[cfg(test)]
+mod mutex_tests {
+    use super::*;
+    use std::thread;
+
+    #[test]
+    fn test_mutex() {
+        let mutex = MyMutex::new(0);
+
+        {
+            let mut guard = mutex.lock();
+            *guard = 42;
+        }  // guard被drop，锁自动释放
+
+        let guard = mutex.lock();
+        assert_eq!(*guard, 42);
+    }
+
+    #[test]
+    fn test_mutex_thread_safe() {
+        let mutex = MyMutex::new(0);
+        let mutex2 = &mutex;
+
+        let handle = thread::spawn(move || {
+            let mut guard = mutex2.lock();
+            *guard += 1;
+        });
+
+        {
+            let mut guard = mutex.lock();
+            *guard += 1;
+        }
+
+        handle.join().unwrap();
+
+        let guard = mutex.lock();
+        assert_eq!(*guard, 2);
+    }
+}
+```
+
+### 10.3 无锁队列完整实现
+
+**完整实现**: 基于Atomic的无锁队列
+
+```rust
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::ptr;
+
+/// 无锁队列节点
+struct Node<T> {
+    data: Option<T>,
+    next: AtomicPtr<Node<T>>,
+}
+
+impl<T> Node<T> {
+    fn new(data: T) -> Self {
+        Self {
+            data: Some(data),
+            next: AtomicPtr::new(ptr::null_mut()),
+        }
+    }
+
+    fn sentinel() -> Self {
+        Self {
+            data: None,
+            next: AtomicPtr::new(ptr::null_mut()),
+        }
+    }
+}
+
+/// 无锁队列
+pub struct LockFreeQueue<T> {
+    head: AtomicPtr<Node<T>>,
+    tail: AtomicPtr<Node<T>>,
+}
+
+impl<T> LockFreeQueue<T> {
+    pub fn new() -> Self {
+        let sentinel = Box::into_raw(Box::new(Node::sentinel()));
+
+        Self {
+            head: AtomicPtr::new(sentinel),
+            tail: AtomicPtr::new(sentinel),
+        }
+    }
+
+    pub fn enqueue(&self, data: T) {
+        let new_node = Box::into_raw(Box::new(Node::new(data)));
+
+        loop {
+            let tail = self.tail.load(Ordering::Acquire);
+            let next = unsafe { (*tail).next.load(Ordering::Acquire) };
+
+            // 检查tail是否仍然有效
+            if next.is_null() {
+                // 尝试链接新节点
+                if unsafe { (*tail).next.compare_and_swap(
+                    ptr::null_mut(),
+                    new_node,
+                    Ordering::Release
+                ) }.is_null() {
+                    // 成功，更新tail
+                    let _ = self.tail.compare_and_swap(
+                        tail,
+                        new_node,
+                        Ordering::Release
+                    );
+                    return;
+                }
+            } else {
+                // 帮助其他线程推进tail
+                let _ = self.tail.compare_and_swap(tail, next, Ordering::Release);
+            }
+        }
+    }
+
+    pub fn dequeue(&self) -> Option<T> {
+        loop {
+            let head = self.head.load(Ordering::Acquire);
+            let tail = self.tail.load(Ordering::Acquire);
+            let next = unsafe { (*head).next.load(Ordering::Acquire) };
+
+            // 检查队列是否为空
+            if head == tail {
+                if next.is_null() {
+                    return None;  // 队列为空
+                }
+                // 帮助推进tail
+                let _ = self.tail.compare_and_swap(tail, next, Ordering::Release);
+            } else {
+                // 读取数据
+                if let Some(data) = unsafe { (*next).data.take() } {
+                    // 更新head
+                    if self.head.compare_and_swap(head, next, Ordering::Release) == head {
+                        // 释放旧head
+                        unsafe { let _ = Box::from_raw(head); }
+                        return Some(data);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<T> Drop for LockFreeQueue<T> {
+    fn drop(&mut self) {
+        // 清理所有节点
+        while self.dequeue().is_some() {}
+        let head = self.head.load(Ordering::Acquire);
+        if !head.is_null() {
+            unsafe { let _ = Box::from_raw(head); }
+        }
+    }
+}
+
+// 使用示例
+#[cfg(test)]
+mod queue_tests {
+    use super::*;
+    use std::thread;
+
+    #[test]
+    fn test_queue() {
+        let queue = LockFreeQueue::new();
+
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+
+        assert_eq!(queue.dequeue(), Some(1));
+        assert_eq!(queue.dequeue(), Some(2));
+        assert_eq!(queue.dequeue(), Some(3));
+        assert_eq!(queue.dequeue(), None);
+    }
+
+    #[test]
+    fn test_queue_concurrent() {
+        let queue = LockFreeQueue::new();
+        let queue2 = &queue;
+
+        let handle = thread::spawn(move || {
+            for i in 0..100 {
+                queue2.enqueue(i);
+            }
+        });
+
+        for i in 0..100 {
+            queue.enqueue(i + 100);
+        }
+
+        handle.join().unwrap();
+
+        let mut count = 0;
+        while queue.dequeue().is_some() {
+            count += 1;
+        }
+        assert_eq!(count, 200);
+    }
+}
+```
+
+### 10.4 连接池完整实现
+
+**完整实现**: 使用Arc和Mutex实现的连接池
+
+```rust
+use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
+use std::time::{Duration, Instant};
+
+/// 连接池
+pub struct ConnectionPool<T> {
+    connections: Arc<Mutex<VecDeque<T>>>,
+    factory: Box<dyn Fn() -> T + Send + Sync>,
+    max_size: usize,
+    timeout: Duration,
+}
+
+impl<T> ConnectionPool<T> {
+    pub fn new<F>(factory: F, max_size: usize, timeout: Duration) -> Self
+    where
+        F: Fn() -> T + Send + Sync + 'static,
+    {
+        Self {
+            connections: Arc::new(Mutex::new(VecDeque::new())),
+            factory: Box::new(factory),
+            max_size,
+            timeout,
+        }
+    }
+
+    pub fn get(&self) -> Option<PooledConnection<T>> {
+        let mut conns = self.connections.lock().unwrap();
+
+        // 尝试从池中获取
+        if let Some(conn) = conns.pop_front() {
+            return Some(PooledConnection {
+                conn: Some(conn),
+                pool: Arc::clone(&self.connections),
+            });
+        }
+
+        // 池为空，创建新连接
+        if conns.len() < self.max_size {
+            let conn = (self.factory)();
+            return Some(PooledConnection {
+                conn: Some(conn),
+                pool: Arc::clone(&self.connections),
+            });
+        }
+
+        None  // 池已满
+    }
+}
+
+/// 池化连接 (RAII)
+pub struct PooledConnection<T> {
+    conn: Option<T>,
+    pool: Arc<Mutex<VecDeque<T>>>,
+}
+
+impl<T> Drop for PooledConnection<T> {
+    fn drop(&mut self) {
+        if let Some(conn) = self.conn.take() {
+            let mut pool = self.pool.lock().unwrap();
+            pool.push_back(conn);  // 归还连接
+        }
+    }
+}
+
+impl<T> std::ops::Deref for PooledConnection<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.conn.as_ref().unwrap()
+    }
+}
+
+impl<T> std::ops::DerefMut for PooledConnection<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.conn.as_mut().unwrap()
+    }
+}
+
+// 使用示例
+#[cfg(test)]
+mod pool_tests {
+    use super::*;
+
+    #[test]
+    fn test_connection_pool() {
+        let pool = ConnectionPool::new(
+            || 42,  // 简单的连接工厂
+            10,     // 最大10个连接
+            Duration::from_secs(30),
+        );
+
+        {
+            let conn = pool.get().unwrap();
+            assert_eq!(*conn, 42);
+        }  // 连接自动归还
+
+        let conn2 = pool.get().unwrap();
+        assert_eq!(*conn2, 42);  // 重用连接
+    }
+}
+```
+
+---
+
+## 十一、Rust并发原语可视化
+
+### 11.1 并发原语架构图
+
+**完整Rust并发原语系统架构** (Mermaid):
+
+```mermaid
+graph TB
+    subgraph "并发原语层"
+        ARC[Arc<br/>原子引用计数]
+        MUTEX[Mutex<br/>互斥锁]
+        RWLOCK[RwLock<br/>读写锁]
+        ATOMIC[Atomic<br/>原子类型]
+        CHANNEL[Channel<br/>消息通道]
+    end
+
+    subgraph "内存模型层"
+        ORDERING[Ordering<br/>内存排序]
+        BARRIER[Memory Barrier<br/>内存屏障]
+        CACHE[Cache Coherence<br/>缓存一致性]
+    end
+
+    subgraph "应用层"
+        SHARED[共享状态<br/>Shared State]
+        MESSAGE[消息传递<br/>Message Passing]
+        LOCKFREE[无锁数据结构<br/>Lock-Free]
+    end
+
+    ARC --> ORDERING
+    MUTEX --> ORDERING
+    RWLOCK --> ORDERING
+    ATOMIC --> ORDERING
+    CHANNEL --> ORDERING
+
+    ORDERING --> BARRIER
+    BARRIER --> CACHE
+
+    ARC --> SHARED
+    MUTEX --> SHARED
+    RWLOCK --> SHARED
+    ATOMIC --> LOCKFREE
+    CHANNEL --> MESSAGE
+```
+
+**并发原语层次架构**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 并发原语层                          │
+│  ├─ Arc (原子引用计数)                    │
+│  ├─ Mutex (互斥锁)                       │
+│  ├─ RwLock (读写锁)                      │
+│  ├─ Atomic (原子类型)                    │
+│  └─ Channel (消息通道)                   │
+└───────┬───────────────────┬──────────────┘
+        │                   │
+        │ 内存模型           │ 应用场景
+        ▼                   ▼
+┌──────────────┐  ┌──────────────────┐
+│  L2: 内存层  │  │  L2: 应用层      │
+│  Ordering    │  │  共享状态        │
+│  内存屏障     │  │  消息传递        │
+│  缓存一致性   │  │  无锁数据结构    │
+└──────┬───────┘  └──────────────────┘
+       │
+       │ 硬件支持
+       ▼
+┌──────────────┐
+│  L1: 硬件层  │
+│  CPU原子操作  │
+│  内存屏障     │
+└──────────────┘
+```
+
+### 11.2 并发原语使用流程图
+
+**并发原语使用流程** (Mermaid):
+
+```mermaid
+flowchart TD
+    START([需要并发]) --> CHECK{数据共享需求?}
+
+    CHECK -->|需要共享| SHARED[共享状态]
+    CHECK -->|不需要共享| MESSAGE[消息传递]
+
+    SHARED --> CHECK_READ{读多写少?}
+    MESSAGE --> CHANNEL[使用Channel]
+
+    CHECK_READ -->|是| RWLOCK[使用RwLock]
+    CHECK_READ -->|否| CHECK_SIMPLE{简单类型?}
+
+    CHECK_SIMPLE -->|是| ATOMIC[使用Atomic]
+    CHECK_SIMPLE -->|否| MUTEX[使用Mutex]
+
+    RWLOCK --> CHECK_ORDERING{需要顺序?}
+    ATOMIC --> CHECK_ORDERING
+    MUTEX --> CHECK_ORDERING
+    CHANNEL --> END([实现完成])
+
+    CHECK_ORDERING -->|是| SEQ[使用SeqCst]
+    CHECK_ORDERING -->|否| REL[使用Release-Acquire]
+
+    SEQ --> END
+    REL --> END
+```
+
+**并发原语选择流程**:
+
+```text
+并发原语选择流程:
+├─ 需要共享状态?
+│   ├─ 是 → 读多写少?
+│   │   ├─ 是 → RwLock
+│   │   └─ 否 → 简单类型?
+│   │       ├─ 是 → Atomic
+│   │       └─ 否 → Mutex
+│   └─ 否 → Channel (消息传递)
+│
+└─ 需要内存排序?
+    ├─ 需要全局顺序 → SeqCst
+    ├─ 需要局部同步 → Release-Acquire
+    └─ 不需要顺序 → Relaxed
+```
+
+### 11.3 并发原语选择决策树
+
+**并发原语选择决策树**:
+
+```text
+                选择并发原语
+                      │
+          ┌───────────┴───────────┐
+          │   并发需求分析        │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   需要共享        不需要共享      部分共享
+   (共享状态)      (独立状态)      (消息传递)
+      │               │               │
+      ▼               ▼               ▼
+   Arc+Mutex     独立所有权      Channel
+   Arc+RwLock    无同步开销      Actor模式
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   线程安全        零成本          解耦设计
+   编译期保证      无运行时开销    高并发
+```
+
+**Rust并发原语性能对比矩阵**:
+
+| 原语 | 读性能 | 写性能 | 内存开销 | 适用场景 |
+|-----|-------|-------|---------|---------|
+| **Arc** | 最高 (无锁) | 最高 (无锁) | 低 (引用计数) | 只读共享 |
+| **Arc<Mutex<T>>** | 中 (加锁) | 中 (加锁) | 中 | 读写混合 |
+| **Arc<RwLock<T>>** | 高 (共享锁) | 中 (排他锁) | 中 | 读多写少 |
+| **Atomic** | 最高 (原子操作) | 最高 (原子操作) | 最低 | 简单类型 |
+| **Channel** | 高 (无锁接收) | 高 (无锁发送) | 低 | 消息传递 |
+
+**Rust并发原语与数据库锁对应矩阵**:
+
+| Rust原语 | 数据库对应 | 保证内容 | 性能 |
+|---------|-----------|---------|------|
+| **Arc** | 共享锁 (FOR SHARE) | 只读共享 | 高 |
+| **Mutex** | 排他锁 (FOR UPDATE) | 独占访问 | 中 |
+| **RwLock** | 读写锁 | 读多写少 | 中高 |
+| **Atomic** | 行级锁 | 原子操作 | 最高 |
+| **Channel** | 消息队列 | 解耦通信 | 高 |
+
+---
+
 **文档版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 性能测试、实际应用、内存模型、反例分析
+**新增内容**: 性能测试、实际应用、内存模型、反例分析、完整实现代码、Rust并发原语可视化（并发原语架构图、并发原语使用流程图、并发原语选择决策树）
 
 **关联文档**:
 

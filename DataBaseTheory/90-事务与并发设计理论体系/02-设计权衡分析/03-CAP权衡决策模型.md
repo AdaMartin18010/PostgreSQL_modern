@@ -268,9 +268,9 @@ class GossipProtocol:
 
 **原则**: 按数据重要性分层
 
-```
+```text
 ┌─────────────────────────────────┐
-│        数据分层架构               │
+│        数据分层架构              │
 ├─────────────────────────────────┤
 │                                 │
 │  核心数据层 (订单、支付)          │
@@ -338,9 +338,9 @@ class AdaptiveConsistency:
 
 **策略**: 写CP，读AP
 
-```
+```text
 ┌─────────────────────────────────┐
-│         读写分离架构              │
+│         读写分离架构             │
 ├─────────────────────────────────┤
 │                                 │
 │  写入路径:                       │
@@ -379,7 +379,7 @@ class AdaptiveConsistency:
 
 **架构**:
 
-```
+```text
 订单服务 (CP)
 ├─ PostgreSQL主从 (同步复制)
 ├─ 写入: Serializable隔离级别
@@ -419,7 +419,7 @@ class AdaptiveConsistency:
 
 **架构**:
 
-```
+```text
 全球5个数据中心
 ├─ 发帖/点赞: Cassandra (PA/EL)
 │   ├─ 就近写入
@@ -524,7 +524,7 @@ $$Latency = Base + Consistency \times Factor$$
 
 **图示**:
 
-```
+```text
 延迟 (ms)
   ↑
 20│                    ● Linearizable

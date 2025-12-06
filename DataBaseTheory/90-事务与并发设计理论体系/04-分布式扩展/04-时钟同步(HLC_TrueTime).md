@@ -41,6 +41,10 @@
   - [十、反例与错误设计](#十反例与错误设计)
     - [反例1: 忽略时钟漂移](#反例1-忽略时钟漂移)
     - [反例2: TrueTime等待不足](#反例2-truetime等待不足)
+  - [十一、时钟同步可视化](#十一时钟同步可视化)
+    - [11.1 时钟同步架构图](#111-时钟同步架构图)
+    - [11.2 HLC算法流程图](#112-hlc算法流程图)
+    - [11.3 时钟同步方案选择决策树](#113-时钟同步方案选择决策树)
 
 ---
 
@@ -575,9 +579,206 @@ void transaction_good() {
 
 ---
 
+## 十一、时钟同步可视化
+
+### 11.1 时钟同步架构图
+
+**完整时钟同步系统架构** (Mermaid):
+
+```mermaid
+graph TB
+    subgraph "时钟同步层"
+        HLC[HLC<br/>混合逻辑时钟]
+        TT[TrueTime<br/>Google Spanner]
+        LC[Lamport Clock<br/>逻辑时钟]
+    end
+
+    subgraph "物理时钟层"
+        GPS[GPS时钟<br/>原子钟]
+        NTP[NTP同步<br/>网络时间协议]
+        LOCAL[本地时钟<br/>系统时钟]
+    end
+
+    subgraph "应用层"
+        TXN[事务时间戳<br/>Transaction Timestamp]
+        LOG[日志时间戳<br/>Log Timestamp]
+        SNAP[快照时间戳<br/>Snapshot Timestamp]
+    end
+
+    HLC --> LOCAL
+    HLC --> NTP
+    TT --> GPS
+    TT --> LOCAL
+    LC --> LOCAL
+
+    HLC --> TXN
+    TT --> TXN
+    LC --> LOG
+
+    HLC --> SNAP
+    TT --> SNAP
+```
+
+**时钟同步层次架构**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 时钟同步层                          │
+│  ├─ HLC (混合逻辑时钟)                   │
+│  ├─ TrueTime (Google Spanner)           │
+│  └─ Lamport Clock (逻辑时钟)             │
+└───────┬───────────────────┬──────────────┘
+        │                   │
+        │ 物理时钟           │ 应用时间戳
+        ▼                   ▼
+┌──────────────┐  ┌──────────────────┐
+│  L2: 物理时钟│  │  L2: 应用层      │
+│  GPS         │  │  事务时间戳      │
+│  NTP         │  │  日志时间戳      │
+│  本地时钟     │  │  快照时间戳      │
+└──────┬───────┘  └──────────────────┘
+       │
+       │ 时间同步
+       ▼
+┌──────────────┐
+│  L1: 硬件层  │
+│  系统时钟     │
+│  网络延迟     │
+└──────────────┘
+```
+
+### 11.2 HLC算法流程图
+
+**HLC算法完整流程** (Mermaid):
+
+```mermaid
+flowchart TD
+    START([事件发生]) --> CHECK{事件类型?}
+
+    CHECK -->|本地事件| LOCAL[本地事件]
+    CHECK -->|发送消息| SEND[发送消息]
+    CHECK -->|接收消息| RECV[接收消息]
+
+    LOCAL --> UPDATE_PT[更新物理时间<br/>pt = max(pt, physical_time)]
+    UPDATE_PT --> INCREMENT_LC[逻辑计数器++<br/>lc++]
+    INCREMENT_LC --> RETURN[返回HLC]
+
+    SEND --> UPDATE_PT
+    UPDATE_PT --> INCREMENT_LC
+    INCREMENT_LC --> SEND_MSG[发送消息<br/>携带HLC]
+
+    RECV --> GET_REMOTE[获取远程HLC<br/>remote_pt, remote_lc]
+    GET_REMOTE --> COMPARE{比较时钟}
+
+    COMPARE -->|remote_pt > pt| FAST[远程时钟更快<br/>pt = remote_pt<br/>lc = remote_lc + 1]
+    COMPARE -->|remote_pt == pt| EQUAL[时钟相等<br/>pt = remote_pt<br/>lc = max(lc, remote_lc) + 1]
+    COMPARE -->|remote_pt < pt| SLOW[本地时钟更快<br/>pt = max(pt, physical_time)<br/>lc++]
+
+    FAST --> RETURN
+    EQUAL --> RETURN
+    SLOW --> RETURN
+
+    RETURN --> END([返回HLC时间戳])
+    SEND_MSG --> END
+```
+
+**HLC时间戳更新规则**:
+
+```text
+HLC更新规则:
+├─ 本地事件:
+│   ├─ pt = max(pt, physical_time())
+│   └─ lc++
+│
+├─ 发送消息:
+│   ├─ pt = max(pt, physical_time())
+│   ├─ lc++
+│   └─ 发送 (pt, lc)
+│
+└─ 接收消息 (remote_pt, remote_lc):
+    ├─ 如果 remote_pt > pt:
+    │   ├─ pt = remote_pt
+    │   └─ lc = remote_lc + 1
+    ├─ 如果 remote_pt == pt:
+    │   ├─ pt = remote_pt
+    │   └─ lc = max(lc, remote_lc) + 1
+    └─ 如果 remote_pt < pt:
+        ├─ pt = max(pt, physical_time())
+        └─ lc++
+```
+
+### 11.3 时钟同步方案选择决策树
+
+**时钟同步方案选择决策树**:
+
+```text
+                选择时钟同步方案
+                      │
+          ┌───────────┴───────────┐
+          │   系统需求分析        │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   需要真实时间      需要因果顺序    需要外部一致性
+   (TrueTime)        (HLC)          (TrueTime)
+      │               │               │
+      ▼               ▼               ▼
+   Google Spanner   CockroachDB    Spanner
+   (GPS+原子钟)     (HLC)          (TrueTime)
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   高精度          低延迟          强一致性
+   高成本          低成本          高成本
+```
+
+**HLC vs TrueTime选择决策树**:
+
+```text
+                选择HLC还是TrueTime?
+                      │
+          ┌───────────┴───────────┐
+          │   系统规模分析        │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   中小规模        大规模          超大规模
+   (<100节点)      (100-1000节点)   (>1000节点)
+      │               │               │
+      ▼               ▼               ▼
+    HLC             HLC            TrueTime
+  (低成本)        (平衡)          (高精度)
+      │               │               │
+      │               │               │
+      ▼               ▼               ▼
+   因果顺序        因果顺序        外部一致性
+   无需GPS         无需GPS         需要GPS
+```
+
+**时钟同步方案对比矩阵**:
+
+| 方案 | 精度 | 延迟 | 成本 | 保证内容 | 适用场景 |
+|-----|------|------|------|---------|---------|
+| **HLC** | 中 (ms级) | 低 | 低 | 因果顺序 | 中小规模集群 |
+| **TrueTime** | 高 (μs级) | 中 | 高 | 外部一致性 | 超大规模系统 |
+| **Lamport Clock** | 无 | 最低 | 最低 | 因果顺序 | 理论分析 |
+| **NTP** | 中 (ms级) | 中 | 低 | 时钟同步 | 一般应用 |
+
+**时钟同步与LSEM L2层映射矩阵**:
+
+| 时钟方案 | L2时间戳 | L2可见性 | L2冲突检测 | 性能 |
+|---------|---------|---------|-----------|------|
+| **HLC** | (pt, lc) | 因果顺序 | 时间戳比较 | 高 |
+| **TrueTime** | [earliest, latest] | 外部一致性 | 等待不确定性 | 中 |
+| **Lamport Clock** | lc | 因果顺序 | 逻辑时钟比较 | 最高 |
+
+---
+
 **文档版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 完整Go/C++实现、性能测试、生产案例、反例分析
+**新增内容**: 完整Go/C++实现、性能测试、生产案例、反例分析、时钟同步可视化（时钟同步架构图、HLC算法流程图、时钟同步方案选择决策树）
 
 **关联文档**:
 

@@ -43,6 +43,10 @@
   - [十二、反例与错误设计](#十二反例与错误设计)
     - [反例1: 忽略HOT条件导致索引膨胀](#反例1-忽略hot条件导致索引膨胀)
     - [反例2: 长事务导致版本链爆炸](#反例2-长事务导致版本链爆炸)
+  - [十三、实现架构可视化](#十三实现架构可视化)
+    - [13.1 MVCC数据结构架构图](#131-mvcc数据结构架构图)
+    - [13.2 可见性检查流程图](#132-可见性检查流程图)
+    - [13.3 版本链遍历序列图](#133-版本链遍历序列图)
 
 ---
 
@@ -981,9 +985,199 @@ def optimized_report():
 
 ---
 
+## 十三、实现架构可视化
+
+### 13.1 MVCC数据结构架构图
+
+**完整数据结构关系图** (Mermaid):
+
+```mermaid
+classDiagram
+    class HeapTupleHeader {
+        +TransactionId t_xmin
+        +TransactionId t_xmax
+        +ItemPointerData t_ctid
+        +uint16 t_infomask
+        +uint16 t_infomask2
+    }
+
+    class SnapshotData {
+        +TransactionId xmin
+        +TransactionId xmax
+        +TransactionId* xip
+        +int xcnt
+    }
+
+    class PGPROC {
+        +TransactionId xid
+        +TransactionId xmin
+        +PGPROC* waitLock
+    }
+
+    class pg_clog {
+        +TransactionId xid
+        +XidStatus status
+    }
+
+    HeapTupleHeader -->|t_xmin/t_xmax| pg_clog : 查询事务状态
+    SnapshotData -->|xmin/xmax| PGPROC : 获取活跃事务
+    PGPROC -->|xid| pg_clog : 查询提交状态
+```
+
+**数据结构层次说明**:
+
+```text
+┌─────────────────────────────────────────┐
+│  L3: 元组层                              │
+│  HeapTupleHeader                         │
+│  ├─ t_xmin: 创建事务ID                   │
+│  ├─ t_xmax: 删除事务ID                   │
+│  └─ t_ctid: 指向新版本                   │
+└─────────────────┬───────────────────────┘
+                  │ 查询事务状态
+┌─────────────────▼───────────────────────┐
+│  L2: 事务状态层                          │
+│  pg_clog (事务提交日志)                   │
+│  ├─ 事务ID → 状态映射                     │
+│  └─ 状态: 已提交/已中止/进行中           │
+└─────────────────┬───────────────────────┘
+                  │ 获取快照
+┌─────────────────▼───────────────────────┐
+│  L1: 快照层                               │
+│  SnapshotData                            │
+│  ├─ xmin: 最早活跃事务                   │
+│  ├─ xmax: 下一个事务ID                   │
+│  └─ xip: 活跃事务列表                    │
+└─────────────────┬───────────────────────┘
+                  │ 管理事务
+┌─────────────────▼───────────────────────┐
+│  L0: 事务管理层                           │
+│  PGPROC (进程结构)                       │
+│  ├─ xid: 当前事务ID                      │
+│  └─ xmin: 最早快照事务                   │
+└─────────────────────────────────────────┘
+```
+
+### 13.2 可见性检查流程图
+
+**完整可见性检查流程** (Mermaid):
+
+```mermaid
+flowchart TD
+    START([开始可见性检查]) --> CHECK_XMIN{检查t_xmin}
+
+    CHECK_XMIN -->|t_xmin未提交| RETURN_FALSE1[返回不可见]
+    CHECK_XMIN -->|t_xmin已提交| CHECK_XMAX{检查t_xmax}
+
+    CHECK_XMAX -->|t_xmax为NULL| RETURN_TRUE1[返回可见]
+    CHECK_XMAX -->|t_xmax已提交| RETURN_TRUE2[返回可见]
+    CHECK_XMAX -->|t_xmax未提交| CHECK_CURRENT{是否为当前事务?}
+
+    CHECK_CURRENT -->|是| CHECK_DELETE{是否为删除操作?}
+    CHECK_CURRENT -->|否| RETURN_FALSE2[返回不可见]
+
+    CHECK_DELETE -->|是| RETURN_FALSE3[返回不可见]
+    CHECK_DELETE -->|否| RETURN_TRUE3[返回可见]
+
+    RETURN_FALSE1 --> END([结束])
+    RETURN_FALSE2 --> END
+    RETURN_FALSE3 --> END
+    RETURN_TRUE1 --> END
+    RETURN_TRUE2 --> END
+    RETURN_TRUE3 --> END
+```
+
+**可见性检查决策树**:
+
+```text
+                可见性检查
+                      │
+          ┌───────────┴───────────┐
+          │   检查t_xmin状态     │
+          └───────────┬───────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      │               │               │
+   未提交          已提交          进行中
+      │               │               │
+      ▼               ▼               ▼
+   不可见        检查t_xmax      检查快照
+      │               │               │
+      │               │               │
+      │        ┌───────┴───────┐       │
+      │        │               │       │
+      │      NULL          已提交   在快照中
+      │        │               │       │
+      │        ▼               ▼       ▼
+      │      可见            可见    不可见
+      │
+      └───────────────────────────────┘
+```
+
+### 13.3 版本链遍历序列图
+
+**版本链遍历完整序列** (Mermaid):
+
+```mermaid
+sequenceDiagram
+    participant Query
+    participant Heap
+    participant Index
+    participant Snapshot
+    participant CLog as pg_clog
+
+    Query->>Index: 查找索引条目
+    Index-->>Query: 返回TID (page=5, offset=123)
+
+    Query->>Heap: 读取元组 (page=5, offset=123)
+    Heap-->>Query: 返回元组版本 (xmin=100, xmax=null)
+
+    Query->>Snapshot: 检查可见性 (xid=100)
+    Snapshot->>CLog: 查询事务状态 (xid=100)
+    CLog-->>Snapshot: 已提交
+    Snapshot-->>Query: xid=100 已提交，可见
+
+    Note over Query: 找到可见版本，返回结果
+
+    alt 版本不可见，需要遍历版本链
+        Query->>Heap: 读取下一个版本 (ctid指向)
+        Heap-->>Query: 返回元组版本 (xmin=99, xmax=100)
+        Query->>Snapshot: 检查可见性 (xid=99)
+        Snapshot->>CLog: 查询事务状态 (xid=99)
+        CLog-->>Snapshot: 已提交
+        Snapshot-->>Query: xid=99 已提交，可见
+        Query->>Query: 返回结果
+    end
+```
+
+**版本链遍历算法流程**:
+
+```text
+版本链遍历流程:
+├─ Step 1: 索引查找
+│   └─ 获取初始TID
+│
+├─ Step 2: 读取元组
+│   └─ 获取HeapTupleHeader
+│
+├─ Step 3: 可见性检查
+│   ├─ 检查t_xmin状态
+│   ├─ 检查t_xmax状态
+│   └─ 检查快照
+│
+├─ Step 4: 如果不可见
+│   ├─ 读取t_ctid指向的下一个版本
+│   └─ 重复Step 3
+│
+└─ Step 5: 找到可见版本
+    └─ 返回结果
+```
+
+---
+
 **版本**: 2.0.0（大幅充实）
 **最后更新**: 2025-12-05
-**新增内容**: 完整C代码实现、实际案例、反例分析
+**新增内容**: 完整C代码实现、实际案例、反例分析、实现架构可视化（数据结构架构图、可见性检查流程图、版本链遍历序列图）
 
 **关联文档**:
 
