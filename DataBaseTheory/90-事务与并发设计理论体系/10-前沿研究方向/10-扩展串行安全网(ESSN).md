@@ -138,7 +138,9 @@ $$\forall v_i, v_j \in \text{VersionChain}(x): v_i < v_j \implies \text{creator}
 
 事务 $T_i$ 读取的版本必须满足：
 
-$$\text{read}(T_i, x) = v \implies \text{creator}(v) < T_i \land \forall v' \in \text{VersionChain}(x): \text{creator}(v') < T_i \implies v' \leq v$$
+$$
+\text{read}(T_i, x) = v \implies \text{creator}(v) < T_i \land \forall v' \in \text{VersionChain}(x): \text{creator}(v') < T_i \implies v' \leq v
+$$
 
 **KTO实现**:
 

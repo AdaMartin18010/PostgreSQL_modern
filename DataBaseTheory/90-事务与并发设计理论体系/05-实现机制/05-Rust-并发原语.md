@@ -1395,6 +1395,45 @@ mod tests {
 }
 ```
 
+**Cargo.toml依赖配置**:
+
+```toml
+# Cargo.toml
+[package]
+name = "rust-concurrency-primitives"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 标准库已包含，无需额外依赖
+# std = { version = "1.70", features = [] }
+
+[dev-dependencies]
+# 测试工具（可选）
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "arc_bench"
+harness = false
+
+[[bench]]
+name = "mutex_bench"
+harness = false
+```
+
+**运行测试**:
+
+```bash
+# 运行所有测试
+cargo test
+
+# 运行基准测试
+cargo bench
+
+# 运行特定测试
+cargo test test_arc_clone
+```
+
 ### 10.2 简化版Mutex完整实现
 
 **完整实现**: 一个简化版的Mutex，展示核心机制

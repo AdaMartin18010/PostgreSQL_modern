@@ -88,7 +88,7 @@ CAP权衡分析工具演进:
 3. **量化分析**: 量化CAP影响，准确评估
 4. **系统设计**: 为分布式系统设计提供参考
 
-**反例: 无工具的系统问题**
+**反例: 无工具的系统问题**:
 
 ```text
 错误设计: 无CAP权衡分析器，手动分析
@@ -597,7 +597,7 @@ if __name__ == '__main__':
 
 ### 3.3 实际案例
 
-**案例1: 金融交易系统**
+**案例1: 金融交易系统**:
 
 ```python
 request = CAPAnalysisRequest(
@@ -615,7 +615,7 @@ result = analyzer.analyze(request.dict())
 # Top recommendation: PostgreSQL + Streaming Replication (match_score: 92)
 ```
 
-**案例2: 社交网络系统**
+**案例2: 社交网络系统**:
 
 ```python
 request = CAPAnalysisRequest(
