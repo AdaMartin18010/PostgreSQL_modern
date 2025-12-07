@@ -109,7 +109,7 @@ Raft的提出使得共识协议在工程实践中得到广泛应用。
 3. **实际应用**: etcd、TiKV等系统的核心机制
 4. **指导设计**: 为分布式系统设计提供实践指导
 
-**反例: 无共识协议的系统问题**
+**反例: 无共识协议的系统问题**:
 
 ```text
 错误设计: 无共识机制的分布式系统
@@ -251,7 +251,7 @@ $$\therefore \text{Leader Completeness} \quad \square$$
 
 ### 3.1 Basic Paxos
 
-**Phase 1: Prepare**
+**Phase 1: Prepare**:
 
 ```python
 class Proposer:
@@ -270,7 +270,7 @@ class Proposer:
         return None
 ```
 
-**Phase 2: Accept**
+**Phase 2: Accept**:
 
 ```python
 def accept(self, n, value):
