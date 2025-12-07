@@ -819,7 +819,7 @@ $$(v.xmax = 0 \lor v.xmax \geq snap.xmax \lor v.xmax \in snap.xip)$$
 
 **正例分析**:
 
-**正例1: 正确的快照创建和使用**
+**正例1: 正确的快照创建和使用**:
 
 ```sql
 -- 场景: 事务T1使用Repeatable Read
@@ -854,7 +854,7 @@ COMMIT;
 
 ---
 
-**正例2: 语句级快照的正确使用**
+**正例2: 语句级快照的正确使用**:
 
 ```sql
 -- 场景: 事务T1使用Read Committed
@@ -889,7 +889,7 @@ COMMIT;
 
 **反例分析**:
 
-**反例1: 快照创建时机错误**
+**反例1: 快照创建时机错误**:
 
 ```sql
 -- 错误场景: Repeatable Read在语句开始时创建快照
@@ -942,7 +942,7 @@ class CorrectRepeatableReadTransaction:
 
 ---
 
-**反例2: 快照xip列表不完整**
+**反例2: 快照xip列表不完整**:
 
 ```sql
 -- 错误场景: 快照创建时未正确获取活跃事务列表
