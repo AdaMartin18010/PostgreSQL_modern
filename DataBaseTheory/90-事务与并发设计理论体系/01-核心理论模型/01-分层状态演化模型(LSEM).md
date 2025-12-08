@@ -674,11 +674,17 @@ Read Committed (读已提交) 是数据库事务隔离的基础级别，其设�
 
 **定理4.2.1 (Read Committed可见性)**:
 
-$$\forall \text{stmt} \in T, \forall \text{tuple } t: \text{Visible}(t, \text{Snapshot}(\text{stmt})) \iff$$
+$$
+\forall \text{stmt} \in T, \forall \text{tuple } t: \text{Visible}(t, \text{Snapshot}(\text{stmt})) \iff
+$$
 
-$$(\text{Committed}(t.\text{xmin}) \land t.\text{xmin} < \text{Snapshot}.\text{xmax} \land t.\text{xmin} \notin \text{Snapshot}.\text{xip}) \land$$
+$$
+(\text{Committed}(t.\text{xmin}) \land t.\text{xmin} < \text{Snapshot}.\text{xmax} \land t.\text{xmin} \notin \text{Snapshot}.\text{xip}) \land
+$$
 
-$$(\neg \text{Committed}(t.\text{xmax}) \lor t.\text{xmax} \geq \text{Snapshot}.\text{xmax} \lor t.\text{xmax} \in \text{Snapshot}.\text{xip})$$
+$$
+(\neg \text{Committed}(t.\text{xmax}) \lor t.\text{xmax} \geq \text{Snapshot}.\text{xmax} \lor t.\text{xmax} \in \text{Snapshot}.\text{xip})
+$$
 
 **证明**:
 

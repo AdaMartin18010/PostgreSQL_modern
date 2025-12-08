@@ -205,7 +205,9 @@
 
 ### 吞吐量公式
 
-$$TPS = \frac{Concurrency}{Latency_{avg}} \times Factor_{isolation} \times Factor_{index} \times (1 - Overhead_{vacuum})$$
+$$
+TPS = \frac{Concurrency}{Latency_{avg}} \times Factor_{isolation} \times Factor_{index} \times (1 - Overhead_{vacuum})
+$$
 
 ### 延迟分解
 
