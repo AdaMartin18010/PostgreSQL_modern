@@ -181,7 +181,7 @@ $$TPS = \frac{Concurrency}{Latency} \times IsolationFactor$$
 
 **A**: 使用CAP决策树
 
-```
+```text
 需要强一致性？
   └─ 是 → CP (etcd, PostgreSQL同步)
   └─ 否 → AP (Cassandra, DynamoDB)
@@ -235,7 +235,7 @@ $$TPS = \frac{Concurrency}{Latency} \times IsolationFactor$$
 
 **A**: 学术引用格式
 
-```
+```text
 PostgreSQL理论研究组. (2025). 事务与并发设计理论体系 (TCDT) v1.0.0.
 Retrieved from e:/_src/PostgreSQL_modern/DataBaseTheory/90-事务与并发设计理论体系/
 ```

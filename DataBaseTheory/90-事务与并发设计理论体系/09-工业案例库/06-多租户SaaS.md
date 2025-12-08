@@ -112,7 +112,7 @@
 3. **安全性保证**: 掌握数据隔离方法
 4. **系统设计**: 为设计新系统提供参考
 
-**反例: 无案例的系统问题**
+**反例: 无案例的系统问题**:
 
 ```text
 错误设计: 无多租户SaaS系统案例，盲目设计
@@ -735,7 +735,7 @@ CREATE TRIGGER audit_customers
 | **纯RLS** | 100% | 良好 | 简单 | 低 | ⚠️ 大租户性能差 |
 | **纯分区** | 100% | 最优 | 复杂 | 高 | ❌ 管理成本高 |
 
-**决策2: 连接池复用**
+**决策2: 连接池复用**:
 
 **技术决策理由**:
 
@@ -765,7 +765,7 @@ CREATE TRIGGER audit_customers
 | **连接池复用** | 200 | 低 | 高 | ✅ 最优 |
 | **每租户一连接** | 10,000 | 高 | 低 | ❌ 资源不足 |
 
-**决策3: JWT租户识别**
+**决策3: JWT租户识别**:
 
 **技术决策理由**:
 
@@ -795,7 +795,7 @@ CREATE TRIGGER audit_customers
 | **JWT** | 无状态 | 低 | 最优 | ✅ 最优 |
 | **Session** | 有状态 | 中 | 中等 | ⚠️ 需要共享存储 |
 
-**决策4: 配额管理**
+**决策4: 配额管理**:
 
 **技术决策理由**:
 
@@ -820,7 +820,7 @@ CREATE TRIGGER audit_customers
 
 #### 7.1.2 错误决策的深入分析
 
-**错误决策1: 初期未分区**
+**错误决策1: 初期未分区**:
 
 **技术分析**:
 
@@ -854,7 +854,7 @@ CREATE TRIGGER audit_customers
 | **大租户查询延迟** | 500ms | 50ms | -90% |
 | **VACUUM时间** | 4小时 | 30分钟 | -87.5% |
 
-**错误决策2: 索引未包含tenant_id**
+**错误决策2: 索引未包含tenant_id**:
 
 **技术分析**:
 
@@ -888,7 +888,7 @@ CREATE TRIGGER audit_customers
                     开始：设计多租户SaaS系统
                             │
                 ┌───────────┴───────────┐
-                │   租户规模分析        │
+                │   租户规模分析         │
                 └───────────┬───────────┘
                             │
             ┌───────────────┼───────────────┐
@@ -946,13 +946,15 @@ $$Connections_{needed} = \frac{50,000}{250} = 200$$
 
 **连接数节省**:
 
-$$Savings = \frac{Connections_{per\_tenant} - Connections_{pooled}}{Connections_{per\_tenant}} = \frac{10,000 - 200}{10,000} = 98\%$$
+$$
+Savings = \frac{Connections_{per\_tenant} - Connections_{pooled}}{Connections_{per\_tenant}} = \frac{10,000 - 200}{10,000} = 98\%
+$$
 
 ### 7.4 最佳实践与技术原则
 
 #### 7.4.1 多租户系统设计原则
 
-**原则1: 数据库层隔离（Database-Level Isolation）**
+**原则1: 数据库层隔离（Database-Level Isolation）**:
 
 **技术实现**:
 
@@ -963,7 +965,7 @@ $$Savings = \frac{Connections_{per\_tenant} - Connections_{pooled}}{Connections_
 └─ 安全性: 即使应用层有bug，数据也安全
 ```
 
-**原则2: 资源隔离（Resource Isolation）**
+**原则2: 资源隔离（Resource Isolation）**:
 
 **技术实现**:
 
@@ -980,7 +982,7 @@ ALTER RESOURCE GROUP tenant_group SET cpu_rate_limit = 20;
 ALTER ROLE tenant_user SET resource_group = 'tenant_group';
 ```
 
-**原则3: 配额管理（Quota Management）**
+**原则3: 配额管理（Quota Management）**:
 
 **技术实现**:
 

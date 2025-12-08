@@ -66,7 +66,9 @@
 
 **历史背景**:
 
-PostgreSQL从1996年开始采用MVCC作为核心并发控制机制，经过20多年的演进，形成了完整的MVCC实现体系。理解PostgreSQL MVCC的源码实现，不仅有助于理解MVCC理论，还能为优化数据库性能、解决实际问题提供指导。从PostgreSQL 7.0到PostgreSQL 16，MVCC实现经历了多次重大优化，包括HOT机制、Visibility Map、并行VACUUM等。
+PostgreSQL从1996年开始采用MVCC作为核心并发控制机制，经过20多年的演进，形成了完整的MVCC实现体系。
+理解PostgreSQL MVCC的源码实现，不仅有助于理解MVCC理论，还能为优化数据库性能、解决实际问题提供指导。
+从PostgreSQL 7.0到PostgreSQL 16，MVCC实现经历了多次重大优化，包括HOT机制、Visibility Map、并行VACUUM等。
 
 **深度历史演进与硬件背景**:
 
@@ -191,7 +193,7 @@ PostgreSQL MVCC实现演进:
 3. **问题诊断**: 理解实现，诊断和解决实际问题
 4. **系统设计**: 为设计新系统提供参考
 
-**反例: 不理解实现导致的问题**
+**反例: 不理解实现导致的问题**:
 
 ```text
 错误设计: 不理解MVCC实现，盲目优化
