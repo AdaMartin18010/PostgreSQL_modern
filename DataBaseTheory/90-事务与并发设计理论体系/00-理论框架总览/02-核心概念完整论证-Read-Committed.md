@@ -99,7 +99,7 @@
 
 **形式化描述** (ANSI SQL-92):
 
-```
+```text
 READ COMMITTED Level:
   - P1 (Dirty Read): NOT POSSIBLE
   - P2 (Non-repeatable Read): POSSIBLE
@@ -142,7 +142,7 @@ RC = {G0, G1a, G1b, G1c} - {P0}
 
 **基于冲突图的定义**:
 
-```
+```text
 RC允许的冲突:
   - wr (Write-Read): 允许（导致不可重复读）
   - rw (Read-Write): 允许（导致幻读）
@@ -1085,7 +1085,7 @@ SELECT COUNT(*) FROM users WHERE last_active > NOW() - INTERVAL '5 minutes';
 
 **量化数据** (PostgreSQL基准测试):
 
-```
+```text
 测试环境: PostgreSQL 15, 100并发连接, TPC-B基准
 
 隔离级别对比:
