@@ -12,6 +12,7 @@
 **推荐名称**: `postgresql-concurrency-theory`
 
 **备选名称**:
+
 - `transaction-concurrency-design-theory`
 - `pg-mvcc-theory`
 - `lsem-framework`
@@ -28,7 +29,7 @@
 
 ## 📁 仓库结构
 
-```
+```text
 postgresql-concurrency-theory/
 ├── README.md                    # 项目主README
 ├── LICENSE                      # 开源协议（MIT/Apache 2.0）
@@ -126,7 +127,6 @@ python main.py
 ## 🙏 致谢
 
 感谢所有为这个项目做出贡献的开发者！
-```
 
 ### LICENSE (MIT)
 
