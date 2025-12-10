@@ -183,7 +183,7 @@ SELECT ...;
 
 ### 3.2 内存使用分析
 
-**案例：排序内存不足**
+**案例：排序内存不足**:
 
 ```sql
 EXPLAIN (ANALYZE, MEMORY)
@@ -217,7 +217,7 @@ Sort  (actual time=856.234...ms rows=10000000 loops=1)
 
 ### 3.3 I/O性能分析
 
-**案例：I/O瓶颈**
+**案例：I/O瓶颈**:
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS, IO_TIMING)
@@ -231,7 +231,7 @@ Seq Scan on orders  (actual time=12345.678...ms)
   I/O Timings: read time=11234.567 ms  ⚠️ 91% 时间在I/O
 ```
 
-**优化：添加索引**
+**优化：添加索引**:
 
 ```sql
 CREATE INDEX idx_orders_created_at ON orders(created_at);

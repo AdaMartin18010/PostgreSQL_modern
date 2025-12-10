@@ -10,6 +10,7 @@
 > **本项目（实践）与 [MVCC-ACID-CAP](../MVCC-ACID-CAP/README.md)（理论）分离**
 >
 > **如何选择**：
+>
 > - 💻 **需要实践应用** → 本项目（DataBaseTheory）
 >   - PostgreSQL 18：100%覆盖，25,000字详细分析
 >   - 实战案例：7个生产级案例（电商、OLAP、IoT等）

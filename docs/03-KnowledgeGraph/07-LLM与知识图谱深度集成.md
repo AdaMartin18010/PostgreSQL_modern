@@ -29,8 +29,6 @@
   - [2. Text-to-Cypher生成系统](#2-text-to-cypher生成系统)
     - [2.1 Prompt工程](#21-prompt工程)
       - [高质量Prompt模板](#高质量prompt模板)
-  - [重要约束](#重要约束)
-  - [输出格式](#输出格式)
     - [2.2 Few-Shot学习](#22-few-shot学习)
       - [动态示例选择](#动态示例选择)
     - [2.3 错误修复机制](#23-错误修复机制)
@@ -74,7 +72,7 @@
 
 #### 融合的价值
 
-```
+```text
 LLM + KG融合系统 = 1 + 1 > 2
 
 优势：
@@ -89,7 +87,7 @@ LLM + KG融合系统 = 1 + 1 > 2
 
 #### 模式1: LLM增强知识图谱
 
-```
+```text
 用户问题 → LLM理解 → 生成Cypher → KG查询 → 返回结果
 ```
 
@@ -97,7 +95,7 @@ LLM + KG融合系统 = 1 + 1 > 2
 
 #### 模式2: 知识图谱增强LLM
 
-```
+```text
 用户问题 → KG检索相关知识 → 注入LLM上下文 → LLM生成答案
 ```
 
@@ -105,7 +103,7 @@ LLM + KG融合系统 = 1 + 1 > 2
 
 #### 模式3: 双向增强 (推荐)
 
-```
+```text
 用户问题
    ├─→ LLM理解 + 实体识别
    ├─→ KG子图检索
@@ -187,33 +185,34 @@ class CypherPromptTemplate:
 ## Cypher语法规则
 
 1. **基本模式匹配**
-   ```cypher
-   MATCH (n:Label {{property: 'value'}})
-   RETURN n
-   ```
+
+    ```cypher
+    MATCH (n:Label {{property: 'value'}})
+    RETURN n
+    ```
 
 2. **关系匹配**
 
-   ```cypher
-   MATCH (a:Person)-[r:KNOWS]->(b:Person)
-   WHERE r.since > 2020
-   RETURN a.name, b.name
-   ```
+    ```cypher
+    MATCH (a:Person)-[r:KNOWS]->(b:Person)
+    WHERE r.since > 2020
+    RETURN a.name, b.name
+    ```
 
 3. **路径查询**
 
-   ```cypher
-   MATCH path = (a)-[:KNOWS*1..3]->(b)
-   RETURN path
-   ```
+    ```cypher
+    MATCH path = (a)-[:KNOWS*1..3]->(b)
+    RETURN path
+    ```
 
 4. **聚合查询**
 
-   ```cypher
-   MATCH (p:Person)-[:WORKS_FOR]->(c:Company)
-   RETURN c.name, COUNT(p) AS employee_count
-   ORDER BY employee_count DESC
-   ```
+    ```cypher
+    MATCH (p:Person)-[:WORKS_FOR]->(c:Company)
+    RETURN c.name, COUNT(p) AS employee_count
+    ORDER BY employee_count DESC
+    ```
 
 ## 重要约束
 

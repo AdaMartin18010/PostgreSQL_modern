@@ -218,7 +218,7 @@ MVCC版本链：
 
 ### 2.1 TOAST触发条件
 
-**TOAST = The Oversized-Attribute Storage Technique**
+**TOAST = The Oversized-Attribute Storage Technique**:
 
 ```sql
 -- TOAST触发条件

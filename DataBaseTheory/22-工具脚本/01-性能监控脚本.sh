@@ -15,7 +15,7 @@ echo ""
 # 1. 数据库大小
 echo "【数据库大小】"
 $PSQL -c "
-SELECT 
+SELECT
     datname,
     pg_size_pretty(pg_database_size(datname)) as size
 FROM pg_database
@@ -27,7 +27,7 @@ echo ""
 # 2. 前10慢查询
 echo "【Top 10慢查询】"
 $PSQL -c "
-SELECT 
+SELECT
     LEFT(query, 80) as query,
     calls,
     ROUND(mean_exec_time::numeric, 2) as avg_ms,
@@ -42,7 +42,7 @@ echo ""
 # 3. 连接状态
 echo "【连接状态】"
 $PSQL -c "
-SELECT 
+SELECT
     state,
     COUNT(*) as count
 FROM pg_stat_activity
@@ -54,7 +54,7 @@ echo ""
 # 4. 表膨胀Top 10
 echo "【表膨胀Top 10】"
 $PSQL -c "
-SELECT 
+SELECT
     schemaname,
     tablename,
     n_live_tup as live,
@@ -70,10 +70,10 @@ echo ""
 # 5. 缓存命中率
 echo "【缓存命中率】"
 $PSQL -c "
-SELECT 
+SELECT
     'Buffer Cache Hit Ratio' as metric,
     ROUND(
-        sum(heap_blks_hit) * 100.0 / 
+        sum(heap_blks_hit) * 100.0 /
         NULLIF(sum(heap_blks_hit + heap_blks_read), 0),
         2
     )::text || '%' as value
@@ -84,15 +84,15 @@ echo ""
 # 6. 锁等待
 echo "【锁等待】"
 LOCKS=$($PSQL -c "
-SELECT COUNT(*) 
-FROM pg_locks 
+SELECT COUNT(*)
+FROM pg_locks
 WHERE NOT granted;
 ")
 
 if [ "$LOCKS" -gt 0 ]; then
     echo "⚠️  发现 $LOCKS 个锁等待"
     $PSQL -c "
-    SELECT 
+    SELECT
         blocked.pid AS blocked_pid,
         blocking.pid AS blocking_pid,
         LEFT(blocked.query, 50) as blocked_query
@@ -113,15 +113,15 @@ echo ""
 # 7. ⭐ PostgreSQL 18特性使用情况
 echo "【PostgreSQL 18特性】"
 $PSQL -c "
-SELECT 
+SELECT
     'Builtin Connection Pool' as feature,
     current_setting('enable_builtin_connection_pooling') as enabled
 UNION ALL
-SELECT 
+SELECT
     'Async IO',
     current_setting('enable_async_io')
 UNION ALL
-SELECT 
+SELECT
     'JIT',
     current_setting('jit');
 " | column -t -s '|'

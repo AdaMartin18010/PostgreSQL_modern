@@ -305,7 +305,7 @@ WHERE xid IS NOT NULL;
 
 **A**: 多维度优化策略
 
-**策略1: 行分散**
+**策略1: 行分散**:
 
 ```sql
 -- 预分配多行，随机选择
@@ -323,7 +323,7 @@ WHERE product_id = 1
   AND shard_id = floor(random() * 10)::int;
 ```
 
-**策略2: 乐观锁**
+**策略2: 乐观锁**:
 
 ```python
 def deduct_stock(product_id, amount):
@@ -348,7 +348,7 @@ def deduct_stock(product_id, amount):
     return False
 ```
 
-**策略3: 批量写入**
+**策略3: 批量写入**:
 
 ```sql
 -- 使用COPY批量插入
@@ -482,7 +482,7 @@ MVCC (乐观):
 
 **A**: 多维度优化
 
-**优化1: 调整参数**
+**优化1: 调整参数**:
 
 ```sql
 -- 增加并行度
@@ -496,13 +496,13 @@ ALTER TABLE orders SET (
 );
 ```
 
-**优化2: 使用并行VACUUM**
+**优化2: 使用并行VACUUM**:
 
 ```sql
 VACUUM (PARALLEL 4) orders;
 ```
 
-**优化3: 分区表策略**
+**优化3: 分区表策略**:
 
 ```sql
 -- 按时间分区，只VACUUM活跃分区
@@ -586,7 +586,7 @@ USING BRIN (timestamp);
 
 **A**: 排查步骤
 
-**步骤1: 查看等待关系**
+**步骤1: 查看等待关系**:
 
 ```sql
 SELECT
@@ -600,7 +600,7 @@ JOIN pg_stat_activity AS blocking
     ON blocking.pid = ANY(pg_blocking_pids(waiting.pid));
 ```
 
-**步骤2: 查看锁信息**
+**步骤2: 查看锁信息**:
 
 ```sql
 SELECT
@@ -614,7 +614,7 @@ WHERE NOT granted
 ORDER BY pid;
 ```
 
-**步骤3: 终止阻塞事务**
+**步骤3: 终止阻塞事务**:
 
 ```sql
 -- 查看事务详情
@@ -632,7 +632,7 @@ SELECT pg_terminate_backend(<blocking_pid>);
 
 **A**: 紧急处理方案
 
-**方案1: 立即VACUUM**
+**方案1: 立即VACUUM**:
 
 ```sql
 -- 普通VACUUM（不锁表）
@@ -642,7 +642,7 @@ VACUUM ANALYZE orders;
 VACUUM FULL orders;
 ```
 
-**方案2: 重建表**
+**方案2: 重建表**:
 
 ```sql
 -- 创建新表
@@ -661,7 +661,7 @@ COMMIT;
 DROP TABLE orders_old;
 ```
 
-**方案3: 预防措施**
+**方案3: 预防措施**:
 
 ```sql
 -- 调整fillfactor（预留HOT空间）
@@ -684,7 +684,7 @@ ALTER TABLE orders SET (
 
 **A**: 扩展步骤
 
-**步骤1: 识别新层**
+**步骤1: 识别新层**:
 
 ```text
 现有: L0(存储) L1(运行时) L2(分布式)
@@ -692,7 +692,7 @@ ALTER TABLE orders SET (
 → 新增L3(边缘层)
 ```
 
-**步骤2: 定义状态空间**
+**步骤2: 定义状态空间**:
 
 ```python
 class EdgeState:
@@ -703,7 +703,7 @@ class EdgeState:
         self.sync_status: SyncStatus
 ```
 
-**步骤3: 定义可见性规则**
+**步骤3: 定义可见性规则**:
 
 ```python
 def is_visible_edge(state: EdgeState, snapshot: EdgeSnapshot) -> bool:
@@ -718,7 +718,7 @@ def is_visible_edge(state: EdgeState, snapshot: EdgeSnapshot) -> bool:
 
 **A**: 形式化验证方法
 
-**方法1: 定理证明**
+**方法1: 定理证明**:
 
 ```coq
 (* Coq形式化验证 *)
@@ -731,7 +731,7 @@ Proof.
 Qed.
 ```
 
-**方法2: 模型检查**
+**方法2: 模型检查**:
 
 ```tla
 (* TLA+模型检查 *)

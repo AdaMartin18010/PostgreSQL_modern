@@ -290,7 +290,7 @@ CREATE INDEX ON documents USING hnsw (embedding vector_ip_ops);       -- IP
 
 ### 3.2 查询优化
 
-**优化1：预过滤**
+**优化1：预过滤**:
 
 ```sql
 -- ❌ 不好：先相似度搜索，再过滤
@@ -314,7 +314,7 @@ LIMIT 10;
 -- 只在相关文档中搜索
 ```
 
-**优化2：复合索引**
+**优化2：复合索引**:
 
 ```sql
 -- 创建复合索引
@@ -324,7 +324,7 @@ CREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops);
 -- 查询优化器会自动选择最优路径
 ```
 
-**优化3：批量查询**
+**优化3：批量查询**:
 
 ```python
 import asyncpg
@@ -362,36 +362,36 @@ async def batch_search(queries):
 
 ```text
 ┌─────────────────────────────────────────────┐
-│              RAG系统架构                      │
+│              RAG系统架构                     │
 ├─────────────────────────────────────────────┤
-│                                               │
-│  1. 文档摄入（Ingestion）                     │
-│     ├─ 文档加载                               │
-│     ├─ 文本分割（Chunking）                   │
-│     ├─ Embedding生成                         │
-│     └─ 存储到PostgreSQL                      │
-│          ↓                                    │
-│  2. 检索（Retrieval）                         │
+│                                             │
+│  1. 文档摄入（Ingestion）                    │
+│     ├─ 文档加载                              │
+│     ├─ 文本分割（Chunking）                  │
+│     ├─ Embedding生成                        │
+│     └─ 存储到PostgreSQL                     │
+│          ↓                                  │
+│  2. 检索（Retrieval）                        │
 │     ├─ 用户查询Embedding                     │
-│     ├─ 向量相似度搜索                         │
+│     ├─ 向量相似度搜索                        │
 │     ├─ 重排序（Reranking）                   │
 │     └─ 返回Top-K文档                         │
-│          ↓                                    │
+│          ↓                                  │
 │  3. 增强（Augmentation）                     │
 │     ├─ 构建Prompt                            │
 │     ├─ 添加检索到的上下文                     │
-│     └─ 添加系统指令                           │
-│          ↓                                    │
+│     └─ 添加系统指令                          │
+│          ↓                                  │
 │  4. 生成（Generation）                       │
 │     ├─ 调用LLM                               │
-│     ├─ 流式输出                               │
-│     └─ 返回结果                               │
+│     ├─ 流式输出                              │
+│     └─ 返回结果                              │
 └─────────────────────────────────────────────┘
 ```
 
 ### 4.2 完整实现
 
-**步骤1：数据库Schema**
+**步骤1：数据库Schema**:
 
 ```sql
 -- 文档表
@@ -425,7 +425,7 @@ CREATE INDEX ON document_chunks (document_id);
 CREATE INDEX ON documents USING gin (metadata);
 ```
 
-**步骤2：文档摄入（Python）**
+**步骤2：文档摄入（Python）**:
 
 ```python
 import openai
@@ -498,7 +498,7 @@ doc_id = ingest_document(
 )
 ```
 
-**步骤3：RAG检索**
+**步骤3：RAG检索**:
 
 ```python
 def rag_search(conn, query, top_k=5):

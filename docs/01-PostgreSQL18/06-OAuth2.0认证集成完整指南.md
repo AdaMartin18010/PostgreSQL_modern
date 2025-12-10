@@ -136,7 +136,7 @@ hostssl all         admin           127.0.0.1/32    scram-sha-256
 
 ### 3.1 Google OAuth集成
 
-**步骤1：Google Cloud Console配置**
+**步骤1：Google Cloud Console配置**:
 
 ```text
 1. 访问 https://console.cloud.google.com
@@ -148,7 +148,7 @@ hostssl all         admin           127.0.0.1/32    scram-sha-256
 5. 获取 Client ID 和 Client Secret
 ```
 
-**步骤2：PostgreSQL配置**
+**步骤2：PostgreSQL配置**:
 
 ```sql
 -- postgresql.conf
@@ -158,7 +158,7 @@ oauth_audience = 'YOUR-CLIENT-ID.apps.googleusercontent.com'
 oauth_jwks_uri = 'https://www.googleapis.com/oauth2/v3/certs'
 ```
 
-**步骤3：创建用户和角色映射**
+**步骤3：创建用户和角色映射**:
 
 ```sql
 -- 创建角色
@@ -172,7 +172,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO google_users;
 CREATE USER "user@example.com" WITH ROLE google_users;
 ```
 
-**步骤4：应用连接代码**
+**步骤4：应用连接代码**:
 
 ```python
 import psycopg2
@@ -202,7 +202,7 @@ conn = psycopg2.connect(
 
 ### 3.2 Microsoft Azure AD集成
 
-**步骤1：Azure Portal配置**
+**步骤1：Azure Portal配置**:
 
 ```text
 1. 访问 https://portal.azure.com
@@ -217,7 +217,7 @@ conn = psycopg2.connect(
 5. Certificates & secrets → New client secret
 ```
 
-**步骤2：PostgreSQL配置**
+**步骤2：PostgreSQL配置**:
 
 ```sql
 -- postgresql.conf
@@ -231,7 +231,7 @@ oauth_claim_role_mapping = on
 oauth_role_claim = 'groups'  # Azure AD中的组ID
 ```
 
-**步骤3：角色映射配置**
+**步骤3：角色映射配置**:
 
 ```sql
 -- 创建映射文件：/etc/postgresql/oauth/role_mapping.conf
@@ -240,7 +240,7 @@ oauth_role_claim = 'groups'  # Azure AD中的组ID
 87654321-4321-4321-4321-210987654321 = admins
 ```
 
-**步骤4：应用连接（Python）**
+**步骤4：应用连接（Python）**:
 
 ```python
 from msal import ConfidentialClientApplication

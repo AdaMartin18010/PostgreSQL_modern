@@ -66,7 +66,9 @@
 
 **历史背景**:
 
-在分布式系统设计中，如何权衡一致性（Consistency）、可用性（Availability）和分区容错性（Partition Tolerance）一直是一个核心问题。2000年，Eric Brewer提出了CAP定理，揭示了分布式系统设计的根本限制。2002年，Gilbert和Lynch给出了CAP定理的形式化证明。理解CAP权衡关系，有助于在分布式环境下选择合适的一致性策略，避免常见的设计错误。
+在分布式系统设计中，如何权衡一致性（Consistency）、可用性（Availability）和分区容错性（Partition Tolerance）一直是一个核心问题。
+2000年，Eric Brewer提出了CAP定理，揭示了分布式系统设计的根本限制。
+2002年，Gilbert和Lynch给出了CAP定理的形式化证明。理解CAP权衡关系，有助于在分布式环境下选择合适的一致性策略，避免常见的设计错误。
 
 **理论基础**:
 

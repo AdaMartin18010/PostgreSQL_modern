@@ -6,22 +6,22 @@
 ┌────────────────────────────────────────────────┐
 │         RAG (Retrieval Augmented Generation)   │
 ├────────────────────────────────────────────────┤
-│                                                  │
+│                                                │
 │  用户问题                                       │
-│     ↓                                           │
-│  [Embedding Model]                              │
-│     ↓                                           │
+│     ↓                                          │
+│  [Embedding Model]                             │
+│     ↓                                          │
 │  问题向量                                       │
-│     ↓                                           │
+│     ↓                                          │
 │  [Vector Search] ← PostgreSQL + pgvector       │
-│     ↓                                           │
+│     ↓                                          │
 │  相关文档Top-K                                  │
-│     ↓                                           │
-│  [构建Prompt]                                   │
-│  Context + Question                             │
-│     ↓                                           │
-│  [LLM]                                          │
-│     ↓                                           │
+│     ↓                                          │
+│  [构建Prompt]                                  │
+│  Context + Question                            │
+│     ↓                                          │
+│  [LLM]                                         │
+│     ↓                                          │
 │  生成答案                                       │
 └────────────────────────────────────────────────┘
 ```

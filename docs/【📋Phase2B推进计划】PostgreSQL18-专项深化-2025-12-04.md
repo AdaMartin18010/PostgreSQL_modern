@@ -15,6 +15,7 @@
 **Phase 2A回顾**：核心功能深化（时态约束、并行查询、WAL优化、分区表等）
 
 **Phase 2B定位**：专项技术深化，覆盖以下领域：
+
 1. **系统内核优化**：统计信息、存储管理
 2. **企业安全**：安全增强与零信任架构
 3. **生态扩展**：插件开发、多模态能力
@@ -50,6 +51,7 @@
 ### 🔥 优先推进：16-统计信息增强与查询规划（P0）
 
 **为什么优先**：
+
 - ✅ 直接影响查询性能（与文档13查询优化器配合）
 - ✅ PostgreSQL 18统计信息有重要增强
 - ✅ 与已完成的文档13形成完整体系
@@ -138,11 +140,13 @@ WHERE EXTRACT(YEAR FROM order_date) = 2024
 ```
 
 ### 2. 改进的直方图算法
+
 - Equi-height histograms（等高直方图）
 - Equi-width histograms（等宽直方图）
 - PostgreSQL 18的混合策略
 
 ### 3. 自适应采样率
+
 - 根据表大小动态调整采样率
 - 减少大表ANALYZE时间
 - 保持统计信息精度
@@ -160,6 +164,7 @@ WHERE EXTRACT(YEAR FROM order_date) = 2024
 1. **电商订单系统**：多列相关性统计优化
 2. **金融风控系统**：表达式统计应用
 3. **日志分析系统**：大表统计信息收集策略
+
 ```
 
 **预计产出**：
@@ -267,11 +272,13 @@ ALTER TABLE toast_test ALTER COLUMN data SET STORAGE MAIN;
 ```
 
 ### 2. PostgreSQL 18 LZ4压缩
+
 - 压缩速度：+300% vs pglz
 - 压缩率：相当或更好
 - CPU开销：-50%
 
 ### 3. HOT更新优化
+
 ```sql
 -- 设置合适的fillfactor
 ALTER TABLE orders SET (fillfactor = 80);
@@ -295,6 +302,7 @@ ALTER TABLE orders SET (fillfactor = 80);
 1. **内容管理系统**：大文本TOAST优化
 2. **图片存储系统**：BLOB存储策略
 3. **日志系统**：表膨胀治理
+
 ```
 
 **预计产出**：
@@ -343,6 +351,7 @@ CREATE POLICY tenant_isolation ON orders
 ```
 
 ### 3. 零信任架构
+
 - 最小权限原则
 - 持续验证
 - 微隔离
@@ -354,6 +363,7 @@ CREATE POLICY tenant_isolation ON orders
 | **RLS策略** | -5~15% | 数据隔离 |
 | **TDE加密** | -10~20% | 数据保护 |
 | **审计日志** | -3~8% | 合规追溯 |
+
 ```
 
 **预计产出**：
@@ -407,11 +417,13 @@ SELECT * FROM JSON_TABLE(
 ```
 
 ### 2. 向量数据库（pgvector）
+
 - HNSW vs IVFFlat索引对比
 - 向量相似度搜索优化
 - RAG（检索增强生成）架构
 
 ### 3. 图数据库（Apache AGE）
+
 - Cypher查询语言
 - 图算法（最短路径/社区发现）
 - 知识图谱应用
@@ -425,9 +437,11 @@ SELECT * FROM JSON_TABLE(
 | **时序查询** | InfluxDB | TimescaleDB | -10~20% |
 
 **但PostgreSQL优势**：
+
 - ✅ 一个数据库，多种能力
 - ✅ 统一管理，降低复杂度
 - ✅ 事务一致性保证
+
 ```
 
 **预计产出**：
@@ -476,6 +490,7 @@ SELECT * FROM JSON_TABLE(
 ### 推荐执行顺序
 
 ```
+
 Phase 2B执行计划（预计6天，每天1篇）
 
 Day 1: 16-统计信息增强与查询规划 (32k字) 🔥
@@ -486,6 +501,7 @@ Day 5: 26-扩展开发与插件生态 (33k字)
 Day 6: 28-云原生存储引擎适配 (32k字)
 
 总计：200,000字，6篇企业级指南
+
 ```
 
 ### 质量标准（与Phase 2A一致）

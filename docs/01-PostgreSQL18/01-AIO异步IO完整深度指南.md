@@ -615,7 +615,7 @@ psql -c "SHOW effective_io_concurrency;"
 
 ### 5.3 验证AIO是否生效
 
-**方法1：查看进程**
+**方法1：查看进程**:
 
 ```bash
 # 查看PostgreSQL是否使用io_uring
@@ -627,7 +627,7 @@ ls -l /proc/<PID>/fd | grep io_uring
 # 如果看到io_uring相关的fd，说明AIO已启用
 ```
 
-**方法2：查询执行计划**
+**方法2：查询执行计划**:
 
 ```sql
 -- 执行EXPLAIN ANALYZE
@@ -637,7 +637,7 @@ EXPLAIN (ANALYZE, BUFFERS) SELECT COUNT(*) FROM large_table;
 -- PostgreSQL 18会显示预读信息
 ```
 
-**方法3：监控I/O指标**
+**方法3：监控I/O指标**:
 
 ```sql
 -- 查看I/O统计
@@ -693,7 +693,7 @@ LIMIT 10;
 
 **调优策略**：
 
-**策略1：调整预读距离**
+**策略1：调整预读距离**:
 
 ```sql
 -- effective_io_concurrency越大，预读越激进
@@ -720,7 +720,7 @@ SET effective_io_concurrency = 200;
 - NVMe SSD: 200-500
 - NVMe RAID: 500-1000
 
-**策略2：调整io_uring队列深度**
+**策略2：调整io_uring队列深度**:
 
 ```sql
 -- 更大的队列=更多并发I/O，但占用更多内存
@@ -745,7 +745,7 @@ ALTER SYSTEM SET io_uring_queue_depth = 512;
 - 性能没有提升
 - `ps`看不到io_uring相关fd
 
-**原因1：io_direct未启用**
+**原因1：io_direct未启用**:
 
 ```bash
 # 检查
@@ -759,7 +759,7 @@ SELECT pg_reload_conf();
 sudo systemctl restart postgresql
 ```
 
-**原因2：内核不支持io_uring**
+**原因2：内核不支持io_uring**:
 
 ```bash
 # 检查内核版本
@@ -774,7 +774,7 @@ sudo apt install linux-generic-hwe-22.04
 sudo reboot
 ```
 
-**原因3：PostgreSQL编译时未启用**
+**原因3：PostgreSQL编译时未启用**:
 
 ```bash
 # 检查编译选项
@@ -788,21 +788,21 @@ pg_config --configure | grep io_uring
 
 **可能原因**：
 
-**原因1：HDD上使用AIO**
+**原因1：HDD上使用AIO**:
 
 ```text
 HDD的随机I/O性能很差，AIO的优势体现不出来
 解决：HDD场景禁用io_direct，使用OS缓存
 ```
 
-**原因2：预读距离过大**
+**原因2：预读距离过大**:
 
 ```sql
 -- 预读过多会浪费I/O带宽和缓存
 SET effective_io_concurrency = 50;  -- 降低
 ```
 
-**原因3：shared_buffers过小**
+**原因3：shared_buffers过小**:
 
 ```text
 AIO预读的块需要放入shared_buffers
@@ -815,7 +815,7 @@ AIO预读的块需要放入shared_buffers
 
 **症状**：
 
-```
+```text
 ERROR: io_uring: submission queue full
 ```
 
