@@ -49,7 +49,7 @@ npm install @types/lodash
 
 ## 📁 项目结构
 
-```
+```text
 frontend/
 ├── src/
 │   ├── components/           # 组件
