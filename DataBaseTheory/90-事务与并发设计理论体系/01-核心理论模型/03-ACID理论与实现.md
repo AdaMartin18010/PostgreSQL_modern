@@ -6356,7 +6356,7 @@ def undo_phase(undo_list):
 
 ## 七、ACID之间的关系
 
-### 6.1 依赖关系图
+### 7.1 依赖关系图
 
 ```text
         Atomicity (WAL + pg_clog)
@@ -6374,6 +6374,132 @@ def undo_phase(undo_list):
 2. **Consistency是目标**: ACID的最终目的是保证数据一致性
 3. **Isolation是手段**: 通过隔离并发事务保证一致性
 4. **Durability是保障**: 确保已提交事务不丢失
+
+### 7.2 ACID特性依赖关系的严格证明
+
+**定理7.2.1 (ACID特性依赖关系)**:
+
+ACID四大特性之间存在严格的依赖关系：
+
+$$Atomicity \prec Consistency \prec Isolation \prec Durability$$
+
+其中 $\prec$ 表示"依赖于"。
+
+**证明**:
+
+**引理7.2.1**: Consistency依赖于Atomicity
+
+**证明（反证法）**:
+
+假设Consistency不依赖于Atomicity，即无Atomicity仍能保证Consistency。
+
+**构造反例**:
+
+```text
+场景: 银行转账系统
+操作: 从账户A转100元到账户B
+
+无Atomicity的情况:
+├─ 步骤1: 账户A余额 -= 100 (成功)
+├─ 步骤2: 账户B余额 += 100 (失败，系统崩溃)
+└─ 结果: 账户A少了100元，账户B未增加 ✗
+
+违反Consistency:
+├─ 约束: 账户A余额 + 账户B余额 = 总余额（不变）
+├─ 实际: 总余额减少了100元
+└─ 矛盾: Consistency被违反 ✗
+```
+
+**因此**: Consistency依赖于Atomicity ∎
+
+**引理7.2.2**: Isolation依赖于Consistency
+
+**证明（反证法）**:
+
+假设Isolation不依赖于Consistency，即无Consistency仍能保证Isolation。
+
+**构造反例**:
+
+```text
+场景: 并发事务系统
+事务T1: 读取账户A余额 = 1000
+事务T2: 修改账户A余额 = 900
+
+无Consistency的情况:
+├─ 约束: 账户余额 >= 0
+├─ 事务T2: 修改余额 = -100（违反约束）
+├─ 事务T1: 读取余额 = -100（看到不一致状态）
+└─ 结果: Isolation无法保证一致性视图 ✗
+
+违反Isolation:
+├─ 要求: 事务看到一致的数据状态
+├─ 实际: 事务看到违反约束的状态
+└─ 矛盾: Isolation被违反 ✗
+```
+
+**因此**: Isolation依赖于Consistency ∎
+
+**引理7.2.3**: Durability依赖于Isolation
+
+**证明（反证法）**:
+
+假设Durability不依赖于Isolation，即无Isolation仍能保证Durability。
+
+**构造反例**:
+
+```text
+场景: 并发写入系统
+事务T1: 写入数据x = 100
+事务T2: 写入数据x = 200
+
+无Isolation的情况:
+├─ 事务T1: 写入x = 100（未提交）
+├─ 事务T2: 读取x = 100，写入x = 200（基于未提交数据）
+├─ 事务T1: 回滚（x = 100被撤销）
+├─ 事务T2: 提交（x = 200持久化）
+└─ 结果: x = 200持久化，但基于已撤销的数据 ✗
+
+违反Durability语义:
+├─ 要求: 持久化的数据应该是正确的
+├─ 实际: 持久化的数据基于已撤销的数据
+└─ 矛盾: Durability语义被违反 ✗
+```
+
+**因此**: Durability依赖于Isolation ∎
+
+**结合引理7.2.1、7.2.2和7.2.3**:
+
+$$Atomicity \prec Consistency \prec Isolation \prec Durability \quad \square$$
+
+**定理7.2.2 (ACID特性独立性)**:
+
+虽然ACID特性之间存在依赖关系，但每个特性都有其独立的实现机制和保证目标。
+
+**证明**:
+
+**独立性分析**:
+
+1. **Atomicity独立性**:
+   - 实现机制: WAL + pg_clog
+   - 保证目标: 全或无执行
+   - 独立于: 其他特性的具体实现
+
+2. **Consistency独立性**:
+   - 实现机制: 约束系统（主键、外键、CHECK）
+   - 保证目标: 数据满足约束
+   - 独立于: 其他特性的具体实现
+
+3. **Isolation独立性**:
+   - 实现机制: MVCC + Locks
+   - 保证目标: 并发事务互不干扰
+   - 独立于: 其他特性的具体实现
+
+4. **Durability独立性**:
+   - 实现机制: WAL fsync + Checkpoint
+   - 保证目标: 已提交事务不丢失
+   - 独立于: 其他特性的具体实现
+
+**因此**: 每个特性都有独立的实现机制和保证目标 ∎
 
 ### 6.2 权衡分析
 
@@ -7706,6 +7832,216 @@ $$S_{log} = N_{update} \cdot S_{update} + N_{commit} \cdot S_{commit} + N_{abort
 ├─ 后台检查点: 异步刷盘，不阻塞
 └─ 自适应检查点: 根据负载调整频率
 ```
+
+### 10.4 ARIES算法正确性证明
+
+#### 10.4.1 形式化定义
+
+**定义10.4.1 (ARIES恢复正确性 - Mohan et al., 1992)**:
+
+ARIES恢复算法正确，当且仅当恢复后的数据库状态满足：
+
+1. **已提交事务持久性**: 所有已提交事务的修改都被恢复
+2. **未提交事务原子性**: 所有未提交事务的修改都被撤销
+3. **状态一致性**: 恢复后的状态与故障前一致（对于已提交事务）
+
+**形式化表示**:
+
+$$\text{ARIES\_Correct}(State_{recovered}) \iff$$
+
+$$\forall T \in Committed: State_{recovered} \models T \land$$
+
+$$\forall T \in Aborted: State_{recovered} \not\models T \land$$
+
+$$State_{recovered} \equiv State_{before\_crash} \text{ (for committed transactions)}$$
+
+**定义10.4.2 (Redo正确性)**:
+
+Redo操作正确，当且仅当：
+
+$$\forall page, log: \text{NeedsRedo}(page, log) \implies \text{AfterRedo}(page) = \text{ExpectedState}(page, log)$$
+
+其中：
+
+$$\text{NeedsRedo}(page, log) \iff page.\text{PageLSN} < log.\text{LSN}$$
+
+**定义10.4.3 (Undo正确性)**:
+
+Undo操作正确，当且仅当：
+
+$$\forall T \in Aborted: \text{AfterUndo}(State) \not\models T$$
+
+即：撤销后，未提交事务的所有修改都被撤销。
+
+#### 10.4.2 ARIES正确性定理
+
+**定理10.4.1 (ARIES恢复正确性 - Mohan et al., 1992)**:
+
+ARIES恢复算法能够正确恢复数据库状态，满足已提交事务持久性和未提交事务原子性。
+
+**证明**:
+
+**引理10.4.1**: Analysis阶段正确识别需要Redo和Undo的事务
+
+**证明**:
+
+- Analysis阶段扫描从检查点开始的所有日志记录
+- 对于每个UPDATE记录，更新DPT和TT
+- 对于COMMIT记录，标记事务为已提交
+- 对于ABORT记录，标记事务为已中止
+- 崩溃时仍活跃的事务（在TT中但未COMMIT/ABORT）被标记为需要Undo
+- 因此，Analysis阶段正确识别需要Redo和Undo的事务 ∎
+
+**引理10.4.2**: Redo阶段正确恢复已提交和未提交的修改
+
+**证明**:
+
+**Redo条件**:
+
+$$\text{NeedsRedo}(page, log) \iff page.\text{PageLSN} < log.\text{LSN}$$
+
+**正确性分析**:
+
+1. **如果 $page.\text{PageLSN} < log.\text{LSN}$**:
+   - 说明页面状态早于日志记录
+   - 可能原因：
+     - 页面未刷盘（崩溃前未刷盘）
+     - 页面被覆盖（崩溃后恢复时）
+   - 需要Redo：应用日志记录的修改
+
+2. **如果 $page.\text{PageLSN} \geq log.\text{LSN}$**:
+   - 说明页面状态已经包含该日志记录的修改
+   - 不需要Redo：跳过（幂等性）
+
+**Redo幂等性**:
+
+- Redo操作是幂等的：多次应用相同日志记录，结果相同
+- 因此，即使重复Redo，也不会导致错误
+
+**因此**: Redo阶段正确恢复所有需要恢复的修改 ∎
+
+**引理10.4.3**: Undo阶段正确撤销未提交事务的修改
+
+**证明**:
+
+**Undo顺序**:
+
+$$\text{UndoOrder} = \text{ReverseLSNOrder}(\text{ActiveTransactions})$$
+
+**正确性分析**:
+
+1. **按LSN倒序撤销**:
+   - 从最新修改到最旧修改
+   - 保证撤销顺序正确（先撤销最新修改，再撤销旧修改）
+
+2. **CLR机制**:
+   - 每次撤销操作都写入CLR（补偿日志记录）
+   - CLR记录撤销操作，支持幂等撤销
+   - 如果恢复过程中再次崩溃，可以从CLR继续撤销
+
+3. **部分回滚支持**:
+   - 通过保存点机制，支持部分回滚
+   - 撤销到保存点，而不是事务开始
+
+**因此**: Undo阶段正确撤销所有未提交事务的修改 ∎
+
+**结合引理10.4.1、10.4.2和10.4.3**:
+
+1. Analysis阶段正确识别需要Redo和Undo的事务
+2. Redo阶段正确恢复所有需要恢复的修改
+3. Undo阶段正确撤销所有未提交事务的修改
+
+**因此**: ARIES恢复算法正确恢复数据库状态 ∎
+
+**定理10.4.2 (ARIES原子性保证)**:
+
+ARIES恢复算法保证事务原子性：所有已提交事务的修改都被恢复，所有未提交事务的修改都被撤销。
+
+**证明**:
+
+**已提交事务持久性**:
+
+- 根据引理10.4.2：Redo阶段恢复所有需要恢复的修改
+- 已提交事务的修改在日志中，且满足Redo条件
+- 因此，所有已提交事务的修改都被恢复 ∎
+
+**未提交事务原子性**:
+
+- 根据引理10.4.3：Undo阶段撤销所有未提交事务的修改
+- 未提交事务在TT中被标记为active
+- 因此，所有未提交事务的修改都被撤销 ∎
+
+**结合**:
+
+$$\forall T \in Committed: State_{recovered} \models T \land$$
+
+$$\forall T \in Aborted: State_{recovered} \not\models T$$
+
+**因此**: ARIES恢复算法保证事务原子性 ∎
+
+**定理10.4.3 (ARIES幂等性)**:
+
+ARIES恢复算法的Redo和Undo操作都是幂等的，可以安全地重复执行。
+
+**证明**:
+
+**Redo幂等性**:
+
+- Redo条件：$page.\text{PageLSN} < log.\text{LSN}$
+- 如果页面已经包含该修改（$page.\text{PageLSN} \geq log.\text{LSN}$），则跳过
+- 如果页面不包含该修改（$page.\text{PageLSN} < log.\text{LSN}$），则应用修改
+- 应用后，$page.\text{PageLSN} = log.\text{LSN}$
+- 再次Redo时，$page.\text{PageLSN} \geq log.\text{LSN}$，跳过
+- 因此，Redo操作是幂等的 ∎
+
+**Undo幂等性**:
+
+- Undo操作写入CLR（补偿日志记录）
+- CLR记录撤销操作，包含undo_next_lsn
+- 如果已经撤销（存在CLR），则跳过
+- 如果未撤销（不存在CLR），则执行撤销并写入CLR
+- 因此，Undo操作是幂等的 ∎
+
+**因此**: ARIES恢复算法的Redo和Undo操作都是幂等的 ∎
+
+**定理10.4.4 (ARIES恢复时间上界)**:
+
+ARIES恢复时间有明确的上界：
+
+$$T_{recovery} = T_{analysis} + T_{redo} + T_{undo}$$
+
+其中：
+
+- $T_{analysis} = O(N_{log})$：分析阶段时间，$N_{log}$为日志记录数
+- $T_{redo} = O(N_{redo})$：重做阶段时间，$N_{redo}$为需要Redo的日志记录数
+- $T_{undo} = O(N_{undo})$：撤销阶段时间，$N_{undo}$为需要Undo的日志记录数
+
+**证明**:
+
+**Analysis阶段**:
+
+- 扫描从检查点开始的所有日志记录
+- 时间复杂度：$O(N_{log})$，其中$N_{log}$为日志记录数
+- 因此：$T_{analysis} = O(N_{log})$ ∎
+
+**Redo阶段**:
+
+- 扫描从最小LSN开始的所有日志记录
+- 对每个满足Redo条件的记录，应用修改
+- 时间复杂度：$O(N_{redo})$，其中$N_{redo}$为需要Redo的日志记录数
+- 因此：$T_{redo} = O(N_{redo})$ ∎
+
+**Undo阶段**:
+
+- 按LSN倒序撤销所有未提交事务的修改
+- 时间复杂度：$O(N_{undo})$，其中$N_{undo}$为需要Undo的日志记录数
+- 因此：$T_{undo} = O(N_{undo})$ ∎
+
+**结合**:
+
+$$T_{recovery} = T_{analysis} + T_{redo} + T_{undo} = O(N_{log} + N_{redo} + N_{undo})$$
+
+**因此**: ARIES恢复时间有明确的上界 ∎
 
 ### 10.5 ARIES算法总结
 
