@@ -53,7 +53,7 @@
   - [1.5 xmin/xmax 完整定义与分析](#15-xminxmax-完整定义与分析)
     - [1.4.0 权威定义与来源](#140-权威定义与来源-1)
     - [1.4.1 形式化定义](#141-形式化定义-1)
-    - [1.4.2 理论思脉](#142-理论思脉-1)
+    - [1.4.2 理论思脉1](#142-理论思脉1)
     - [1.4.3 完整论证](#143-完整论证-1)
     - [1.4.4 关联解释](#144-关联解释-1)
     - [1.4.5 性能影响分析](#145-性能影响分析-1)
@@ -672,6 +672,8 @@ $$Read(T_i) \parallel Write(T_j) \text{ if } Version(T_i) \neq Version(T_j)$$
 
 ### 1.2 MVCC (多版本并发控制) 完整定义与分析
 
+> **📖 概念词典引用**：本文档中的 MVCC 定义与 [核心概念词典 - MVCC](../00-理论框架总览/01-核心概念词典.md#mvcc-multi-version-concurrency-control) 保持一致。如发现不一致，请以核心概念词典为准。
+
 #### 1.2.0 权威定义与来源
 
 **Wikipedia定义**:
@@ -966,6 +968,8 @@ $$Snapshot = (xmin, xmax, xip)$$
 ---
 
 ### 1.3 快照 (Snapshot) 完整定义与分析
+
+> **📖 概念词典引用**：本文档中的 Snapshot 定义与 [核心概念词典 - Snapshot](../00-理论框架总览/01-核心概念词典.md#snapshot-快照) 保持一致。如发现不一致，请以核心概念词典为准。
 
 #### 1.3.1 权威定义与来源
 
@@ -2595,6 +2599,8 @@ Snapshot GetCachedSnapshot(void)
 
 ## 1.4 快照隔离 (Snapshot Isolation) 完整定义与分析
 
+> **📖 概念词典引用**：快照隔离是隔离级别的实现机制，相关定义请参考 [核心概念词典 - Isolation Level](../00-理论框架总览/01-核心概念词典.md#isolation-level-隔离级别) 和 [核心概念词典 - Snapshot](../00-理论框架总览/01-核心概念词典.md#snapshot-快照)。
+
 ### 1.4.0 权威定义与来源
 
 **Wikipedia定义**:
@@ -2969,6 +2975,8 @@ BEGIN ISOLATION LEVEL SERIALIZABLE;
 
 ## 1.5 xmin/xmax 完整定义与分析
 
+> **📖 概念词典引用**：本文档中的 xmin/xmax 定义与 [核心概念词典 - xmin/xmax](../00-理论框架总览/01-核心概念词典.md#xminxmax) 保持一致。如发现不一致，请以核心概念词典为准。
+
 ### 1.4.0 权威定义与来源
 
 **Wikipedia定义**:
@@ -3087,7 +3095,7 @@ $$(\tau.\text{xmax} = 0 \lor \tau.\text{xmax} \geq snap.\text{xmax} \lor \tau.\t
 
 ---
 
-### 1.4.2 理论思脉
+### 1.4.2 理论思脉1
 
 **历史演进**:
 
@@ -9002,6 +9010,8 @@ def detect_rr_conflict(tuple, snapshot, txid):
 
 ### 4.3 Serializable (可串行化) - SSI
 
+> **📖 概念词典引用**：本文档中的 SSI 定义与 [核心概念词典 - SSI](../00-理论框架总览/01-核心概念词典.md#ssi-serializable-snapshot-isolation) 保持一致。如发现不一致，请以核心概念词典为准。
+
 #### 4.3.1 权威定义与来源
 
 **Wikipedia定义**:
@@ -10344,6 +10354,8 @@ class DependencyGraph:
 
 ## 4.4 死元组 (Dead Tuple) 完整定义与分析
 
+> **📖 概念词典引用**：本文档中的 Dead Tuple 定义与 [核心概念词典 - Dead Tuple](../00-理论框架总览/01-核心概念词典.md#dead-tuple-死元组) 保持一致。如发现不一致，请以核心概念词典为准。
+
 ### 4.4.0 权威定义与来源
 
 **Wikipedia定义**:
@@ -11108,6 +11120,8 @@ $$T_{identify} = T_{compute\_oldest\_xmin} + T_{scan} + T_{check}$$
 
 ### 5.0 VACUUM 完整定义与分析
 
+> **📖 概念词典引用**：本文档中的 VACUUM 定义与 [核心概念词典 - VACUUM](../00-理论框架总览/01-核心概念词典.md#vacuum) 保持一致。如发现不一致，请以核心概念词典为准。
+
 #### 5.0.0 权威定义与来源
 
 **PostgreSQL官方文档定义**:
@@ -11867,6 +11881,8 @@ $$S_{reclaimed} = \sum_{\tau \in DeadTuples} \text{Size}(\tau)$$
 ---
 
 ### 5.1 OldestXmin 完整定义与分析
+
+> **📖 概念词典引用**：本文档中的 OldestXmin 定义与 [核心概念词典 - OldestXmin](../00-理论框架总览/01-核心概念词典.md#oldestxmin) 保持一致。如发现不一致，请以核心概念词典为准。
 
 #### 5.1.0 权威定义与来源
 
@@ -13901,6 +13917,8 @@ def truncate_table(table):
 
 ### 5.3 Freeze 完整定义与分析
 
+> **📖 概念词典引用**：本文档中的 Freeze 定义与 [核心概念词典 - Freeze](../00-理论框架总览/01-核心概念词典.md#freeze) 保持一致。如发现不一致，请以核心概念词典为准。
+
 #### 5.3.0 权威定义与来源
 
 **PostgreSQL官方文档定义**:
@@ -14712,6 +14730,8 @@ $$S_{freeze} = 0$$
 
 ### 6.0 Hint Bits 完整定义与分析
 
+> **📖 概念词典引用**：本文档中的 Hint Bits 定义与 [核心概念词典 - Hint Bits](../00-理论框架总览/01-核心概念词典.md#hint-bits) 保持一致。如发现不一致，请以核心概念词典为准。
+
 #### 6.0.0 权威定义与来源
 
 **PostgreSQL官方文档定义**:
@@ -15444,6 +15464,8 @@ $$\text{Speedup} = \frac{T_{visibility\_without\_hint\_bits}}{T_{visibility\_wit
 ---
 
 ### 6.0.7 Clog (提交日志) 完整定义与分析
+
+> **📖 概念词典引用**：本文档中的 Clog 定义与 [核心概念词典 - Clog](../00-理论框架总览/01-核心概念词典.md#clog-commit-log--pg_xact) 保持一致。如发现不一致，请以核心概念词典为准。
 
 #### 6.0.7.0 权威定义与来源
 
@@ -16274,6 +16296,8 @@ $$
 ---
 
 ### 6.1 HOT (Heap-Only Tuple) 完整定义与分析
+
+> **📖 概念词典引用**：本文档中的 HOT 定义与 [核心概念词典 - HOT](../00-理论框架总览/01-核心概念词典.md#hot-heap-only-tuple) 保持一致。如发现不一致，请以核心概念词典为准。
 
 #### 6.1.0 权威定义与来源
 
@@ -17213,6 +17237,8 @@ $$
 
 ### 6.1.5 Visibility Map 完整定义与分析
 
+> **📖 概念词典引用**：本文档中的 Visibility Map 定义与 [核心概念词典 - Visibility Map](../00-理论框架总览/01-核心概念词典.md#visibility-map) 保持一致。如发现不一致，请以核心概念词典为准。
+
 #### 6.1.5.0 权威定义与来源
 
 **PostgreSQL官方文档定义**:
@@ -17959,6 +17985,8 @@ $$
 ---
 
 ### 6.2 Index-Only Scan 完整定义与分析
+
+> **📖 概念词典引用**：本文档中的 Index-Only Scan 定义与 [核心概念词典 - Index-Only Scan](../00-理论框架总览/01-核心概念词典.md#index-only-scan-索引仅扫描) 保持一致。如发现不一致，请以核心概念词典为准。
 
 #### 6.2.0 权威定义与来源
 

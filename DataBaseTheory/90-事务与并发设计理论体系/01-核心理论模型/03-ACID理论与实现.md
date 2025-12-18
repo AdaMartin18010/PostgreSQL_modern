@@ -2,6 +2,8 @@
 
 > **理论定位**: ACID是关系数据库的基石，本文档提供从理论定义到PostgreSQL实现的完整分析链。
 
+> **📖 概念词典引用**：本文档中的 ACID、Transaction、WAL、Checkpoint、Durability 等概念定义与 [核心概念词典](../00-理论框架总览/01-核心概念词典.md) 保持一致。如发现不一致，请以核心概念词典为准。
+
 ---
 
 ## 📑 目录
@@ -480,6 +482,8 @@ ACID解决方案:
 ## 二、ACID理论基础
 
 ### 1.0 事务 (Transaction) 完整定义与分析
+
+> **📖 概念词典引用**：本文档中的 Transaction 定义与 [核心概念词典 - Transaction](../00-理论框架总览/01-核心概念词典.md#transaction-事务) 保持一致。如发现不一致，请以核心概念词典为准。
 
 #### 1.0.1 权威定义与来源
 
@@ -1280,6 +1284,8 @@ $$\{R(x), W(y), ...\} \xrightarrow{ACID} \text{Database State Transition}$$
 ## 三、原子性 (Atomicity)
 
 ### 3.0 原子性 (Atomicity) 完整定义与分析
+
+> **📖 概念词典引用**：ACID 四大特性的详细定义请参考 [核心概念词典 - ACID](../00-理论框架总览/01-核心概念词典.md#acid)。本文档重点分析原子性的实现机制。
 
 #### 3.0.1 权威定义与来源
 
@@ -4698,6 +4704,8 @@ $$T_{durability} = T_{wal\_write} + T_{wal\_flush} + T_{checkpoint}$$
 ---
 
 ## 6.1 WAL (Write-Ahead Logging) 完整定义与分析
+
+> **📖 概念词典引用**：本文档中的 WAL 定义与 [核心概念词典 - WAL](../00-理论框架总览/01-核心概念词典.md#wal-write-ahead-logging) 保持一致。如发现不一致，请以核心概念词典为准。
 
 ### 6.1.0 权威定义与来源
 

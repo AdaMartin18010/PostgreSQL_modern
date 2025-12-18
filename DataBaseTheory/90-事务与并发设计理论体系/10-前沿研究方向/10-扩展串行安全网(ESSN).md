@@ -1,6 +1,7 @@
 # 10 | 扩展串行安全网 (ESSN)
 
 > **理论定位**: Extended Serial Safety Net (ESSN) 是2025年提出的最新研究，是Serial Safety Net (SSN)的泛化，允许更多事务安全提交，同时保持多版本串行化 (MVSR)。
+> **📖 概念词典引用**：本文档中涉及的 Serializable、MVCC、Transaction 等概念定义与 [核心概念词典](../00-理论框架总览/01-核心概念词典.md) 保持一致。如发现不一致，请以核心概念词典为准。
 
 ---
 

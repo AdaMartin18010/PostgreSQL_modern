@@ -2,6 +2,8 @@
 
 > **实现定位**: 本文档深入分析PostgreSQL VACUUM的源码实现，从触发到清理的完整流程。
 
+> **📖 概念词典引用**：本文档中涉及的 VACUUM、Dead Tuple、OldestXmin、Freeze、Visibility Map 等概念定义与 [核心概念词典](../00-理论框架总览/01-核心概念词典.md) 保持一致。如发现不一致，请以核心概念词典为准。
+
 ---
 
 ## 📑 目录

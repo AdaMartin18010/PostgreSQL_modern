@@ -1,6 +1,7 @@
 # 01 | PostgreSQL-MVCC实现
 
 > **实现定位**: 本文档深入分析PostgreSQL MVCC的源码级实现，从理论到C代码的完整映射。
+> **📖 概念词典引用**：本文档中涉及的 MVCC、Snapshot、xmin/xmax、Hint Bits、HOT、Visibility Map 等概念定义与 [核心概念词典](../00-理论框架总览/01-核心概念词典.md) 保持一致。如发现不一致，请以核心概念词典为准。
 
 ---
 

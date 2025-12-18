@@ -3,6 +3,7 @@
 > **工具类型**: Web应用 + PostgreSQL插件
 > **开发状态**: ✅ Alpha版本
 > **核心技术**: 实时监控 + D3.js + WebSocket
+> **📖 概念词典引用**：本文档中涉及的 MVCC、Snapshot、xmin/xmax、Version Chain 等概念定义与 [核心概念词典](../00-理论框架总览/01-核心概念词典.md) 保持一致。如发现不一致，请以核心概念词典为准。
 
 ---
 
