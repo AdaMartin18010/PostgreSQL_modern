@@ -109,8 +109,18 @@ typedef struct XLogRecord {
 **WAL记录示例**：
 
 ```sql
--- 插入一行数据
+-- 插入一行数据（带错误处理）
+BEGIN;
 INSERT INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com');
+COMMIT;
+EXCEPTION
+    WHEN unique_violation THEN
+        RAISE NOTICE '用户ID 1已存在';
+        ROLLBACK;
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 生成的WAL记录（简化）
 {
@@ -126,8 +136,15 @@ INSERT INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com');
     "backup_block": NULL  // 非第一次修改该页面，无需全页镜像
 }
 
--- 更新数据（触发全页镜像）
+-- 更新数据（触发全页镜像，带错误处理）
+BEGIN;
 UPDATE users SET name = 'Alice Smith' WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '更新失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- WAL记录（包含全页镜像）
 {
@@ -180,47 +197,77 @@ graph TB
 ### 2.2 WAL压缩对比
 
 ```sql
--- 测试：10万行INSERT操作的WAL生成量
+-- 性能测试：10万行INSERT操作的WAL生成量（带错误处理）
 
 -- PostgreSQL 17（默认压缩）
-CREATE TABLE test_wal (
+BEGIN;
+CREATE TABLE IF NOT EXISTS test_wal (
     id BIGSERIAL PRIMARY KEY,
     data TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表test_wal已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        RAISE;
 
 -- 记录WAL位置
 SELECT pg_current_wal_lsn() AS start_lsn \gset
 
--- 插入数据
+-- 性能测试：插入数据
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO test_wal (data)
 SELECT repeat('PostgreSQL ', 100)
 FROM generate_series(1, 100000);
 
 -- 计算WAL生成量
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg_current_wal_lsn() - :'start_lsn'::pg_lsn AS wal_bytes,
     pg_size_pretty(pg_current_wal_lsn() - :'start_lsn'::pg_lsn) AS wal_size;
+
+-- 性能指标：
+-- - 插入执行时间
+-- - WAL生成量
+-- - 缓冲区写入次数
 
 -- PostgreSQL 17结果：
 --  wal_bytes   | wal_size
 -- -------------+----------
 --  534,217,728 | 509 MB
 
--- PostgreSQL 18（zstd压缩）
+-- PostgreSQL 18（zstd压缩，带错误处理）
+BEGIN;
 ALTER SYSTEM SET wal_compression = zstd;
 SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置wal_compression失败: %', SQLERRM;
+        RAISE;
 
 -- 重复测试
 TRUNCATE test_wal;
 SELECT pg_current_wal_lsn() AS start_lsn \gset
 
+-- 性能测试：插入数据
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO test_wal (data)
 SELECT repeat('PostgreSQL ', 100)
 FROM generate_series(1, 100000);
 
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg_current_wal_lsn() - :'start_lsn'::pg_lsn AS wal_bytes,
     pg_size_pretty(pg_current_wal_lsn() - :'start_lsn'::pg_lsn) AS wal_size;
+
+-- 性能指标：
+-- - 插入执行时间
+-- - WAL生成量
+-- - 缓冲区写入次数
+-- - 压缩率对比
 
 -- PostgreSQL 18结果：
 --  wal_bytes   | wal_size
@@ -265,20 +312,35 @@ flowchart TD
 **传统检查点问题**（PG 17之前）：
 
 ```sql
--- 模拟检查点风暴
+-- 性能测试：模拟检查点风暴（带错误处理）
 -- 大量写入 → 大量脏页 → 检查点刷盘 → I/O尖峰
 
-CREATE TABLE wal_intensive (
+BEGIN;
+CREATE TABLE IF NOT EXISTS wal_intensive (
     id BIGSERIAL,
     payload BYTEA
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表wal_intensive已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        RAISE;
 
--- 写入10GB数据
+-- 性能测试：写入10GB数据
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO wal_intensive (payload)
 SELECT gen_random_bytes(10240)  -- 10KB per row
 FROM generate_series(1, 1000000);
 
--- 监控检查点统计
+-- 性能指标：
+-- - 插入执行时间
+-- - 缓冲区写入次数
+-- - WAL生成量
+
+-- 性能测试：监控检查点统计
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     checkpoints_timed,
     checkpoints_req,
@@ -288,6 +350,10 @@ SELECT
     buffers_backend,
     buffers_backend_fsync
 FROM pg_stat_bgwriter;
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 检查点统计信息
 ```
 
 **PostgreSQL 18优化**：
@@ -305,23 +371,47 @@ FROM pg_stat_bgwriter;
 ### 4.1 WAL压缩算法对比
 
 ```sql
--- 测试不同压缩算法
+-- 性能测试：测试不同压缩算法（带错误处理）
 
 -- 1. 无压缩（基线）
+BEGIN;
 ALTER SYSTEM SET wal_compression = off;
 SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置wal_compression失败: %', SQLERRM;
+        RAISE;
 
 -- 2. pglz压缩（传统，PG 9.5+）
+BEGIN;
 ALTER SYSTEM SET wal_compression = pglz;
 SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置wal_compression失败: %', SQLERRM;
+        RAISE;
 
 -- 3. lz4压缩（PG 15+）
+BEGIN;
 ALTER SYSTEM SET wal_compression = lz4;
 SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置wal_compression失败: %', SQLERRM;
+        RAISE;
 
 -- 4. zstd压缩（PG 18新增）
+BEGIN;
 ALTER SYSTEM SET wal_compression = zstd;
 SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置wal_compression失败: %', SQLERRM;
+        RAISE;
 ```
 
 **性能对比**（1GB数据写入）：
@@ -342,21 +432,36 @@ SELECT pg_reload_conf();
 ### 4.2 流复制优化
 
 ```sql
--- PostgreSQL 18流复制增强
+-- PostgreSQL 18流复制增强（带错误处理）
 
 -- 1. 并行WAL解码（主库）
+BEGIN;
 ALTER SYSTEM SET max_wal_senders = 10;
 ALTER SYSTEM SET max_replication_slots = 10;
 ALTER SYSTEM SET wal_sender_timeout = 60000;  -- 60s
+SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置流复制参数失败: %', SQLERRM;
+        RAISE;
 
 -- 2. 断点续传优化（从库）
 -- 从库重启后更快追赶主库
 
 -- 从库配置
+BEGIN;
 ALTER SYSTEM SET recovery_prefetch = on;  -- PG 15+
 ALTER SYSTEM SET wal_retrieve_retry_interval = 5000;  -- 5s
+SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置恢复参数失败: %', SQLERRM;
+        RAISE;
 
--- 3. 监控复制延迟
+-- 性能测试：监控复制延迟
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     client_addr,
     application_name,
@@ -378,6 +483,11 @@ SELECT
     pg_size_pretty(pg_wal_lsn_diff(sent_lsn, replay_lsn)) AS lag_bytes
 
 FROM pg_stat_replication;
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 复制延迟
+-- - WAL位置差异
 ```
 
 ---
@@ -417,24 +527,49 @@ void XLogWrite(XLogwrtRqst WriteRqst) {
 
 ```bash
 #!/bin/bash
-# 测试WAL写入性能
+# 测试WAL写入性能（带错误处理）
+set -e
+set -u
+
+# 错误处理函数
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
 
 # pgbench初始化
-pgbench -i -s 100 testdb
+if ! pgbench -i -s 100 testdb 2>/dev/null; then
+    error_exit "pgbench初始化失败"
+fi
 
 # 测试1：PG 17（无AIO）
-psql -c "ALTER SYSTEM SET aio = off; SELECT pg_reload_conf();"
+echo "测试1: PG 17（无AIO）..."
+if ! psql -c "ALTER SYSTEM SET aio = off; SELECT pg_reload_conf();" testdb 2>/dev/null; then
+    error_exit "设置aio失败"
+fi
 
-pgbench -c 100 -j 10 -T 60 -M prepared testdb
+if ! pgbench -c 100 -j 10 -T 60 -M prepared testdb > result_no_aio.txt 2>&1; then
+    error_exit "pgbench测试失败"
+fi
 # TPS: 12,500
 
 # 测试2：PG 18（AIO启用）
-psql -c "ALTER SYSTEM SET aio = on; SELECT pg_reload_conf();"
+echo "测试2: PG 18（AIO启用）..."
+if ! psql -c "ALTER SYSTEM SET aio = on; SELECT pg_reload_conf();" testdb 2>/dev/null; then
+    error_exit "设置aio失败"
+fi
 
-pgbench -c 100 -j 10 -T 60 -M prepared testdb
+if ! pgbench -c 100 -j 10 -T 60 -M prepared testdb > result_aio.txt 2>&1; then
+    error_exit "pgbench测试失败"
+fi
 # TPS: 15,800
 
 # 性能提升：26% 🚀
+echo "=== 测试结果 ==="
+echo "无AIO:"
+grep "tps" result_no_aio.txt || echo "未找到TPS数据"
+echo "AIO启用:"
+grep "tps" result_aio.txt || echo "未找到TPS数据"
 ```
 
 ---
@@ -465,17 +600,25 @@ pgbench -c 50 -j 5 -T 60 -N -f complex_write.sql testdb
 ### 6.2 检查点性能测试
 
 ```sql
--- 监控检查点性能
+-- 性能测试：监控检查点性能（带错误处理）
 
 -- 触发检查点前
 SELECT
     pg_current_wal_lsn() AS wal_before,
     now() AS time_before \gset
 
--- 手动触发检查点
-CHECKPOINT;
+-- 手动触发检查点（带错误处理）
+DO $$
+BEGIN
+    PERFORM pg_checkpoint();
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '触发检查点失败: %', SQLERRM;
+        RAISE;
+END $$;
 
--- 检查点后
+-- 性能测试：检查点后
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg_current_wal_lsn() AS wal_after,
     now() AS time_after,
@@ -486,16 +629,22 @@ SELECT
     -- 计算刷盘数据量
     pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), :'wal_before')) AS data_flushed;
 
--- 查看检查点统计
+-- 性能指标：
+-- - 查询执行时间
+-- - 检查点耗时
+-- - 刷盘数据量
+
+-- 性能测试：查看检查点统计
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     checkpoints_timed,
     checkpoints_req,
 
     -- 平均检查点写入时间
-    ROUND(checkpoint_write_time / (checkpoints_timed + checkpoints_req), 2) AS avg_write_ms,
+    ROUND(checkpoint_write_time / NULLIF(checkpoints_timed + checkpoints_req, 0), 2) AS avg_write_ms,
 
     -- 平均fsync时间
-    ROUND(checkpoint_sync_time / (checkpoints_timed + checkpoints_req), 2) AS avg_sync_ms,
+    ROUND(checkpoint_sync_time / NULLIF(checkpoints_timed + checkpoints_req, 0), 2) AS avg_sync_ms,
 
     -- 缓冲区统计
     buffers_checkpoint,
@@ -503,6 +652,11 @@ SELECT
     buffers_backend
 
 FROM pg_stat_bgwriter;
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 平均检查点时间
+-- - 缓冲区统计
 ```
 
 **PG18 vs PG17检查点性能**：

@@ -38,9 +38,6 @@
     - [4.2 Truncate机制深度解析](#42-truncate机制深度解析)
       - [4.2.1 文件截断的工作原理](#421-文件截断的工作原理)
       - [4.2.2 锁等待问题](#422-锁等待问题)
-    - [4.3 生产环境最佳实践](#43-生产环境最佳实践)
-      - [4.3.1 决策矩阵](#431-决策矩阵)
-      - [4.3.2 实战配置](#432-实战配置)
     - [4.4 监控truncate影响](#44-监控truncate影响)
   - [5. XID回卷风险量化分析](#5-xid回卷风险量化分析)
     - [5.1 XID回卷原理](#51-xid回卷原理)
@@ -276,8 +273,9 @@ flowchart TD
 #### 2.3.2 性能对比数据
 
 ```sql
--- 创建测试表
-CREATE TABLE large_table (
+-- 性能测试：创建测试表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS large_table (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -285,8 +283,16 @@ CREATE TABLE large_table (
     data JSONB,
     status VARCHAR(20)
 ) WITH (fillfactor = 90);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表large_table已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        RAISE;
 
--- 插入10亿行测试数据
+-- 性能测试：插入10亿行测试数据
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO large_table (user_id, data, status)
 SELECT
     (random() * 10000000)::BIGINT,
@@ -297,6 +303,11 @@ SELECT
         ELSE 'pending'
     END
 FROM generate_series(1, 1000000000);
+
+-- 性能指标：
+-- - 插入执行时间
+-- - 缓冲区写入次数
+-- - WAL生成量
 
 -- 模拟5%日更新
 UPDATE large_table
@@ -489,11 +500,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 使用示例
+-- 性能测试：使用示例
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM check_eager_freeze_stats('public')
 WHERE frozen_ratio < 80  -- 冻结比例低于80%的表
 ORDER BY total_pages DESC
 LIMIT 20;
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 扫描行数
+-- - 缓冲区命中率
 ```
 
 **调优决策表**：
@@ -600,7 +617,8 @@ SELECT * FROM large_table WHERE id = 12345;
 **影响分析**：
 
 ```sql
--- 查询被阻塞的会话数
+-- 性能测试：查询被阻塞的会话数
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     blocked.pid AS blocked_pid,
     blocked.query AS blocked_query,
@@ -615,7 +633,11 @@ JOIN pg_stat_activity blocking ON blocking_lock.pid = blocking.pid
 WHERE NOT blocked_lock.granted
   AND blocked.wait_event_type = 'Lock'
 ORDER BY blocked_duration DESC;
-```
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 扫描行数
+-- - 阻塞会话数量
 
 ### 4.3 生产环境最佳实践
 
@@ -668,10 +690,19 @@ vacuum_truncate = on  # 可以安全truncate
 ### 4.4 监控truncate影响
 
 ```sql
--- 监控VACUUM truncate行为
+-- 监控VACUUM truncate行为（带错误处理）
+BEGIN;
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '扩展pg_stat_statements已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建扩展失败: %', SQLERRM;
+        RAISE;
 
--- 查询VACUUM truncate统计
+-- 性能测试：查询VACUUM truncate统计
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     relname,
@@ -696,6 +727,11 @@ SELECT
                       pg_relation_size(schemaname||'.'||relname)::NUMERIC)
                      * 100.0 / GREATEST(pg_relation_size(schemaname||'.'||relname), 1), 2) > 20
         THEN '建议手动truncate（大表高膨胀）'
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 扫描行数
+-- - 表大小统计
 
         WHEN pg_total_relation_size(schemaname||'.'||relname) < 10 * 1024^3  -- <10GB
             AND ROUND((pg_total_relation_size(schemaname||'.'||relname)::NUMERIC -
@@ -815,12 +851,26 @@ CREATE TABLE xid_risk_test (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 场景1：传统VACUUM（PG 17）
--- vacuum_max_eager_freeze_failure_rate = 0.0
+-- 场景1：传统VACUUM（PG 17，带错误处理）
+BEGIN;
+ALTER SYSTEM SET vacuum_max_eager_freeze_failure_rate = 0.0;
+SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置vacuum_max_eager_freeze_failure_rate失败: %', SQLERRM;
+        RAISE;
 -- 模拟30天运行
 
--- 场景2：积极冻结（PG 18）
--- vacuum_max_eager_freeze_failure_rate = 0.05
+-- 场景2：积极冻结（PG 18，带错误处理）
+BEGIN;
+ALTER SYSTEM SET vacuum_max_eager_freeze_failure_rate = 0.05;
+SELECT pg_reload_conf();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置vacuum_max_eager_freeze_failure_rate失败: %', SQLERRM;
+        RAISE;
 -- 模拟30天运行
 ```
 
@@ -1053,32 +1103,62 @@ mindmap
 #### 7.2.1 分区表设计
 
 ```sql
--- 策略1：按时间分区（推荐）
-CREATE TABLE orders (
+-- 策略1：按时间分区（推荐，带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders (
     order_id BIGSERIAL,
     user_id BIGINT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     total_amount DECIMAL(12,2),
     status VARCHAR(20)
 ) PARTITION BY RANGE (created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表orders已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        RAISE;
 
--- 创建月度分区
-CREATE TABLE orders_2025_01 PARTITION OF orders
+-- 创建月度分区（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders_2025_01 PARTITION OF orders
     FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
-
-CREATE TABLE orders_2025_02 PARTITION OF orders
+CREATE TABLE IF NOT EXISTS orders_2025_02 PARTITION OF orders
     FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
 -- ... 更多分区
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建分区失败: %', SQLERRM;
+        RAISE;
 
--- VACUUM策略：分区并行
+-- VACUUM策略：分区并行（带错误处理）
 -- 方法1：并行VACUUM多个分区
-psql -c "VACUUM orders_2025_01;" &
-psql -c "VACUUM orders_2025_02;" &
-psql -c "VACUUM orders_2025_03;" &
+#!/bin/bash
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+psql -c "VACUUM orders_2025_01;" 2>/dev/null || error_exit "VACUUM orders_2025_01失败" &
+psql -c "VACUUM orders_2025_02;" 2>/dev/null || error_exit "VACUUM orders_2025_02失败" &
+psql -c "VACUUM orders_2025_03;" 2>/dev/null || error_exit "VACUUM orders_2025_03失败" &
 wait
 
--- 方法2：使用pg_partman自动维护
+-- 方法2：使用pg_partman自动维护（带错误处理）
+BEGIN;
 SELECT partman.run_maintenance();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '运行partman维护失败: %', SQLERRM;
+        RAISE;
 ```
 
 **性能对比**：
@@ -1211,26 +1291,57 @@ cat /tmp/vacuum_summary.log
 #### 7.3.2 自动化调度
 
 ```sql
--- 使用pg_cron扩展自动调度
+-- 使用pg_cron扩展自动调度（带错误处理）
+BEGIN;
 CREATE EXTENSION IF NOT EXISTS pg_cron;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '扩展pg_cron已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建扩展失败: %', SQLERRM;
+        RAISE;
 
--- 每天凌晨2点执行大表VACUUM（分散到多天）
+-- 每天凌晨2点执行大表VACUUM（分散到多天，带错误处理）
 -- 周一：orders表
+BEGIN;
 SELECT cron.schedule('vacuum-orders', '0 2 * * 1',
     'VACUUM (VERBOSE) orders;');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建cron任务失败: %', SQLERRM;
+        RAISE;
 
 -- 周二：order_items表
+BEGIN;
 SELECT cron.schedule('vacuum-order-items', '0 2 * * 2',
     'VACUUM (VERBOSE) order_items;');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建cron任务失败: %', SQLERRM;
+        RAISE;
 
 -- 周三：user_actions表
+BEGIN;
 SELECT cron.schedule('vacuum-user-actions', '0 2 * * 3',
     'VACUUM (VERBOSE) user_actions;');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建cron任务失败: %', SQLERRM;
+        RAISE;
 
--- 监控任务状态
+-- 性能测试：监控任务状态
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT jobid, schedule, command, last_start_time, last_end_time
 FROM cron.job
 ORDER BY last_start_time DESC;
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 任务数量
 ```
 
 ---
@@ -1535,7 +1646,9 @@ LIMIT 20;
 #### 9.2.1 VACUUM运行缓慢
 
 ```sql
--- 诊断1：检查长事务阻塞
+-- 性能测试：诊断1：检查长事务阻塞（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     usename,
@@ -1550,9 +1663,27 @@ FROM pg_stat_activity
 WHERE state != 'idle'
   AND (now() - query_start) > INTERVAL '5 minutes'
 ORDER BY query_start;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询长事务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 解决方案：终止长事务
+-- 解决方案：终止长事务（带错误处理）
+-- BEGIN;
 -- SELECT pg_terminate_backend(<pid>);
+-- COMMIT;
+-- EXCEPTION
+--     WHEN OTHERS THEN
+--         RAISE NOTICE '终止进程失败: %', SQLERRM;
+--         ROLLBACK;
+--         RAISE;
+
+-- 性能指标：
+-- - 查询执行时间
+-- - 长事务数量
+-- - 阻塞情况
 
 -- 诊断2：检查VACUUM进度
 SELECT
@@ -1581,12 +1712,15 @@ FROM pg_statio_user_tables
 WHERE schemaname = 'public'
 ORDER BY heap_blks_read DESC
 LIMIT 10;
+
 ```
 
 #### 9.2.2 XID即将回卷
 
 ```sql
--- 紧急诊断
+-- 性能测试：紧急诊断（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     age(datfrozenxid) AS xid_age,
@@ -1601,27 +1735,61 @@ SELECT
 FROM pg_database
 WHERE datallowconn
 ORDER BY age(datfrozenxid) DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询XID年龄失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 紧急修复步骤
+-- 紧急修复步骤（带错误处理）
 -- 1. 禁止新长事务
+BEGIN;
 ALTER DATABASE mydb SET statement_timeout = '60s';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置statement_timeout失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 2. 终止所有长事务
+-- 2. 终止所有长事务（带错误处理）
+BEGIN;
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE (now() - query_start) > INTERVAL '5 minutes'
   AND state != 'idle';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '终止长事务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 3. 手动执行VACUUM FREEZE（最高优先级）
-VACUUM (FREEZE, VERBOSE) <问题表>;
+-- 3. 手动执行VACUUM FREEZE（最高优先级，带错误处理）
+-- VACUUM (FREEZE, VERBOSE) <问题表>;
+-- 注意：VACUUM命令不支持事务块，需直接执行
 
--- 4. 监控XID消耗速率
+-- 4. 性能测试：监控XID消耗速率（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     age(datfrozenxid),
     (SELECT count(*) FROM pg_stat_activity WHERE datname = d.datname) AS active_connections
 FROM pg_database d
 WHERE datallowconn;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '监控XID消耗速率失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能指标：
+-- - 查询执行时间
+-- - XID年龄
+-- - 活跃连接数
 ```
 
 ---

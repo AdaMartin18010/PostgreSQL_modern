@@ -65,13 +65,26 @@
 **PostgreSQL 18支持多核并行升级**：
 
 ```bash
+#!/bin/bash
+# pg_upgrade并行升级脚本（带错误处理）
+
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
 # 使用8个并行Worker
 pg_upgrade \
     --old-datadir /var/lib/postgresql/17/main \
     --new-datadir /var/lib/postgresql/18/main \
     --old-bindir /usr/lib/postgresql/17/bin \
     --new-bindir /usr/lib/postgresql/18/bin \
-    --jobs 8  # ⭐ 并行度
+    --jobs 8 || error_exit "pg_upgrade执行失败"  # ⭐ 并行度
+
+echo "升级完成"
 ```
 
 **性能提升**：
@@ -88,24 +101,39 @@ pg_upgrade \
 **PostgreSQL 18支持增量升级（减少停机时间）**：
 
 ```bash
-# 步骤1：预升级（在线进行，不停服务）
+#!/bin/bash
+# pg_upgrade增量升级脚本（带错误处理）
+
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 步骤1：预升级（在线进行，不停服务，带错误处理）
+echo "步骤1: 预升级（在线）..."
 pg_upgrade \
     --old-datadir /var/lib/postgresql/17/main \
     --new-datadir /var/lib/postgresql/18/main \
     --old-bindir /usr/lib/postgresql/17/bin \
     --new-bindir /usr/lib/postgresql/18/bin \
-    --prepare-only  # ⭐ 仅准备，不实际升级
+    --prepare-only || error_exit "预升级失败"  # ⭐ 仅准备，不实际升级
 # 时间：30-60分钟（在线）
 
-# 步骤2：实际升级（停机）
+# 步骤2：实际升级（停机，带错误处理）
+echo "步骤2: 实际升级（停机）..."
 pg_upgrade \
     --old-datadir /var/lib/postgresql/17/main \
     --new-datadir /var/lib/postgresql/18/main \
     --old-bindir /usr/lib/postgresql/17/bin \
     --new-bindir /usr/lib/postgresql/18/bin \
-    --incremental  # ⭐ 增量模式
+    --incremental || error_exit "增量升级失败"  # ⭐ 增量模式
     --jobs 8
 # 时间：5-10分钟（vs 60分钟）
+
+echo "升级完成"
 ```
 
 **停机时间对比**：
@@ -121,15 +149,30 @@ pg_upgrade \
 **PostgreSQL 18增强的回滚支持**：
 
 ```bash
-# 升级前自动创建回滚点
+#!/bin/bash
+# pg_upgrade回滚脚本（带错误处理）
+
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 升级前自动创建回滚点（带错误处理）
+echo "创建回滚快照..."
 pg_upgrade \
-    --create-rollback-snapshot  # ⭐ 新选项
+    --create-rollback-snapshot || error_exit "创建回滚快照失败"  # ⭐ 新选项
     ...
 
-# 如果升级失败或需要回滚
+# 如果升级失败或需要回滚（带错误处理）
+echo "执行回滚..."
 pg_upgrade_rollback \
-    --rollback-snapshot /path/to/snapshot
+    --rollback-snapshot /path/to/snapshot || error_exit "回滚失败"
 # 时间：<5分钟
+
+echo "回滚完成"
 ```
 
 ---
@@ -141,35 +184,64 @@ pg_upgrade_rollback \
 **1. 备份（必须！）**:
 
 ```bash
-# 全量备份
-pg_basebackup -D /backup/pg17_backup -Ft -z -P
+#!/bin/bash
+# 备份脚本（带错误处理）
 
-# 或使用pg_dump
-pg_dumpall -U postgres > /backup/pg17_full.sql
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 全量备份（带错误处理）
+echo "执行全量备份..."
+pg_basebackup -D /backup/pg17_backup -Ft -z -P || error_exit "pg_basebackup失败"
+
+# 或使用pg_dump（带错误处理）
+# echo "执行pg_dump备份..."
+# pg_dumpall -U postgres > /backup/pg17_full.sql || error_exit "pg_dumpall失败"
+
+echo "备份完成"
 ```
 
 **2. 检查兼容性**:
 
 ```bash
-# 运行兼容性检查
+#!/bin/bash
+# pg_upgrade兼容性检查脚本（带错误处理）
+
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 运行兼容性检查（带错误处理）
+echo "执行兼容性检查..."
 pg_upgrade \
     --old-datadir /var/lib/postgresql/17/main \
     --new-datadir /var/lib/postgresql/18/main \
     --old-bindir /usr/lib/postgresql/17/bin \
     --new-bindir /usr/lib/postgresql/18/bin \
-    --check  # ⭐ 仅检查，不升级
+    --check || error_exit "兼容性检查失败"  # ⭐ 仅检查，不升级
 
 # 输出示例：
-Performing Consistency Checks
------------------------------
-Checking cluster versions                                   ok
-Checking database user is the install user                  ok
-Checking database connection settings                       ok
-Checking for prepared transactions                          ok
-Checking for system-defined composite types in user tables  ok
-Checking for reg* data types in user tables                 ok
-Checking for contrib/isn with bigint-passing mismatch       ok
-...
+# Performing Consistency Checks
+# -----------------------------
+# Checking cluster versions                                   ok
+# Checking database user is the install user                  ok
+# Checking database connection settings                       ok
+# Checking for prepared transactions                          ok
+# Checking for system-defined composite types in user tables  ok
+# Checking for reg* data types in user tables                 ok
+# Checking for contrib/isn with bigint-passing mismatch       ok
+# ...
+
+echo "兼容性检查完成"
 ```
 
 **3. 解决不兼容问题**:

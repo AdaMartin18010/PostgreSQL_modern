@@ -18,7 +18,7 @@
 
 ### 1. scripts/migration-helper.py (600行)
 
-**PostgreSQL数据迁移助手**
+**PostgreSQL数据迁移助手**:
 
 功能特性：
 
@@ -40,7 +40,7 @@ python3 scripts/migration-helper.py \
 
 ### 2. scripts/replication-monitor.py (400行)
 
-**PostgreSQL复制监控工具**
+**PostgreSQL复制监控工具**:
 
 功能特性：
 
@@ -63,7 +63,7 @@ python3 scripts/replication-monitor.py --dbname mydb --once
 
 ### 3. scripts/connection-pool-manager.py (400行)
 
-**连接池管理器**
+**连接池管理器**:
 
 功能特性：
 
@@ -88,7 +88,7 @@ python3 scripts/connection-pool-manager.py \
 
 ### 4. scripts/index-advisor.py (500行)
 
-**索引推荐顾问**
+**索引推荐顾问**:
 
 功能特性：
 
@@ -112,7 +112,7 @@ python3 scripts/index-advisor.py \
 
 ### 1. docs/01-PostgreSQL18/41-实时数据库完全指南.md (5,000字)
 
-**LISTEN/NOTIFY实时通知机制**
+**LISTEN/NOTIFY实时通知机制**:
 
 核心内容：
 
@@ -136,7 +136,7 @@ python3 scripts/index-advisor.py \
 
 ### 2. docs/01-PostgreSQL18/42-全文搜索深度实战.md (6,000字)
 
-**PostgreSQL内置全文搜索（无需Elasticsearch）**
+**PostgreSQL内置全文搜索（无需Elasticsearch）**:
 
 核心内容：
 
@@ -160,7 +160,7 @@ python3 scripts/index-advisor.py \
 
 ### 3. docs/05-Production/22-数据库迁移完整手册.md (8,000字)
 
-**从MySQL/Oracle/SQL Server迁移到PostgreSQL 18**
+**从MySQL/Oracle/SQL Server迁移到PostgreSQL 18**:
 
 核心内容：
 
@@ -192,7 +192,7 @@ python3 scripts/index-advisor.py \
 
 ### 1. QUICK-REFERENCE.md (15,000字)
 
-**PostgreSQL命令速查手册**
+**PostgreSQL命令速查手册**:
 
 涵盖内容：
 
@@ -213,7 +213,7 @@ python3 scripts/index-advisor.py \
 
 ### 2. LEARNING-PATH.md (10,000字)
 
-**从零到PostgreSQL专家完整学习路径**
+**从零到PostgreSQL专家完整学习路径**:
 
 内容结构：
 
@@ -235,7 +235,7 @@ python3 scripts/index-advisor.py \
 
 ### 3. BEST-PRACTICES.md (12,000字)
 
-**PostgreSQL生产环境最佳实践**
+**PostgreSQL生产环境最佳实践**:
 
 核心章节：
 
@@ -257,7 +257,7 @@ python3 scripts/index-advisor.py \
 
 ### 4. FAQ.md (8,000字)
 
-**20个PostgreSQL常见问题解答**
+**20个PostgreSQL常见问题解答**:
 
 问题分类：
 
@@ -278,7 +278,7 @@ python3 scripts/index-advisor.py \
 
 ### 5. ROADMAP-2025.md (5,000字)
 
-**2025年发展路线图**
+**2025年发展路线图**:
 
 规划内容：
 
@@ -304,7 +304,7 @@ python3 scripts/index-advisor.py \
 
 ### scripts/README.md
 
-**脚本使用完整文档**
+**脚本使用完整文档**:
 
 内容：
 

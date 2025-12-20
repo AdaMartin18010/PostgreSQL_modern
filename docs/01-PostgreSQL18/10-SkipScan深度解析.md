@@ -95,8 +95,9 @@ Index Skip Scan using idx_user_status_created on users
 ### 3.1 用户查询场景
 
 ```sql
--- 创建测试表
-CREATE TABLE users (
+-- 性能测试：创建测试表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS users (
     user_id BIGSERIAL PRIMARY KEY,
     country VARCHAR(2),
     email VARCHAR(255),
@@ -104,8 +105,17 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ,
     last_login TIMESTAMPTZ
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表users已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入测试数据
+-- 性能测试：插入测试数据（带错误处理）
+BEGIN;
 INSERT INTO users (country, email, status, created_at, last_login)
 SELECT
     (ARRAY['US', 'CN', 'JP', 'UK', 'DE'])[floor(random() * 5 + 1)],
@@ -114,79 +124,169 @@ SELECT
     NOW() - (random() * INTERVAL '365 days'),
     NOW() - (random() * INTERVAL '30 days')
 FROM generate_series(1, 10000000) i;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 创建多列索引
-CREATE INDEX idx_users_country_created ON users(country, created_at);
-CREATE INDEX idx_users_status_login ON users(status, last_login);
+-- 性能测试：创建多列索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_country_created ON users(country, created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_users_country_created已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 分析
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_status_login ON users(status, last_login);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_users_status_login已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能测试：分析（带错误处理）
+BEGIN;
 ANALYZE users;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.2 Skip Scan查询
 
 ```sql
--- 查询1: 只使用后续列
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：查询1: 只使用后续列（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users
 WHERE created_at > NOW() - INTERVAL '30 days';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- PostgreSQL 17: Seq Scan (全表扫描)
 -- PostgreSQL 18: Index Skip Scan
-/*
-Planning Time: 0.5ms
-Execution Time: 45ms (vs 850ms全表扫描, -95%)
-*/
+-- Planning Time: 0.5ms
+-- Execution Time: 45ms (vs 850ms全表扫描, -95%)
+-- 性能指标：
+-- - 执行时间
+-- - 缓冲区命中率
+-- - Skip Scan效果
 
--- 查询2: 范围查询
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：查询2: 范围查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM users
 WHERE last_login BETWEEN NOW() - INTERVAL '7 days'
                     AND NOW();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- Skip Scan扫描3个status值
 -- 性能提升: 12ms vs 320ms (-96%)
+-- 性能指标：
+-- - 执行时间
+-- - Skip Scan循环次数
+-- - 缓冲区使用情况
 
--- 查询3: IN查询
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：查询3: IN查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users
 WHERE created_at IN (
     '2023-01-01', '2023-06-01', '2023-12-01'
 );
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- Skip Scan效果显著
+-- 性能指标：
+-- - 执行时间
+-- - Skip Scan效果
 ```
 
 ### 3.3 性能对比
 
 ```sql
--- 测试脚本
+-- 性能测试：测试脚本（带错误处理）
 DO $$
 DECLARE
     start_time TIMESTAMPTZ;
     end_time TIMESTAMPTZ;
 BEGIN
-    -- 禁用Skip Scan (测试对比)
-    SET enable_indexskipscan = off;
+    -- 禁用Skip Scan (测试对比，带错误处理)
+    BEGIN
+        SET enable_indexskipscan = off;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE '设置enable_indexskipscan失败: %', SQLERRM;
+            RAISE;
+    END;
 
     start_time := clock_timestamp();
-    PERFORM COUNT(*) FROM users
-    WHERE created_at > NOW() - INTERVAL '30 days';
+    BEGIN
+        PERFORM COUNT(*) FROM users
+        WHERE created_at > NOW() - INTERVAL '30 days';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE '查询执行失败: %', SQLERRM;
+            RAISE;
+    END;
     end_time := clock_timestamp();
 
     RAISE NOTICE '传统扫描: %ms',
         EXTRACT(MILLISECONDS FROM (end_time - start_time));
 
-    -- 启用Skip Scan
-    SET enable_indexskipscan = on;
+    -- 启用Skip Scan（带错误处理）
+    BEGIN
+        SET enable_indexskipscan = on;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE '设置enable_indexskipscan失败: %', SQLERRM;
+            RAISE;
+    END;
 
     start_time := clock_timestamp();
-    PERFORM COUNT(*) FROM users
-    WHERE created_at > NOW() - INTERVAL '30 days';
+    BEGIN
+        PERFORM COUNT(*) FROM users
+        WHERE created_at > NOW() - INTERVAL '30 days';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE '查询执行失败: %', SQLERRM;
+            RAISE;
+    END;
     end_time := clock_timestamp();
 
     RAISE NOTICE 'Skip Scan: %ms',
         EXTRACT(MILLISECONDS FROM (end_time - start_time));
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '测试脚本执行失败: %', SQLERRM;
+        RAISE;
 END $$;
 
 -- 结果:
@@ -201,23 +301,34 @@ END $$;
 ### 4.1 成本估算
 
 ```sql
--- 查看优化器选择
-EXPLAIN (COSTS, VERBOSE)
+-- 性能测试：查看优化器选择（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING, COSTS, VERBOSE)
 SELECT * FROM users
 WHERE created_at > '2023-06-01';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 成本对比
-/*
-Seq Scan:
-  Cost: 0.00..250000.00
-  Rows: 500000
+-- Seq Scan:
+--   Cost: 0.00..250000.00
+--   Rows: 500000
+--
+-- Index Skip Scan:
+--   Cost: 0.42..15000.00  (比全表扫描低17倍)
+--   Rows: 500000
+-- 性能指标：
+-- - 成本估算
+-- - 执行时间
+-- - 优化器选择
 
-Index Skip Scan:
-  Cost: 0.42..15000.00  (比全表扫描低17倍)
-  Rows: 500000
-*/
-
--- 影响因素
+-- 性能测试：影响因素（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     relname,
     n_distinct AS country_distinct,
@@ -225,16 +336,36 @@ SELECT
     most_common_freqs
 FROM pg_stats
 WHERE tablename = 'users' AND attname = 'country';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询统计信息失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 4.2 强制使用/禁用
 
 ```sql
--- 禁用Skip Scan
+-- 性能测试：禁用Skip Scan（带错误处理）
+BEGIN;
 SET enable_indexskipscan = off;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置enable_indexskipscan失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 启用Skip Scan (默认on)
+-- 性能测试：启用Skip Scan (默认on，带错误处理)
+BEGIN;
 SET enable_indexskipscan = on;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置enable_indexskipscan失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 临时禁用（调试）
 EXPLAIN (ANALYZE)
@@ -295,7 +426,9 @@ CREATE INDEX idx_status_created ON users(status, created_at);
 ### 6.1 监控Skip Scan使用
 
 ```sql
--- 查看Skip Scan统计
+-- 性能测试：查看Skip Scan统计（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -306,8 +439,16 @@ SELECT
 FROM pg_stat_user_indexes
 WHERE indexrelname LIKE '%country%'
 ORDER BY idx_scan DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询索引统计失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- pg_stat_statements查看
+-- 性能测试：pg_stat_statements查看（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     query,
     calls,
@@ -318,27 +459,48 @@ FROM pg_stat_statements
 WHERE query LIKE '%created_at%'
 ORDER BY mean_exec_time DESC
 LIMIT 10;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询pg_stat_statements失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能指标：
+-- - 索引扫描次数
+-- - 平均执行时间
+-- - Skip Scan使用情况
 ```
 
 ### 6.2 性能分析
 
 ```sql
--- 详细执行计划
-EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS)
+-- 性能测试：详细执行计划（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS, TIMING)
 SELECT * FROM users WHERE created_at > '2023-01-01';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 关键指标
-/*
-Index Skip Scan using idx_users_country_created
-  Buffers: shared hit=850 read=0
-  I/O Timings: read=0.000
-  Planning Time: 0.5ms
-  Execution Time: 45ms
-
-  Rows: 500000
-  Loops: 5 (5个country值)
-  Heap Fetches: 500000
-*/
+-- Index Skip Scan using idx_users_country_created
+--   Buffers: shared hit=850 read=0
+--   I/O Timings: read=0.000
+--   Planning Time: 0.5ms
+--   Execution Time: 45ms
+--
+--   Rows: 500000
+--   Loops: 5 (5个country值)
+--   Heap Fetches: 500000
+-- 性能指标：
+-- - 执行时间
+-- - Skip Scan循环次数
+-- - 缓冲区命中率
+-- - Heap Fetches数量
 
 -- 优化建议
 -- 1. 如果Loops过多(>100)，考虑调整索引顺序
@@ -353,50 +515,123 @@ Index Skip Scan using idx_users_country_created
 ### 7.1 覆盖索引 + Skip Scan
 
 ```sql
--- 包含查询所需的所有列
-CREATE INDEX idx_status_created_email ON users(status, created_at, email);
+-- 性能测试：包含查询所需的所有列（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_status_created_email ON users(status, created_at, email);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_status_created_email已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Index Only Scan + Skip Scan
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：Index Only Scan + Skip Scan（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT email FROM users
 WHERE created_at > '2023-01-01';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 结果: Index Only Scan (Skip Scan)
 -- 无需访问heap，性能更优
+-- 性能指标：
+-- - 执行时间
+-- - Index Only Scan效果
+-- - 缓冲区使用情况
 ```
 
 ### 7.2 分区表 + Skip Scan
 
 ```sql
--- 创建分区表
-CREATE TABLE orders_partitioned (
+-- 性能测试：创建分区表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders_partitioned (
     order_id BIGSERIAL,
     region VARCHAR(10),
     status VARCHAR(20),
     created_at TIMESTAMPTZ,
     amount NUMERIC
 ) PARTITION BY RANGE (created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表orders_partitioned已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 创建分区
-CREATE TABLE orders_2023_q1 PARTITION OF orders_partitioned
+-- 性能测试：创建分区（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders_2023_q1 PARTITION OF orders_partitioned
 FOR VALUES FROM ('2023-01-01') TO ('2023-04-01');
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区orders_2023_q1已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建分区失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE TABLE orders_2023_q2 PARTITION OF orders_partitioned
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders_2023_q2 PARTITION OF orders_partitioned
 FOR VALUES FROM ('2023-04-01') TO ('2023-07-01');
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区orders_2023_q2已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建分区失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 索引
-CREATE INDEX idx_orders_region_status ON orders_partitioned(region, status);
+-- 性能测试：索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_region_status ON orders_partitioned(region, status);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_region_status已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders_partitioned不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询: 分区裁剪 + Skip Scan
-EXPLAIN (ANALYZE)
+-- 性能测试：查询: 分区裁剪 + Skip Scan（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders_partitioned
 WHERE created_at > '2023-02-01'
   AND status = 'completed';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 效果:
 -- 1. 分区裁剪 (只扫描相关分区)
 -- 2. Skip Scan (region列)
 -- 双重优化!
+-- 性能指标：
+-- - 分区裁剪效果
+-- - Skip Scan效果
+-- - 执行时间
+```
+
 ```
 
 ---
@@ -406,8 +641,9 @@ WHERE created_at > '2023-02-01'
 ### 8.1 电商订单查询
 
 ```sql
--- 场景: 订单系统
-CREATE TABLE orders (
+-- 性能测试：场景: 订单系统（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders (
     order_id BIGSERIAL PRIMARY KEY,
     shop_id INT,
     user_id BIGINT,
@@ -415,43 +651,106 @@ CREATE TABLE orders (
     created_at TIMESTAMPTZ,
     amount NUMERIC
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表orders已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 索引
-CREATE INDEX idx_orders_shop_created ON orders(shop_id, created_at);
+-- 性能测试：索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_shop_created ON orders(shop_id, created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_shop_created已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 业务查询: 查询最近订单
+-- 性能测试：业务查询: 查询最近订单（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE created_at > NOW() - INTERVAL '7 days'
 ORDER BY created_at DESC
 LIMIT 100;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- Skip Scan性能
 -- 传统: 全表扫描 2.5秒
 -- Skip Scan: 扫描100个shop × 索引 = 85ms (-97%)
+-- 性能指标：
+-- - 执行时间
+-- - Skip Scan效果
+-- - 缓冲区使用情况
 ```
 
 ### 8.2 日志分析
 
 ```sql
--- 场景: 日志表
-CREATE TABLE application_logs (
+-- 性能测试：场景: 日志表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS application_logs (
     log_id BIGSERIAL PRIMARY KEY,
     level VARCHAR(10),
     service VARCHAR(50),
     timestamp TIMESTAMPTZ,
     message TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表application_logs已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 索引
-CREATE INDEX idx_logs_level_ts ON application_logs(level, timestamp);
+-- 性能测试：索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_logs_level_ts ON application_logs(level, timestamp);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_logs_level_ts已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表application_logs不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询: 最近错误日志
+-- 性能测试：查询: 最近错误日志（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM application_logs
 WHERE timestamp > NOW() - INTERVAL '1 hour'
 ORDER BY timestamp DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- Skip Scan: 扫描5个level (DEBUG, INFO, WARN, ERROR, FATAL)
 -- 性能: 150ms vs 3.2秒 (-95%)
+-- 性能指标：
+-- - 执行时间
+-- - Skip Scan循环次数
+-- - 缓冲区使用情况
 ```
 
 ---
@@ -485,10 +784,21 @@ SELECT * FROM users WHERE created_at > '2020-01-01';
 ### 9.2 统计信息重要性
 
 ```sql
--- 确保统计信息准确
+-- 性能测试：确保统计信息准确（带错误处理）
+BEGIN;
 ANALYZE users;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 检查统计信息
+-- 性能测试：检查统计信息（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     tablename,
     attname,
@@ -496,9 +806,19 @@ SELECT
     correlation
 FROM pg_stats
 WHERE tablename = 'users';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询统计信息失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- n_distinct影响Skip Scan评估
 -- 定期ANALYZE (autovacuum自动)
+-- 性能指标：
+-- - 统计信息准确性
+-- - n_distinct值
+-- - 相关性
 ```
 
 ---
@@ -508,31 +828,69 @@ WHERE tablename = 'users';
 ### 10.1 并行查询
 
 ```sql
--- Skip Scan + 并行
+-- 性能测试：Skip Scan + 并行（带错误处理）
+BEGIN;
 SET max_parallel_workers_per_gather = 4;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置并行度失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-EXPLAIN (ANALYZE)
+-- 性能测试：并行Skip Scan查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table
 WHERE created_at > '2023-01-01';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 计划:
 -- Parallel Index Skip Scan
 -- Workers: 4
 -- 性能倍增
+-- 性能指标：
+-- - 并行worker数量
+-- - 执行时间
+-- - Skip Scan效果
 ```
 
 ### 10.2 JIT编译
 
 ```sql
--- Skip Scan + JIT
+-- 性能测试：Skip Scan + JIT（带错误处理）
+BEGIN;
 SET jit = on;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置JIT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-EXPLAIN (ANALYZE)
+-- 性能测试：JIT优化Skip Scan查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users
 WHERE created_at > '2023-01-01';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- JIT优化Skip Scan循环
 -- 性能提升5-10%
+-- 性能指标：
+-- - JIT编译时间
+-- - 执行时间
+-- - Skip Scan效果
 ```
 
 ---
@@ -569,21 +927,48 @@ PostgreSQL 17 vs 18 (Skip Scan):
 ## 12. 调试技巧
 
 ```sql
--- 查看优化器决策
+-- 性能测试：查看优化器决策（带错误处理）
+BEGIN;
 SET client_min_messages = debug1;
 SET debug_print_plan = on;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置调试选项失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-EXPLAIN SELECT * FROM users WHERE created_at > '2023-01-01';
+-- 性能测试：查看执行计划（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE created_at > '2023-01-01';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询执行失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 查看日志
 -- 包含Skip Scan评估过程
 
--- 强制不同计划
+-- 性能测试：强制不同计划（带错误处理）
+BEGIN;
 SET enable_indexskipscan = off;  -- 禁用Skip Scan
 SET enable_seqscan = off;        -- 禁用顺序扫描
 SET enable_indexscan = off;      -- 禁用普通索引扫描
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置计划选项失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 对比成本
+-- 性能指标：
+-- - 优化器决策过程
+-- - 成本估算
+-- - 计划选择
 ```
 
 ---
