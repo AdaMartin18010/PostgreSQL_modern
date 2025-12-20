@@ -445,7 +445,7 @@ mindmap
 
 **M2理论层推理**：
 
-```
+```text
 1. 识别查询模式：选择查询
 2. 应用理论：选择下推优化
 3. 等价变换：可以重排序谓词
@@ -453,7 +453,7 @@ mindmap
 
 **M1实现层推理**：
 
-```
+```text
 1. 检查索引：customer_id有B-tree索引
 2. 估计基数：使用统计信息
 3. 选择算法：索引扫描vs顺序扫描
@@ -471,7 +471,7 @@ Index Scan using idx_customer_id on orders
 
 **ML推理增强**：
 
-```
+```text
 1. ML基数估计：预测过滤后行数（更准确）
 2. RL计划选择：基于历史选择最优算法
 3. 反馈学习：执行后更新模型
@@ -492,7 +492,7 @@ Index Scan using idx_customer_id on orders
 
 **推理链**：
 
-```
+```text
 M3: 需要并发控制 → 选择多版本方法
 M2: MVCC理论 → 快照隔离 → First-Committer-Wins
 M1: 实现 → xmin/xmax字段 → 可见性判断算法

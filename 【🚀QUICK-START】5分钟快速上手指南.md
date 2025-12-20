@@ -413,4 +413,4 @@ cat theory/DataBaseTheory/19-场景案例库/README.md
 **项目版本**: v100.0
 **文档状态**: ✅ 完整
 
-**🚀 祝你学习愉快！成为PostgreSQL专家！ 🚀**
+**🚀 祝你学习愉快！成为PostgreSQL专家！ 🚀**-

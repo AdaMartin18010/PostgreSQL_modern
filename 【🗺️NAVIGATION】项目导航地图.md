@@ -134,7 +134,7 @@ docs/
 
 ## 📐 数据库理论体系 (theory/DataBaseTheory/)
 
-### 目录结构
+### 目录结构1
 
 ```text
 theory/DataBaseTheory/
@@ -197,7 +197,7 @@ theory/DataBaseTheory/
    【3个案例】
 ```
 
-### 推荐阅读路径
+### 推荐阅读路径1
 
 #### 路径1：实战案例
 
@@ -224,7 +224,7 @@ theory/DataBaseTheory/
 
 ## 🔬 MVCC-ACID-CAP理论 (theory/MVCC-ACID-CAP/)
 
-### 目录结构
+### 目录结构2
 
 ```text
 theory/MVCC-ACID-CAP/
@@ -550,4 +550,4 @@ AI场景:
 **项目版本**: v100.0
 **文档状态**: ✅ 完整
 
-**🗺️ 开始探索PostgreSQL_Modern的完整世界！ 🗺️**
+**🗺️ 开始探索PostgreSQL_Modern的完整世界！ 🗺️**-

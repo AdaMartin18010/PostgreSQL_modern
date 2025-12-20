@@ -359,7 +359,7 @@ ALTER SYSTEM SET io_direct = 'data';  -- 启用direct I/O
 
 -- 2. io_uring队列深度
 SHOW io_uring_queue_depth;  -- 默认256
-ALTER SYSTEM SET io_uring_queue_depth = 512;
+ALTER SYSTEM SET io_uring_queue_depth = 256;  -- 设置队列深度queue_depth = 512;
 
 -- 3. 预读窗口大小
 SHOW effective_io_concurrency;  -- 控制预读数量
@@ -596,21 +596,38 @@ log_min_duration_statement = 1000  # 记录慢查询
 **启用步骤**：
 
 ```bash
+#!/bin/bash
+# 设置错误处理
+set -e  # 遇到错误立即退出
+set -u  # 使用未定义变量时报错
+
+# 错误处理函数
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
 # 1. 编辑配置
-sudo vi /etc/postgresql/18/main/postgresql.conf
+sudo vi /etc/postgresql/18/main/postgresql.conf || error_exit "编辑配置文件失败"
 
 # 2. 重启PostgreSQL
-sudo systemctl restart postgresql
+sudo systemctl restart postgresql || error_exit "重启PostgreSQL失败"
 
 # 3. 验证配置
-psql -c "SHOW io_direct;"
-# 应该输出：data
+if ! psql -c "SHOW io_direct;" | grep -q "data"; then
+    error_exit "io_direct配置未生效"
+fi
+echo "✅ io_direct配置正确"
 
-psql -c "SHOW io_uring_queue_depth;"
-# 应该输出：256
+if ! psql -c "SHOW io_uring_queue_depth;" | grep -q "256"; then
+    error_exit "io_uring_queue_depth配置未生效"
+fi
+echo "✅ io_uring_queue_depth配置正确"
 
-psql -c "SHOW effective_io_concurrency;"
-# 应该输出：200
+if ! psql -c "SHOW effective_io_concurrency;" | grep -q "200"; then
+    error_exit "effective_io_concurrency配置未生效"
+fi
+echo "✅ effective_io_concurrency配置正确"
 ```
 
 ### 5.3 验证AIO是否生效
@@ -618,23 +635,59 @@ psql -c "SHOW effective_io_concurrency;"
 **方法1：查看进程**:
 
 ```bash
+#!/bin/bash
+# 设置错误处理
+set -e
+set -u
+
+# 错误处理函数
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
 # 查看PostgreSQL是否使用io_uring
-ps aux | grep postgres
+if ! pgrep -x postgres > /dev/null; then
+    error_exit "PostgreSQL进程未运行"
+fi
+
 # 找到backend进程PID
+PID=$(ps aux | grep "postgres:.*backend" | grep -v grep | head -1 | awk '{print $2}')
+
+if [ -z "$PID" ]; then
+    error_exit "未找到PostgreSQL backend进程"
+fi
 
 # 查看文件描述符
-ls -l /proc/<PID>/fd | grep io_uring
-# 如果看到io_uring相关的fd，说明AIO已启用
+if ls -l /proc/$PID/fd 2>/dev/null | grep -q io_uring; then
+    echo "✅ AIO已启用（发现io_uring文件描述符）"
+else
+    echo "⚠️  未发现io_uring文件描述符，AIO可能未启用"
+fi
 ```
 
 **方法2：查询执行计划**:
 
 ```sql
+-- 性能测试：查询性能
 -- 执行EXPLAIN ANALYZE
-EXPLAIN (ANALYZE, BUFFERS) SELECT COUNT(*) FROM large_table;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT COUNT(*) FROM large_table;
 
--- 查看输出中是否有"Prefetch"相关信息
--- PostgreSQL 18会显示预读信息
+-- 性能指标：
+-- - 执行时间
+-- - 扫描行数
+-- - 缓冲区命中率
+-- - I/O时间
+-- - 预读信息（PostgreSQL 18会显示Prefetch相关信息）
+
+-- 对比测试：禁用AIO
+SET io_direct = 'off';
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT COUNT(*) FROM large_table;
+
+-- 重新启用AIO
+SET io_direct = 'data';
 ```
 
 **方法3：监控I/O指标**:
