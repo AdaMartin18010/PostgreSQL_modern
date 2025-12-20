@@ -7,39 +7,109 @@
 ## ⚡ 索引优化
 
 ```sql
--- ❌ 函数包裹索引列
-WHERE LOWER(email) = 'test@example.com'
+-- 性能测试：❌ 函数包裹索引列（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE LOWER(email) = 'test@example.com';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 使用表达式索引
-CREATE INDEX idx_lower_email ON users(LOWER(email));
+-- 性能测试：✅ 使用表达式索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_lower_email ON users(LOWER(email));
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_lower_email已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表达式索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
+-- 性能测试：❌ 隐式类型转换（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE user_id = '12345';  -- user_id是INT
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ❌ 隐式类型转换
-WHERE user_id = '12345'  -- user_id是INT
+-- 性能测试：✅ 使用正确类型（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE user_id = 12345;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 使用正确类型
-WHERE user_id = 12345
+-- 性能测试：❌ OR条件（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE name = 'Alice' OR name = 'Bob';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
+-- 性能测试：✅ 使用IN（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE name IN ('Alice', 'Bob');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ❌ OR条件（可能不用索引）
-WHERE name = 'Alice' OR name = 'Bob'
+-- 性能测试：❌ LIKE前导通配符（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE name LIKE '%test%';  -- 无法用索引
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 使用IN
-WHERE name IN ('Alice', 'Bob')
+-- 性能测试：✅ 前缀匹配（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE name LIKE 'test%';  -- 可用索引
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
-
--- ❌ LIKE前导通配符
-WHERE name LIKE '%test%'  -- 无法用索引
-
--- ✅ 前缀匹配
-WHERE name LIKE 'test%'  -- 可用索引
-
--- ✅ 或使用全文搜索/trigram
-CREATE INDEX idx_name_trgm ON users USING GIN (name gin_trgm_ops);
-WHERE name % 'test';
+-- 性能测试：✅ 或使用全文搜索/trigram（带错误处理）
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_name_trgm ON users USING GIN (name gin_trgm_ops);
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE name % 'test';
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '扩展或索引已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建trigram索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -47,28 +117,58 @@ WHERE name % 'test';
 ## 🔄 JOIN优化
 
 ```sql
--- ❌ 子查询在SELECT中
+-- 性能测试：❌ 子查询在SELECT中（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     u.id,
     (SELECT COUNT(*) FROM orders WHERE user_id = u.id) AS order_count
 FROM users u;
 -- 每行执行一次子查询！
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '子查询查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 改写为JOIN
+-- 性能测试：✅ 改写为JOIN（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     u.id,
     COUNT(o.id) AS order_count
 FROM users u
 LEFT JOIN orders o ON u.id = o.user_id
 GROUP BY u.id;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JOIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
-
--- ❌ 不必要的DISTINCT
+-- 性能测试：❌ 不必要的DISTINCT（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT DISTINCT user_id FROM orders;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'DISTINCT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 如果user_id已有索引，用GROUP BY更快
+-- 性能测试：✅ 如果user_id已有索引，用GROUP BY更快（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT user_id FROM orders GROUP BY user_id;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'GROUP BY查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -76,28 +176,58 @@ SELECT user_id FROM orders GROUP BY user_id;
 ## 📄 分页优化
 
 ```sql
--- ❌ OFFSET深度分页
+-- 性能测试：❌ OFFSET深度分页（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM products
 ORDER BY id
 LIMIT 20 OFFSET 100000;
 -- 扫描100020行，只返回20行
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'OFFSET分页查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ Keyset分页
+-- 性能测试：✅ Keyset分页（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM products
 WHERE id > 100000  -- 上一页最后的ID
 ORDER BY id
 LIMIT 20;
 -- 直接定位，只扫描20行
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Keyset分页查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
-
--- ❌ COUNT(*)深度分页
+-- 性能测试：❌ COUNT(*)深度分页（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table WHERE condition;
 -- 慢
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'COUNT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 估算（如果可接受）
+-- 性能测试：✅ 估算（如果可接受）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT reltuples::BIGINT FROM pg_class WHERE relname = 'large_table';
 -- 极快，稍有误差
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '估算查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -105,31 +235,61 @@ SELECT reltuples::BIGINT FROM pg_class WHERE relname = 'large_table';
 ## 🎯 聚合优化
 
 ```sql
--- ❌ 多次聚合查询
+-- 性能测试：❌ 多次聚合查询（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM users WHERE status = 'active';
 SELECT COUNT(*) FROM users WHERE status = 'inactive';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '多次聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 一次查询
+-- 性能测试：✅ 一次查询（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     status,
     COUNT(*) AS count
 FROM users
 GROUP BY status;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'GROUP BY查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
-
--- ❌ 子查询聚合
+-- 性能测试：❌ 子查询聚合（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     category,
     (SELECT AVG(price) FROM products p2 WHERE p2.category = p1.category)
 FROM products p1
 GROUP BY category;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '子查询聚合失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 窗口函数
+-- 性能测试：✅ 窗口函数（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT DISTINCT
     category,
     AVG(price) OVER (PARTITION BY category) AS avg_price
 FROM products;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '窗口函数查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -157,32 +317,80 @@ JOIN large_table lt ON st.id = lt.id;
 ## 💾 批量操作
 
 ```sql
--- ❌ 循环单条INSERT
-FOR i IN 1..10000 LOOP
-    INSERT INTO users VALUES (i, ...);
-END LOOP;
+-- 性能测试：❌ 循环单条INSERT（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    FOR i IN 1..10000 LOOP
+        INSERT INTO users VALUES (i, 'user' || i, 'email' || i || '@example.com')
+        ON CONFLICT DO NOTHING;
+    END LOOP;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '循环插入失败: %', SQLERRM;
+        RAISE;
+END $$;
 -- 10000次INSERT，慢
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '循环插入事务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 批量VALUES
+-- 性能测试：✅ 批量VALUES（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO users VALUES
-(1, ...), (2, ...), (3, ...), ... (10000, ...);
+(1, 'user1', 'email1@example.com'),
+(2, 'user2', 'email2@example.com'),
+(3, 'user3', 'email3@example.com')
+ON CONFLICT DO NOTHING;
 -- 1次INSERT，快
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '批量插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 或使用COPY
+-- 性能测试：✅ 或使用COPY（带错误处理）
+BEGIN;
 COPY users FROM '/tmp/data.csv' WITH CSV;
 -- 最快
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'COPY失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
-
--- ❌ 逐行UPDATE
+-- 性能测试：❌ 逐行UPDATE（带错误处理）
+BEGIN;
 UPDATE users SET status = 'active' WHERE id = 1;
 UPDATE users SET status = 'active' WHERE id = 2;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '逐行UPDATE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 批量UPDATE
+-- 性能测试：✅ 批量UPDATE（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE users SET status = 'active'
-WHERE id IN (1, 2, 3, ...);
+WHERE id IN (1, 2, 3);
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '批量UPDATE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 或使用VALUES
+-- 性能测试：✅ 或使用VALUES（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE users u
 SET status = v.new_status
 FROM (VALUES
@@ -190,6 +398,12 @@ FROM (VALUES
     (2, 'inactive')
 ) AS v(id, new_status)
 WHERE u.id = v.id;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'VALUES UPDATE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

@@ -203,7 +203,6 @@ EXCEPTION
         RAISE NOTICE '插入数据失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 -- 查看初始tuple
 SELECT
@@ -219,6 +218,7 @@ FROM heap_page_items(get_raw_page('mvcc_test', 0));
  (0,1)  |  1000  |    0   |   0
 
 解释：
+
 - t_ctid=(0,1)：第0页，第1个元组
 - t_xmin=1000：事务1000创建
 - t_xmax=0：未删除
@@ -238,8 +238,9 @@ FROM heap_page_items(get_raw_page('mvcc_test', 0));
   2 | (0,2)  |  1001  |    0   | ...    ← 新版本
 
 MVCC版本链：
-(0,1)[xmax=1001] → (0,2)[xmin=1001, xmax=0]
+[0,1](xmax=1001) → [0,2](xmin=1001, xmax=0)
 */
+
 ```
 
 ---

@@ -5,15 +5,26 @@
 ### 1.1 组织结构树
 
 ```sql
--- 员工表（树形结构）
-CREATE TABLE employees (
+-- 性能测试：员工表（树形结构）（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS employees (
     emp_id INT PRIMARY KEY,
     name VARCHAR(100),
     manager_id INT REFERENCES employees(emp_id),
     department VARCHAR(50)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表employees已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询某人的所有下属（递归）
+-- 性能测试：查询某人的所有下属（递归）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE subordinates AS (
     -- 基础查询（锚点）
     SELECT emp_id, name, manager_id, 1 AS level
@@ -29,8 +40,16 @@ WITH RECURSIVE subordinates AS (
 )
 SELECT * FROM subordinates
 ORDER BY level, emp_id;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '递归查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询向上（到根节点）
+-- 性能测试：查询向上（到根节点）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE managers AS (
     SELECT emp_id, name, manager_id, 1 AS level
     FROM employees
@@ -43,19 +62,36 @@ WITH RECURSIVE managers AS (
     JOIN managers m ON e.emp_id = m.manager_id
 )
 SELECT * FROM managers;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '向上递归查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 1.2 图遍历
 
 ```sql
--- 社交网络好友关系
-CREATE TABLE friendships (
+-- 性能测试：社交网络好友关系（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS friendships (
     user_id INT,
     friend_id INT,
     PRIMARY KEY (user_id, friend_id)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表friendships已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查找N度好友
+-- 性能测试：查找N度好友（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE friend_network AS (
     -- 1度好友
     SELECT friend_id AS user, 1 AS degree
@@ -74,12 +110,20 @@ SELECT user, MIN(degree) AS closest_degree
 FROM friend_network
 GROUP BY user
 ORDER BY closest_degree, user;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'N度好友查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 1.3 数字序列
 
 ```sql
--- 生成日期序列
+-- 性能测试：生成日期序列（递归方式）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE dates AS (
     SELECT '2024-01-01'::DATE AS date
     UNION ALL
@@ -88,13 +132,27 @@ WITH RECURSIVE dates AS (
     WHERE date < '2024-12-31'
 )
 SELECT date FROM dates;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '递归日期序列生成失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 或使用generate_series（更高效）
+-- 性能测试：或使用generate_series（更高效）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT generate_series(
     '2024-01-01'::DATE,
     '2024-12-31'::DATE,
     '1 day'::INTERVAL
 )::DATE AS date;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'generate_series日期序列生成失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

@@ -5,15 +5,29 @@
 ### 1.1 安装
 
 ```bash
+#!/bin/bash
+# 性能测试：安装PostGIS（带错误处理）
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+DB_NAME="${1:-mydb}"
+
 # 安装PostGIS
-sudo apt install postgresql-18-postgis-3
+sudo apt install postgresql-18-postgis-3 || error_exit "安装PostGIS失败"
 
 # 创建扩展
-psql -d mydb -c "CREATE EXTENSION postgis;"
-psql -d mydb -c "CREATE EXTENSION postgis_topology;"
+psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS postgis;" || error_exit "创建postgis扩展失败"
+psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;" || error_exit "创建postgis_topology扩展失败"
 
 # 验证
-psql -d mydb -c "SELECT PostGIS_Full_Version();"
+psql -d "$DB_NAME" -c "SELECT PostGIS_Full_Version();" || error_exit "验证PostGIS失败"
+
+echo "PostGIS安装完成"
 ```
 
 ---
@@ -23,20 +37,46 @@ psql -d mydb -c "SELECT PostGIS_Full_Version();"
 ### 2.1 基础类型
 
 ```sql
--- 点（POINT）
-CREATE TABLE locations (
+-- 性能测试：点（POINT）（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS locations (
     loc_id SERIAL PRIMARY KEY,
     name VARCHAR(100),
     geom geometry(POINT, 4326)  -- WGS84坐标系
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表locations已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 INSERT INTO locations (name, geom) VALUES
 ('北京', ST_GeomFromText('POINT(116.4074 39.9042)', 4326)),
-('上海', ST_GeomFromText('POINT(121.4737 31.2304)', 4326));
+('上海', ST_GeomFromText('POINT(121.4737 31.2304)', 4326))
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 或使用ST_MakePoint
+-- 性能测试：或使用ST_MakePoint（带错误处理）
+BEGIN;
 INSERT INTO locations (name, geom) VALUES
-('广州', ST_SetSRID(ST_MakePoint(113.2644, 23.1291), 4326));
+('广州', ST_SetSRID(ST_MakePoint(113.2644, 23.1291), 4326))
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'ST_MakePoint插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 -- 线（LINESTRING）
 CREATE TABLE roads (
@@ -57,6 +97,7 @@ CREATE TABLE districts (
 
 INSERT INTO districts (name, geom) VALUES
 ('区域1', ST_GeomFromText('POLYGON((116.3 39.8, 116.5 39.8, 116.5 40.0, 116.3 40.0, 116.3 39.8))', 4326));
+
 ```
 
 ---
@@ -66,20 +107,38 @@ INSERT INTO districts (name, geom) VALUES
 ### 3.1 GiST索引
 
 ```sql
--- 创建空间索引
-CREATE INDEX idx_locations_geom ON locations USING gist(geom);
-CREATE INDEX idx_roads_geom ON roads USING gist(geom);
-CREATE INDEX idx_districts_geom ON districts USING gist(geom);
+-- 性能测试：创建空间索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_locations_geom ON locations USING gist(geom);
+CREATE INDEX IF NOT EXISTS idx_roads_geom ON roads USING gist(geom);
+CREATE INDEX IF NOT EXISTS idx_districts_geom ON districts USING gist(geom);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '部分空间索引已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建空间索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询性能
-EXPLAIN ANALYZE
+-- 性能测试：查询性能（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM locations
 WHERE ST_DWithin(geom, ST_MakePoint(116.4, 39.9), 0.1);
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '空间查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 /*
 无索引: Seq Scan, 850ms
 有索引: Index Scan using idx_locations_geom, 12ms (-99%)
 */
+
 ```
 
 ---

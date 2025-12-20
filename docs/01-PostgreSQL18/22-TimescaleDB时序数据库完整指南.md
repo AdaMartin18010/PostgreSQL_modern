@@ -32,18 +32,30 @@
 ## 2. 安装配置
 
 ```bash
+#!/bin/bash
+# 性能测试：安装TimescaleDB（带错误处理）
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
 # 安装TimescaleDB
-sudo apt install postgresql-18-timescaledb
+sudo apt install postgresql-18-timescaledb || error_exit "安装TimescaleDB失败"
 
 # 配置
 echo "shared_preload_libraries = 'timescaledb'" | \
-  sudo tee -a /etc/postgresql/18/main/postgresql.conf
+  sudo tee -a /etc/postgresql/18/main/postgresql.conf || error_exit "配置失败"
 
 # 重启
-sudo systemctl restart postgresql
+sudo systemctl restart postgresql || error_exit "重启PostgreSQL失败"
 
 # 创建扩展
-psql -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+psql -c "CREATE EXTENSION IF NOT EXISTS timescaledb;" || error_exit "创建扩展失败"
+
+echo "TimescaleDB安装完成"
 ```
 
 ---
@@ -53,36 +65,85 @@ psql -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
 ### 3.1 基础Hypertable
 
 ```sql
--- 创建普通表
-CREATE TABLE sensor_data (
+-- 性能测试：创建普通表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS sensor_data (
     time TIMESTAMPTZ NOT NULL,
     sensor_id INT NOT NULL,
     temperature FLOAT,
     humidity FLOAT,
     pressure FLOAT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表sensor_data已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 转换为Hypertable
-SELECT create_hypertable('sensor_data', 'time');
+-- 性能测试：转换为Hypertable（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM create_hypertable('sensor_data', 'time');
+    RAISE NOTICE 'Hypertable创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建Hypertable失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 配置chunk大小（默认7天）
-SELECT create_hypertable('sensor_data', 'time', chunk_time_interval => INTERVAL '1 day');
+-- 性能测试：配置chunk大小（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM create_hypertable('sensor_data', 'time', chunk_time_interval => INTERVAL '1 day');
+    RAISE NOTICE 'Hypertable配置成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置chunk大小失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 添加分区键（空间分区）
-SELECT create_hypertable('sensor_data', 'time', partitioning_column => 'sensor_id', number_partitions => 4);
+-- 性能测试：添加分区键（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM create_hypertable('sensor_data', 'time', partitioning_column => 'sensor_id', number_partitions => 4);
+    RAISE NOTICE '空间分区配置成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '添加分区键失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ### 3.2 插入数据
 
 ```sql
--- 高频插入
+-- 性能测试：高频插入（带错误处理）
+BEGIN;
 INSERT INTO sensor_data (time, sensor_id, temperature, humidity, pressure)
 VALUES
     (now(), 1, 23.5, 65.2, 1013.2),
     (now(), 2, 24.1, 62.8, 1012.8),
-    (now(), 3, 22.9, 67.5, 1014.1);
+    (now(), 3, 22.9, 67.5, 1014.1)
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '高频插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 批量插入
+-- 性能测试：批量插入（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO sensor_data
 SELECT
     now() - (random() * INTERVAL '365 days'),
@@ -91,8 +152,13 @@ SELECT
     random() * 100,
     random() * 50 + 1000
 FROM generate_series(1, 1000000);
-
 -- 性能: 100万条/秒 (批量)
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '批量插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

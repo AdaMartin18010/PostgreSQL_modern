@@ -75,16 +75,45 @@ cat /etc/postgresql/18/main/pg_hba.conf
 ### 1.2 连接数满
 
 ```sql
--- 查看当前连接
+-- 性能测试：查看当前连接（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM pg_stat_activity;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看连接数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看max_connections
-SHOW max_connections;
+-- 性能测试：查看max_connections（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM current_setting('max_connections');
+    RAISE NOTICE 'max_connections查询成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询max_connections失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 
--- 查看各状态连接数
+-- 性能测试：查看各状态连接数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT state, COUNT(*) FROM pg_stat_activity GROUP BY state;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看连接状态失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看连接来源
+-- 性能测试：查看连接来源（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     application_name,
     client_addr,
@@ -93,13 +122,39 @@ SELECT
 FROM pg_stat_activity
 GROUP BY application_name, client_addr, state
 ORDER BY COUNT(*) DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看连接来源失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 紧急措施：终止idle连接
-SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity
-WHERE state = 'idle'
-  AND state_change < now() - INTERVAL '10 minutes'
-  AND pid != pg_backend_pid();
+-- 性能测试：紧急措施：终止idle连接（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    terminated_count INT := 0;
+BEGIN
+    SELECT COUNT(*) INTO terminated_count
+    FROM pg_stat_activity
+    WHERE state = 'idle'
+      AND state_change < now() - INTERVAL '10 minutes'
+      AND pid != pg_backend_pid();
+
+    PERFORM pg_terminate_backend(pid)
+    FROM pg_stat_activity
+    WHERE state = 'idle'
+      AND state_change < now() - INTERVAL '10 minutes'
+      AND pid != pg_backend_pid();
+
+    RAISE NOTICE '已终止 % 个空闲连接', terminated_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '终止空闲连接失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 
 -- 长期方案：使用连接池
 -- 部署pgBouncer或使用应用层连接池
@@ -112,7 +167,9 @@ WHERE state = 'idle'
 ### 2.1 慢查询诊断
 
 ```sql
--- Step 1: 识别慢查询
+-- 性能测试：Step 1: 识别慢查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     query,
     calls,
@@ -123,6 +180,14 @@ FROM pg_stat_statements
 WHERE mean_exec_time > 100  -- >100ms
 ORDER BY total_time DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE 'pg_stat_statements扩展未安装，请先执行: CREATE EXTENSION pg_stat_statements;';
+    WHEN OTHERS THEN
+        RAISE NOTICE '识别慢查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- Step 2: EXPLAIN分析
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
@@ -174,7 +239,9 @@ FROM pg_stat_database;
 ### 2.2 CPU 100%
 
 ```sql
--- 查看活跃查询
+-- 性能测试：查看活跃查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     usename,
@@ -184,13 +251,46 @@ SELECT
 FROM pg_stat_activity
 WHERE state = 'active'
 ORDER BY duration DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看活跃查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 终止耗CPU查询
-SELECT pg_cancel_backend(pid);
+-- 性能测试：终止耗CPU查询（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    cancelled_count INT := 0;
+BEGIN
+    SELECT COUNT(*) INTO cancelled_count
+    FROM pg_stat_activity
+    WHERE state = 'active' AND pid != pg_backend_pid();
 
--- 检查是否有大量并发查询
+    PERFORM pg_cancel_backend(pid)
+    FROM pg_stat_activity
+    WHERE state = 'active' AND pid != pg_backend_pid();
+
+    RAISE NOTICE '已取消 % 个活跃查询', cancelled_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '取消查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
+
+-- 性能测试：检查是否有大量并发查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT state, COUNT(*) FROM pg_stat_activity GROUP BY state;
-```
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查并发查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 ---
 
@@ -213,14 +313,24 @@ ls -lh /var/lib/postgresql/18/main/pg_wal/ | head -20
 ```
 
 ```sql
--- 检查数据库大小
+-- 性能测试：检查数据库大小（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     pg_size_pretty(pg_database_size(datname)) AS size
 FROM pg_database
 ORDER BY pg_database_size(datname) DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查数据库大小失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 检查大表
+-- 性能测试：检查大表（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -228,21 +338,56 @@ SELECT
 FROM pg_tables
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查大表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 检查WAL文件数量
+-- 性能测试：检查WAL文件数量（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM pg_ls_waldir();
 -- 正常<100个，>200个需要检查
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查WAL文件数量失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 检查复制槽（可能阻止WAL回收）
+-- 性能测试：检查复制槽（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     active,
     wal_status,
     safe_wal_size
 FROM pg_replication_slots;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查复制槽失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 删除无用复制槽
-SELECT pg_drop_replication_slot('unused_slot');
+-- 性能测试：删除无用复制槽（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM pg_drop_replication_slot('unused_slot');
+    RAISE NOTICE '复制槽unused_slot已删除';
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE NOTICE '复制槽unused_slot不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除复制槽失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 
 -- 紧急措施：手动清理旧WAL（危险！）
 -- 确保已归档

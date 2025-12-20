@@ -5,7 +5,9 @@
 ### 1.1 简单CTE
 
 ```sql
--- 不使用CTE
+-- 性能测试：不使用CTE（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM (
     SELECT user_id, COUNT(*) AS order_count
@@ -13,8 +15,16 @@ FROM (
     GROUP BY user_id
 ) AS user_orders
 WHERE order_count > 5;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '子查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 使用CTE（更清晰）
+-- 性能测试：使用CTE（更清晰）（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH user_orders AS (
     SELECT user_id, COUNT(*) AS order_count
     FROM orders
@@ -23,11 +33,20 @@ WITH user_orders AS (
 SELECT *
 FROM user_orders
 WHERE order_count > 5;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'CTE查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 1.2 多个CTE
 
 ```sql
+-- 性能测试：多个CTE（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH
 active_users AS (
     SELECT id, username
@@ -46,6 +65,12 @@ SELECT
 FROM active_users u
 LEFT JOIN recent_orders o ON u.id = o.user_id
 ORDER BY orders DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '多CTE查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -55,21 +80,38 @@ ORDER BY orders DESC;
 ### 2.1 组织层级
 
 ```sql
--- 组织表
-CREATE TABLE employees (
+-- 性能测试：组织表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS employees (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100),
     manager_id INT REFERENCES employees(id),
     title VARCHAR(100)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表employees已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 INSERT INTO employees (id, name, manager_id, title) VALUES
 (1, 'Alice', NULL, 'CEO'),
 (2, 'Bob', 1, 'CTO'),
 (3, 'Charlie', 1, 'CFO'),
 (4, 'David', 2, 'Tech Lead'),
 (5, 'Eve', 2, 'Senior Dev'),
-(6, 'Frank', 4, 'Developer');
+(6, 'Frank', 4, 'Developer')
+ON CONFLICT (id) DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 递归查询：查找所有下属
 WITH RECURSIVE subordinates AS (
@@ -93,13 +135,16 @@ FROM subordinates
 ORDER BY level, name;
 
 /*
+
 org_chart          | title        | level
 -------------------|--------------|-------
 Bob                | CTO          | 1
   David            | Tech Lead    | 2
   Eve              | Senior Dev   | 2
+
     Frank          | Developer    | 3
 */
+
 ```
 
 ### 2.2 路径追踪

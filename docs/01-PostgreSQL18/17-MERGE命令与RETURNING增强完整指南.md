@@ -147,7 +147,6 @@ EXCEPTION
         RAISE NOTICE '插入数据失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 -- MERGE操作
 MERGE INTO inventory t
@@ -184,6 +183,7 @@ RETURNING
 --      1      |       100       |      150       |    UPDATE      |       50
 --      2      |       200       |     NULL       |    DELETE      |      -200
 --      4      |      NULL       |       80       |    INSERT      |       80
+
 ```
 
 ### 2.2 RETURNING与CTE结合

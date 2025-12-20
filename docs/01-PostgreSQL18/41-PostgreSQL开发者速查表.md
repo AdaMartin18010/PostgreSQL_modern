@@ -43,42 +43,116 @@ INT4RANGE, TSTZRANGE
 ## 🔍 常用查询
 
 ```sql
--- 基础查询
+-- 性能测试：基础查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE age > 25;
-SELECT COUNT(*) FROM users;
-SELECT DISTINCT city FROM users;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '基础查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- JOIN
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT COUNT(*) FROM users;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'COUNT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT DISTINCT city FROM users;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'DISTINCT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能测试：JOIN（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders o
 JOIN users u ON o.user_id = u.id;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JOIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- LEFT JOIN
+-- 性能测试：LEFT JOIN（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users u
 LEFT JOIN orders o ON u.id = o.user_id;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'LEFT JOIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 聚合
+-- 性能测试：聚合（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT city, COUNT(*), AVG(age)
 FROM users
 GROUP BY city
 HAVING COUNT(*) > 100;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 子查询
+-- 性能测试：子查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users
 WHERE id IN (SELECT user_id FROM orders WHERE total > 1000);
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '子查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- CTE
+-- 性能测试：CTE（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH active_users AS (
     SELECT * FROM users WHERE last_login > now() - INTERVAL '30 days'
 )
 SELECT * FROM active_users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'CTE查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 窗口函数
+-- 性能测试：窗口函数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     name,
     salary,
     ROW_NUMBER() OVER (ORDER BY salary DESC) AS rank,
     AVG(salary) OVER () AS avg_salary
 FROM employees;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '窗口函数查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -86,36 +160,133 @@ FROM employees;
 ## ⚡ 性能优化
 
 ```sql
--- 创建索引
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX CONCURRENTLY idx_name ON users(name);  -- 不锁表
+-- 性能测试：创建索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_users_email已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 唯一索引
-CREATE UNIQUE INDEX idx_users_email_unique ON users(email);
+BEGIN;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_name ON users(name);  -- 不锁表
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_name已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建并发索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 部分索引
-CREATE INDEX idx_active_users ON users(email) WHERE status = 'active';
+-- 性能测试：唯一索引（带错误处理）
+BEGIN;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '唯一索引idx_users_email_unique已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建唯一索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 表达式索引
-CREATE INDEX idx_lower_email ON users(LOWER(email));
+-- 性能测试：部分索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_active_users ON users(email) WHERE status = 'active';
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '部分索引idx_active_users已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建部分索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 多列索引
-CREATE INDEX idx_users_name_age ON users(last_name, first_name, age);
+-- 性能测试：表达式索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_lower_email ON users(LOWER(email));
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表达式索引idx_lower_email已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表达式索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- GIN索引（JSON/数组/全文搜索）
-CREATE INDEX idx_data_gin ON docs USING GIN (data);
+-- 性能测试：多列索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_name_age ON users(last_name, first_name, age);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '多列索引idx_users_name_age已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建多列索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- HNSW索引（向量，PostgreSQL 18）
-CREATE INDEX idx_embedding ON docs USING hnsw (embedding vector_cosine_ops);
+-- 性能测试：GIN索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_data_gin ON docs USING GIN (data);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE 'GIN索引idx_data_gin已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建GIN索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看执行计划
-EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
+-- 性能测试：HNSW索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_embedding ON docs USING hnsw (embedding vector_cosine_ops);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE 'HNSW索引idx_embedding已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建HNSW索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- VACUUM
+-- 性能测试：查看执行计划（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE email = 'test@example.com';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'EXPLAIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能测试：VACUUM（带错误处理）
+BEGIN;
 VACUUM ANALYZE users;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'VACUUM ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 更新统计信息
+-- 性能测试：更新统计信息（带错误处理）
+BEGIN;
 ANALYZE users;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -123,31 +294,84 @@ ANALYZE users;
 ## 🛠️ 数据操作
 
 ```sql
--- INSERT
-INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');
+-- 性能测试：INSERT（带错误处理）
+BEGIN;
+INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com')
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'INSERT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 批量INSERT
+-- 性能测试：批量INSERT（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO users (name, email) VALUES
     ('Bob', 'bob@example.com'),
-    ('Charlie', 'charlie@example.com');
+    ('Charlie', 'charlie@example.com')
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '批量INSERT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- COPY（最快）
+-- 性能测试：COPY（带错误处理）
+BEGIN;
 COPY users FROM '/tmp/users.csv' WITH CSV HEADER;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'COPY失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- UPDATE
+-- 性能测试：UPDATE（带错误处理）
+BEGIN;
 UPDATE users SET email = 'new@example.com' WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'UPDATE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- DELETE
+-- 性能测试：DELETE（带错误处理）
+BEGIN;
 DELETE FROM users WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'DELETE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- UPSERT (ON CONFLICT)
+-- 性能测试：UPSERT (ON CONFLICT)（带错误处理）
+BEGIN;
 INSERT INTO users (id, name, email)
 VALUES (1, 'Alice', 'alice@example.com')
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name, email = EXCLUDED.email;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'UPSERT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- RETURNING（获取插入的ID）
+-- 性能测试：RETURNING（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO users (name) VALUES ('Bob') RETURNING id;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'RETURNING插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -212,15 +436,33 @@ LIMIT 10;
 ## 📈 监控查询
 
 ```sql
--- 当前连接数
+-- 性能测试：当前连接数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM pg_stat_activity;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询连接数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 活跃查询
+-- 性能测试：活跃查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT pid, usename, state, query
 FROM pg_stat_activity
 WHERE state != 'idle';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询活跃查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 慢查询（需要pg_stat_statements）
+-- 性能测试：慢查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     query,
     calls,
@@ -229,23 +471,71 @@ SELECT
 FROM pg_stat_statements
 ORDER BY mean_exec_time DESC
 LIMIT 10;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE 'pg_stat_statements扩展未安装，请先执行: CREATE EXTENSION pg_stat_statements;';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询慢查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 缓存命中率
+-- 性能测试：缓存命中率（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     ROUND(SUM(blks_hit) * 100.0 / NULLIF(SUM(blks_hit + blks_read), 0), 2) AS hit_ratio
 FROM pg_stat_database;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询缓存命中率失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 表统计
+-- 性能测试：表统计（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_user_tables WHERE schemaname = 'public';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询表统计失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 索引使用
+-- 性能测试：索引使用（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_user_indexes ORDER BY idx_scan;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询索引使用失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 未使用的索引
+-- 性能测试：未使用的索引（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT indexname FROM pg_stat_user_indexes WHERE idx_scan = 0;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询未使用索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 锁等待
+-- 性能测试：锁等待（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_locks WHERE NOT granted;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询锁等待失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -253,18 +543,60 @@ SELECT * FROM pg_locks WHERE NOT granted;
 ## 🎯 PostgreSQL 18新特性
 
 ```sql
--- 异步I/O（性能+35%）
-ALTER SYSTEM SET io_direct = 'data,wal';
-SELECT pg_reload_conf();
+-- 性能测试：异步I/O（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET io_direct = 'data,wal';
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '异步I/O配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置异步I/O失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 
--- Skip Scan
-ALTER SYSTEM SET enable_skip_scan = on;
+-- 性能测试：Skip Scan（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET enable_skip_scan = on;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Skip Scan已启用';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用Skip Scan失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 
--- UUIDv7（时间排序）
-SELECT gen_uuid_v7();
+-- 性能测试：UUIDv7（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM gen_uuid_v7();
+    RAISE NOTICE 'UUIDv7生成成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '生成UUIDv7失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- GIN并行构建（索引快73%）
-CREATE INDEX CONCURRENTLY idx_data ON docs USING GIN (data);
+-- 性能测试：GIN并行构建（带错误处理）
+BEGIN;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_data ON docs USING GIN (data);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_data已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建GIN索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

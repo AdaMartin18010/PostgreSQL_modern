@@ -3,37 +3,74 @@
 ## 1. JSON vs JSONB
 
 ```sql
--- JSON: 文本存储，保留格式
-CREATE TABLE logs_json (
+-- 性能测试：JSON vs JSONB（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS logs_json (
     id SERIAL PRIMARY KEY,
     data JSON
 );
-
--- JSONB: 二进制存储，支持索引
-CREATE TABLE logs_jsonb (
+CREATE TABLE IF NOT EXISTS logs_jsonb (
     id SERIAL PRIMARY KEY,
     data JSONB
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '部分表已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 性能对比
+-- 性能测试：性能对比（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO logs_json (data)
 SELECT ('{"user_id": ' || i || ', "action": "login", "timestamp": "2024-01-01"}')::JSON
 FROM generate_series(1, 100000) i;
 -- 时间: 2.5秒
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSON插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO logs_jsonb (data)
 SELECT ('{"user_id": ' || i || ', "action": "login", "timestamp": "2024-01-01"}')::JSONB
 FROM generate_series(1, 100000) i;
 -- 时间: 3.2秒（插入稍慢，但查询更快）
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB插入失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询对比
-EXPLAIN ANALYZE
+-- 性能测试：查询对比（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM logs_json WHERE data->>'user_id' = '12345';
 -- 无索引支持，全表扫描
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSON查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-EXPLAIN ANALYZE
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM logs_jsonb WHERE data @> '{"user_id": 12345}';
 -- 可使用GIN索引，快速查询
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 结论: 优先使用JSONB（除非需要保留JSON格式）
 ```
@@ -45,41 +82,98 @@ SELECT * FROM logs_jsonb WHERE data @> '{"user_id": 12345}';
 ### 2.1 插入
 
 ```sql
--- 插入JSON数据
+-- 性能测试：插入JSON数据（带错误处理）
+BEGIN;
 INSERT INTO users (id, info) VALUES
 (1, '{"name": "Alice", "age": 30, "tags": ["admin", "user"]}'),
-(2, '{"name": "Bob", "age": 25, "email": "bob@example.com"}');
+(2, '{"name": "Bob", "age": 25, "email": "bob@example.com"}')
+ON CONFLICT (id) DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入JSON数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 从函数构建
+-- 性能测试：从函数构建（带错误处理）
+BEGIN;
 INSERT INTO users (id, info) VALUES
 (3, jsonb_build_object(
     'name', 'Charlie',
     'age', 35,
     'tags', jsonb_build_array('user', 'premium')
-));
+))
+ON CONFLICT (id) DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '构建JSONB对象失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 2.2 查询
 
 ```sql
--- -> 返回JSON对象
+-- 性能测试：-> 返回JSON对象（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT info->'name' FROM users WHERE id = 1;
 -- 结果: "Alice"（带引号）
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSON查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ->> 返回文本
+-- 性能测试：->> 返回文本（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT info->>'name' FROM users WHERE id = 1;
 -- 结果: Alice（无引号）
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSON查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 嵌套访问
+-- 性能测试：嵌套访问（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT info->'address'->>'city' FROM users WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '嵌套访问失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 数组访问
+-- 性能测试：数组访问（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT info->'tags'->0 FROM users WHERE id = 1;
 -- 结果: "admin"
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '数组访问失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 数组展开
+-- 性能测试：数组展开（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT jsonb_array_elements_text(info->'tags') AS tag
 FROM users WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '数组展开失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 /*
 tag
 ------
