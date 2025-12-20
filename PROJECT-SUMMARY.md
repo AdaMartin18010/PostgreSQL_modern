@@ -24,7 +24,7 @@
 
 ### 1. PostgreSQL 18核心特性（42篇）
 
-```
+```text
 docs/01-PostgreSQL18/
 ├── 01-08: 基础核心特性（异步I/O、Skip Scan、UUIDv7等）
 ├── 09-31: 深度技术解析（性能调优、JIT、并行查询等）
@@ -54,7 +54,7 @@ docs/01-PostgreSQL18/
 
 ### 2. AI/ML集成（12篇）
 
-```
+```text
 docs/02-AI-ML/
 ├── 向量数据库与pgvector
 ├── Text-to-Cypher/KBQA
@@ -80,7 +80,7 @@ docs/02-AI-ML/
 
 ### 3. 分布式系统（10篇）
 
-```
+```text
 docs/04-Distributed/
 ├── Citus分布式实战
 ├── 逻辑复制分布式架构
@@ -105,7 +105,7 @@ docs/04-Distributed/
 
 ### 4. 生产运维（21篇）
 
-```
+```text
 docs/05-Production/
 ├── Kubernetes完整部署
 ├── Patroni高可用
@@ -133,7 +133,7 @@ docs/05-Production/
 
 ### 5. 数据库理论（深化）
 
-```
+```text
 DataBaseTheory/
 ├── 06: 存储与恢复（WAL深度解析）
 ├── 09: 数据模型与规范化（反范式化策略）
@@ -190,7 +190,7 @@ DataBaseTheory/22-工具脚本/
 
 ### 1. 完整性
 
-```
+```text
 ✓ 理论到实战完整覆盖
 ✓ 从入门到精通渐进式
 ✓ 代码示例可直接运行
@@ -200,7 +200,7 @@ DataBaseTheory/22-工具脚本/
 
 ### 2. 深度
 
-```
+```text
 ✓ 源码级原理解析
 ✓ 性能优化实测数据
 ✓ 10个真实案例分析
@@ -210,7 +210,7 @@ DataBaseTheory/22-工具脚本/
 
 ### 3. 广度
 
-```
+```text
 ✓ PostgreSQL 18全特性
 ✓ AI/ML完整集成
 ✓ 分布式架构方案
@@ -293,7 +293,7 @@ sh DataBaseTheory/22-工具脚本/14-数据库健康检查工具.sh
 
 ### PostgreSQL 18 vs 17
 
-```
+```text
 TPC-H测试（1TB）:
 整体性能: +22%
 I/O密集查询: +35%
@@ -311,7 +311,7 @@ Skip Scan收益:
 
 ### 优化案例实测
 
-```
+```text
 慢查询优化10案例平均收益:
 时间: -98.5%
 成本: -95%
@@ -329,7 +329,7 @@ Skip Scan收益:
 
 ### 对开发者
 
-```
+```text
 ✓ 系统学习PostgreSQL 18
 ✓ 掌握AI/ML集成方案
 ✓ 获取生产级最佳实践
@@ -339,7 +339,7 @@ Skip Scan收益:
 
 ### 对企业
 
-```
+```text
 ✓ 降低学习成本
 ✓ 加速项目落地
 ✓ 提升系统性能
@@ -349,7 +349,7 @@ Skip Scan收益:
 
 ### 对社区
 
-```
+```text
 ✓ 中文PostgreSQL知识库
 ✓ 开源工具脚本
 ✓ 真实案例分享
@@ -360,7 +360,7 @@ Skip Scan收益:
 
 ## 📝 维护计划
 
-```
+```text
 ✓ PostgreSQL 18.1发布后更新
 ✓ 新增生产案例
 ✓ 工具脚本持续优化
@@ -388,4 +388,4 @@ Skip Scan收益:
 
 ---
 
-*PostgreSQL_Modern - 世界一流的PostgreSQL 18技术知识体系*
+*PostgreSQL_Modern - 世界一流的PostgreSQL 18技术知识体系*:

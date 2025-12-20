@@ -157,7 +157,7 @@ make health PGDB=myapp
 
 预期输出：
 
-```
+```text
 ✓ PostgreSQL版本: PostgreSQL 18.x
 ✓ 异步I/O: data,wal
 ✓ Skip Scan优化: on
