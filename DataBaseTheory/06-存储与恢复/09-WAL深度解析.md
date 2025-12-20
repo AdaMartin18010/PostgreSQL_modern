@@ -7,22 +7,22 @@
 ```text
 WAL工作流程:
 ┌────────────────────────────────────────┐
-│                                          │
+│                                        │
 │  1. 修改数据                            │
-│     ↓                                    │
+│     ↓                                  │
 │  2. 写WAL日志（顺序写）                 │
-│     ↓                                    │
+│     ↓                                  │
 │  3. 写shared_buffers（内存）            │
-│     ↓                                    │
+│     ↓                                  │
 │  4. 事务COMMIT                          │
-│     ↓                                    │
+│     ↓                                  │
 │  5. WAL fsync到磁盘                     │
-│     ↓                                    │
+│     ↓                                  │
 │  6. 返回成功                            │
-│                                          │
+│                                        │
 │  后台进程:                              │
-│  - Checkpointer: 刷dirty pages到磁盘   │
-│  - WAL Writer: 写WAL buffer到磁盘      │
+│  - Checkpointer: 刷dirty pages到磁盘    │
+│  - WAL Writer: 写WAL buffer到磁盘       │
 └────────────────────────────────────────┘
 
 崩溃恢复:

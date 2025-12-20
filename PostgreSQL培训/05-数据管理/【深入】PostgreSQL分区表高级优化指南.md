@@ -274,7 +274,7 @@ WHERE order_date IN ('2024-06-15', '2024-12-15');
 
 **需求**：时序数据每天/每月自动创建新分区
 
-**方案1：使用pg_partman扩展**
+**方案1：使用pg_partman扩展**:
 
 ```sql
 -- 安装pg_partman
@@ -311,7 +311,7 @@ SET retention = '90 days',
 WHERE parent_table = 'public.events';
 ```
 
-**方案2：自定义函数**
+**方案2：自定义函数**:
 
 ```sql
 -- 创建分区管理函数
