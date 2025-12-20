@@ -353,23 +353,36 @@ void SeqScan_Async(Relation rel) {
 **关键GUC参数**：
 
 ```sql
--- 1. 启用AIO（默认on）
-SHOW io_direct;  -- 需要设置为'data'或'all'才能使用AIO
-ALTER SYSTEM SET io_direct = 'data';  -- 启用direct I/O
+-- 性能测试：AIO参数配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    -- 1. 启用AIO（默认on）
+    PERFORM current_setting('io_direct');  -- 检查当前值
+    ALTER SYSTEM SET io_direct = 'data';  -- 启用direct I/O
 
--- 2. io_uring队列深度
-SHOW io_uring_queue_depth;  -- 默认256
-ALTER SYSTEM SET io_uring_queue_depth = 256;  -- 设置队列深度queue_depth = 512;
+    -- 2. io_uring队列深度
+    PERFORM current_setting('io_uring_queue_depth');  -- 检查当前值
+    ALTER SYSTEM SET io_uring_queue_depth = 256;  -- 设置队列深度
 
--- 3. 预读窗口大小
-SHOW effective_io_concurrency;  -- 控制预读数量
-ALTER SYSTEM SET effective_io_concurrency = 200;  -- SSD推荐200
+    -- 3. 预读窗口大小
+    PERFORM current_setting('effective_io_concurrency');  -- 检查当前值
+    ALTER SYSTEM SET effective_io_concurrency = 200;  -- SSD推荐200
 
--- 4. maintenance_io_concurrency（VACUUM用）
-ALTER SYSTEM SET maintenance_io_concurrency = 200;
+    -- 4. maintenance_io_concurrency（VACUUM用）
+    ALTER SYSTEM SET maintenance_io_concurrency = 200;
 
--- 重启生效
-SELECT pg_reload_conf();
+    -- 重启生效
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE 'AIO配置已更新，请重启PostgreSQL使部分参数生效';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置AIO参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 **参数详解**：
@@ -403,8 +416,16 @@ SELECT pg_reload_conf();
 **测试SQL**：
 
 ```sql
--- 全表扫描
+-- 性能测试：全表扫描（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '性能测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **测试结果**：
@@ -440,10 +461,18 @@ AIO（io_uring）：
 **测试场景**：
 
 ```sql
--- 使用索引的位图扫描
+-- 性能测试：使用索引的位图扫描（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE status = 'pending' AND created_at > '2024-01-01';
 -- 结果集：100万行（总表10亿行）
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '位图扫描性能测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **测试结果**：
@@ -458,10 +487,17 @@ WHERE status = 'pending' AND created_at > '2024-01-01';
 **测试场景**：
 
 ```sql
--- VACUUM大表
-VACUUM VERBOSE large_table;
+-- 性能测试：VACUUM大表（带错误处理）
+BEGIN;
+VACUUM (VERBOSE, ANALYZE) large_table;
 -- 表大小：500GB
 -- 死元组：15%
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'VACUUM性能测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **测试结果**：
@@ -669,7 +705,8 @@ fi
 **方法2：查询执行计划**:
 
 ```sql
--- 性能测试：查询性能
+-- 性能测试：查询性能（带错误处理）
+BEGIN;
 -- 执行EXPLAIN ANALYZE
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table;
@@ -682,21 +719,35 @@ SELECT COUNT(*) FROM large_table;
 -- - 预读信息（PostgreSQL 18会显示Prefetch相关信息）
 
 -- 对比测试：禁用AIO
-SET io_direct = 'off';
+SET LOCAL io_direct = 'off';
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table;
 
 -- 重新启用AIO
-SET io_direct = 'data';
+SET LOCAL io_direct = 'data';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询性能测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **方法3：监控I/O指标**:
 
 ```sql
--- 查看I/O统计
+-- 性能测试：查看I/O统计（带错误处理）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_io WHERE context = 'normal';
 
 -- 如果AIO生效，reads和read_time的比例会改善
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询I/O统计失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -801,40 +852,89 @@ ALTER SYSTEM SET io_uring_queue_depth = 512;
 **原因1：io_direct未启用**:
 
 ```bash
-# 检查
-psql -c "SHOW io_direct;"
-# 如果是'off'，需要启用
+#!/bin/bash
+# 故障排查：检查io_direct配置（带错误处理）
+set -e
+set -u
 
-# 解决
-ALTER SYSTEM SET io_direct = 'data';
-SELECT pg_reload_conf();
-# 或重启
-sudo systemctl restart postgresql
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 检查
+if ! psql -c "SHOW io_direct;" 2>/dev/null; then
+    error_exit "无法连接到PostgreSQL"
+fi
+
+# 如果是'off'，需要启用
+if psql -t -c "SHOW io_direct;" | grep -q "off"; then
+    echo "io_direct为off，正在启用..."
+    if ! psql -c "ALTER SYSTEM SET io_direct = 'data';" 2>/dev/null; then
+        error_exit "设置io_direct失败"
+    fi
+
+    if ! psql -c "SELECT pg_reload_conf();" 2>/dev/null; then
+        echo "警告: 重新加载配置失败，可能需要重启PostgreSQL"
+        echo "或手动重启: sudo systemctl restart postgresql"
+    fi
+fi
 ```
 
 **原因2：内核不支持io_uring**:
 
 ```bash
+#!/bin/bash
+# 故障排查：检查内核版本（带错误处理）
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
 # 检查内核版本
-uname -r
-# 需要5.1+
+KERNEL_VERSION=$(uname -r | cut -d. -f1,2)
+REQUIRED_VERSION="5.1"
 
-# 升级内核（Ubuntu）
-sudo apt update
-sudo apt install linux-generic-hwe-22.04
-
-# 重启
-sudo reboot
+if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$KERNEL_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+    echo "警告: 内核版本 $KERNEL_VERSION 低于要求的 $REQUIRED_VERSION"
+    echo "需要升级内核（Ubuntu）:"
+    echo "  sudo apt update"
+    echo "  sudo apt install linux-generic-hwe-22.04"
+    echo "  sudo reboot"
+    error_exit "内核版本不满足要求"
+else
+    echo "✅ 内核版本 $KERNEL_VERSION 满足要求"
+fi
 ```
 
 **原因3：PostgreSQL编译时未启用**:
 
 ```bash
-# 检查编译选项
-pg_config --configure | grep io_uring
-# 应该看到：--with-io_uring
+#!/bin/bash
+# 故障排查：检查编译选项（带错误处理）
+set -e
+set -u
 
-# 如果没有，需要重新编译或使用官方包
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 检查编译选项
+if ! command -v pg_config &> /dev/null; then
+    error_exit "pg_config命令未找到"
+fi
+
+if pg_config --configure | grep -q "io_uring"; then
+    echo "✅ PostgreSQL已编译支持io_uring"
+else
+    echo "❌ PostgreSQL未编译支持io_uring"
+    echo "需要重新编译或使用官方包"
+    error_exit "PostgreSQL不支持io_uring"
+fi
 ```
 
 ### 7.2 性能反而下降
@@ -875,11 +975,26 @@ ERROR: io_uring: submission queue full
 **解决方案**：
 
 ```sql
--- 降低队列深度
-ALTER SYSTEM SET io_uring_queue_depth = 128;
+-- 性能测试：系统资源耗尽解决方案（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    -- 降低队列深度
+    ALTER SYSTEM SET io_uring_queue_depth = 128;
 
--- 或降低并发度
-ALTER SYSTEM SET max_parallel_workers_per_gather = 2;
+    -- 或降低并发度
+    ALTER SYSTEM SET max_parallel_workers_per_gather = 2;
+
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE '已降低AIO资源使用，请重启PostgreSQL使参数生效';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '调整AIO参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ---
@@ -1074,18 +1189,29 @@ ALTER SYSTEM SET io_uring_queue_depth = 256;
 **重要监控指标**：
 
 ```sql
+-- 性能测试：监控要点（带错误处理）
+BEGIN;
 -- 1. I/O性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_io;
 
 -- 2. 缓存命中率
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     SUM(heap_blks_hit) / NULLIF(SUM(heap_blks_hit + heap_blks_read), 0) AS cache_hit_ratio
 FROM pg_statio_user_tables;
 -- 目标：>95%
 
 -- 3. 慢查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_statements
 ORDER BY mean_exec_time DESC LIMIT 10;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '监控查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

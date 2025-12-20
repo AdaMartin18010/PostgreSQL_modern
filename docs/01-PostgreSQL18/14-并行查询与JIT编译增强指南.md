@@ -156,8 +156,9 @@ flowchart TD
 ### 2.2 JIT vs 解释执行性能对比
 
 ```sql
--- 创建测试表（1000万行）
-CREATE TABLE orders (
+-- 性能测试：创建测试表（1000万行）（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders (
     order_id BIGINT PRIMARY KEY,
     customer_id INT,
     order_date DATE,
@@ -165,7 +166,17 @@ CREATE TABLE orders (
     discount_rate NUMERIC(3,2),
     tax_rate NUMERIC(3,2)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表orders已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO orders
 SELECT
     generate_series(1, 10000000),
@@ -175,46 +186,71 @@ SELECT
     (random() * 0.3)::numeric(3,2),
     0.13
 FROM generate_series(1, 10000000);
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 VACUUM ANALYZE orders;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'VACUUM ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 测试1：复杂表达式计算（JIT禁用）
-SET jit = off;
-\timing on
+-- 性能测试：复杂表达式计算（JIT禁用）（带性能分析）
+BEGIN;
+SET LOCAL jit = off;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*),
-    SUM(total_amount * (1 - discount_rate) * (1 + tax_rate)) AS final_amount,
-    AVG(total_amount * (1 - discount_rate)) AS avg_discounted
+    SUM(total_amount* (1 - discount_rate) *(1 + tax_rate)) AS final_amount,
+    AVG(total_amount* (1 - discount_rate)) AS avg_discounted
 FROM orders
 WHERE total_amount > 100
   AND discount_rate < 0.2;
 -- Time: 4850.234 ms
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JIT禁用测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 测试2：JIT启用
-SET jit = on;
-SET jit_above_cost = 100000;  -- 确保触发JIT
-SET jit_optimize_above_cost = 500000;
+-- 性能测试：JIT启用（带性能分析）
+BEGIN;
+SET LOCAL jit = on;
+SET LOCAL jit_above_cost = 100000;  -- 确保触发JIT
+SET LOCAL jit_optimize_above_cost = 500000;
 
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING)
 SELECT
     COUNT(*),
-    SUM(total_amount * (1 - discount_rate) * (1 + tax_rate)) AS final_amount,
-    AVG(total_amount * (1 - discount_rate)) AS avg_discounted
+    SUM(total_amount* (1 - discount_rate) *(1 + tax_rate)) AS final_amount,
+    AVG(total_amount* (1 - discount_rate)) AS avg_discounted
 FROM orders
 WHERE total_amount > 100
   AND discount_rate < 0.2;
 -- Time: 2120.456 ms
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JIT启用测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 性能提升：56% 🚀
-
--- 查看JIT统计
-EXPLAIN (ANALYZE, VERBOSE, BUFFERS)
-SELECT ... ;
 /*
   JIT:
     Functions: 8
     Options: Inlining true, Optimization true, Expressions true, Deforming true
     Timing: Generation 2.345 ms, Inlining 1.234 ms, Optimization 5.678 ms, Emission 3.456 ms, Total 12.713 ms
 */
+
 ```
 
 ### 2.3 JIT编译的表达式类型
@@ -270,21 +306,41 @@ graph TB
 **测试场景**：大表JOIN小表（1亿行 JOIN 1000万行）
 
 ```sql
--- 创建测试表
-CREATE TABLE large_table (
+-- 性能测试：创建测试表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS large_table (
     id BIGINT PRIMARY KEY,
     user_id INT,
     amount NUMERIC(12,2),
     created_at TIMESTAMPTZ
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表large_table已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE TABLE small_table (
+BEGIN;
+CREATE TABLE IF NOT EXISTS small_table (
     user_id INT PRIMARY KEY,
     user_name TEXT,
     user_level TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表small_table已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入数据（倾斜分布：80%用户ID集中在前20%）
+-- 性能测试：插入数据（倾斜分布：80%用户ID集中在前20%）（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO large_table
 SELECT
     generate_series(1, 100000000),
@@ -294,21 +350,43 @@ SELECT
     END,
     (random() * 10000)::numeric(12,2),
     now() - (random() * 365)::int * INTERVAL '1 day';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入large_table数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO small_table
 SELECT
     generate_series(1, 10000000),
     'User_' || generate_series,
     (ARRAY['Bronze', 'Silver', 'Gold', 'Platinum'])[floor(random() * 4 + 1)];
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入small_table数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 VACUUM ANALYZE large_table, small_table;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'VACUUM ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 并行Hash Join测试
-SET max_parallel_workers_per_gather = 8;
-SET parallel_setup_cost = 1000;
-SET parallel_tuple_cost = 0.1;
+-- 性能测试：并行Hash Join测试（带错误处理和性能分析）
+BEGIN;
+SET LOCAL max_parallel_workers_per_gather = 8;
+SET LOCAL parallel_setup_cost = 1000;
+SET LOCAL parallel_tuple_cost = 0.1;
 
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     s.user_name,
     s.user_level,
@@ -317,6 +395,12 @@ SELECT
 FROM large_table l
 JOIN small_table s ON l.user_id = s.user_id
 GROUP BY s.user_name, s.user_level;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '并行Hash Join测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
 Finalize GroupAggregate  (cost=... rows=... width=...)
@@ -334,6 +418,7 @@ Finalize GroupAggregate  (cost=... rows=... width=...)
 Planning Time: 5.234 ms
 Execution Time: 28450.123 ms
 */
+
 ```
 
 **PG18 vs PG17性能对比**：
@@ -404,17 +489,18 @@ void* compile_expression_jit(ExprState *state) {
 ### 4.2 JIT性能分析
 
 ```sql
--- 启用详细JIT统计
-SET jit = on;
-SET jit_above_cost = 100000;
-SET jit_inline_above_cost = 500000;
-SET jit_optimize_above_cost = 500000;
-SET jit_expressions = on;
-SET jit_tuple_deforming = on;
-SET jit_profiling_support = on;
+-- 性能测试：启用详细JIT统计（带错误处理）
+BEGIN;
+SET LOCAL jit = on;
+SET LOCAL jit_above_cost = 100000;
+SET LOCAL jit_inline_above_cost = 500000;
+SET LOCAL jit_optimize_above_cost = 500000;
+SET LOCAL jit_expressions = on;
+SET LOCAL jit_tuple_deforming = on;
+SET LOCAL jit_profiling_support = on;
 
--- 复杂分析查询
-EXPLAIN (ANALYZE, VERBOSE, BUFFERS, COSTS)
+-- 复杂分析查询（带性能分析）
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, COSTS, TIMING)
 SELECT
     EXTRACT(YEAR FROM order_date) AS year,
     EXTRACT(MONTH FROM order_date) AS month,
@@ -445,6 +531,12 @@ WHERE order_date >= '2024-01-01'
 GROUP BY year, month, user_level
 HAVING COUNT(*) > 100
 ORDER BY year DESC, month DESC, revenue DESC;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JIT性能分析查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
   JIT:
@@ -473,10 +565,17 @@ ORDER BY year DESC, month DESC, revenue DESC;
 PostgreSQL 18改进了worker数量的动态调整算法：
 
 ```sql
--- 查看实际分配的worker数量
-EXPLAIN (ANALYZE, VERBOSE)
+-- 性能测试：查看实际分配的worker数量（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table
 WHERE amount > 1000;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询worker数量失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
 Finalize Aggregate  (cost=... rows=1 width=8)
@@ -488,6 +587,7 @@ Finalize Aggregate  (cost=... rows=1 width=8)
                     Filter: (amount > 1000)
                     Rows Removed by Filter: ...
 */
+
 ```
 
 **Worker数量决策算法**（简化版）：
@@ -559,7 +659,9 @@ Gather  (cost=... rows=... width=...)
 - 数据集: TPC-H 100GB
 
 ```sql
--- TPC-H Q1: 聚合查询
+-- 性能测试：TPC-H Q1聚合查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     l_returnflag,
     l_linestatus,
@@ -575,6 +677,12 @@ FROM lineitem
 WHERE l_shipdate <= DATE '1998-12-01' - INTERVAL '90 days'
 GROUP BY l_returnflag, l_linestatus
 ORDER BY l_returnflag, l_linestatus;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'TPC-H Q1查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **性能对比（TPC-H全22个查询）**：
@@ -647,62 +755,117 @@ ORDER BY segment_revenue DESC NULLS LAST;
 ### 7.1 关键参数详解
 
 ```sql
--- 并行查询参数
-SHOW max_parallel_workers_per_gather;  -- 默认2，建议 CPU核心数/4
-SHOW max_parallel_workers;              -- 默认8，建议 CPU核心数/2
-SHOW parallel_setup_cost;               -- 默认1000
-SHOW parallel_tuple_cost;               -- 默认0.1
+-- 性能测试：查看并行查询参数（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    -- 并行查询参数
+    PERFORM current_setting('max_parallel_workers_per_gather');  -- 默认2，建议 CPU核心数/4
+    PERFORM current_setting('max_parallel_workers');              -- 默认8，建议 CPU核心数/2
+    PERFORM current_setting('parallel_setup_cost');               -- 默认1000
+    PERFORM current_setting('parallel_tuple_cost');               -- 默认0.1
 
--- JIT参数
-SHOW jit;                               -- 默认on
-SHOW jit_above_cost;                    -- 默认100000
-SHOW jit_inline_above_cost;             -- 默认500000
-SHOW jit_optimize_above_cost;           -- 默认500000
-SHOW jit_expressions;                   -- 默认on
-SHOW jit_tuple_deforming;               -- 默认on
+    -- JIT参数
+    PERFORM current_setting('jit');                               -- 默认on
+    PERFORM current_setting('jit_above_cost');                    -- 默认100000
+    PERFORM current_setting('jit_inline_above_cost');             -- 默认500000
+    PERFORM current_setting('jit_optimize_above_cost');           -- 默认500000
+    PERFORM current_setting('jit_expressions');                   -- 默认on
+    PERFORM current_setting('jit_tuple_deforming');               -- 默认on
+
+    RAISE NOTICE '参数查询成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 **推荐配置**（基于硬件）：
 
 ```sql
--- 高性能服务器（32核/128GB）
-ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
-ALTER SYSTEM SET max_parallel_workers = 16;
-ALTER SYSTEM SET parallel_setup_cost = 500;  -- 降低门槛
-ALTER SYSTEM SET parallel_tuple_cost = 0.05;
+-- 性能测试：推荐配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    -- 高性能服务器（32核/128GB）
+    ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
+    ALTER SYSTEM SET max_parallel_workers = 16;
+    ALTER SYSTEM SET parallel_setup_cost = 500;  -- 降低门槛
+    ALTER SYSTEM SET parallel_tuple_cost = 0.05;
 
-ALTER SYSTEM SET jit_above_cost = 50000;  -- 更积极JIT
-ALTER SYSTEM SET jit_inline_above_cost = 200000;
-ALTER SYSTEM SET jit_optimize_above_cost = 200000;
+    ALTER SYSTEM SET jit_above_cost = 50000;  -- 更积极JIT
+    ALTER SYSTEM SET jit_inline_above_cost = 200000;
+    ALTER SYSTEM SET jit_optimize_above_cost = 200000;
 
-SELECT pg_reload_conf();
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE '高性能服务器配置已更新，部分参数需要重启PostgreSQL生效';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 
 -- 中等服务器（8核/32GB）
-ALTER SYSTEM SET max_parallel_workers_per_gather = 4;
-ALTER SYSTEM SET max_parallel_workers = 6;
-ALTER SYSTEM SET parallel_setup_cost = 1000;
-ALTER SYSTEM SET parallel_tuple_cost = 0.1;
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET max_parallel_workers_per_gather = 4;
+    ALTER SYSTEM SET max_parallel_workers = 6;
+    ALTER SYSTEM SET parallel_setup_cost = 1000;
+    ALTER SYSTEM SET parallel_tuple_cost = 0.1;
 
-ALTER SYSTEM SET jit_above_cost = 100000;
-ALTER SYSTEM SET jit_inline_above_cost = 500000;
+    ALTER SYSTEM SET jit_above_cost = 100000;
+    ALTER SYSTEM SET jit_inline_above_cost = 500000;
+
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE '中等服务器配置已更新，部分参数需要重启PostgreSQL生效';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ### 7.2 成本模型调优
 
 ```sql
+-- 性能测试：成本模型调优（带错误处理）
+BEGIN;
 -- 查看查询成本
-EXPLAIN (COSTS ON)
-SELECT ... FROM large_table;
+EXPLAIN (COSTS ON, BUFFERS, TIMING)
+SELECT * FROM large_table WHERE id > 1000;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看查询成本失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 调整成本参数以影响计划选择
-SET random_page_cost = 1.1;  -- SSD场景（默认4.0）
-SET seq_page_cost = 1.0;
-SET cpu_tuple_cost = 0.01;
-SET cpu_operator_cost = 0.0025;
+BEGIN;
+SET LOCAL random_page_cost = 1.1;  -- SSD场景（默认4.0）
+SET LOCAL seq_page_cost = 1.0;
+SET LOCAL cpu_tuple_cost = 0.01;
+SET LOCAL cpu_operator_cost = 0.0025;
 
 -- 验证并行计划
-EXPLAIN (ANALYZE, COSTS)
-SELECT ... ;
+EXPLAIN (ANALYZE, COSTS, BUFFERS, TIMING)
+SELECT * FROM large_table WHERE id > 1000;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '成本模型调优失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -739,12 +902,30 @@ flowchart TD
 ### 8.2 JIT使用指南
 
 ```sql
+-- 性能测试：JIT使用指南（带错误处理）
+BEGIN;
 -- 1. 全局启用JIT（默认）
 ALTER SYSTEM SET jit = on;
+PERFORM pg_reload_conf();
+RAISE NOTICE 'JIT已全局启用';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用JIT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 2. 针对特定查询禁用JIT（如短查询）
-SET jit = off;
+BEGIN;
+SET LOCAL jit = off;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM small_table WHERE id = 123;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '禁用JIT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 3. 会话级临时启用
 SET LOCAL jit_above_cost = 10000;  -- 降低阈值
@@ -765,7 +946,8 @@ $$ LANGUAGE plpgsql;
 ### 8.3 监控与告警
 
 ```sql
--- 创建监控视图
+-- 性能测试：创建监控视图（带错误处理）
+BEGIN;
 CREATE OR REPLACE VIEW parallel_query_stats AS
 SELECT
     query,
@@ -791,6 +973,12 @@ WHERE query LIKE '%Gather%'  -- 并行查询
    OR query LIKE '%JIT%'
 ORDER BY total_exec_time DESC
 LIMIT 50;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建监控视图失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 监控JIT效率
 SELECT
@@ -805,6 +993,7 @@ FROM pg_stat_statements
 WHERE calls > 10;
 
 -- 告警：JIT开销>10%表示参数配置不当
+
 ```
 
 ---
@@ -814,7 +1003,9 @@ WHERE calls > 10;
 ### 9.1 并行查询诊断
 
 ```sql
--- 实时查看并行查询
+-- 性能测试：实时查看并行查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     usename,
@@ -835,6 +1026,12 @@ FROM pg_stat_activity
 WHERE (query LIKE '%Gather%' OR backend_type = 'parallel worker')
   AND state = 'active'
 ORDER BY backend_start;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看并行查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 查看worker等待事件
 SELECT
@@ -845,12 +1042,15 @@ SELECT
 FROM pg_stat_activity
 WHERE backend_type = 'parallel worker'
   AND wait_event IS NOT NULL;
+
 ```
 
 ### 9.2 JIT性能分析
 
 ```sql
--- 查看JIT编译热点
+-- 性能测试：查看JIT编译热点（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     queryid,
     query,
@@ -876,6 +1076,12 @@ FROM pg_stat_statements
 WHERE jit_functions > 0
 ORDER BY total_jit_time DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看JIT编译热点失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

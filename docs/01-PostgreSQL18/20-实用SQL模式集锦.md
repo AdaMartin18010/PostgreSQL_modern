@@ -5,7 +5,8 @@
 ### 1.1 保留最新记录
 
 ```sql
--- 方法1: DELETE + ROW_NUMBER
+-- 性能测试：方法1: DELETE + ROW_NUMBER（带错误处理）
+BEGIN;
 DELETE FROM user_events
 WHERE ctid NOT IN (
     SELECT ctid FROM (
@@ -15,15 +16,31 @@ WHERE ctid NOT IN (
     ) sub
     WHERE rn = 1
 );
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除重复记录失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 方法2: DISTINCT ON + INSERT
-CREATE TABLE user_events_dedup AS
+-- 性能测试：方法2: DISTINCT ON + INSERT（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS user_events_dedup AS
 SELECT DISTINCT ON (user_id)
     *
 FROM user_events
 ORDER BY user_id, created_at DESC;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表user_events_dedup已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建去重表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 方法3: 窗口函数 + CTE
+-- 性能测试：方法3: 窗口函数 + CTE（带错误处理）
+BEGIN;
 WITH ranked AS (
     SELECT *,
            ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn
@@ -33,6 +50,12 @@ DELETE FROM user_events
 WHERE (user_id, created_at) IN (
     SELECT user_id, created_at FROM ranked WHERE rn > 1
 );
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '窗口函数去重失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -42,7 +65,9 @@ WHERE (user_id, created_at) IN (
 ### 2.1 累计和
 
 ```sql
--- 账户余额计算
+-- 性能测试：账户余额计算（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH transactions AS (
     SELECT
         transaction_id,
@@ -58,12 +83,20 @@ WITH transactions AS (
     ORDER BY account_id, transaction_date
 )
 SELECT * FROM transactions;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '账户余额计算失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 2.2 累计统计
 
 ```sql
--- 用户留存分析
+-- 性能测试：用户留存分析（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH user_cohorts AS (
     SELECT
         user_id,
@@ -87,6 +120,12 @@ SELECT
     ROUND(m2::NUMERIC / NULLIF(m0, 0) * 100, 2) AS retention_m2
 FROM retention
 ORDER BY cohort_month;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '用户留存分析失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

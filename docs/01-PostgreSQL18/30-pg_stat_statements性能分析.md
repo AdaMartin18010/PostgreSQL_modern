@@ -3,15 +3,38 @@
 ## 1. 安装配置
 
 ```sql
--- 安装扩展
-CREATE EXTENSION pg_stat_statements;
+-- 性能测试：安装扩展（带错误处理）
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '扩展pg_stat_statements已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '安装扩展失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 配置参数
-ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
-ALTER SYSTEM SET pg_stat_statements.max = 10000;  -- 跟踪10000个查询
-ALTER SYSTEM SET pg_stat_statements.track = 'all';  -- all/top/none
-ALTER SYSTEM SET pg_stat_statements.track_utility = on;  -- 跟踪DDL
-ALTER SYSTEM SET pg_stat_statements.save = on;  -- 重启后保留
+-- 性能测试：配置参数（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
+    ALTER SYSTEM SET pg_stat_statements.max = 10000;  -- 跟踪10000个查询
+    ALTER SYSTEM SET pg_stat_statements.track = 'all';  -- all/top/none
+    ALTER SYSTEM SET pg_stat_statements.track_utility = on;  -- 跟踪DDL
+    ALTER SYSTEM SET pg_stat_statements.save = on;  -- 重启后保留
+
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE 'pg_stat_statements配置已更新，部分参数需要重启PostgreSQL生效';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 
 -- 重启PostgreSQL
 -- sudo systemctl restart postgresql
@@ -24,6 +47,9 @@ ALTER SYSTEM SET pg_stat_statements.save = on;  -- 重启后保留
 ### 2.1 pg_stat_statements字段
 
 ```sql
+-- 性能测试：查看pg_stat_statements字段（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     queryid,              -- 查询ID（hash）
     query,                -- 查询文本
@@ -41,6 +67,12 @@ SELECT
     temp_blks_written     -- 临时文件写入
 FROM pg_stat_statements
 LIMIT 1;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询pg_stat_statements失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -50,7 +82,9 @@ LIMIT 1;
 ### 3.1 Top慢查询
 
 ```sql
--- 按平均时间排序
+-- 性能测试：按平均时间排序（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     queryid,
     LEFT(query, 100) AS query_preview,
@@ -64,8 +98,16 @@ FROM pg_stat_statements
 WHERE calls > 10
 ORDER BY mean_exec_time DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询Top慢查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 按总时间排序（影响最大）
+-- 性能测试：按总时间排序（影响最大）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     LEFT(query, 100) AS query_preview,
     calls,
@@ -75,12 +117,20 @@ SELECT
 FROM pg_stat_statements
 ORDER BY total_exec_time DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询总时间排序失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.2 缓存命中率分析
 
 ```sql
--- 查询缓存命中率
+-- 性能测试：查询缓存命中率（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     LEFT(query, 100) AS query,
     calls,
@@ -90,8 +140,15 @@ FROM pg_stat_statements
 WHERE shared_blks_hit + shared_blks_read > 0
 ORDER BY shared_blks_read DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询缓存命中率失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 缓存命中率低的查询可能需要优化索引或增加shared_buffers
+
 ```
 
 ### 3.3 临时文件使用

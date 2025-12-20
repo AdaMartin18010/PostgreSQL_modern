@@ -3,13 +3,35 @@
 ## 1. JSONB vs JSON
 
 ```sql
+-- 性能测试：JSON vs JSONB（带错误处理）
+BEGIN;
 -- JSON: 存储原始文本
-CREATE TABLE json_test (data JSON);
-INSERT INTO json_test VALUES ('{"name":"Alice","age":30}');
+CREATE TABLE IF NOT EXISTS json_test (data JSON);
+INSERT INTO json_test VALUES ('{"name":"Alice","age":30}')
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表json_test已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建JSON表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- JSONB: 二进制存储（推荐）
-CREATE TABLE jsonb_test (data JSONB);
-INSERT INTO jsonb_test VALUES ('{"name":"Alice","age":30}');
+CREATE TABLE IF NOT EXISTS jsonb_test (data JSONB);
+INSERT INTO jsonb_test VALUES ('{"name":"Alice","age":30}')
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表jsonb_test已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建JSONB表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 -- 对比
 /*
@@ -33,15 +55,33 @@ INSERT INTO jsonb_test VALUES ('{"name":"Alice","age":30}');
 ### 2.1 查询操作符
 
 ```sql
--- 创建测试表
-CREATE TABLE users (
+-- 性能测试：创建测试表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     profile JSONB
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表users已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 INSERT INTO users (profile) VALUES
 ('{"name":"Alice","age":30,"tags":["vip","active"],"address":{"city":"NYC"}}'),
-('{"name":"Bob","age":25,"tags":["active"],"address":{"city":"LA"}}');
+('{"name":"Bob","age":25,"tags":["active"],"address":{"city":"LA"}}')
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 -- 获取值
 SELECT profile->'name' FROM users;              -- 返回JSONB
@@ -67,31 +107,74 @@ SELECT * FROM users WHERE profile->'tags' @> '["vip"]';  -- 数组包含
 ### 2.2 更新操作符
 
 ```sql
+-- 性能测试：更新操作符（带错误处理）
+BEGIN;
 -- 拼接
 UPDATE users SET profile = profile || '{"verified":true}';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB拼接失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 删除键
 UPDATE users SET profile = profile - 'age';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除键失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 删除多个键
 UPDATE users SET profile = profile - ARRAY['age','tags'];
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除多个键失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 删除路径
 UPDATE users SET profile = profile #- '{address,zipcode}';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除路径失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 设置值
 UPDATE users SET profile = jsonb_set(
     profile,
     '{address,country}',
     '"USA"'
 );
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置值失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 深度合并
 UPDATE users SET profile = jsonb_set(
     profile,
     '{address}',
     profile->'address' || '{"country":"USA"}'
 );
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '深度合并失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

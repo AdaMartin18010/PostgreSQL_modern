@@ -36,15 +36,37 @@
 **基本用法**：
 
 ```sql
+-- 性能测试：查看执行计划（带错误处理）
+BEGIN;
 -- 查看执行计划
 EXPLAIN SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看执行计划失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 实际执行并显示统计
+-- 性能测试：实际执行并显示统计（带错误处理）
+BEGIN;
 EXPLAIN ANALYZE SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '执行查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 显示详细信息
+-- 性能测试：显示详细信息（带错误处理）
+BEGIN;
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE, TIMING)
 SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '执行详细查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 1.2 PostgreSQL 18新增功能
@@ -64,11 +86,19 @@ SELECT * FROM users WHERE age > 25;
 **显示每个节点的内存使用**：
 
 ```sql
-EXPLAIN (ANALYZE, BUFFERS, MEMORY)
+-- 性能测试：显示每个节点的内存使用（带错误处理）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, MEMORY, TIMING)
 SELECT *
 FROM large_table t1
 JOIN another_table t2 ON t1.id = t2.foreign_id
 ORDER BY t1.created_at;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '执行内存分析查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **输出示例**：
@@ -97,8 +127,16 @@ Sort  (cost=...) (actual time=... rows=...) (loops=1)
 **显示数据序列化/反序列化开销**：
 
 ```sql
-EXPLAIN (ANALYZE, SERIALIZE)
+-- 性能测试：显示数据序列化/反序列化开销（带错误处理）
+BEGIN;
+EXPLAIN (ANALYZE, SERIALIZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE data_jsonb @> '{"status": "active"}';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '执行序列化分析查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **输出示例**：
@@ -125,8 +163,16 @@ Bitmap Heap Scan on users  (actual time=... rows=...)
 **更详细的I/O时间统计**：
 
 ```sql
-EXPLAIN (ANALYZE, BUFFERS, IO_TIMING)
+-- 性能测试：更详细的I/O时间统计（带错误处理）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, IO_TIMING, TIMING)
 SELECT * FROM large_table WHERE status = 'active';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '执行I/O时间分析查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **PostgreSQL 18增强输出**：
@@ -200,17 +246,26 @@ Sort  (actual time=5432.123...ms rows=10000000 loops=1)
 **优化**：
 
 ```sql
+-- 性能测试：优化内存使用（带错误处理）
+BEGIN;
 -- 增加work_mem
-SET work_mem = '256MB';
+SET LOCAL work_mem = '256MB';
 
-EXPLAIN (ANALYZE, MEMORY)
+EXPLAIN (ANALYZE, MEMORY, BUFFERS, TIMING)
 SELECT * FROM large_table ORDER BY created_at;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '执行内存优化查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 输出：
 Sort  (actual time=856.234...ms rows=10000000 loops=1)
   Sort Key: created_at
   Sort Method: quicksort  Memory: 1234MB  ✅ 内存排序
   Memory: used=1234MB allocated=1536MB peak=1234MB
+
 ```
 
 **性能提升**：5432ms → 856ms（+534%）
@@ -234,10 +289,27 @@ Seq Scan on orders  (actual time=12345.678...ms)
 **优化：添加索引**:
 
 ```sql
-CREATE INDEX idx_orders_created_at ON orders(created_at);
+-- 性能测试：优化I/O性能（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_created_at已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-EXPLAIN (ANALYZE, BUFFERS, IO_TIMING)
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, IO_TIMING, TIMING)
 SELECT * FROM orders WHERE created_at > '2024-01-01';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '执行I/O优化查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 输出：
 Index Scan using idx_orders_created_at on orders
@@ -245,6 +317,7 @@ Index Scan using idx_orders_created_at on orders
   Index Cond: (created_at > '2024-01-01')
   Buffers: shared hit=5678 read=234  ✅ 大幅减少
   I/O Timings: read time=45.678 ms  ✅ 仅3.7%时间
+
 ```
 
 **性能提升**：12345ms → 123ms（+99倍）
@@ -305,12 +378,22 @@ Limit  (actual time=8456.789...ms rows=100)
 **优化方案**：
 
 ```sql
+-- 性能测试：优化方案（带错误处理）
+BEGIN;
 -- 1. 添加索引
-CREATE INDEX idx_users_created_at ON users(created_at);
-CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 2. 增加内存
-SET work_mem = '512MB';
+-- 2. 增加内存（会话级别）
+SET LOCAL work_mem = '512MB';
 
 -- 3. 重写查询（使用CTE）
 WITH active_users AS (
@@ -333,6 +416,7 @@ FROM active_users u
 JOIN user_stats s ON u.id = s.user_id
 ORDER BY s.total DESC
 LIMIT 100;
+
 ```
 
 **优化后分析**：

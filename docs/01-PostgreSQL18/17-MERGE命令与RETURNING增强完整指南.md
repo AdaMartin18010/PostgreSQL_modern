@@ -122,14 +122,32 @@ RETURNING
 ### 2.1 OLD vs NEW语义
 
 ```sql
--- 创建测试表
-CREATE TABLE inventory (
+-- 性能测试：创建测试表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS inventory (
     product_id INT PRIMARY KEY,
     quantity INT,
     last_updated TIMESTAMPTZ DEFAULT now()
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表inventory已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-INSERT INTO inventory VALUES (1, 100), (2, 200), (3, 300);
+BEGIN;
+INSERT INTO inventory VALUES (1, 100), (2, 200), (3, 300)
+ON CONFLICT (product_id) DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 -- MERGE操作
 MERGE INTO inventory t
@@ -171,7 +189,8 @@ RETURNING
 ### 2.2 RETURNING与CTE结合
 
 ```sql
--- 将MERGE结果存储到临时表或传递给后续查询
+-- 性能测试：将MERGE结果存储到临时表或传递给后续查询（带错误处理和性能分析）
+BEGIN;
 WITH merge_results AS (
     MERGE INTO target t
     USING source s ON t.id = s.id

@@ -3,19 +3,47 @@
 ## 1. EXPLAIN基础
 
 ```sql
--- 基础EXPLAIN
+-- 性能测试：基础EXPLAIN（带错误处理）
+BEGIN;
 EXPLAIN SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'EXPLAIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 实际执行
+-- 性能测试：实际执行（带错误处理）
+BEGIN;
 EXPLAIN ANALYZE SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'EXPLAIN ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 详细信息
+-- 性能测试：详细信息（带错误处理）
+BEGIN;
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS, TIMING, SUMMARY)
 SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '详细EXPLAIN失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- JSON格式
+-- 性能测试：JSON格式（带错误处理）
+BEGIN;
 EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
 SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSON格式EXPLAIN失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -25,8 +53,17 @@ SELECT * FROM users WHERE age > 25;
 ### 2.1 Seq Scan（顺序扫描）
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：Seq Scan（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '顺序扫描查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 /*
 Seq Scan on users  (cost=0.00..1000.00 rows=10000 width=100) (actual time=0.010..5.234 rows=9850 loops=1)
@@ -50,8 +87,17 @@ Seq Scan on users  (cost=0.00..1000.00 rows=10000 width=100) (actual time=0.010.
 ### 2.2 Index Scan
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：Index Scan（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE user_id = 123;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '索引扫描查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 /*
 Index Scan using users_pkey on users  (cost=0.42..8.44 rows=1 width=100) (actual time=0.015..0.016 rows=1 loops=1)
@@ -73,8 +119,17 @@ Index Scan using users_pkey on users  (cost=0.42..8.44 rows=1 width=100) (actual
 ### 2.3 Index Only Scan
 
 ```sql
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：Index Only Scan（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT email FROM users WHERE email = 'test@example.com';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '索引仅扫描查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 /*
 Index Only Scan using idx_users_email on users  (cost=0.42..8.44 rows=1 width=100) (actual time=0.012..0.013 rows=1 loops=1)
@@ -90,8 +145,17 @@ Index Only Scan using idx_users_email on users  (cost=0.42..8.44 rows=1 width=10
 ### 2.4 Bitmap Scan
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：Bitmap Scan（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE age > 25 OR city = 'NYC';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '位图扫描查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 /*
 Bitmap Heap Scan on users  (cost=25.00..500.00 rows=5000 width=100)

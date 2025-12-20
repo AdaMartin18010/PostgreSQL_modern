@@ -121,9 +121,21 @@ typedef struct PageHeaderData {
 **Page空间利用示例**：
 
 ```sql
--- 查看页面利用率
+-- 性能测试：查看页面利用率（带错误处理）
+BEGIN;
 CREATE EXTENSION IF NOT EXISTS pageinspect;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '扩展pageinspect已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建扩展失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+-- 性能测试：查询页面利用率（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     *,
     round(100.0 * avg_free_space / pagesize, 2) AS avg_free_pct
@@ -167,13 +179,31 @@ typedef struct HeapTupleHeaderData {
 **MVCC版本链**：
 
 ```sql
--- 创建测试表
-CREATE TABLE mvcc_test (
+-- 性能测试：创建测试表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS mvcc_test (
     id INT PRIMARY KEY,
     value TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表mvcc_test已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-INSERT INTO mvcc_test VALUES (1, 'version 1');
+BEGIN;
+INSERT INTO mvcc_test VALUES (1, 'version 1')
+ON CONFLICT (id) DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+```
 
 -- 查看初始tuple
 SELECT

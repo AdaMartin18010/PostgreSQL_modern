@@ -3,21 +3,43 @@
 ## 1. 安装配置
 
 ```bash
+#!/bin/bash
+# 安装pg_cron（带错误处理）
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
 # 安装pg_cron
-sudo apt install postgresql-18-cron
+if ! sudo apt install -y postgresql-18-cron 2>/dev/null; then
+    error_exit "安装postgresql-18-cron失败"
+fi
 
 # 配置
-echo "shared_preload_libraries = 'pg_cron'" | \
-  sudo tee -a /etc/postgresql/18/main/postgresql.conf
+if ! echo "shared_preload_libraries = 'pg_cron'" | \
+  sudo tee -a /etc/postgresql/18/main/postgresql.conf > /dev/null; then
+    error_exit "配置shared_preload_libraries失败"
+fi
 
-echo "cron.database_name = 'postgres'" | \
-  sudo tee -a /etc/postgresql/18/main/postgresql.conf
+if ! echo "cron.database_name = 'postgres'" | \
+  sudo tee -a /etc/postgresql/18/main/postgresql.conf > /dev/null; then
+    error_exit "配置cron.database_name失败"
+fi
 
 # 重启
-sudo systemctl restart postgresql
+if ! sudo systemctl restart postgresql; then
+    error_exit "重启PostgreSQL失败"
+fi
 
 # 创建扩展
-psql -c "CREATE EXTENSION pg_cron;"
+if ! psql -c "CREATE EXTENSION IF NOT EXISTS pg_cron;" 2>/dev/null; then
+    error_exit "创建扩展失败"
+fi
+
+echo "✅ pg_cron安装和配置完成"
 ```
 
 ---
@@ -27,29 +49,68 @@ psql -c "CREATE EXTENSION pg_cron;"
 ### 2.1 创建定时任务
 
 ```sql
+-- 性能测试：创建定时任务（带错误处理）
+BEGIN;
 -- 每天凌晨2点VACUUM
 SELECT cron.schedule('nightly-vacuum', '0 2 * * *', 'VACUUM ANALYZE;');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建定时任务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 每小时清理旧日志
 SELECT cron.schedule('cleanup-logs', '0 * * * *',
     'DELETE FROM logs WHERE created_at < now() - INTERVAL ''30 days''');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建定时任务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 每5分钟刷新物化视图
 SELECT cron.schedule('refresh-stats', '*/5 * * * *',
     'REFRESH MATERIALIZED VIEW CONCURRENTLY user_stats;');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建定时任务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 -- 每周日凌晨3点重建索引
 SELECT cron.schedule('weekly-reindex', '0 3 * * 0',
     'REINDEX INDEX CONCURRENTLY idx_large_table;');
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建定时任务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 2.2 管理任务
 
 ```sql
--- 查看所有任务
+-- 性能测试：查看所有任务（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cron.job ORDER BY jobid;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看所有任务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看任务运行历史
+-- 性能测试：查看任务运行历史（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     job_id,
     run_details->'command' AS command,
@@ -60,16 +121,36 @@ SELECT
 FROM cron.job_run_details
 ORDER BY start_time DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看任务运行历史失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 删除任务
+-- 性能测试：删除任务（带错误处理）
+BEGIN;
 SELECT cron.unschedule(1);  -- jobid
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除任务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 更新任务
+-- 性能测试：更新任务（带错误处理）
+BEGIN;
 SELECT cron.alter_job(
     job_id := 1,
     schedule := '0 3 * * *',  -- 改为凌晨3点
     command := 'VACUUM FULL;'
 );
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '更新任务失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

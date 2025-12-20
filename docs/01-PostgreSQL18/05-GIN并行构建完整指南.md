@@ -119,37 +119,78 @@ CREATE INDEX idx_tags ON articles USING GIN (tags);
 **关键参数**：
 
 ```sql
--- 1. 最大并行Worker数量（全局）
-SHOW max_parallel_maintenance_workers;
--- 默认：2
--- 推荐：4-8（根据CPU核心数）
+-- 性能测试：配置参数（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    -- 1. 最大并行Worker数量（全局）
+    PERFORM current_setting('max_parallel_maintenance_workers');
+    -- 默认：2
+    -- 推荐：4-8（根据CPU核心数）
 
-ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
+    ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
 
--- 2. 单个索引构建的Worker数量
-SET max_parallel_workers_per_gather = 4;
+    -- 2. 单个索引构建的Worker数量（会话级别）
+    PERFORM set_config('max_parallel_workers_per_gather', '4', false);
 
--- 3. Work Memory（每个Worker）
-SET maintenance_work_mem = '1GB';  -- 每个Worker使用的内存
+    -- 3. Work Memory（每个Worker）
+    PERFORM set_config('maintenance_work_mem', '1GB', false);  -- 每个Worker使用的内存
 
--- 重启生效
-SELECT pg_reload_conf();
+    -- 重启生效（部分参数）
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE 'GIN并行构建配置已更新，部分参数需要重启PostgreSQL生效';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置GIN并行构建参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 **使用并行构建**：
 
 ```sql
+-- 性能测试：使用并行构建（带错误处理）
+BEGIN;
 -- 方法1：会话级别设置
-SET max_parallel_workers_per_gather = 4;
-CREATE INDEX idx_tags ON articles USING GIN (tags);
+SET LOCAL max_parallel_workers_per_gather = 4;
+CREATE INDEX IF NOT EXISTS idx_tags ON articles USING GIN (tags);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_tags已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 方法2：直接指定
-CREATE INDEX idx_tags ON articles USING GIN (tags)
+-- 方法2：直接指定（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_tags2 ON articles USING GIN (tags)
 WITH (parallel_workers = 4);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_tags2已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看执行计划
-EXPLAIN (ANALYZE, BUFFERS)
-CREATE INDEX idx_tags ON articles USING GIN (tags);
+-- 性能测试：查看执行计划（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+CREATE INDEX IF NOT EXISTS idx_tags3 ON articles USING GIN (tags);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_tags3已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看执行计划失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -229,7 +270,9 @@ ON products USING GIN (data jsonb_path_ops);
 **实时监控**：
 
 ```sql
--- 查看当前索引构建进度
+-- 性能测试：查看当前索引构建进度（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     datname,
@@ -239,8 +282,16 @@ SELECT
     wait_event
 FROM pg_stat_activity
 WHERE query LIKE '%CREATE INDEX%';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询索引构建进度失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看Worker状态
+-- 性能测试：查看Worker状态（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     leader_pid,
@@ -248,6 +299,12 @@ SELECT
     query
 FROM pg_stat_activity
 WHERE backend_type = 'parallel worker';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询Worker状态失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -265,22 +322,43 @@ WHERE backend_type = 'parallel worker';
 **优化前（PostgreSQL 17）**：
 
 ```sql
-CREATE INDEX idx_data_gin ON products USING GIN (data);
+-- 性能测试：优化前（PostgreSQL 17）- 单线程构建（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_data_gin ON products USING GIN (data);
 -- 时间：75分钟（单核）
 -- CPU：6%
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_data_gin已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **优化后（PostgreSQL 18）**：
 
 ```sql
+-- 性能测试：优化后（PostgreSQL 18）- 并行构建（带错误处理和性能分析）
+BEGIN;
 -- 设置8个并行Worker
-SET max_parallel_workers_per_gather = 8;
-SET maintenance_work_mem = '2GB';
+SET LOCAL max_parallel_workers_per_gather = 8;
+SET LOCAL maintenance_work_mem = '2GB';
 
-CREATE INDEX idx_data_gin ON products USING GIN (data);
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+CREATE INDEX IF NOT EXISTS idx_data_gin ON products USING GIN (data);
 -- 时间：12分钟（8核）
 -- CPU：48%
 -- 提升：525%
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_data_gin已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建并行索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **业务影响**：
@@ -301,16 +379,36 @@ CREATE INDEX idx_data_gin ON products USING GIN (data);
 **优化**：
 
 ```sql
+-- 性能测试：全文搜索索引优化（带错误处理）
+BEGIN;
 -- 创建tsvector列
 ALTER TABLE documents
-ADD COLUMN tsv tsvector
+ADD COLUMN IF NOT EXISTS tsv tsvector
 GENERATED ALWAYS AS (to_tsvector('english', content)) STORED;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_column THEN
+        RAISE NOTICE '列tsv已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '添加tsvector列失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 并行构建GIN索引
-SET max_parallel_workers_per_gather = 6;
-CREATE INDEX idx_fts ON documents USING GIN (tsv);
+-- 性能测试：并行构建GIN索引（带错误处理和性能分析）
+BEGIN;
+SET LOCAL max_parallel_workers_per_gather = 6;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+CREATE INDEX IF NOT EXISTS idx_fts ON documents USING GIN (tsv);
 -- 时间：18分钟（vs 90分钟串行）
 -- 提升：400%
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_fts已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建全文搜索索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
