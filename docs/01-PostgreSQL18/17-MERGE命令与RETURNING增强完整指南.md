@@ -323,8 +323,9 @@ sequenceDiagram
 **完整实现**：
 
 ```sql
--- 1. 创建CDC日志表
-CREATE TABLE order_changes (
+-- 性能测试：创建CDC日志表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS order_changes (
     change_id BIGSERIAL PRIMARY KEY,
     order_id BIGINT NOT NULL,
     change_type TEXT NOT NULL,  -- 'INSERT', 'UPDATE', 'DELETE'
@@ -333,12 +334,33 @@ CREATE TABLE order_changes (
     changed_at TIMESTAMPTZ DEFAULT now(),
     changed_by TEXT DEFAULT current_user
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表order_changes已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建CDC日志表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE INDEX ON order_changes(order_id, changed_at DESC);
-CREATE INDEX ON order_changes USING gin (old_data jsonb_path_ops);
-CREATE INDEX ON order_changes USING gin (new_data jsonb_path_ops);
+-- 性能测试：创建索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_order_changes_order_time ON order_changes(order_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_order_changes_old_data ON order_changes USING gin (old_data jsonb_path_ops);
+CREATE INDEX IF NOT EXISTS idx_order_changes_new_data ON order_changes USING gin (new_data jsonb_path_ops);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '部分索引已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表order_changes不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建CDC日志索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 2. MERGE with RETURNING记录变更
+-- 性能测试：MERGE with RETURNING记录变更（带错误处理和性能分析）
+BEGIN;
 WITH merge_results AS (
     MERGE INTO orders o
     USING staging_orders s ON o.order_id = s.order_id
@@ -368,22 +390,37 @@ SELECT
     old_row,
     new_row
 FROM merge_results;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders、staging_orders或order_changes不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'MERGE with RETURNING记录变更失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 3. 触发通知
+-- 性能测试：触发通知（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT pg_notify('order_changes', change_id::text)
 FROM order_changes
 WHERE changed_at >= now() - INTERVAL '1 second';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表order_changes不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '触发通知失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 4.2 增量ETL实现
 
 ```sql
--- 数据仓库增量更新
-
--- 源表：OLTP订单表
--- 目标表：OLAP订单事实表
-
-CREATE TABLE fact_orders (
+-- 性能测试：数据仓库增量更新（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS fact_orders (
     order_id BIGINT PRIMARY KEY,
     customer_id BIGINT,
     order_date DATE,
@@ -391,8 +428,18 @@ CREATE TABLE fact_orders (
     status TEXT,
     etl_updated_at TIMESTAMPTZ DEFAULT now()
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表fact_orders已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建事实表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ETL过程（每小时执行）
+-- 性能测试：ETL过程（每小时执行）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH incremental_merge AS (
     MERGE INTO fact_orders f
     USING (
@@ -433,6 +480,14 @@ SELECT
     SUM(COALESCE(new_amount, 0) - COALESCE(old_amount, 0)) AS amount_change
 FROM incremental_merge
 GROUP BY etl_operation;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表fact_orders不存在或dblink扩展未安装';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'ETL增量更新失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 输出ETL报告：
 --  etl_operation | row_count | amount_change

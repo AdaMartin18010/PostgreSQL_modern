@@ -315,20 +315,52 @@ CREATE TABLE test_main (
 );
 ALTER TABLE test_main ALTER COLUMN summary SET STORAGE MAIN;
 
--- 性能对比测试
+-- 性能测试：性能对比测试（带错误处理）
+BEGIN;
 INSERT INTO test_extended (data)
 SELECT repeat('PostgreSQL ', 1000)  -- 11KB数据
-FROM generate_series(1, 100000);
+FROM generate_series(1, 100000)
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_extended不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入test_extended失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 INSERT INTO test_external (image)
 SELECT gen_random_bytes(10240)  -- 10KB随机数据
-FROM generate_series(1, 100000);
+FROM generate_series(1, 100000)
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_external不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入test_external失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 INSERT INTO test_main (data)
 SELECT repeat('summary text ', 50)  -- 0.7KB数据
-FROM generate_series(1, 100000);
+FROM generate_series(1, 100000)
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_main不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入test_main失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看存储大小
+-- 性能测试：查看存储大小（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     relname,
     pg_size_pretty(pg_total_relation_size(oid)) AS total_size,
@@ -337,6 +369,12 @@ SELECT
 FROM pg_class
 WHERE relname LIKE 'test_%'
 ORDER BY relname;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看存储大小失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
   relname       | total_size | main_table_size | toast_size
@@ -350,7 +388,9 @@ ORDER BY relname;
 ### 2.3 TOAST表结构
 
 ```sql
--- 查看TOAST表
+-- 性能测试：查看TOAST表（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     n.nspname AS toast_schema,
     c.relname AS toast_table,
@@ -362,6 +402,12 @@ JOIN pg_class t ON c.reltoastrelid = t.oid
 WHERE n.nspname = 'pg_toast'
 ORDER BY pg_relation_size(c.oid) DESC
 LIMIT 10;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看TOAST表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- TOAST表结构
 /*
@@ -393,35 +439,73 @@ ON pg_toast.pg_toast_16385 (chunk_id, chunk_seq);
 **PostgreSQL 18新增LZ4和zstd压缩**：
 
 ```sql
--- 测试不同压缩算法
-CREATE TABLE compression_test (
+-- 性能测试：测试不同压缩算法（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS compression_test (
     id SERIAL PRIMARY KEY,
     algorithm TEXT,
     data TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表compression_test已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建压缩测试表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- pglz压缩（传统，PG默认）
+-- 性能测试：pglz压缩（传统，PG默认）（带错误处理）
+BEGIN;
 ALTER TABLE compression_test ALTER COLUMN data SET COMPRESSION pglz;
-
 INSERT INTO compression_test (algorithm, data)
 SELECT 'pglz', repeat('PostgreSQL is amazing! ', 500)
-FROM generate_series(1, 10000);
+FROM generate_series(1, 10000)
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表compression_test不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'pglz压缩测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- lz4压缩（PG 14+）
+-- 性能测试：lz4压缩（PG 14+）（带错误处理）
+BEGIN;
 ALTER TABLE compression_test ALTER COLUMN data SET COMPRESSION lz4;
-
 INSERT INTO compression_test (algorithm, data)
 SELECT 'lz4', repeat('PostgreSQL is amazing! ', 500)
-FROM generate_series(1, 10000);
+FROM generate_series(1, 10000)
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表compression_test不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'lz4压缩测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- zstd压缩（PG 18新增）
+-- 性能测试：zstd压缩（PG 18新增）（带错误处理）
+BEGIN;
 ALTER TABLE compression_test ALTER COLUMN data SET COMPRESSION zstd;
-
 INSERT INTO compression_test (algorithm, data)
 SELECT 'zstd', repeat('PostgreSQL is amazing! ', 500)
-FROM generate_series(1, 10000);
+FROM generate_series(1, 10000)
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表compression_test不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'zstd压缩测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 性能对比
+-- 性能测试：性能对比（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     algorithm,
     COUNT(*) AS rows,
@@ -430,6 +514,14 @@ SELECT
     ROUND(100.0 * SUM(pg_column_size(data)) / SUM(length(data)), 2) AS compression_ratio_pct
 FROM compression_test
 GROUP BY algorithm;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表compression_test不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '压缩性能对比失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
   algorithm | rows  | compressed_size | original_size | compression_ratio_pct

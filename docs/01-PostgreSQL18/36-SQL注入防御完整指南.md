@@ -216,22 +216,41 @@ cursor.execute(
 ### 6.1 最小权限
 
 ```sql
--- 应用账号：只授予必要权限
-CREATE ROLE app_user LOGIN PASSWORD 'strong_password';
+-- 性能测试：应用账号：只授予必要权限（带错误处理）
+BEGIN;
+CREATE ROLE IF NOT EXISTS app_user LOGIN PASSWORD 'strong_password';
 GRANT CONNECT ON DATABASE mydb TO app_user;
 GRANT SELECT, INSERT, UPDATE ON users TO app_user;
 -- 不授予DELETE, DROP等危险权限
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '角色app_user已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建应用账号失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 只读账号
-CREATE ROLE readonly LOGIN PASSWORD 'strong_password';
+-- 性能测试：只读账号（带错误处理）
+BEGIN;
+CREATE ROLE IF NOT EXISTS readonly LOGIN PASSWORD 'strong_password';
 GRANT CONNECT ON DATABASE mydb TO readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '角色readonly已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建只读账号失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 6.2 函数包装
 
 ```sql
--- 使用SECURITY DEFINER函数
+-- 性能测试：使用SECURITY DEFINER函数（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION safe_get_user(p_username TEXT)
 RETURNS TABLE(id INT, username TEXT, email TEXT)
 SECURITY DEFINER
@@ -242,11 +261,34 @@ BEGIN
     SELECT u.id, u.username, u.email
     FROM users u
     WHERE u.username = p_username;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+        RETURN;
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询用户失败: %', SQLERRM;
+        RETURN;
 END;
 $$;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建安全函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 应用调用函数而非直接查询表
+-- 性能测试：应用调用函数而非直接查询表（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM safe_get_user('admin');
+COMMIT;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数safe_get_user不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '调用安全函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -268,14 +310,26 @@ SecRule ARGS|ARGS_NAMES "@rx (?i:(union|select|insert|update|delete|drop|create|
 ### 7.2 日志监控
 
 ```sql
--- 启用查询日志
-ALTER SYSTEM SET log_statement = 'all';  -- 或 'mod'（修改语句）
-ALTER SYSTEM SET log_min_duration_statement = 0;
+-- 性能测试：启用查询日志（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET log_statement = 'all';  -- 或 'mod'（修改语句）
+    ALTER SYSTEM SET log_min_duration_statement = 0;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '查询日志配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置查询日志失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
 -- 分析日志（Python示例）
 import re
 
-# 检测可疑模式
+## 检测可疑模式
+
 sql_injection_patterns = [
     r"(?i)union\s+select",
     r"(?i)or\s+1\s*=\s*1",
@@ -288,6 +342,7 @@ with open('/var/log/postgresql/postgresql.log') as f:
         for pattern in sql_injection_patterns:
             if re.search(pattern, line):
                 print(f"⚠️ 可疑SQL: {line}")
+
 ```
 
 ---

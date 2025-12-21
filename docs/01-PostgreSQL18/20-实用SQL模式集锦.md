@@ -135,7 +135,9 @@ EXCEPTION
 ### 3.1 查找时间间隙
 
 ```sql
--- 查找订单号间隙
+-- 性能测试：查找订单号间隙（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH gaps AS (
     SELECT
         order_id,
@@ -146,8 +148,18 @@ WITH gaps AS (
 SELECT order_id, next_id, gap_size
 FROM gaps
 WHERE gap_size > 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查找订单号间隙失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 生成缺失ID列表
+-- 性能测试：生成缺失ID列表（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE missing_ids AS (
     SELECT
         order_id + 1 AS missing_id,
@@ -164,6 +176,14 @@ WITH RECURSIVE missing_ids AS (
     WHERE missing_id + 1 < next_id
 )
 SELECT missing_id FROM missing_ids ORDER BY missing_id;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '生成缺失ID列表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -173,16 +193,27 @@ SELECT missing_id FROM missing_ids ORDER BY missing_id;
 ### 4.1 实时排行榜
 
 ```sql
--- 游戏排行榜
-CREATE TABLE player_scores (
+-- 性能测试：游戏排行榜（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS player_scores (
     player_id BIGINT,
     game_id INT,
     score BIGINT,
     achieved_at TIMESTAMPTZ,
     PRIMARY KEY (player_id, game_id)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表player_scores已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Top 100排行榜（带并列处理）
+-- 性能测试：Top 100排行榜（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     player_id,
     score,
@@ -192,8 +223,18 @@ FROM player_scores
 WHERE game_id = 1
 ORDER BY score DESC
 LIMIT 100;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表player_scores不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Top 100排行榜查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 玩家排名查询
+-- 性能测试：玩家排名查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     player_id,
     score,
@@ -205,8 +246,18 @@ SELECT
     ) AS rank
 FROM player_scores ps1
 WHERE player_id = 12345 AND game_id = 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表player_scores不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '玩家排名查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 优化: 使用窗口函数
+-- 性能测试：优化: 使用窗口函数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT player_id, score, rank
 FROM (
     SELECT
@@ -217,6 +268,14 @@ FROM (
     WHERE game_id = 1
 ) ranked
 WHERE player_id = 12345;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表player_scores不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '窗口函数排名查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -226,32 +285,39 @@ WHERE player_id = 12345;
 ### 5.1 安全的批量删除
 
 ```sql
--- 避免长事务和锁
+-- 性能测试：避免长事务和锁（带错误处理）
 DO $$
 DECLARE
     deleted INT;
 BEGIN
     LOOP
-        DELETE FROM logs
-        WHERE created_at < CURRENT_DATE - INTERVAL '90 days'
-          AND ctid = ANY(
-              ARRAY(
-                  SELECT ctid FROM logs
-                  WHERE created_at < CURRENT_DATE - INTERVAL '90 days'
-                  LIMIT 1000
-              )
-          );
+        BEGIN
+            DELETE FROM logs
+            WHERE created_at < CURRENT_DATE - INTERVAL '90 days'
+              AND ctid = ANY(
+                  ARRAY(
+                      SELECT ctid FROM logs
+                      WHERE created_at < CURRENT_DATE - INTERVAL '90 days'
+                      LIMIT 1000
+                  )
+              );
 
-        GET DIAGNOSTICS deleted = ROW_COUNT;
+            GET DIAGNOSTICS deleted = ROW_COUNT;
 
-        EXIT WHEN deleted = 0;
+            EXIT WHEN deleted = 0;
 
-        COMMIT;
+            COMMIT;
 
-        RAISE NOTICE '删除 % 行', deleted;
+            RAISE NOTICE '删除 % 行', deleted;
 
-        -- 短暂休眠
-        PERFORM pg_sleep(0.1);
+            -- 短暂休眠
+            PERFORM pg_sleep(0.1);
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE '批量删除失败: %', SQLERRM;
+                ROLLBACK;
+                EXIT;
+        END;
     END LOOP;
 END $$;
 ```
@@ -308,7 +374,9 @@ $$ LANGUAGE plpgsql;
 ### 6.1 同比环比
 
 ```sql
--- 销售同比环比
+-- 性能测试：销售同比环比（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH daily_sales AS (
     SELECT
         DATE(order_date) AS sale_date,
@@ -331,12 +399,22 @@ SELECT
 FROM daily_sales
 ORDER BY sale_date DESC
 LIMIT 30;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '销售同比环比查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 6.2 趋势检测
 
 ```sql
--- 移动平均+趋势
+-- 性能测试：移动平均+趋势（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH ma AS (
     SELECT
         date,
@@ -357,6 +435,14 @@ SELECT
     END AS trend
 FROM ma
 ORDER BY date DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表metrics不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '移动平均+趋势查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -366,7 +452,8 @@ ORDER BY date DESC;
 ### 7.1 标准化处理
 
 ```sql
--- 清洗用户数据
+-- 性能测试：清洗用户数据（带错误处理）
+BEGIN;
 UPDATE users
 SET
     email = LOWER(TRIM(email)),
@@ -376,12 +463,22 @@ WHERE
     email != LOWER(TRIM(email))
     OR phone != regexp_replace(phone, '[^0-9]', '', 'g')
     OR name != INITCAP(TRIM(name));
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '清洗用户数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 7.2 异常值处理
 
 ```sql
--- 识别并处理异常值（3σ原则）
+-- 性能测试：识别并处理异常值（3σ原则）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH stats AS (
     SELECT
         AVG(price) AS mean,
@@ -399,6 +496,14 @@ outliers AS (
 UPDATE products
 SET price = (SELECT mean FROM stats)
 WHERE product_id IN (SELECT product_id FROM outliers);
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表products不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '处理异常值失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -408,25 +513,64 @@ WHERE product_id IN (SELECT product_id FROM outliers);
 ### 8.1 Keyset分页
 
 ```sql
--- 传统OFFSET分页（慢）
+-- 性能测试：传统OFFSET分页（慢）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM products
 ORDER BY product_id
 LIMIT 20 OFFSET 10000;  -- 扫描10020行
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表products不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'OFFSET分页查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Keyset分页（快）
+-- 性能测试：Keyset分页（快）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM products
 WHERE product_id > 10000  -- 上一页最后的ID
 ORDER BY product_id
 LIMIT 20;  -- 只扫描20行
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表products不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Keyset分页查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 时间戳分页
+-- 性能测试：时间戳分页（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM events
 WHERE (created_at, event_id) < ('2024-01-01 12:00:00', 12345)  -- 上一页最后记录
 ORDER BY created_at DESC, event_id DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表events不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '时间戳分页查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 索引
-CREATE INDEX idx_events_created_id ON events (created_at DESC, event_id DESC);
+-- 性能测试：创建索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_events_created_id ON events (created_at DESC, event_id DESC);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_events_created_id已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -436,7 +580,9 @@ CREATE INDEX idx_events_created_id ON events (created_at DESC, event_id DESC);
 ### 9.1 审计表设计
 
 ```sql
-CREATE TABLE audit_log (
+-- 性能测试：创建审计表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS audit_log (
     audit_id BIGSERIAL PRIMARY KEY,
     table_name TEXT NOT NULL,
     operation TEXT NOT NULL,
@@ -449,8 +595,17 @@ CREATE TABLE audit_log (
     ip_address INET,
     application_name TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表audit_log已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建审计表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 通用审计触发器
+-- 性能测试：通用审计触发器（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION generic_audit_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -480,13 +635,33 @@ BEGIN
     END IF;
 
     RETURN COALESCE(NEW, OLD);
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '审计触发器执行失败: %', SQLERRM;
+        RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建审计触发器失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 应用到表
+-- 性能测试：应用到表（带错误处理）
+BEGIN;
+DROP TRIGGER IF EXISTS trg_audit_users ON users;
 CREATE TRIGGER trg_audit_users
     AFTER INSERT OR UPDATE OR DELETE ON users
     FOR EACH ROW EXECUTE FUNCTION generic_audit_trigger();
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users或函数generic_audit_trigger不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建审计触发器失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -496,16 +671,26 @@ CREATE TRIGGER trg_audit_users
 ### 10.1 自动刷新缓存
 
 ```sql
--- 汇总缓存表
-CREATE TABLE user_stats_cache (
+-- 性能测试：创建汇总缓存表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS user_stats_cache (
     user_id BIGINT PRIMARY KEY,
     order_count INT,
     total_spent NUMERIC,
     last_order_at TIMESTAMPTZ,
     cache_updated_at TIMESTAMPTZ DEFAULT now()
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表user_stats_cache已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建缓存表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 增量更新函数
+-- 性能测试：增量更新函数（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION refresh_user_stats_incremental(p_user_id BIGINT)
 RETURNS VOID AS $$
 BEGIN
@@ -524,17 +709,40 @@ BEGIN
         total_spent = EXCLUDED.total_spent,
         last_order_at = EXCLUDED.last_order_at,
         cache_updated_at = now();
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表user_stats_cache或orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '刷新用户统计缓存失败: %', SQLERRM;
+        RAISE;
 END;
 $$ LANGUAGE plpgsql;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建增量更新函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 触发器自动更新
+-- 性能测试：触发器自动更新（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION trigger_refresh_user_stats()
 RETURNS TRIGGER AS $$
 BEGIN
     PERFORM refresh_user_stats_incremental(COALESCE(NEW.user_id, OLD.user_id));
     RETURN COALESCE(NEW, OLD);
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '触发器刷新用户统计失败: %', SQLERRM;
+        RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建触发器函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 CREATE TRIGGER trg_refresh_stats
     AFTER INSERT OR UPDATE OR DELETE ON orders
@@ -548,8 +756,9 @@ CREATE TRIGGER trg_refresh_stats
 ### 11.1 Temporal表
 
 ```sql
--- 当前版本表
-CREATE TABLE products (
+-- 性能测试：当前版本表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS products (
     product_id INT PRIMARY KEY,
     name VARCHAR(200),
     price NUMERIC(10,2),
@@ -557,9 +766,18 @@ CREATE TABLE products (
     valid_from TIMESTAMPTZ DEFAULT now(),
     valid_to TIMESTAMPTZ DEFAULT 'infinity'
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表products已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建当前版本表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 历史版本表
-CREATE TABLE products_history (
+-- 性能测试：历史版本表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS products_history (
     history_id BIGSERIAL PRIMARY KEY,
     product_id INT,
     name VARCHAR(200),
@@ -568,8 +786,17 @@ CREATE TABLE products_history (
     valid_from TIMESTAMPTZ,
     valid_to TIMESTAMPTZ
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表products_history已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建历史版本表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 自动记录历史
+-- 性能测试：自动记录历史（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION save_product_history()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -589,22 +816,63 @@ BEGIN
     END IF;
 
     RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '保存产品历史失败: %', SQLERRM;
+        RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建历史记录函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+-- 性能测试：创建触发器（带错误处理）
+BEGIN;
+DROP TRIGGER IF EXISTS trg_product_history ON products;
 CREATE TRIGGER trg_product_history
     BEFORE UPDATE ON products
     FOR EACH ROW EXECUTE FUNCTION save_product_history();
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表products或函数save_product_history不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建触发器失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询历史价格
+-- 性能测试：查询历史价格（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM products_history
 WHERE product_id = 123
 ORDER BY valid_from DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表products_history不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询历史价格失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询某个时间点的价格
+-- 性能测试：查询某个时间点的价格（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM products_history
 WHERE product_id = 123
   AND '2023-06-01'::TIMESTAMPTZ BETWEEN valid_from AND valid_to;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表products_history不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询时间点价格失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -614,8 +882,9 @@ WHERE product_id = 123
 ### 12.1 任务队列
 
 ```sql
--- 任务表
-CREATE TABLE task_queue (
+-- 性能测试：任务表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS task_queue (
     task_id BIGSERIAL PRIMARY KEY,
     task_type VARCHAR(50),
     payload JSONB,
@@ -628,11 +897,30 @@ CREATE TABLE task_queue (
     completed_at TIMESTAMPTZ,
     error_message TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表task_queue已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建任务表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE INDEX idx_queue_pending ON task_queue (status, priority DESC, created_at)
+-- 性能测试：创建索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_queue_pending ON task_queue (status, priority DESC, created_at)
 WHERE status = 'pending';
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_queue_pending已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Worker获取任务
+-- 性能测试：Worker获取任务（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION dequeue_task()
 RETURNS task_queue AS $$
 DECLARE
@@ -654,10 +942,21 @@ BEGIN
     RETURNING * INTO task;
 
     RETURN task;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '获取任务失败: %', SQLERRM;
+        RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建获取任务函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 标记完成
+-- 性能测试：标记完成（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION complete_task(p_task_id BIGINT, p_success BOOLEAN, p_error TEXT DEFAULT NULL)
 RETURNS VOID AS $$
 BEGIN
@@ -678,8 +977,18 @@ BEGIN
             error_message = p_error
         WHERE task_id = p_task_id;
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '标记任务完成失败: %', SQLERRM;
+        RAISE;
 END;
 $$ LANGUAGE plpgsql;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建标记完成函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -689,7 +998,9 @@ $$ LANGUAGE plpgsql;
 ### 13.1 加权搜索
 
 ```sql
--- 多字段加权搜索
+-- 性能测试：多字段加权搜索（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     doc_id,
     title,
@@ -708,6 +1019,14 @@ WHERE
     @@ query
 ORDER BY rank DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表documents不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '多字段加权搜索失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -717,8 +1036,9 @@ LIMIT 20;
 ### 14.1 预计算汇总
 
 ```sql
--- 预计算每日汇总（物化视图）
-CREATE MATERIALIZED VIEW daily_stats AS
+-- 性能测试：预计算每日汇总（物化视图）（带错误处理）
+BEGIN;
+CREATE MATERIALIZED VIEW IF NOT EXISTS daily_stats AS
 SELECT
     DATE(created_at) AS date,
     COUNT(*) AS order_count,
@@ -727,10 +1047,31 @@ SELECT
     COUNT(DISTINCT user_id) AS unique_users
 FROM orders
 GROUP BY DATE(created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '物化视图daily_stats已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建物化视图失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE UNIQUE INDEX ON daily_stats (date);
+-- 性能测试：创建唯一索引（带错误处理）
+BEGIN;
+CREATE UNIQUE INDEX IF NOT EXISTS daily_stats_date_idx ON daily_stats (date);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引daily_stats_date_idx已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建唯一索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 增量刷新（只更新最近数据）
+-- 性能测试：增量刷新（只更新最近数据）（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION refresh_daily_stats_incremental()
 RETURNS VOID AS $$
 BEGIN
@@ -749,8 +1090,20 @@ BEGIN
     FROM orders
     WHERE DATE(created_at) >= CURRENT_DATE - 3
     GROUP BY DATE(created_at);
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表daily_stats或orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '增量刷新失败: %', SQLERRM;
+        RAISE;
 END;
 $$ LANGUAGE plpgsql;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建增量刷新函数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

@@ -150,7 +150,9 @@ Bob                | CTO          | 1
 ### 2.2 路径追踪
 
 ```sql
--- 显示完整层级路径
+-- 性能测试：显示完整层级路径（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE org_tree AS (
     SELECT
         id,
@@ -180,8 +182,17 @@ SELECT
     level
 FROM org_tree
 ORDER BY path;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表employees不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '递归查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
+
 name    | hierarchy_path                  | level
 --------|----------------------------------|-------
 Alice   | Alice                            | 1
@@ -191,6 +202,7 @@ Frank   | Alice → Bob → David → Frank      | 4
 Eve     | Alice → Bob → Eve                | 3
 Charlie | Alice → Charlie                  | 2
 */
+
 ```
 
 ---
@@ -200,15 +212,26 @@ Charlie | Alice → Charlie                  | 2
 ### 3.1 社交网络
 
 ```sql
--- 好友表
-CREATE TABLE friendships (
+-- 性能测试：创建好友表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS friendships (
     user1_id INT,
     user2_id INT,
     created_at TIMESTAMPTZ DEFAULT now(),
     PRIMARY KEY (user1_id, user2_id)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表friendships已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建好友表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查找所有朋友的朋友（2度连接）
+-- 性能测试：查找所有朋友的朋友（2度连接）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE friends_of_friends AS (
     -- 直接朋友（1度）
     SELECT
@@ -258,20 +281,39 @@ SELECT DISTINCT target AS friend_id, degree
 FROM friends_of_friends
 WHERE target != 123
 ORDER BY degree, target;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表friendships不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '图遍历查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.2 最短路径
 
 ```sql
--- 城市路线表
-CREATE TABLE routes (
+-- 性能测试：创建城市路线表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS routes (
     from_city VARCHAR(50),
     to_city VARCHAR(50),
     distance INT,
     PRIMARY KEY (from_city, to_city)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表routes已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建路线表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查找最短路径
+-- 性能测试：查找最短路径（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE shortest_path AS (
     SELECT
         from_city,
@@ -302,12 +344,22 @@ FROM shortest_path
 WHERE to_city = 'LA'
 ORDER BY total_distance
 LIMIT 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表routes不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '最短路径查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
+
 path                        | total_distance
 ----------------------------|----------------
 {NYC,Chicago,Denver,LA}     | 850
 */
+
 ```
 
 ---
@@ -317,7 +369,9 @@ path                        | total_distance
 ### 4.1 生成序列
 
 ```sql
--- 生成1到100
+-- 性能测试：生成1到100（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE numbers AS (
     SELECT 1 AS n
     UNION ALL
@@ -326,8 +380,16 @@ WITH RECURSIVE numbers AS (
     WHERE n < 100
 )
 SELECT * FROM numbers;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '生成数字序列失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 斐波那契数列
+-- 性能测试：斐波那契数列（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE fibonacci(a, b, n) AS (
     SELECT 0::BIGINT, 1::BIGINT, 1
     UNION ALL
@@ -337,6 +399,12 @@ WITH RECURSIVE fibonacci(a, b, n) AS (
 )
 SELECT a AS fib_number
 FROM fibonacci;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '生成斐波那契数列失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
 fib_number
@@ -356,7 +424,9 @@ fib_number
 ### 4.2 日期序列
 
 ```sql
--- 生成过去30天的日期
+-- 性能测试：生成过去30天的日期（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE date_series AS (
     SELECT CURRENT_DATE AS date
     UNION ALL
@@ -367,8 +437,16 @@ WITH RECURSIVE date_series AS (
 SELECT date::DATE
 FROM date_series
 ORDER BY date;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '生成日期序列失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 统计每日订单（填充缺失日期）
+-- 性能测试：统计每日订单（填充缺失日期）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE date_series AS (
     SELECT '2024-01-01'::DATE AS date
     UNION ALL
@@ -383,6 +461,14 @@ FROM date_series ds
 LEFT JOIN orders o ON o.created_at::DATE = ds.date
 GROUP BY ds.date
 ORDER BY ds.date;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '统计每日订单失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

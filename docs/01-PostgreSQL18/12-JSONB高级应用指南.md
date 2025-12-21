@@ -31,7 +31,6 @@ EXCEPTION
         RAISE NOTICE '创建JSONB表失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 -- 对比
 /*
@@ -46,6 +45,7 @@ EXCEPTION
 */
 
 -- 建议: 始终使用JSONB
+
 ```
 
 ---
@@ -81,27 +81,132 @@ EXCEPTION
         RAISE NOTICE '插入数据失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
--- 获取值
+-- 性能测试：获取值（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT profile->'name' FROM users;              -- 返回JSONB
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '获取JSONB值失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT profile->>'name' FROM users;             -- 返回TEXT
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '获取TEXT值失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 路径访问
+-- 性能测试：路径访问（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT profile#>'{address,city}' FROM users;   -- 返回JSONB
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '路径访问失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT profile#>>'{address,city}' FROM users;  -- 返回TEXT
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '路径访问TEXT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 存在性检查
+-- 性能测试：存在性检查（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile ? 'age';     -- 键存在
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '存在性检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile ?| ARRAY['name','age'];  -- 任一键存在
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '任一键存在检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile ?& ARRAY['name','age'];  -- 所有键存在
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '所有键存在检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 包含
+-- 性能测试：包含（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile @> '{"age":30}';  -- 包含
-SELECT * FROM users WHERE profile <@ '{"name":"Alice","age":30,"extra":"value"}';  -- 被包含
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '包含检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 数组操作
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE profile <@ '{"name":"Alice","age":30,"extra":"value"}';  -- 被包含
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '被包含检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能测试：数组操作（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile->'tags' @> '["vip"]';  -- 数组包含
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '数组包含检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
 ```
 
 ### 2.2 更新操作符
@@ -184,14 +289,32 @@ EXCEPTION
 ### 3.1 创建GIN索引
 
 ```sql
--- 默认GIN索引（jsonb_ops）
-CREATE INDEX idx_profile ON users USING GIN (profile);
+-- 性能测试：默认GIN索引（jsonb_ops）（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_profile ON users USING GIN (profile);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_profile已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建GIN索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 支持的查询
 -- @>, ?, ?|, ?&
 
--- jsonb_path_ops索引（更小，更快）
-CREATE INDEX idx_profile_path ON users USING GIN (profile jsonb_path_ops);
+-- 性能测试：jsonb_path_ops索引（更小，更快）（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_profile_path ON users USING GIN (profile jsonb_path_ops);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_profile_path已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建jsonb_path_ops索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 只支持@>操作符
 -- 索引更小（~30%）
@@ -201,15 +324,43 @@ CREATE INDEX idx_profile_path ON users USING GIN (profile jsonb_path_ops);
 ### 3.2 表达式索引
 
 ```sql
--- 索引特定路径
-CREATE INDEX idx_profile_age ON users ((profile->'age'));
+-- 性能测试：索引特定路径（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_profile_age ON users ((profile->'age'));
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_profile_age已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建路径索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 索引转换后的值
-CREATE INDEX idx_profile_age_int ON users (((profile->>'age')::int));
+-- 性能测试：索引转换后的值（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_profile_age_int ON users (((profile->>'age')::int));
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_profile_age_int已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表达式索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 使用
+-- 性能测试：使用（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE (profile->>'age')::int > 25;
 -- 使用idx_profile_age_int索引
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -219,29 +370,79 @@ SELECT * FROM users WHERE (profile->>'age')::int > 25;
 ### 4.1 高效查询
 
 ```sql
--- Good: 使用@>
+-- 性能测试：Good: 使用@>（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile @> '{"age":30}';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Bad: 使用函数
+-- 性能测试：Bad: 使用函数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE (profile->>'age')::int = 30;
 -- 无法使用jsonb_ops索引，但可使用表达式索引
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Good: 存在性检查
+-- 性能测试：Good: 存在性检查（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile ? 'email';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '存在性检查查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Good: 数组包含
+-- 性能测试：Good: 数组包含（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE profile->'tags' @> '["vip"]';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '数组包含查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 4.2 避免全文档扫描
 
 ```sql
--- Bad: 提取所有字段
+-- 性能测试：Bad: 提取所有字段（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     profile->>'name',
     profile->>'age',
     profile->>'email'
 FROM users;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '提取字段查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- Good: 一次提取
 SELECT jsonb_populate_record(null::user_type, profile)

@@ -162,7 +162,9 @@ EXCEPTION
 ### 2.1 滑动窗口聚合
 
 ```sql
--- 计算每日及其前7天的移动平均
+-- 性能测试：计算每日及其前7天的移动平均（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     sale_date,
     amount,
@@ -177,12 +179,22 @@ SELECT
         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
     ) AS wma_7d
 FROM daily_sales;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表daily_sales不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '移动平均查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 2.2 连续计数
 
 ```sql
--- 计算连续上涨天数
+-- 性能测试：计算连续上涨天数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH price_changes AS (
     SELECT
         date,
@@ -206,6 +218,14 @@ FROM groups
 WHERE is_up
 GROUP BY group_id
 HAVING COUNT(*) >= 5;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表stock_prices不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '连续上涨天数查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -215,8 +235,10 @@ HAVING COUNT(*) >= 5;
 ### 3.1 相关子查询优化
 
 ```sql
--- 每个用户的最近3个订单
--- Bad: 慢
+-- 性能测试：每个用户的最近3个订单
+-- Bad: 慢（带性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT u.user_id, u.username, o.*
 FROM users u
 JOIN orders o ON u.user_id = o.user_id
@@ -226,8 +248,18 @@ WHERE o.order_id IN (
     ORDER BY created_at DESC
     LIMIT 3
 );
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users或orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '子查询方式查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- Good: LATERAL JOIN
+-- 性能测试：Good: LATERAL JOIN（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT u.user_id, u.username, o.*
 FROM users u
 CROSS JOIN LATERAL (
@@ -236,14 +268,23 @@ CROSS JOIN LATERAL (
     ORDER BY created_at DESC
     LIMIT 3
 ) o;
-
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users或orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'LATERAL JOIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 -- 性能提升: 80% (使用索引，避免重复扫描)
 ```
 
 ### 3.2 Top-N每组
 
 ```sql
--- 每个类别销量Top 5
+-- 性能测试：每个类别销量Top 5（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT c.category_name, p.*
 FROM categories c
 CROSS JOIN LATERAL (
@@ -252,6 +293,14 @@ CROSS JOIN LATERAL (
     ORDER BY sales_count DESC
     LIMIT 5
 ) p;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表categories或products不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Top-N每组查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -261,15 +310,27 @@ CROSS JOIN LATERAL (
 ### 4.1 每组第一条
 
 ```sql
--- 每个用户最新登录记录
+-- 性能测试：每个用户最新登录记录 - DISTINCT ON（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT DISTINCT ON (user_id)
     user_id,
     login_time,
     ip_address
 FROM login_history
 ORDER BY user_id, login_time DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表login_history不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'DISTINCT ON查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 等价于（但更高效）
+-- 性能测试：等价于（但更高效）- ROW_NUMBER（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT user_id, login_time, ip_address
 FROM (
     SELECT *,
@@ -277,6 +338,14 @@ FROM (
     FROM login_history
 ) sub
 WHERE rn = 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表login_history不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'ROW_NUMBER查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

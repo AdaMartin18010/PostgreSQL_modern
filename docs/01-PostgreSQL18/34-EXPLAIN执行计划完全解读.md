@@ -1,5 +1,27 @@
 # PostgreSQL EXPLAIN执行计划完全解读
 
+## 📑 目录
+
+- [PostgreSQL EXPLAIN执行计划完全解读](#postgresql-explain执行计划完全解读)
+  - [📑 目录](#-目录)
+  - [1. EXPLAIN基础](#1-explain基础)
+  - [2. 扫描节点](#2-扫描节点)
+    - [2.1 Seq Scan（顺序扫描）](#21-seq-scan顺序扫描)
+    - [2.2 Index Scan](#22-index-scan)
+    - [2.3 Index Only Scan](#23-index-only-scan)
+    - [2.4 Bitmap Scan](#24-bitmap-scan)
+  - [3. JOIN节点](#3-join节点)
+    - [3.1 Nested Loop](#31-nested-loop)
+    - [3.2 Hash Join](#32-hash-join)
+    - [3.3 Merge Join](#33-merge-join)
+  - [4. 聚合节点](#4-聚合节点)
+    - [4.1 GroupAggregate](#41-groupaggregate)
+    - [4.2 HashAggregate](#42-hashaggregate)
+  - [5. 性能问题识别](#5-性能问题识别)
+    - [5.1 常见问题模式](#51-常见问题模式)
+  - [6. 优化技巧](#6-优化技巧)
+    - [6.1 强制计划](#61-强制计划)
+
 ## 1. EXPLAIN基础
 
 ```sql
@@ -63,7 +85,6 @@ EXCEPTION
         RAISE NOTICE '顺序扫描查询失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 /*
 Seq Scan on users  (cost=0.00..1000.00 rows=10000 width=100) (actual time=0.010..5.234 rows=9850 loops=1)
@@ -82,6 +103,7 @@ Seq Scan on users  (cost=0.00..1000.00 rows=10000 width=100) (actual time=0.010.
 
 适用: 小表、大部分行、无索引
 */
+
 ```
 
 ### 2.2 Index Scan
@@ -97,7 +119,6 @@ EXCEPTION
         RAISE NOTICE '索引扫描查询失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 /*
 Index Scan using users_pkey on users  (cost=0.42..8.44 rows=1 width=100) (actual time=0.015..0.016 rows=1 loops=1)
@@ -114,6 +135,7 @@ Index Scan using users_pkey on users  (cost=0.42..8.44 rows=1 width=100) (actual
 
 适用: 高选择性查询
 */
+
 ```
 
 ### 2.3 Index Only Scan
@@ -129,17 +151,17 @@ EXCEPTION
         RAISE NOTICE '索引仅扫描查询失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 /*
 Index Only Scan using idx_users_email on users  (cost=0.42..8.44 rows=1 width=100) (actual time=0.012..0.013 rows=1 loops=1)
-  Index Cond: (email = 'test@example.com')
+  Index Cond: (email = '<test@example.com>')
   Heap Fetches: 0  ← 关键：无需访问表
   Buffers: shared hit=3
 
 优势: 只读索引，不访问表
 前提: 覆盖索引 + VACUUM维护的可见性映射
 */
+
 ```
 
 ### 2.4 Bitmap Scan
@@ -155,7 +177,6 @@ EXCEPTION
         RAISE NOTICE '位图扫描查询失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 /*
 Bitmap Heap Scan on users  (cost=25.00..500.00 rows=5000 width=100)
@@ -168,6 +189,7 @@ Bitmap Heap Scan on users  (cost=25.00..500.00 rows=5000 width=100)
               Index Cond: (city = 'NYC')
 
 流程:
+
 1. 扫描idx_age，生成位图
 2. 扫描idx_city，生成位图
 3. 合并位图（OR操作）
@@ -175,6 +197,7 @@ Bitmap Heap Scan on users  (cost=25.00..500.00 rows=5000 width=100)
 
 适用: 多索引OR、中等选择性
 */
+
 ```
 
 ---
@@ -184,11 +207,20 @@ Bitmap Heap Scan on users  (cost=25.00..500.00 rows=5000 width=100)
 ### 3.1 Nested Loop
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：Nested Loop（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders o
 JOIN users u ON o.user_id = u.user_id
 WHERE u.user_id = 123;
-
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders或users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Nested Loop查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 /*
 Nested Loop  (cost=0.85..25.00 rows=10 width=200) (actual time=0.025..0.156 rows=8 loops=1)
   ->  Index Scan on users u  (cost=0.42..8.44 rows=1 width=100)
@@ -205,10 +237,19 @@ Nested Loop  (cost=0.85..25.00 rows=10 width=200) (actual time=0.025..0.156 rows
 ### 3.2 Hash Join
 
 ```sql
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：Hash Join（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders o
 JOIN products p ON o.product_id = p.product_id;
-
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders或products不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Hash Join查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 /*
 Hash Join  (cost=500.00..5000.00 rows=50000 width=200) (actual time=5.234..125.456 rows=48523 loops=1)
   Hash Cond: (o.product_id = p.product_id)
@@ -237,10 +278,19 @@ Batches>1: 溢出到磁盘（慢）
 ### 3.3 Merge Join
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：Merge Join（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders o
 JOIN order_items oi ON o.order_id = oi.order_id;
-
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders或order_items不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Merge Join查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 /*
 Merge Join  (cost=0.85..5000.00 rows=100000 width=200)
   Merge Cond: (o.order_id = oi.order_id)
@@ -260,12 +310,21 @@ Merge Join  (cost=0.85..5000.00 rows=100000 width=200)
 ### 4.1 GroupAggregate
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：GroupAggregate（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT department, COUNT(*), AVG(salary)
 FROM employees
 GROUP BY department
 ORDER BY department;
-
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表employees不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'GroupAggregate查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 /*
 GroupAggregate  (cost=1000.00..1500.00 rows=50 width=12)
   Group Key: department
@@ -279,11 +338,20 @@ GroupAggregate  (cost=1000.00..1500.00 rows=50 width=12)
 ### 4.2 HashAggregate
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：HashAggregate（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT department, COUNT(*), AVG(salary)
 FROM employees
 GROUP BY department;
-
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表employees不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'HashAggregate查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 /*
 HashAggregate  (cost=1000.00..1050.00 rows=50 width=12)
   Group Key: department
@@ -360,21 +428,56 @@ Nested Loop (rows=1000000)
 ### 6.1 强制计划
 
 ```sql
--- 禁用某种扫描
-SET enable_seqscan = off;
-SET enable_indexscan = off;
-SET enable_bitmapscan = off;
+-- 性能测试：强制计划（带错误处理）
+BEGIN;
+SET LOCAL enable_seqscan = off;
+SET LOCAL enable_indexscan = off;
+SET LOCAL enable_bitmapscan = off;
+RAISE NOTICE '已禁用扫描类型';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置扫描类型失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 禁用某种JOIN
-SET enable_nestloop = off;
-SET enable_hashjoin = off;
-SET enable_mergejoin = off;
+-- 性能测试：禁用某种JOIN（带错误处理）
+BEGIN;
+SET LOCAL enable_nestloop = off;
+SET LOCAL enable_hashjoin = off;
+SET LOCAL enable_mergejoin = off;
+RAISE NOTICE '已禁用JOIN类型';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置JOIN类型失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 调整成本参数
-SET random_page_cost = 1.1;  -- SSD
-SET cpu_tuple_cost = 0.005;
+-- 性能测试：调整成本参数（带错误处理）
+BEGIN;
+SET LOCAL random_page_cost = 1.1;  -- SSD
+SET LOCAL cpu_tuple_cost = 0.005;
+RAISE NOTICE '已调整成本参数';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置成本参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 对比不同计划
+-- 性能测试：对比不同计划（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE age > 25;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '对比计划失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

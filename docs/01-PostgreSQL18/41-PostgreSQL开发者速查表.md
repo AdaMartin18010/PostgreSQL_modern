@@ -379,25 +379,75 @@ EXCEPTION
 ## 🔐 用户管理
 
 ```sql
--- 创建用户
-CREATE USER app_user WITH PASSWORD 'strong_password';
+-- 性能测试：创建用户（带错误处理）
+BEGIN;
+CREATE USER IF NOT EXISTS app_user WITH PASSWORD 'strong_password';
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '用户app_user已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建用户失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 创建角色
-CREATE ROLE readonly;
+-- 性能测试：创建角色（带错误处理）
+BEGIN;
+CREATE ROLE IF NOT EXISTS readonly;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '角色readonly已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建角色失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 授权
+-- 性能测试：授权（带错误处理）
+BEGIN;
 GRANT CONNECT ON DATABASE mydb TO app_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly;
 GRANT readonly TO app_user;
+COMMIT;
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE NOTICE '用户、角色或数据库不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '授权失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 撤销
+-- 性能测试：撤销（带错误处理）
+BEGIN;
 REVOKE SELECT ON users FROM app_user;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '撤销权限失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 修改密码
+-- 性能测试：修改密码（带错误处理）
+BEGIN;
 ALTER USER app_user WITH PASSWORD 'new_password';
+COMMIT;
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE NOTICE '用户app_user不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '修改密码失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 删除用户
-DROP USER app_user;
+-- 性能测试：删除用户（带错误处理）
+BEGIN;
+DROP USER IF EXISTS app_user;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除用户失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -405,20 +455,55 @@ DROP USER app_user;
 ## 📦 数据库管理
 
 ```sql
--- 创建数据库
-CREATE DATABASE mydb;
+-- 性能测试：创建数据库（带错误处理）
+BEGIN;
+CREATE DATABASE IF NOT EXISTS mydb;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_database THEN
+        RAISE NOTICE '数据库mydb已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建数据库失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 删除数据库
-DROP DATABASE mydb;
+-- 性能测试：删除数据库（带错误处理）
+BEGIN;
+DROP DATABASE IF EXISTS mydb;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除数据库失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 列出数据库
-\l
+-- 性能测试：列出数据库（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT datname FROM pg_database;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '列出数据库失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 数据库大小
+-- 性能测试：数据库大小（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT pg_size_pretty(pg_database_size('mydb'));
+COMMIT;
+EXCEPTION
+    WHEN undefined_database THEN
+        RAISE NOTICE '数据库mydb不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询数据库大小失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 表大小
+-- 性能测试：表大小（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -426,9 +511,15 @@ SELECT
 FROM pg_tables
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
 LIMIT 10;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询表大小失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 连接到其他数据库
-\c mydb
+-- \c mydb
 ```
 
 ---
@@ -665,28 +756,104 @@ pg_dump -t users mydb > users.sql
 ## 🚨 紧急操作
 
 ```sql
--- 终止查询
-SELECT pg_cancel_backend(pid);  -- 尝试取消
-SELECT pg_terminate_backend(pid);  -- 强制终止
+-- 性能测试：终止查询（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    target_pid INT := 12345;  -- 替换为实际PID
+BEGIN
+    PERFORM pg_cancel_backend(target_pid);  -- 尝试取消
+    RAISE NOTICE '已尝试取消查询: %', target_pid;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '取消查询失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 终止所有空闲连接
-SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity
-WHERE state = 'idle' AND pid != pg_backend_pid();
+-- 性能测试：强制终止（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    target_pid INT := 12345;  -- 替换为实际PID
+BEGIN
+    PERFORM pg_terminate_backend(target_pid);  -- 强制终止
+    RAISE NOTICE '已强制终止查询: %', target_pid;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '终止查询失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 查看配置
-SHOW ALL;
-SHOW shared_buffers;
+-- 性能测试：终止所有空闲连接（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    terminated_count INT := 0;
+BEGIN
+    SELECT COUNT(*) INTO terminated_count
+    FROM pg_stat_activity
+    WHERE state = 'idle' AND pid != pg_backend_pid();
 
--- 修改配置
-ALTER SYSTEM SET work_mem = '128MB';
-SELECT pg_reload_conf();
+    PERFORM pg_terminate_backend(pid)
+    FROM pg_stat_activity
+    WHERE state = 'idle' AND pid != pg_backend_pid();
 
--- 查看版本
+    RAISE NOTICE '已终止 % 个空闲连接', terminated_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '终止空闲连接失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
+
+-- 性能测试：查看配置（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT name, setting, unit FROM pg_settings WHERE name = 'shared_buffers';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看配置失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能测试：修改配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET work_mem = '128MB';
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '配置已更新并重载';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '修改配置失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
+
+-- 性能测试：查看版本（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT version();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看版本失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看运行时间
+-- 性能测试：查看运行时间（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT pg_postmaster_start_time();
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看运行时间失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

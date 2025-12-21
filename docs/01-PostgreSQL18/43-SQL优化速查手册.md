@@ -297,19 +297,49 @@ EXCEPTION
 ## 🔍 EXISTS vs IN
 
 ```sql
--- 大外表，小内表: IN更快
+-- 性能测试：大外表，小内表: IN更快（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM large_table
 WHERE id IN (SELECT id FROM small_table);
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表large_table或small_table不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'IN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 小外表，大内表: EXISTS更快
+-- 性能测试：小外表，大内表: EXISTS更快（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM small_table st
 WHERE EXISTS (
     SELECT 1 FROM large_table lt WHERE lt.id = st.id
 );
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表small_table或large_table不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'EXISTS查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 通用建议: 让优化器选择（都写成JOIN）
+-- 性能测试：通用建议: 让优化器选择（都写成JOIN）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT st.* FROM small_table st
 JOIN large_table lt ON st.id = lt.id;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表small_table或large_table不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JOIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -411,22 +441,60 @@ EXCEPTION
 ## 🎨 SELECT优化
 
 ```sql
--- ❌ SELECT *
+-- 性能测试：❌ SELECT *（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users;  -- 返回所有列
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'SELECT *查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 只选需要的列
+-- 性能测试：✅ 只选需要的列（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT id, username, email FROM users;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'SELECT特定列查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
----
-
--- ❌ 不必要的DISTINCT
+-- 性能测试：❌ 不必要的DISTINCT（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT DISTINCT * FROM (
     SELECT id, name FROM users WHERE status = 'active'
 ) sub;
 -- 如果id是主键，DISTINCT无意义
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'DISTINCT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 去掉DISTINCT
+-- 性能测试：✅ 去掉DISTINCT（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT id, name FROM users WHERE status = 'active';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '去掉DISTINCT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -434,19 +502,65 @@ SELECT id, name FROM users WHERE status = 'active';
 ## 🔢 数据类型优化
 
 ```sql
--- ❌ 过大的类型
-user_id BIGINT  -- 实际只有1万用户
+-- 性能测试：❌ 过大的类型（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS test_bigint (
+    user_id BIGINT PRIMARY KEY
+);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表test_bigint已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建BIGINT表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- ✅ 合适的类型
-user_id INTEGER  -- 21亿足够，节省50%空间
+-- 性能测试：✅ 合适的类型（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS test_integer (
+    user_id INTEGER PRIMARY KEY
+);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表test_integer已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建INTEGER表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+-- 21亿足够，节省50%空间
 
----
+-- 性能测试：❌ CHAR(n)（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS test_char (
+    name CHAR(100)
+);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表test_char已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建CHAR表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+-- 固定长度，浪费空间
 
--- ❌ CHAR(n)
-name CHAR(100)  -- 固定长度，浪费空间
-
--- ✅ VARCHAR(n)
-name VARCHAR(100)  -- 变长
+-- 性能测试：✅ VARCHAR(n)（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS test_varchar (
+    name VARCHAR(100)
+);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表test_varchar已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建VARCHAR表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+-- 变长
+```
 
 ---
 

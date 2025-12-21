@@ -76,27 +76,60 @@ EXCEPTION
         RAISE NOTICE 'ST_MakePoint插入失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
--- 线（LINESTRING）
-CREATE TABLE roads (
+-- 性能测试：线（LINESTRING）（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS roads (
     road_id SERIAL PRIMARY KEY,
     name VARCHAR(100),
     geom geometry(LINESTRING, 4326)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表roads已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 INSERT INTO roads (name, geom) VALUES
-('道路1', ST_GeomFromText('LINESTRING(116.4 39.9, 116.5 40.0)', 4326));
+('道路1', ST_GeomFromText('LINESTRING(116.4 39.9, 116.5 40.0)', 4326))
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入道路数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 多边形（POLYGON）
-CREATE TABLE districts (
+-- 性能测试：多边形（POLYGON）（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS districts (
     district_id SERIAL PRIMARY KEY,
     name VARCHAR(100),
     geom geometry(POLYGON, 4326)
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表districts已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
 INSERT INTO districts (name, geom) VALUES
-('区域1', ST_GeomFromText('POLYGON((116.3 39.8, 116.5 39.8, 116.5 40.0, 116.3 40.0, 116.3 39.8))', 4326));
+('区域1', ST_GeomFromText('POLYGON((116.3 39.8, 116.5 39.8, 116.5 40.0, 116.3 40.0, 116.3 39.8))', 4326))
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入区域数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 ```
 
@@ -132,7 +165,6 @@ EXCEPTION
         RAISE NOTICE '空间查询失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
 
 /*
 无索引: Seq Scan, 850ms
@@ -148,7 +180,9 @@ EXCEPTION
 ### 4.1 距离计算
 
 ```sql
--- 计算两点距离（米）
+-- 性能测试：计算两点距离（米）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     l1.name AS from_loc,
     l2.name AS to_loc,
@@ -158,8 +192,18 @@ SELECT
     ) AS distance_meters
 FROM locations l1, locations l2
 WHERE l1.loc_id = 1 AND l2.loc_id = 2;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表locations不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '计算两点距离失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查找附近的点（半径1000米）
+-- 性能测试：查找附近的点（半径1000米）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     name,
     ST_Distance(geom::geography, ST_MakePoint(116.4, 39.9)::geography) AS distance
@@ -170,34 +214,82 @@ WHERE ST_DWithin(
     1000
 )
 ORDER BY distance;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表locations不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查找附近点失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 4.2 空间关系
 
 ```sql
--- 点是否在多边形内
+-- 性能测试：点是否在多边形内（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT l.name
 FROM locations l
-JOIN districts d ON ST_Within(l.geom, d.geom)
+JOIN districts d ON ST_Within(l.geom, d.geom);
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表locations或districts不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '空间关系查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 WHERE d.name = '朝阳区';
 
--- 相交
+-- 性能测试：相交（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT r.name
 FROM roads r
 JOIN districts d ON ST_Intersects(r.geom, d.geom)
 WHERE d.name = '海淀区';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表roads或districts不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '相交查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 包含
+-- 性能测试：包含（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT d.name, COUNT(l.loc_id) AS location_count
 FROM districts d
 LEFT JOIN locations l ON ST_Contains(d.geom, l.geom)
 GROUP BY d.name;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表districts或locations不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '包含查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 最近邻（KNN）
+-- 性能测试：最近邻（KNN）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name
 FROM locations
 ORDER BY geom <-> ST_MakePoint(116.4, 39.9)::geometry
 LIMIT 5;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表locations不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '最近邻查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -207,39 +299,67 @@ LIMIT 5;
 ### 5.1 外卖配送系统
 
 ```sql
--- 商家表
-CREATE TABLE restaurants (
+-- 性能测试：商家表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS restaurants (
     restaurant_id SERIAL PRIMARY KEY,
     name VARCHAR(200),
     location geometry(POINT, 4326),
     delivery_range INT DEFAULT 3000  -- 配送范围（米）
 );
+CREATE INDEX IF NOT EXISTS idx_restaurants_location ON restaurants USING gist(location);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表restaurants已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建商家表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE INDEX idx_restaurants_location ON restaurants USING gist(location);
-
--- 订单表
-CREATE TABLE orders (
+-- 性能测试：订单表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders (
     order_id BIGSERIAL PRIMARY KEY,
     restaurant_id INT REFERENCES restaurants(restaurant_id),
     delivery_location geometry(POINT, 4326),
     status VARCHAR(20),
     created_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS idx_orders_location ON orders USING gist(delivery_location);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表orders已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表restaurants不存在，请先创建';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建订单表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE INDEX idx_orders_location ON orders USING gist(delivery_location);
-
--- 骑手表
-CREATE TABLE riders (
+-- 性能测试：骑手表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS riders (
     rider_id INT PRIMARY KEY,
     name VARCHAR(100),
     current_location geometry(POINT, 4326),
     status VARCHAR(20),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS idx_riders_location ON riders USING gist(current_location);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表riders已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建骑手表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE INDEX idx_riders_location ON riders USING gist(current_location);
-
--- 查询: 用户位置附近可配送的商家
+-- 性能测试：查询用户位置附近可配送的商家（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     r.restaurant_id,
     r.name,
@@ -253,8 +373,18 @@ WHERE ST_DWithin(
 )
 ORDER BY distance
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表restaurants不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询附近商家失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询: 订单附近的空闲骑手
+-- 性能测试：查询订单附近的空闲骑手（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     rider_id,
     name,
@@ -269,8 +399,18 @@ WHERE status = 'available'
   )
 ORDER BY distance
 LIMIT 10;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表riders或orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询附近骑手失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 配送路径优化（简化TSP）
+-- 性能测试：配送路径优化（简化TSP）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH rider_orders AS (
     SELECT
         o.order_id,
@@ -283,6 +423,14 @@ WITH rider_orders AS (
 )
 SELECT * FROM rider_orders
 ORDER BY distance;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders或riders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '配送路径优化查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 5.2 地理围栏

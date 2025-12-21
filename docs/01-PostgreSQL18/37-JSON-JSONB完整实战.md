@@ -173,42 +173,89 @@ EXCEPTION
         RAISE NOTICE '数组展开失败: %', SQLERRM;
         ROLLBACK;
         RAISE;
-```
+
 /*
 tag
 ------
+
 admin
 user
 */
+
 ```
 
 ### 2.3 更新
 
 ```sql
--- 更新整个字段
+-- 性能测试：更新整个字段（带错误处理）
+BEGIN;
 UPDATE users
 SET info = '{"name": "Alice Updated", "age": 31}'
 WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '更新JSONB字段失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 更新单个键
+-- 性能测试：更新单个键（带错误处理）
+BEGIN;
 UPDATE users
 SET info = jsonb_set(info, '{age}', '31')
 WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '更新JSONB键失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 添加新键
+-- 性能测试：添加新键（带错误处理）
+BEGIN;
 UPDATE users
 SET info = info || '{"email": "alice@example.com"}'
 WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '添加JSONB键失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 删除键
+-- 性能测试：删除键（带错误处理）
+BEGIN;
 UPDATE users
 SET info = info - 'email'
 WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除JSONB键失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 深度更新
+-- 性能测试：深度更新（带错误处理）
+BEGIN;
 UPDATE users
 SET info = jsonb_set(info, '{address,city}', '"NYC"')
 WHERE id = 1;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '深度更新JSONB失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -218,41 +265,131 @@ WHERE id = 1;
 ### 3.1 条件查询
 
 ```sql
--- 包含检查 (@>)
+-- 性能测试：包含检查（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE info @> '{"name": "Alice"}';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '包含检查查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 被包含检查 (<@)
+-- 性能测试：被包含检查（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE '{"name": "Alice"}' <@ info;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '被包含检查查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 键存在
+-- 性能测试：键存在（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE info ? 'email';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '键存在查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 任一键存在
+-- 性能测试：任一键存在（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE info ?| ARRAY['email', 'phone'];
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '任一键存在查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 所有键存在
+-- 性能测试：所有键存在（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE info ?& ARRAY['name', 'age'];
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '所有键存在查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 路径存在
+-- 性能测试：路径存在（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE info @? '$.address.city';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '路径存在查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.2 JSONPath查询
 
 ```sql
--- 路径查询（PostgreSQL 12+）
+-- 性能测试：路径查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users
 WHERE jsonb_path_exists(info, '$.age ? (@ > 25)');
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONPath查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 提取值
+-- 性能测试：提取值（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT jsonb_path_query(info, '$.tags[*]') FROM users;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONPath提取值失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 复杂条件
+-- 性能测试：复杂条件（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users
 WHERE jsonb_path_exists(
     info,
     '$.tags[*] ? (@ == "admin")'
 );
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONPath复杂条件查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -262,20 +399,56 @@ WHERE jsonb_path_exists(
 ### 4.1 GIN索引
 
 ```sql
--- 默认GIN索引（支持 @>, ?, ?|, ?&）
-CREATE INDEX idx_users_info ON users USING GIN (info);
+-- 性能测试：创建默认GIN索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_info ON users USING GIN (info);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_users_info已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建GIN索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询使用索引
-EXPLAIN ANALYZE
+-- 性能测试：查询使用索引（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE info @> '{"name": "Alice"}';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'GIN索引查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- GIN索引类型
--- 1. jsonb_ops（默认）: 支持所有操作符
-CREATE INDEX idx_info_ops ON users USING GIN (info jsonb_ops);
+-- 性能测试：创建jsonb_ops索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_info_ops ON users USING GIN (info jsonb_ops);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_info_ops已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建jsonb_ops索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 2. jsonb_path_ops: 只支持@>，但更小更快
-CREATE INDEX idx_info_path_ops ON users USING GIN (info jsonb_path_ops);
-
+-- 性能测试：创建jsonb_path_ops索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_info_path_ops ON users USING GIN (info jsonb_path_ops);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_info_path_ops已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建jsonb_path_ops索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 -- 性能对比
 -- jsonb_ops: 100MB索引, 5ms查询
 -- jsonb_path_ops: 60MB索引, 3ms查询 (-40%体积, -40%时间)
@@ -284,18 +457,57 @@ CREATE INDEX idx_info_path_ops ON users USING GIN (info jsonb_path_ops);
 ### 4.2 表达式索引
 
 ```sql
--- 单个键索引
-CREATE INDEX idx_users_name ON users ((info->>'name'));
+-- 性能测试：创建单个键索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_name ON users ((info->>'name'));
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_users_name已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表达式索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询
+-- 性能测试：查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE info->>'name' = 'Alice';
 -- 使用索引
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '表达式索引查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 嵌套键索引
-CREATE INDEX idx_users_city ON users ((info->'address'->>'city'));
+-- 性能测试：创建嵌套键索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_city ON users ((info->'address'->>'city'));
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_users_city已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建嵌套键索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 数组元素索引
-CREATE INDEX idx_users_tags ON users USING GIN ((info->'tags'));
+-- 性能测试：创建数组元素索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_users_tags ON users USING GIN ((info->'tags'));
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_users_tags已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建数组元素索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -303,35 +515,85 @@ CREATE INDEX idx_users_tags ON users USING GIN ((info->'tags'));
 ## 5. 聚合与统计
 
 ```sql
--- 计数
+-- 性能测试：计数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     info->>'status' AS status,
     COUNT(*) AS count
 FROM orders
 GROUP BY info->>'status';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB计数查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 求和
+-- 性能测试：求和（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT SUM((info->>'amount')::NUMERIC) AS total
 FROM orders
 WHERE info->>'date' >= '2024-01-01';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB求和查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 平均值
+-- 性能测试：平均值（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT AVG((info->>'rating')::NUMERIC) AS avg_rating
 FROM reviews;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表reviews不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB平均值查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 数组聚合
+-- 性能测试：数组聚合（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     user_id,
     jsonb_agg(info->'product_id') AS purchased_products
 FROM orders
 GROUP BY user_id;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB数组聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 对象聚合
+-- 性能测试：对象聚合（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT jsonb_object_agg(
     info->>'name',
     info->>'email'
 ) AS users_map
 FROM users;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JSONB对象聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -341,33 +603,82 @@ FROM users;
 ### 6.1 事件日志
 
 ```sql
-CREATE TABLE event_logs (
+-- 性能测试：创建事件日志表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS event_logs (
     id BIGSERIAL PRIMARY KEY,
     event_type VARCHAR(50),
     event_data JSONB,
     created_at TIMESTAMPTZ DEFAULT now()
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表event_logs已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 索引
-CREATE INDEX idx_event_type ON event_logs(event_type);
-CREATE INDEX idx_event_data ON event_logs USING GIN (event_data);
-CREATE INDEX idx_created_at ON event_logs(created_at);
+-- 性能测试：创建索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_event_type ON event_logs(event_type);
+CREATE INDEX IF NOT EXISTS idx_event_data ON event_logs USING GIN (event_data);
+CREATE INDEX IF NOT EXISTS idx_created_at ON event_logs(created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '部分索引已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表event_logs不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入
+-- 性能测试：插入数据（带错误处理）
+BEGIN;
 INSERT INTO event_logs (event_type, event_data) VALUES
 ('user_login', '{"user_id": 123, "ip": "1.2.3.4", "device": "mobile"}'),
-('purchase', '{"user_id": 123, "product_id": 456, "amount": 99.99}');
+('purchase', '{"user_id": 123, "product_id": 456, "amount": 99.99}')
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入事件日志失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询：特定用户所有事件
+-- 性能测试：查询：特定用户所有事件（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM event_logs
 WHERE event_data @> '{"user_id": 123}'
 ORDER BY created_at DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表event_logs不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询事件日志失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 统计：每种事件数量
+-- 性能测试：统计：每种事件数量（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT event_type, COUNT(*)
 FROM event_logs
 WHERE created_at >= now() - INTERVAL '7 days'
 GROUP BY event_type;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表event_logs不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '统计事件数量失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 6.2 产品属性

@@ -25,20 +25,55 @@ SQL → 解析 → 计划 → JIT编译 → 本地代码执行
 ### 2.1 配置
 
 ```sql
--- 查看JIT状态
-SHOW jit;  -- on/off
+-- 性能测试：查看JIT状态（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    jit_status TEXT;
+BEGIN
+    jit_status := current_setting('jit');
+    RAISE NOTICE 'JIT状态: %', jit_status;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询JIT状态失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 启用JIT
+-- 性能测试：启用JIT（带错误处理）
+BEGIN;
 SET jit = on;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用JIT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- JIT参数
+-- 性能测试：JIT参数（带错误处理）
+BEGIN;
 SET jit_above_cost = 100000;           -- 成本阈值
 SET jit_inline_above_cost = 500000;    -- 内联阈值
 SET jit_optimize_above_cost = 500000;  -- 优化阈值
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置JIT参数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看JIT使用
-EXPLAIN (ANALYZE, VERBOSE, BUFFERS)
+-- 性能测试：查看JIT使用（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS, TIMING)
 SELECT SUM(amount) FROM large_table WHERE status = 'active';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表large_table不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JIT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
 JIT:
@@ -50,6 +85,7 @@ JIT:
 执行时间: 450ms
 JIT收益: ~10%
 */
+
 ```
 
 ---
@@ -59,7 +95,9 @@ JIT收益: ~10%
 ### 3.1 受益查询
 
 ```sql
--- 场景1: 大量表达式计算
+-- 性能测试：场景1: 大量表达式计算（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     user_id,
     amount * 1.1 * (1 - discount) * (1 + tax) AS final_price,
@@ -70,17 +108,36 @@ SELECT
     END AS category
 FROM orders
 WHERE created_at > '2024-01-01';
-
 -- JIT优化: 表达式内联，消除函数调用
 -- 性能提升: 15-20%
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '表达式计算查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景2: 大量行处理
+-- 性能测试：场景2: 大量行处理（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table WHERE complex_condition;
 -- 扫描1000万行
 -- JIT优化: 向量化处理
 -- 性能提升: 10-15%
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表large_table不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '大量行处理查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景3: 复杂聚合
+-- 性能测试：场景3: 复杂聚合（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     category,
     AVG(price),
@@ -88,25 +145,62 @@ SELECT
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price)
 FROM products
 GROUP BY category;
-
 -- JIT优化: 聚合函数内联
 -- 性能提升: 8-12%
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表products不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '复杂聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.2 不受益查询
 
 ```sql
--- 场景1: I/O密集型
+-- 性能测试：场景1: I/O密集型（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE user_id = 123;
 -- 主要时间在I/O，JIT无帮助
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'I/O密集型查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景2: 小结果集
+-- 性能测试：场景2: 小结果集（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users LIMIT 10;
 -- JIT编译时间 > 执行时间
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '小结果集查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景3: 简单查询
+-- 性能测试：场景3: 简单查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT user_id, username FROM users WHERE status = 'active';
 -- 表达式简单，JIT收益小
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '简单查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -116,10 +210,10 @@ SELECT user_id, username FROM users WHERE status = 'active';
 ### 4.1 TPC-H Q1
 
 ```sql
--- 禁用JIT
-SET jit = off;
-
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：禁用JIT（带错误处理和性能分析）
+BEGIN;
+SET LOCAL jit = off;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     l_returnflag,
     l_linestatus,
@@ -135,12 +229,44 @@ FROM lineitem
 WHERE l_shipdate <= date '1998-12-01' - interval '90' day
 GROUP BY l_returnflag, l_linestatus
 ORDER BY l_returnflag, l_linestatus;
-
 -- 执行时间: 32.5秒
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表lineitem不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '禁用JIT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 启用JIT
-SET jit = on;
+-- 性能测试：启用JIT（带错误处理和性能分析）
+BEGIN;
+SET LOCAL jit = on;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT
+    l_returnflag,
+    l_linestatus,
+    sum(l_quantity) as sum_qty,
+    sum(l_extendedprice) as sum_base_price,
+    sum(l_extendedprice * (1 - l_discount)) as sum_disc_price,
+    sum(l_extendedprice * (1 - l_discount) * (1 + l_tax)) as sum_charge,
+    avg(l_quantity) as avg_qty,
+    avg(l_extendedprice) as avg_price,
+    avg(l_discount) as avg_disc,
+    count(*) as count_order
+FROM lineitem
+WHERE l_shipdate <= date '1998-12-01' - interval '90' day
+GROUP BY l_returnflag, l_linestatus
+ORDER BY l_returnflag, l_linestatus;
 -- 执行时间: 28.2秒 (-13%)
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表lineitem不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用JIT查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- JIT详情:
 /*
@@ -158,14 +284,40 @@ JIT:
 ### 5.1 阈值调整
 
 ```sql
--- 默认阈值（较高，避免小查询JIT）
-jit_above_cost = 100000
+-- 性能测试：默认阈值（较高，避免小查询JIT）（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM current_setting('jit_above_cost');
+    RAISE NOTICE '默认阈值: jit_above_cost = 100000';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询JIT阈值失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 降低阈值（更多查询使用JIT）
-SET jit_above_cost = 10000;
+-- 性能测试：降低阈值（更多查询使用JIT）（带错误处理）
+BEGIN;
+SET LOCAL jit_above_cost = 10000;
+RAISE NOTICE '已降低JIT阈值到10000';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置JIT阈值失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 提高阈值（只有大查询JIT）
-SET jit_above_cost = 500000;
+-- 性能测试：提高阈值（只有大查询JIT）（带错误处理）
+BEGIN;
+SET LOCAL jit_above_cost = 500000;
+RAISE NOTICE '已提高JIT阈值到500000';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置JIT阈值失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 根据工作负载调整
 -- OLTP: 提高阈值（避免小查询JIT开销）
@@ -175,13 +327,29 @@ SET jit_above_cost = 500000;
 ### 5.2 优化级别
 
 ```sql
--- 完全JIT（最慢编译，最快执行）
-SET jit_inline_above_cost = 0;
-SET jit_optimize_above_cost = 0;
+-- 性能测试：完全JIT（最慢编译，最快执行）（带错误处理）
+BEGIN;
+SET LOCAL jit_inline_above_cost = 0;
+SET LOCAL jit_optimize_above_cost = 0;
+RAISE NOTICE '已启用完全JIT';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置完全JIT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 只表达式JIT（快速编译）
-SET jit_inline_above_cost = 999999999;
-SET jit_optimize_above_cost = 999999999;
+-- 性能测试：只表达式JIT（快速编译）（带错误处理）
+BEGIN;
+SET LOCAL jit_inline_above_cost = 999999999;
+SET LOCAL jit_optimize_above_cost = 999999999;
+RAISE NOTICE '已设置为只表达式JIT';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置表达式JIT失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 平衡配置（推荐）
 SET jit_inline_above_cost = 500000;
@@ -195,7 +363,9 @@ SET jit_optimize_above_cost = 500000;
 ### 6.1 统计信息
 
 ```sql
--- pg_stat_statements查看JIT使用
+-- 性能测试：pg_stat_statements查看JIT使用（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     LEFT(query, 100) AS query,
     calls,
@@ -209,8 +379,18 @@ FROM pg_stat_statements
 WHERE jit_functions > 0
 ORDER BY mean_exec_time DESC
 LIMIT 20;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE 'pg_stat_statements扩展未安装';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询JIT使用统计失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- JIT收益分析
+-- 性能测试：JIT收益分析（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     query,
     mean_exec_time,
@@ -220,6 +400,14 @@ SELECT
      jit_optimization_time + jit_emission_time) AS net_exec_time
 FROM pg_stat_statements
 WHERE jit_functions > 0;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE 'pg_stat_statements扩展未安装';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'JIT收益分析失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---

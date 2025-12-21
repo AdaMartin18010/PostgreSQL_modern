@@ -1,5 +1,35 @@
 # PostgreSQL 18 + TimescaleDB时序数据库完整指南
 
+## 📑 目录
+
+- [PostgreSQL 18 + TimescaleDB时序数据库完整指南](#postgresql-18--timescaledb时序数据库完整指南)
+  - [📑 目录](#-目录)
+  - [1. TimescaleDB架构](#1-timescaledb架构)
+    - [1.1 Hypertable原理](#11-hypertable原理)
+  - [2. 安装配置](#2-安装配置)
+  - [3. 创建Hypertable](#3-创建hypertable)
+    - [3.1 基础Hypertable](#31-基础hypertable)
+    - [3.2 插入数据](#32-插入数据)
+  - [4. 时间范围查询](#4-时间范围查询)
+    - [4.1 自动Chunk裁剪](#41-自动chunk裁剪)
+  - [5. 连续聚合](#5-连续聚合)
+    - [5.1 实时物化视图](#51-实时物化视图)
+  - [6. 数据压缩](#6-数据压缩)
+    - [6.1 自动压缩](#61-自动压缩)
+  - [7. 数据保留策略](#7-数据保留策略)
+    - [7.1 自动删除旧数据](#71-自动删除旧数据)
+  - [8. 高级查询](#8-高级查询)
+    - [8.1 时间桶函数](#81-时间桶函数)
+    - [8.2 窗口函数](#82-窗口函数)
+  - [9. 性能优化](#9-性能优化)
+    - [9.1 批量写入](#91-批量写入)
+    - [9.2 分区键选择](#92-分区键选择)
+  - [10. 实战案例](#10-实战案例)
+    - [10.1 IoT监控系统](#101-iot监控系统)
+  - [11. 与PostgreSQL 18特性结合](#11-与postgresql-18特性结合)
+    - [11.1 异步I/O](#111-异步io)
+    - [11.2 并行查询](#112-并行查询)
+
 ## 1. TimescaleDB架构
 
 ### 1.1 Hypertable原理
@@ -13,11 +43,11 @@
 └────────────────────────────────────┘
 
 ┌────────────────────────────────────┐
-│ Hypertable (时序优化)              │
-│ ├─ 自动按时间分块(Chunk)           │
+│ Hypertable (时序优化)               │
+│ ├─ 自动按时间分块(Chunk)             │
 │ ├─ Chunk 1: [2024-01-01, 2024-01-08)│
 │ ├─ Chunk 2: [2024-01-08, 2024-01-15)│
-│ └─ 查询只扫描相关Chunk              │
+│ └─ 查询只扫描相关Chunk               │
 └────────────────────────────────────┘
 
 优势:
@@ -168,10 +198,19 @@ EXCEPTION
 ### 4.1 自动Chunk裁剪
 
 ```sql
--- 查询最近1小时
-EXPLAIN ANALYZE
+-- 性能测试：查询最近1小时（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_data
 WHERE time > now() - INTERVAL '1 hour';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询最近1小时失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 /*
 Append (cost=...)
@@ -181,7 +220,9 @@ Append (cost=...)
 Chunks excluded: 150  ← 自动排除无关chunk
 */
 
--- 聚合查询
+-- 性能测试：聚合查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     sensor_id,
     AVG(temperature) AS avg_temp,
@@ -190,6 +231,14 @@ SELECT
 FROM sensor_data
 WHERE time > now() - INTERVAL '24 hours'
 GROUP BY sensor_id;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -199,8 +248,9 @@ GROUP BY sensor_id;
 ### 5.1 实时物化视图
 
 ```sql
--- 创建1分钟聚合
-CREATE MATERIALIZED VIEW sensor_data_1min
+-- 性能测试：创建1分钟聚合（带错误处理）
+BEGIN;
+CREATE MATERIALIZED VIEW IF NOT EXISTS sensor_data_1min
 WITH (timescaledb.continuous) AS
 SELECT
     time_bucket('1 minute', time) AS bucket,
@@ -212,20 +262,53 @@ SELECT
 FROM sensor_data
 GROUP BY bucket, sensor_id
 WITH NO DATA;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '物化视图sensor_data_1min已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建1分钟聚合失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 创建刷新策略（自动）
-SELECT add_continuous_aggregate_policy('sensor_data_1min',
-    start_offset => INTERVAL '1 hour',
-    end_offset => INTERVAL '1 minute',
-    schedule_interval => INTERVAL '1 minute');
+-- 性能测试：创建刷新策略（自动）（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM add_continuous_aggregate_policy('sensor_data_1min',
+        start_offset => INTERVAL '1 hour',
+        end_offset => INTERVAL '1 minute',
+        schedule_interval => INTERVAL '1 minute');
+    RAISE NOTICE '刷新策略创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '物化视图sensor_data_1min不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建刷新策略失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 查询聚合视图（快）
+-- 性能测试：查询聚合视图（快）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_data_1min
 WHERE bucket > now() - INTERVAL '24 hours'
   AND sensor_id = 100;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '物化视图sensor_data_1min不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询聚合视图失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 1小时聚合（基于1分钟）
-CREATE MATERIALIZED VIEW sensor_data_1hour
+-- 性能测试：1小时聚合（基于1分钟）（带错误处理）
+BEGIN;
+CREATE MATERIALIZED VIEW IF NOT EXISTS sensor_data_1hour
 WITH (timescaledb.continuous) AS
 SELECT
     time_bucket('1 hour', bucket) AS bucket,
@@ -235,6 +318,16 @@ SELECT
     MIN(min_temp) AS min_temp
 FROM sensor_data_1min
 GROUP BY bucket, sensor_id;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '物化视图sensor_data_1hour已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '物化视图sensor_data_1min不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建1小时聚合失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -244,20 +337,55 @@ GROUP BY bucket, sensor_id;
 ### 6.1 自动压缩
 
 ```sql
--- 启用压缩
+-- 性能测试：启用压缩（带错误处理）
+BEGIN;
 ALTER TABLE sensor_data SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'sensor_id',
     timescaledb.compress_orderby = 'time DESC'
 );
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用压缩失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 自动压缩策略（7天后压缩）
-SELECT add_compression_policy('sensor_data', INTERVAL '7 days');
+-- 性能测试：自动压缩策略（7天后压缩）（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM add_compression_policy('sensor_data', INTERVAL '7 days');
+    RAISE NOTICE '压缩策略创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建压缩策略失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 手动压缩特定chunk
-SELECT compress_chunk('_hyper_1_10_chunk');
+-- 性能测试：手动压缩特定chunk（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM compress_chunk('_hyper_1_10_chunk');
+    RAISE NOTICE 'chunk压缩成功';
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE NOTICE 'chunk _hyper_1_10_chunk不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '压缩chunk失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 查看压缩统计
+-- 性能测试：查看压缩统计（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     chunk_name,
     before_compression_total_bytes,
@@ -265,6 +393,14 @@ SELECT
     ROUND(100 - (after_compression_total_bytes * 100.0 / before_compression_total_bytes), 2) AS compression_ratio
 FROM timescaledb_information.compressed_chunk_stats
 ORDER BY before_compression_total_bytes DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '视图timescaledb_information.compressed_chunk_stats不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看压缩统计失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 典型压缩比: 10:1 到 20:1
 ```
@@ -276,16 +412,52 @@ ORDER BY before_compression_total_bytes DESC;
 ### 7.1 自动删除旧数据
 
 ```sql
--- 保留365天数据
-SELECT add_retention_policy('sensor_data', INTERVAL '365 days');
+-- 性能测试：保留365天数据（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM add_retention_policy('sensor_data', INTERVAL '365 days');
+    RAISE NOTICE '保留策略创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建保留策略失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 查看策略
+-- 性能测试：查看策略（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM timescaledb_information.jobs;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '视图timescaledb_information.jobs不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看策略失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 手动删除chunk
-SELECT drop_chunks('sensor_data', INTERVAL '400 days');
+-- 性能测试：手动删除chunk（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM drop_chunks('sensor_data', INTERVAL '400 days');
+    RAISE NOTICE 'chunk删除成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除chunk失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 查看chunk
+-- 性能测试：查看chunk（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     chunk_name,
     range_start,
@@ -294,6 +466,14 @@ SELECT
 FROM timescaledb_information.chunks
 WHERE hypertable_name = 'sensor_data'
 ORDER BY range_start DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '视图timescaledb_information.chunks不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看chunk失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -303,7 +483,9 @@ ORDER BY range_start DESC;
 ### 8.1 时间桶函数
 
 ```sql
--- time_bucket: 灵活的时间分组
+-- 性能测试：time_bucket: 灵活的时间分组（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     time_bucket('5 minutes', time) AS bucket,
     sensor_id,
@@ -312,15 +494,35 @@ FROM sensor_data
 WHERE time > now() - INTERVAL '1 hour'
 GROUP BY bucket, sensor_id
 ORDER BY bucket DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '时间桶查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 对齐时间桶
+-- 性能测试：对齐时间桶（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     time_bucket('1 hour', time, 'Europe/London') AS bucket_uk,
     AVG(temperature)
 FROM sensor_data
 GROUP BY bucket_uk;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '对齐时间桶查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 时间桶+间隙填充
+-- 性能测试：时间桶+间隙填充（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     time_bucket_gapfill('1 minute', time) AS bucket,
     sensor_id,
@@ -331,12 +533,22 @@ WHERE time > now() - INTERVAL '1 hour'
   AND sensor_id = 100
 GROUP BY bucket, sensor_id
 ORDER BY bucket;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '时间桶间隙填充查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 8.2 窗口函数
 
 ```sql
--- first/last聚合（时序专用）
+-- 性能测试：first/last聚合（时序专用）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     sensor_id,
     first(temperature, time) AS first_reading,
@@ -345,22 +557,50 @@ SELECT
 FROM sensor_data
 WHERE time > now() - INTERVAL '24 hours'
 GROUP BY sensor_id;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'first/last聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 统计聚合
+-- 性能测试：统计聚合（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     time_bucket('1 hour', time) AS hour,
     sensor_id,
     stats_agg(temperature) AS temp_stats
 FROM sensor_data
 GROUP BY hour, sensor_id;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '统计聚合查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 从stats_agg提取
+-- 性能测试：从stats_agg提取（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     hour,
     average(temp_stats),
     stddev(temp_stats),
     num_vals(temp_stats)
 FROM hourly_stats;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表hourly_stats不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '从stats_agg提取失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -371,21 +611,32 @@ FROM hourly_stats;
 
 ```python
 from psycopg2.extras import execute_values
+from psycopg2 import Error
 
+# 性能测试：高性能批量插入（带错误处理）
 def bulk_insert_timeseries(conn, data, batch_size=10000):
     """高性能批量插入"""
-
     cursor = conn.cursor()
 
-    for i in range(0, len(data), batch_size):
-        batch = data[i:i+batch_size]
+    try:
+        for i in range(0, len(data), batch_size):
+            batch = data[i:i+batch_size]
 
-        execute_values(cursor, """
-            INSERT INTO sensor_data (time, sensor_id, temperature, humidity)
-            VALUES %s
-        """, batch)
-
-        conn.commit()
+            try:
+                execute_values(cursor, """
+                    INSERT INTO sensor_data (time, sensor_id, temperature, humidity)
+                    VALUES %s
+                """, batch)
+                conn.commit()
+            except Error as e:
+                conn.rollback()
+                print(f"批量插入失败 (批次 {i//batch_size + 1}): {e}")
+                raise
+    except Error as e:
+        print(f"批量插入函数执行失败: {e}")
+        raise
+    finally:
+        cursor.close()
 
 # 性能: 1M points/秒
 ```
@@ -393,18 +644,40 @@ def bulk_insert_timeseries(conn, data, batch_size=10000):
 ### 9.2 分区键选择
 
 ```sql
--- 时间+空间分区（高效）
-SELECT create_hypertable(
-    'sensor_data',
-    'time',
-    partitioning_column => 'sensor_id',
-    number_partitions => 8
-);
+-- 性能测试：时间+空间分区（高效）（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM create_hypertable(
+        'sensor_data',
+        'time',
+        partitioning_column => 'sensor_id',
+        number_partitions => 8
+    );
+    RAISE NOTICE '时间+空间分区创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建时间+空间分区失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 查询单个sensor（只扫描1/8的chunk）
+-- 性能测试：查询单个sensor（只扫描1/8的chunk）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_data
 WHERE sensor_id = 100
   AND time > now() - INTERVAL '1 day';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询单个sensor失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -414,26 +687,58 @@ WHERE sensor_id = 100
 ### 10.1 IoT监控系统
 
 ```sql
--- Schema设计
-CREATE TABLE device_metrics (
+-- 性能测试：Schema设计（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS device_metrics (
     time TIMESTAMPTZ NOT NULL,
     device_id INT NOT NULL,
     metric_name VARCHAR(50) NOT NULL,
     value FLOAT NOT NULL,
     tags JSONB
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表device_metrics已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-SELECT create_hypertable('device_metrics', 'time',
-    partitioning_column => 'device_id',
-    number_partitions => 16
-);
+-- 性能测试：创建hypertable（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    PERFORM create_hypertable('device_metrics', 'time',
+        partitioning_column => 'device_id',
+        number_partitions => 16
+    );
+    RAISE NOTICE 'hypertable创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表device_metrics不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建hypertable失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 索引
-CREATE INDEX ON device_metrics (device_id, time DESC);
-CREATE INDEX ON device_metrics (metric_name, time DESC);
+-- 性能测试：索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_device_metrics_device_time ON device_metrics (device_id, time DESC);
+CREATE INDEX IF NOT EXISTS idx_device_metrics_metric_time ON device_metrics (metric_name, time DESC);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '部分索引已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 连续聚合（1分钟）
-CREATE MATERIALIZED VIEW metrics_1min
+-- 性能测试：连续聚合（1分钟）（带错误处理）
+BEGIN;
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_1min
 WITH (timescaledb.continuous) AS
 SELECT
     time_bucket('1 minute', time) AS bucket,
@@ -441,15 +746,37 @@ SELECT
     metric_name,
     AVG(value) AS avg_value,
     MIN(value) AS min_value,
-    MAX(value) AS max_value
+    MAX(value) AS max_value,
+    COUNT(*) AS sample_count
 FROM device_metrics
-GROUP BY bucket, device_id, metric_name;
+GROUP BY bucket, device_id, metric_name
+WITH NO DATA;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '物化视图metrics_1min已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表device_metrics不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建连续聚合失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 告警查询
+-- 性能测试：告警查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM metrics_1min
 WHERE bucket > now() - INTERVAL '5 minutes'
   AND metric_name = 'cpu_usage'
   AND max_value > 90;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '物化视图metrics_1min不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '告警查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 压缩策略
 ALTER TABLE device_metrics SET (

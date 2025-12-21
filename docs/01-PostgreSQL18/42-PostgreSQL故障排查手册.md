@@ -401,7 +401,9 @@ COMMIT;
 ### 4.1 锁等待诊断
 
 ```sql
--- 查看所有锁
+-- 性能测试：查看所有锁（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     locktype,
     database,
@@ -411,8 +413,16 @@ SELECT
     pid
 FROM pg_locks
 ORDER BY granted, pid;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看锁失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查看阻塞关系
+-- 性能测试：查看阻塞关系（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE blocking AS (
     SELECT
         blocked_locks.pid AS blocked_pid,
@@ -433,9 +443,60 @@ WITH RECURSIVE blocking AS (
     WHERE NOT blocked_locks.granted
 )
 SELECT * FROM blocking;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查看阻塞关系失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 终止阻塞进程
-SELECT pg_terminate_backend(blocking_pid);
+-- 性能测试：终止阻塞进程（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    terminated_count INT := 0;
+BEGIN
+    SELECT COUNT(*) INTO terminated_count
+    FROM (
+        SELECT DISTINCT blocking_pid
+        FROM (
+            SELECT
+                blocked_locks.pid AS blocked_pid,
+                blocking_locks.pid AS blocking_pid
+            FROM pg_catalog.pg_locks blocked_locks
+            JOIN pg_catalog.pg_locks blocking_locks
+                ON blocking_locks.locktype = blocked_locks.locktype
+                AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
+                AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
+                AND blocking_locks.pid != blocked_locks.pid
+            WHERE NOT blocked_locks.granted
+        ) blocking
+    ) blocking_pids;
+
+    PERFORM pg_terminate_backend(blocking_pid)
+    FROM (
+        SELECT DISTINCT blocking_pid
+        FROM (
+            SELECT
+                blocked_locks.pid AS blocked_pid,
+                blocking_locks.pid AS blocking_pid
+            FROM pg_catalog.pg_locks blocked_locks
+            JOIN pg_catalog.pg_locks blocking_locks
+                ON blocking_locks.locktype = blocked_locks.locktype
+                AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
+                AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
+                AND blocking_locks.pid != blocked_locks.pid
+            WHERE NOT blocked_locks.granted
+        ) blocking
+    ) blocking_pids;
+
+    RAISE NOTICE '已终止 % 个阻塞进程', terminated_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '终止阻塞进程失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ---
@@ -445,7 +506,9 @@ SELECT pg_terminate_backend(blocking_pid);
 ### 5.1 复制延迟
 
 ```sql
--- 主库检查
+-- 性能测试：主库检查（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     application_name,
     client_addr,
@@ -455,16 +518,38 @@ SELECT
     flush_lag,
     replay_lag
 FROM pg_stat_replication;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '主库检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 从库检查
+-- 性能测试：从库检查（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg_is_in_recovery(),
     pg_last_wal_receive_lsn(),
     pg_last_wal_replay_lsn(),
     pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn()) / 1024 / 1024 AS lag_mb;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '从库检查失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 复制槽状态
+-- 性能测试：复制槽状态（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_replication_slots;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '复制槽状态查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 解决方案：
 -- 1. 检查从库资源（CPU/IOPS）
@@ -479,42 +564,49 @@ SELECT * FROM pg_replication_slots;
 
 ```bash
 #!/bin/bash
-# quick-diagnose.sh - 快速诊断脚本
+# quick-diagnose.sh - 快速诊断脚本（带错误处理）
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
 
 echo "PostgreSQL快速诊断"
 echo "===================="
 
 # 1. 服务状态
 echo -e "\n1. 服务状态:"
-systemctl status postgresql | grep Active
+systemctl status postgresql | grep Active || error_exit "无法获取服务状态"
 
 # 2. 连接数
 echo -e "\n2. 连接数:"
-psql -Atc "SELECT COUNT(*) || '/' || setting AS connections FROM pg_stat_activity, pg_settings WHERE name='max_connections';"
+psql -Atc "SELECT COUNT(*) || '/' || setting AS connections FROM pg_stat_activity, pg_settings WHERE name='max_connections';" || error_exit "无法查询连接数"
 
 # 3. 缓存命中率
 echo -e "\n3. 缓存命中率:"
-psql -Atc "SELECT ROUND(SUM(blks_hit)*100/NULLIF(SUM(blks_hit+blks_read),0),2)||'%' FROM pg_stat_database;"
+psql -Atc "SELECT ROUND(SUM(blks_hit)*100/NULLIF(SUM(blks_hit+blks_read),0),2)||'%' FROM pg_stat_database;" || error_exit "无法查询缓存命中率"
 
 # 4. 表膨胀
 echo -e "\n4. 表膨胀（>20%）:"
-psql -c "SELECT tablename, ROUND(n_dead_tup*100.0/NULLIF(n_live_tup+n_dead_tup,0),1)||'%' AS bloat FROM pg_stat_user_tables WHERE n_dead_tup*100.0/NULLIF(n_live_tup+n_dead_tup,0) > 20 ORDER BY n_dead_tup DESC LIMIT 5;"
+psql -c "SELECT tablename, ROUND(n_dead_tup*100.0/NULLIF(n_live_tup+n_dead_tup,0),1)||'%' AS bloat FROM pg_stat_user_tables WHERE n_dead_tup*100.0/NULLIF(n_live_tup+n_dead_tup,0) > 20 ORDER BY n_dead_tup DESC LIMIT 5;" || error_exit "无法查询表膨胀"
 
 # 5. 锁等待
 echo -e "\n5. 锁等待:"
-psql -Atc "SELECT COUNT(*) FROM pg_locks WHERE NOT granted;"
+psql -Atc "SELECT COUNT(*) FROM pg_locks WHERE NOT granted;" || error_exit "无法查询锁等待"
 
 # 6. 长事务
 echo -e "\n6. 长事务（>5分钟）:"
-psql -c "SELECT pid, usename, state, now()-xact_start AS duration, LEFT(query,50) FROM pg_stat_activity WHERE xact_start < now() - INTERVAL '5 minutes' AND state != 'idle' ORDER BY duration DESC LIMIT 5;"
+psql -c "SELECT pid, usename, state, now()-xact_start AS duration, LEFT(query,50) FROM pg_stat_activity WHERE xact_start < now() - INTERVAL '5 minutes' AND state != 'idle' ORDER BY duration DESC LIMIT 5;" || error_exit "无法查询长事务"
 
 # 7. 磁盘使用
 echo -e "\n7. 磁盘使用:"
-df -h /var/lib/postgresql | tail -1
+df -h /var/lib/postgresql | tail -1 || error_exit "无法查询磁盘使用"
 
 # 8. WAL文件数
 echo -e "\n8. WAL文件数:"
-ls /var/lib/postgresql/18/main/pg_wal/ | wc -l
+ls /var/lib/postgresql/18/main/pg_wal/ | wc -l || error_exit "无法查询WAL文件数"
 
 echo -e "\n===================="
 echo "诊断完成"

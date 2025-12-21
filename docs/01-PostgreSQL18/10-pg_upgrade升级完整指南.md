@@ -247,12 +247,40 @@ echo "兼容性检查完成"
 **3. 解决不兼容问题**:
 
 ```sql
--- 删除prepared transactions
+-- 性能测试：查看prepared transactions（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_prepared_xacts;
--- 手动COMMIT或ROLLBACK
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询prepared transactions失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 删除旧扩展
+-- 性能测试：删除prepared transactions（带错误处理）
+BEGIN;
+COMMIT PREPARED 'transaction_id';
+-- 或
+ROLLBACK PREPARED 'transaction_id';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '处理prepared transaction失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+-- 性能测试：删除旧扩展（带错误处理）
+BEGIN;
 DROP EXTENSION IF EXISTS tsearch2;  -- 已废弃
+COMMIT;
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE NOTICE '扩展tsearch2不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '删除扩展失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 更新pg_upgrade不支持的类型
 -- （根据--check输出处理）
@@ -342,37 +370,75 @@ vacuumdb --all --analyze --verbose -U postgres
 **2. 重建索引（可选）**:
 
 ```sql
--- 重建所有索引（提升性能）
+-- 性能测试：重建所有索引（带错误处理）
+BEGIN;
 REINDEX DATABASE mydb;
+COMMIT;
+EXCEPTION
+    WHEN undefined_database THEN
+        RAISE NOTICE '数据库mydb不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '重建数据库索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 或仅重建特定索引
+-- 性能测试：重建特定索引（带错误处理）
+BEGIN;
 REINDEX INDEX CONCURRENTLY idx_large_table;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '索引idx_large_table不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '重建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **3. 启用新特性**:
 
 ```sql
--- 启用AIO
-ALTER SYSTEM SET io_direct = 'data';
+-- 性能测试：启用AIO（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET io_direct = 'data';
+    ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'PostgreSQL 18新特性已启用';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用新特性失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 启用其他PG18特性
-ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
-
--- 重载配置
-SELECT pg_reload_conf();
-```
-
-**4. 监控性能**:
-
-```sql
--- 监控查询性能
+-- 性能测试：监控查询性能（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_statements
 ORDER BY mean_exec_time DESC LIMIT 10;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE 'pg_stat_statements扩展未安装';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询性能监控失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 监控缓存命中率
+-- 性能测试：监控缓存命中率（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
-    SUM(heap_blks_hit) / NULLIF(SUM(heap_blks_hit + heap_blks_read), 0)
+    SUM(heap_blks_hit) / NULLIF(SUM(heap_blks_hit + heap_blks_read), 0) AS cache_hit_ratio
 FROM pg_statio_user_tables;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '监控缓存命中率失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -390,13 +456,28 @@ FROM pg_statio_user_tables;
 **解决**：
 
 ```sql
--- 查看prepared transactions
+-- 性能测试：查看prepared transactions（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_prepared_xacts;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询prepared transactions失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 提交或回滚
+-- 性能测试：提交或回滚（带错误处理）
+BEGIN;
 COMMIT PREPARED 'transaction_id';
 -- 或
 ROLLBACK PREPARED 'transaction_id';
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '处理prepared transaction失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **问题2：磁盘空间不足**:
