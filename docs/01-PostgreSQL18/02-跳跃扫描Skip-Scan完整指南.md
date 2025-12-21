@@ -68,23 +68,56 @@
 **传统问题**：
 
 ```sql
--- 创建多列索引
-CREATE INDEX idx_orders_status_date ON orders(status, created_at);
+-- 性能测试：创建多列索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_status_date ON orders(status, created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_status_date已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询1：使用索引（有前缀列）✅
+-- 性能测试：查询1：使用索引（有前缀列）✅（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders WHERE status = 'shipped' AND created_at > '2024-01-01';
 -- 索引可用：status是前缀列
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询1失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询2：PostgreSQL 17及以前，无法使用索引 ❌
+-- 性能测试：查询2：PostgreSQL 17及以前，无法使用索引 ❌（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders WHERE created_at > '2024-01-01';
 -- 索引不可用：缺少前缀列status
 -- 只能全表扫描
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询2失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **PostgreSQL 18 Skip Scan解决方案**：
 
 ```sql
--- 查询2在PostgreSQL 18中：可以使用索引！✅
+-- 性能测试：查询2在PostgreSQL 18中：可以使用索引！✅（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders WHERE created_at > '2024-01-01';
 
 -- PostgreSQL 18会：
@@ -93,6 +126,14 @@ SELECT * FROM orders WHERE created_at > '2024-01-01';
 -- 3. 合并结果
 
 -- EXPLAIN输出会显示："Index Skip Scan"
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'PostgreSQL 18 Skip Scan查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **性能对比**：
@@ -204,33 +245,107 @@ END IF
 **触发条件**：
 
 ```sql
--- 场景1：缺少最左前缀列
-CREATE INDEX idx ON t(a, b, c);
+-- 性能测试：场景1：缺少最左前缀列（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx ON t(a, b, c);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM t WHERE b = ? AND c = ?;
 -- ✅ 可以使用Skip Scan（如果a基数低）
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '场景1查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景2：缺少中间列
+-- 性能测试：场景2：缺少中间列（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM t WHERE a = ? AND c = ?;
 -- ✅ 也可以使用Skip Scan（PostgreSQL 18优化）
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '场景2查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景3：只有后缀列
+-- 性能测试：场景3：只有后缀列（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM t WHERE c = ?;
 -- ✅ 可以使用（如果a和b基数都低）
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '场景3查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **不会触发的场景**：
 
 ```sql
--- 场景1：前缀列基数太高
-CREATE INDEX idx ON t(user_id, date);  -- user_id有百万个值
+-- 性能测试：场景1：前缀列基数太高（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx ON t(user_id, date);  -- user_id有百万个值
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM t WHERE date = '2024-01-01';
 -- ❌ 不会使用Skip Scan（成本太高）
 -- 会使用全表扫描或其他索引
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '场景1查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景2：查询选择性太低
+-- 性能测试：场景2：查询选择性太低（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM t WHERE b > 0;  -- 返回99%的行
 -- ❌ 不会使用Skip Scan
 -- 全表扫描更快
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '场景2查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -244,43 +359,97 @@ SELECT * FROM t WHERE b > 0;  -- 返回99%的行
 **原则1：低基数列在前**:
 
 ```sql
--- ✅ 好的设计
-CREATE INDEX idx_orders ON orders(status, type, created_at);
+-- 性能测试：✅ 好的设计（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders ON orders(status, type, created_at);
 -- status: 5个值（pending, processing, shipped, delivered, cancelled）
 -- type: 10个值（online, offline, wholesale, ...）
 -- created_at: 高基数
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询示例
+-- 性能测试：查询示例（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE type = 'online' AND created_at > '2024-01-01';
 -- ✅ 可以使用Skip Scan跳过status
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询示例失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ```sql
--- ❌ 不好的设计
-CREATE INDEX idx_orders ON orders(user_id, status, created_at);
+-- 性能测试：❌ 不好的设计（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders ON orders(user_id, status, created_at);
 -- user_id: 百万个值（高基数）
 -- status: 5个值
 -- created_at: 高基数
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询示例
+-- 性能测试：查询示例（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE status = 'shipped' AND created_at > '2024-01-01';
 -- ❌ Skip Scan成本太高（需要跳过百万个user_id）
 -- 会使用全表扫描
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询示例失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **原则2：考虑查询模式**:
 
 ```sql
+-- 性能测试：索引设计（带错误处理）
+BEGIN;
 -- 如果经常查询：
 -- Q1: WHERE status = ? AND date > ?
 -- Q2: WHERE date > ?
 
 -- 索引设计：
-CREATE INDEX idx ON orders(status, date);
+CREATE INDEX IF NOT EXISTS idx ON orders(status, date);
 -- Q1：正常索引扫描
 -- Q2：Skip Scan（跳过status，仅5个值）
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.2 索引设计决策树
@@ -308,8 +477,9 @@ CREATE INDEX idx ON orders(status, date);
 **示例表**：
 
 ```sql
--- 创建测试表
-CREATE TABLE orders (
+-- 性能测试：创建测试表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT,
     status VARCHAR(20),  -- 5个值
@@ -318,8 +488,17 @@ CREATE TABLE orders (
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表orders已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建测试表失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入1亿行测试数据
+-- 性能测试：插入1亿行测试数据（带错误处理）
+BEGIN;
 INSERT INTO orders (user_id, status, type, amount, created_at)
 SELECT
     (random() * 1000000)::BIGINT,
@@ -339,20 +518,49 @@ SELECT
     (random() * 1000)::NUMERIC(10, 2),
     TIMESTAMP '2024-01-01' + (random() * 365 || ' days')::INTERVAL
 FROM generate_series(1, 100000000);
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入测试数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 创建多列索引
-CREATE INDEX idx_orders_status_type_date
+-- 性能测试：创建多列索引（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_status_type_date
 ON orders(status, type, created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_status_type_date已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 收集统计信息
+-- 性能测试：收集统计信息（带错误处理）
+BEGIN;
 ANALYZE orders;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'ANALYZE失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **测试查询**：
 
 ```sql
--- 查询1：有完整前缀（传统索引扫描）
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：查询1：有完整前缀（传统索引扫描）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE status = 'shipped'
   AND type = 'online'
@@ -361,9 +569,18 @@ WHERE status = 'shipped'
 -- 输出：
 -- Index Scan using idx_orders_status_type_date
 -- 执行时间：~50ms
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询1失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 查询2：缺少status（Skip Scan）
-EXPLAIN (ANALYZE, BUFFERS)
+-- 性能测试：查询2：缺少status（Skip Scan）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE type = 'online'
   AND created_at > '2024-06-01';
@@ -377,6 +594,14 @@ WHERE type = 'online'
 -- Seq Scan on orders
 -- 执行时间：~15000ms
 -- 性能提升：75倍！
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询2失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 4.2 EXPLAIN输出解读
@@ -384,9 +609,19 @@ WHERE type = 'online'
 **PostgreSQL 18新的EXPLAIN输出**：
 
 ```sql
-EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+-- 性能测试：EXPLAIN输出解读（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
 SELECT * FROM orders
 WHERE type = 'online' AND created_at > '2024-06-01';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'EXPLAIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **输出示例**：
@@ -448,10 +683,20 @@ Execution Time: 198.234 ms
 **问题查询**：
 
 ```sql
--- 运营人员常查：最近30天的订单
+-- 性能测试：运营人员常查：最近30天的订单（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE created_at > NOW() - INTERVAL '30 days'
 ORDER BY created_at DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询最近30天订单失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **PostgreSQL 17**：
@@ -494,12 +739,22 @@ Skip Prefix: status (5 values)
 **问题查询**：
 
 ```sql
--- 查询某服务的日志（缺少log_level）
+-- 性能测试：查询某服务的日志（缺少log_level）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM access_logs
 WHERE service = 'api-gateway'
   AND timestamp > '2024-12-01'
 ORDER BY timestamp DESC
 LIMIT 100;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表access_logs不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询服务日志失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **优化效果**：
@@ -517,40 +772,82 @@ LIMIT 100;
 **建议1：低基数列在前，但要考虑查询模式**:
 
 ```sql
+-- 性能测试：索引设计建议（带错误处理）
+BEGIN;
 -- 如果查询模式是：
 -- Q1: WHERE a = ? AND b = ?  （频繁，80%）
 -- Q2: WHERE b = ?            （偶尔，20%）
 
 -- 设计索引：
-CREATE INDEX idx ON t(a, b);
+CREATE INDEX IF NOT EXISTS idx ON t(a, b);
 -- Q1：正常索引扫描（快）
 -- Q2：Skip Scan（可接受）
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表t不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 而不是：
-CREATE INDEX idx1 ON t(a, b);  -- 为Q1
-CREATE INDEX idx2 ON t(b);      -- 为Q2
+-- CREATE INDEX idx1 ON t(a, b);  -- 为Q1
+-- CREATE INDEX idx2 ON t(b);      -- 为Q2
 -- 维护成本：2个索引 vs 1个索引
 ```
 
 **建议2：监控Skip Scan使用情况**:
 
 ```sql
--- 查看哪些查询使用了Skip Scan
+-- 性能测试：查看哪些查询使用了Skip Scan（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT query, calls, mean_exec_time
 FROM pg_stat_statements
 WHERE query LIKE '%Skip Scan%'
 ORDER BY calls DESC;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE 'pg_stat_statements扩展未安装';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询Skip Scan使用情况失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **建议3：基准测试**:
 
 ```sql
--- 对比启用/禁用Skip Scan
-SET enable_indexskipscan = off;  -- 禁用
-EXPLAIN ANALYZE SELECT ...;
+-- 性能测试：对比启用/禁用Skip Scan（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    SET LOCAL enable_indexskipscan = off;  -- 禁用
+    RAISE NOTICE 'Skip Scan已禁用，执行查询...';
+    -- EXPLAIN ANALYZE SELECT ...;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '禁用Skip Scan测试失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
-SET enable_indexskipscan = on;   -- 启用（默认）
-EXPLAIN ANALYZE SELECT ...;
+BEGIN;
+DO $$
+BEGIN
+    SET LOCAL enable_indexskipscan = on;   -- 启用（默认）
+    RAISE NOTICE 'Skip Scan已启用，执行查询...';
+    -- EXPLAIN ANALYZE SELECT ...;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用Skip Scan测试失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ---
@@ -634,13 +931,22 @@ EXPLAIN ANALYZE SELECT ...;
 **配置示例**:
 
 ```sql
--- 启用Skip Scan（默认）
+-- 性能测试：启用Skip Scan（默认）（带错误处理）
 BEGIN;
-ALTER SYSTEM SET enable_indexskipscan = on;
-SELECT pg_reload_conf();
+DO $$
+BEGIN
+    ALTER SYSTEM SET enable_indexskipscan = on;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Skip Scan已启用';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用Skip Scan失败: %', SQLERRM;
+        RAISE;
+END $$;
 COMMIT;
 
--- 验证配置
+-- 性能测试：验证配置（带错误处理）
+BEGIN;
 DO $$
 DECLARE
     skip_scan_enabled BOOLEAN;
@@ -657,12 +963,22 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN
         RAISE NOTICE '检查配置失败: %', SQLERRM;
+        RAISE;
 END $$;
+COMMIT;
 
--- 禁用Skip Scan（用于测试对比）
+-- 性能测试：禁用Skip Scan（用于测试对比）（带错误处理）
 BEGIN;
-ALTER SYSTEM SET enable_indexskipscan = off;
-SELECT pg_reload_conf();
+DO $$
+BEGIN
+    ALTER SYSTEM SET enable_indexskipscan = off;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Skip Scan已禁用（用于测试）';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '禁用Skip Scan失败: %', SQLERRM;
+        RAISE;
+END $$;
 COMMIT;
 ```
 
@@ -684,9 +1000,19 @@ COMMIT;
 **配置示例**:
 
 ```sql
--- 针对低基数场景优化
-ALTER SYSTEM SET index_skip_scan_cardinality_threshold = 50;
-SELECT pg_reload_conf();
+-- 性能测试：针对低基数场景优化（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET index_skip_scan_cardinality_threshold = 50;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '基数阈值已设置为50';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '设置基数阈值失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 #### index_skip_scan_min_rows
@@ -711,16 +1037,38 @@ SELECT pg_reload_conf();
 **最佳实践**:
 
 ```sql
--- 场景1: 低基数列在前
-CREATE INDEX idx_orders_status_date ON orders(status, created_at);
+-- 性能测试：场景1: 低基数列在前（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_status_date ON orders(status, created_at);
 -- status: 5个值（低基数）
 -- created_at: 高基数
 -- 查询: WHERE created_at > ? （可以使用Skip Scan）
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_status_date已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 场景2: 考虑查询频率
-CREATE INDEX idx_orders_type_date ON orders(order_type, order_date);
+-- 性能测试：场景2: 考虑查询频率（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_type_date ON orders(order_type, order_date);
 -- 如果80%查询包含order_type，20%只查询order_date
 -- 仍然可以使用Skip Scan处理20%的查询
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_type_date已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -739,16 +1087,44 @@ CREATE INDEX idx_orders_type_date ON orders(order_type, order_date);
 **诊断步骤**:
 
 ```sql
--- 1. 检查Skip Scan是否启用
-SHOW enable_indexskipscan;
--- 应该是 'on'
+-- 性能测试：1. 检查Skip Scan是否启用（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    skip_scan_setting TEXT;
+BEGIN
+    SELECT setting INTO skip_scan_setting
+    FROM pg_settings
+    WHERE name = 'enable_indexskipscan';
 
--- 2. 检查前缀列基数
+    IF skip_scan_setting = 'on' THEN
+        RAISE NOTICE '✅ Skip Scan已启用';
+    ELSE
+        RAISE NOTICE '⚠️  Skip Scan未启用: %', skip_scan_setting;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查Skip Scan配置失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
+
+-- 性能测试：2. 检查前缀列基数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(DISTINCT status) AS status_cardinality
 FROM orders;
 -- 应该 <= index_skip_scan_cardinality_threshold
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查前缀列基数失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 3. 检查查询选择性
+-- 性能测试：3. 检查查询选择性
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM orders
 WHERE created_at > '2024-01-01';
@@ -758,13 +1134,33 @@ WHERE created_at > '2024-01-01';
 **解决方案**:
 
 ```sql
--- 方案1: 确保Skip Scan启用
-ALTER SYSTEM SET enable_indexskipscan = on;
-SELECT pg_reload_conf();
+-- 性能测试：方案1: 确保Skip Scan启用（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET enable_indexskipscan = on;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Skip Scan已启用';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用Skip Scan失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 方案2: 调整基数阈值
-ALTER SYSTEM SET index_skip_scan_cardinality_threshold = 200;
-SELECT pg_reload_conf();
+-- 性能测试：方案2: 调整基数阈值（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET index_skip_scan_cardinality_threshold = 200;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '基数阈值已设置为200';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '调整基数阈值失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 #### 问题2: Skip Scan性能反而下降
@@ -783,12 +1179,33 @@ SELECT pg_reload_conf();
 **解决方案**:
 
 ```sql
--- 方案1: 降低基数阈值
-ALTER SYSTEM SET index_skip_scan_cardinality_threshold = 50;
-SELECT pg_reload_conf();
+-- 性能测试：方案1: 降低基数阈值（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET index_skip_scan_cardinality_threshold = 50;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '基数阈值已降低到50';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '降低基数阈值失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 方案2: 创建单列索引（如果Skip Scan不适用）
-CREATE INDEX idx_orders_created_at ON orders(created_at);
+-- 性能测试：方案2: 创建单列索引（如果Skip Scan不适用）（带错误处理）
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引idx_orders_created_at已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建单列索引失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -828,18 +1245,47 @@ Skip Scan在以下场景下最有效：
 **验证方法**:
 
 ```sql
--- 方法1: 使用EXPLAIN查看执行计划
-EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+-- 性能测试：方法1: 使用EXPLAIN查看执行计划（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
 SELECT * FROM orders
 WHERE created_at > '2024-01-01';
 
 -- 如果输出包含 "Index Skip Scan"，说明生效
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'EXPLAIN查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ```sql
--- 方法2: 检查配置
-SHOW enable_indexskipscan;  -- 应该是 'on'
-SHOW index_skip_scan_cardinality_threshold;  -- 默认 100
+-- 性能测试：方法2: 检查配置（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    skip_scan_setting TEXT;
+    threshold_setting TEXT;
+BEGIN
+    SELECT setting INTO skip_scan_setting
+    FROM pg_settings
+    WHERE name = 'enable_indexskipscan';
+
+    SELECT setting INTO threshold_setting
+    FROM pg_settings
+    WHERE name = 'index_skip_scan_cardinality_threshold';
+
+    RAISE NOTICE 'enable_indexskipscan: %', skip_scan_setting;  -- 应该是 'on'
+    RAISE NOTICE 'index_skip_scan_cardinality_threshold: %', threshold_setting;  -- 默认 100
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查配置失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ### Q3: Skip Scan与单列索引的性能对比？

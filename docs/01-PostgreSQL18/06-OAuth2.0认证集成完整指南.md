@@ -172,25 +172,58 @@ hostssl all         admin           127.0.0.1/32    scram-sha-256
 **步骤2：PostgreSQL配置**:
 
 ```sql
--- postgresql.conf
-oauth_enabled = on
-oauth_issuer = 'https://accounts.google.com'
-oauth_audience = 'YOUR-CLIENT-ID.apps.googleusercontent.com'
-oauth_jwks_uri = 'https://www.googleapis.com/oauth2/v3/certs'
+-- 性能测试：PostgreSQL配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_enabled = on;
+    ALTER SYSTEM SET oauth_issuer = 'https://accounts.google.com';
+    ALTER SYSTEM SET oauth_audience = 'YOUR-CLIENT-ID.apps.googleusercontent.com';
+    ALTER SYSTEM SET oauth_jwks_uri = 'https://www.googleapis.com/oauth2/v3/certs';
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'OAuth 2.0配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置OAuth 2.0失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 **步骤3：创建用户和角色映射**:
 
 ```sql
--- 创建角色
-CREATE ROLE google_users;
+-- 性能测试：创建角色（带错误处理）
+BEGIN;
+CREATE ROLE IF NOT EXISTS google_users;
 GRANT CONNECT ON DATABASE mydb TO google_users;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO google_users;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '角色google_users已存在';
+    WHEN undefined_database THEN
+        RAISE NOTICE '数据库mydb不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建角色失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 创建用户（自动从Google email创建）
+-- 性能测试：创建用户（自动从Google email创建）（带错误处理）
+BEGIN;
 -- PostgreSQL 18会自动根据token中的email创建用户
 -- 或手动创建：
-CREATE USER "user@example.com" WITH ROLE google_users;
+CREATE USER IF NOT EXISTS "user@example.com" WITH ROLE google_users;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '用户user@example.com已存在';
+    WHEN undefined_object THEN
+        RAISE NOTICE '角色google_users不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建用户失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **步骤4：应用连接代码**:
@@ -263,15 +296,25 @@ finally:
 **步骤2：PostgreSQL配置**:
 
 ```sql
--- postgresql.conf
-oauth_enabled = on
-oauth_issuer = 'https://login.microsoftonline.com/YOUR-TENANT-ID/v2.0'
-oauth_audience = 'YOUR-CLIENT-ID'
-oauth_jwks_uri = 'https://login.microsoftonline.com/YOUR-TENANT-ID/discovery/v2.0/keys'
-
--- 角色映射（使用Azure AD Groups）
-oauth_claim_role_mapping = on
-oauth_role_claim = 'groups'  # Azure AD中的组ID
+-- 性能测试：PostgreSQL配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_enabled = on;
+    ALTER SYSTEM SET oauth_issuer = 'https://login.microsoftonline.com/YOUR-TENANT-ID/v2.0';
+    ALTER SYSTEM SET oauth_audience = 'YOUR-CLIENT-ID';
+    ALTER SYSTEM SET oauth_jwks_uri = 'https://login.microsoftonline.com/YOUR-TENANT-ID/discovery/v2.0/keys';
+    -- 角色映射（使用Azure AD Groups）
+    ALTER SYSTEM SET oauth_claim_role_mapping = on;
+    ALTER SYSTEM SET oauth_role_claim = 'groups';  -- Azure AD中的组ID
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Azure AD OAuth配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置Azure AD OAuth失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 **步骤3：角色映射配置**:
@@ -350,11 +393,22 @@ conn = psycopg2.connect(
 **配置示例**：
 
 ```sql
--- postgresql.conf
-oauth_enabled = on
-oauth_issuer = 'https://your-domain.okta.com/oauth2/default'
-oauth_audience = 'your-okta-client-id'
-oauth_jwks_uri = 'https://your-domain.okta.com/oauth2/default/v1/keys'
+-- 性能测试：Okta配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_enabled = on;
+    ALTER SYSTEM SET oauth_issuer = 'https://your-domain.okta.com/oauth2/default';
+    ALTER SYSTEM SET oauth_audience = 'your-okta-client-id';
+    ALTER SYSTEM SET oauth_jwks_uri = 'https://your-domain.okta.com/oauth2/default/v1/keys';
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Okta OAuth配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置Okta OAuth失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ---
@@ -366,16 +420,26 @@ oauth_jwks_uri = 'https://your-domain.okta.com/oauth2/default/v1/keys'
 **严格验证配置**：
 
 ```sql
--- postgresql.conf安全配置
-oauth_token_expiry_check = on          # 必须检查过期
-oauth_token_not_before_check = on      # 检查nbf claim
-oauth_issuer_check = strict            # 严格验证issuer
-oauth_audience_check = strict          # 严格验证audience
-oauth_algorithm_whitelist = 'RS256'    # 只允许RS256
-
-# 禁用不安全的算法
-oauth_allow_none_algorithm = off       # 禁用'none'算法
-oauth_allow_hs256 = off                # 生产禁用HS256
+-- 性能测试：postgresql.conf安全配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_token_expiry_check = on;          -- 必须检查过期
+    ALTER SYSTEM SET oauth_token_not_before_check = on;      -- 检查nbf claim
+    ALTER SYSTEM SET oauth_issuer_check = 'strict';         -- 严格验证issuer
+    ALTER SYSTEM SET oauth_audience_check = 'strict';       -- 严格验证audience
+    ALTER SYSTEM SET oauth_algorithm_whitelist = 'RS256';    -- 只允许RS256
+    -- 禁用不安全的算法
+    ALTER SYSTEM SET oauth_allow_none_algorithm = off;       -- 禁用'none'算法
+    ALTER SYSTEM SET oauth_allow_hs256 = off;                -- 生产禁用HS256
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'OAuth安全配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置OAuth安全设置失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ### 4.2 权限映射
@@ -383,19 +447,30 @@ oauth_allow_hs256 = off                # 生产禁用HS256
 **最小权限原则**：
 
 ```sql
--- 创建受限角色
-CREATE ROLE oauth_readonly;
+-- 性能测试：创建受限角色（带错误处理）
+BEGIN;
+CREATE ROLE IF NOT EXISTS oauth_readonly;
 GRANT CONNECT ON DATABASE mydb TO oauth_readonly;
 GRANT USAGE ON SCHEMA public TO oauth_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO oauth_readonly;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '角色oauth_readonly已存在';
+    WHEN undefined_database THEN
+        RAISE NOTICE '数据库mydb不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建受限角色失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 根据token claims自动映射
 -- /etc/postgresql/oauth/role_mapping.conf
-[role_mapping]
-default_role = oauth_readonly           # 默认角色
-claim_to_check = groups                 # 检查的claim
-admin_group = admins                    # 管理员组
-developer_group = developers            # 开发者组
+-- [role_mapping]
+-- default_role = oauth_readonly           # 默认角色
+-- claim_to_check = groups                 # 检查的claim
+-- admin_group = admins                    # 管理员组
+-- developer_group = developers            # 开发者组
 ```
 
 ---
@@ -413,24 +488,54 @@ developer_group = developers            # 开发者组
 **方案**：
 
 ```sql
--- 配置Azure AD OAuth
--- postgresql.conf
-oauth_enabled = on
-oauth_issuer = 'https://login.microsoftonline.com/company-tenant-id/v2.0'
-oauth_audience = 'company-pg-client-id'
-oauth_jwks_uri = 'https://login.microsoftonline.com/company-tenant-id/discovery/v2.0/keys'
-oauth_claim_role_mapping = on
-oauth_role_claim = 'groups'
+-- 性能测试：配置Azure AD OAuth（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_enabled = on;
+    ALTER SYSTEM SET oauth_issuer = 'https://login.microsoftonline.com/company-tenant-id/v2.0';
+    ALTER SYSTEM SET oauth_audience = 'company-pg-client-id';
+    ALTER SYSTEM SET oauth_jwks_uri = 'https://login.microsoftonline.com/company-tenant-id/discovery/v2.0/keys';
+    ALTER SYSTEM SET oauth_claim_role_mapping = on;
+    ALTER SYSTEM SET oauth_role_claim = 'groups';
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Azure AD OAuth配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置Azure AD OAuth失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 创建部门角色
-CREATE ROLE finance_dept;
-CREATE ROLE engineering_dept;
-CREATE ROLE management;
+-- 性能测试：创建部门角色（带错误处理）
+BEGIN;
+CREATE ROLE IF NOT EXISTS finance_dept;
+CREATE ROLE IF NOT EXISTS engineering_dept;
+CREATE ROLE IF NOT EXISTS management;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '部分角色已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建部门角色失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 权限配置
+-- 性能测试：权限配置（带错误处理）
+BEGIN;
 GRANT SELECT ON finance_data TO finance_dept;
 GRANT ALL ON engineering_tables TO engineering_dept;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO management;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '部分表不存在';
+    WHEN undefined_object THEN
+        RAISE NOTICE '部分角色不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置权限失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **效果**：
@@ -460,13 +565,24 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO management;
 **方案**：
 
 ```sql
--- 支持多OAuth Provider
--- postgresql.conf
-oauth_enabled = on
-oauth_multi_issuer = on  # 允许多个issuer
+-- 性能测试：支持多OAuth Provider（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_enabled = on;
+    ALTER SYSTEM SET oauth_multi_issuer = on;  -- 允许多个issuer
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '多OAuth Provider配置已启用';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置多OAuth Provider失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 
--- 创建Issuer配置表
-CREATE TABLE oauth_issuers (
+-- 性能测试：创建Issuer配置表（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS oauth_issuers (
     id SERIAL PRIMARY KEY,
     tenant_id INT NOT NULL,
     issuer_url TEXT NOT NULL,
@@ -474,20 +590,58 @@ CREATE TABLE oauth_issuers (
     jwks_uri TEXT NOT NULL,
     enabled BOOLEAN DEFAULT TRUE
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表oauth_issuers已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表oauth_issuers失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入客户配置
+-- 性能测试：插入客户配置（带错误处理）
+BEGIN;
 INSERT INTO oauth_issuers (tenant_id, issuer_url, audience, jwks_uri)
 VALUES
     (1, 'https://accounts.google.com', 'client1.apps.googleusercontent.com', 'https://www.googleapis.com/oauth2/v3/certs'),
     (2, 'https://login.microsoftonline.com/tenant2-id/v2.0', 'client2-id', 'https://login.microsoftonline.com/tenant2-id/discovery/v2.0/keys'),
-    (3, 'https://tenant3.okta.com/oauth2/default', 'client3-id', 'https://tenant3.okta.com/oauth2/default/v1/keys');
+    (3, 'https://tenant3.okta.com/oauth2/default', 'client3-id', 'https://tenant3.okta.com/oauth2/default/v1/keys')
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表oauth_issuers不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入客户配置失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 使用RLS隔离租户数据
+-- 性能测试：使用RLS隔离租户数据（带错误处理）
+BEGIN;
 ALTER TABLE customer_data ENABLE ROW LEVEL SECURITY;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表customer_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用RLS失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
-CREATE POLICY tenant_isolation ON customer_data
+BEGIN;
+CREATE POLICY IF NOT EXISTS tenant_isolation ON customer_data
 FOR ALL
 USING (tenant_id = current_setting('app.tenant_id')::int);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '策略tenant_isolation已存在';
+    WHEN undefined_table THEN
+        RAISE NOTICE '表customer_data不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建RLS策略失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **效果**：
@@ -574,11 +728,21 @@ tail -f /var/log/postgresql/postgresql-18-main.log | grep oauth
 **解决方案**:
 
 ```sql
--- 方案1: 验证配置
-ALTER SYSTEM SET oauth_enabled = on;
-ALTER SYSTEM SET oauth_issuer = 'https://accounts.google.com';
-ALTER SYSTEM SET oauth_audience = 'your-client-id';
-SELECT pg_reload_conf();
+-- 性能测试：方案1: 验证配置（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_enabled = on;
+    ALTER SYSTEM SET oauth_issuer = 'https://accounts.google.com';
+    ALTER SYSTEM SET oauth_audience = 'your-client-id';
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'OAuth配置已验证并更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '验证配置失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 #### 问题2: Token过期问题
@@ -591,10 +755,20 @@ SELECT pg_reload_conf();
 **解决方案**:
 
 ```sql
--- 方案1: 启用Token自动刷新
-ALTER SYSTEM SET oauth_token_refresh_enabled = on;
-ALTER SYSTEM SET oauth_token_refresh_threshold = 300;  -- 提前5分钟刷新
-SELECT pg_reload_conf();
+-- 性能测试：方案1: 启用Token自动刷新（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_token_refresh_enabled = on;
+    ALTER SYSTEM SET oauth_token_refresh_threshold = 300;  -- 提前5分钟刷新
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Token自动刷新已启用';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '启用Token自动刷新失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 #### 问题3: 角色映射失败
@@ -607,10 +781,20 @@ SELECT pg_reload_conf();
 **解决方案**:
 
 ```sql
--- 方案1: 配置角色映射
-ALTER SYSTEM SET oauth_claim_role_mapping = on;
-ALTER SYSTEM SET oauth_role_claim = 'groups';
-SELECT pg_reload_conf();
+-- 性能测试：方案1: 配置角色映射（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    ALTER SYSTEM SET oauth_claim_role_mapping = on;
+    ALTER SYSTEM SET oauth_role_claim = 'groups';
+    PERFORM pg_reload_conf();
+    RAISE NOTICE '角色映射已配置';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置角色映射失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ---
@@ -622,16 +806,23 @@ SELECT pg_reload_conf();
 #### JWT Token安全配置
 
 ```sql
--- 1. 使用强算法
--- 推荐使用RS256（非对称加密）
-
--- 2. 验证Token签名
-ALTER SYSTEM SET oauth_jwt_verify_signature = on;
-SELECT pg_reload_conf();
-
--- 3. 验证Token过期
-ALTER SYSTEM SET oauth_token_expiry_check = on;
-SELECT pg_reload_conf();
+-- 性能测试：1. 使用强算法（带错误处理）
+BEGIN;
+DO $$
+BEGIN
+    -- 推荐使用RS256（非对称加密）
+    -- 2. 验证Token签名
+    ALTER SYSTEM SET oauth_jwt_verify_signature = on;
+    -- 3. 验证Token过期
+    ALTER SYSTEM SET oauth_token_expiry_check = on;
+    PERFORM pg_reload_conf();
+    RAISE NOTICE 'Token安全配置已更新';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '配置Token安全设置失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
 ```
 
 ### 权限最小化原则
@@ -639,11 +830,22 @@ SELECT pg_reload_conf();
 #### 角色权限配置
 
 ```sql
--- 1. 创建最小权限角色
-CREATE ROLE oauth_readonly;
+-- 性能测试：1. 创建最小权限角色（带错误处理）
+BEGIN;
+CREATE ROLE IF NOT EXISTS oauth_readonly;
 GRANT CONNECT ON DATABASE mydb TO oauth_readonly;
 GRANT USAGE ON SCHEMA public TO oauth_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO oauth_readonly;
+COMMIT;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '角色oauth_readonly已存在';
+    WHEN undefined_database THEN
+        RAISE NOTICE '数据库mydb不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建最小权限角色失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -680,13 +882,40 @@ OAuth 2.0在以下场景下最有效：
 **验证方法**:
 
 ```sql
--- 方法1: 检查配置
-SHOW oauth_enabled;  -- 应该是 'on'
-SHOW oauth_issuer;
-SHOW oauth_audience;
+-- 性能测试：方法1: 检查配置（带错误处理）
+BEGIN;
+DO $$
+DECLARE
+    oauth_enabled_setting TEXT;
+    oauth_issuer_setting TEXT;
+    oauth_audience_setting TEXT;
+BEGIN
+    SELECT setting INTO oauth_enabled_setting FROM pg_settings WHERE name = 'oauth_enabled';
+    SELECT setting INTO oauth_issuer_setting FROM pg_settings WHERE name = 'oauth_issuer';
+    SELECT setting INTO oauth_audience_setting FROM pg_settings WHERE name = 'oauth_audience';
 
--- 方法2: 检查pg_hba.conf
+    RAISE NOTICE 'oauth_enabled: % (应该是 on)', oauth_enabled_setting;
+    RAISE NOTICE 'oauth_issuer: %', oauth_issuer_setting;
+    RAISE NOTICE 'oauth_audience: %', oauth_audience_setting;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查配置失败: %', SQLERRM;
+        RAISE;
+END $$;
+COMMIT;
+
+-- 性能测试：方法2: 检查pg_hba.conf（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_hba_file_rules WHERE auth_method = 'oauth';
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE 'pg_hba_file_rules视图不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '检查pg_hba.conf失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### Q3: OAuth 2.0与密码认证的性能对比？

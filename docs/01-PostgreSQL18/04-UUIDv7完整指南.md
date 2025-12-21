@@ -98,15 +98,34 @@ UUIDv7格式（128位）：
 **传统UUIDv4的问题**：
 
 ```sql
--- UUIDv4（随机UUID）
-CREATE TABLE users_v4 (
+-- 性能测试：UUIDv4（随机UUID）（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS users_v4 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),  -- UUIDv4
     name TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表users_v4已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表users_v4失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入100万行
+-- 性能测试：插入100万行（带错误处理）
+BEGIN;
 INSERT INTO users_v4 (name)
-SELECT 'User ' || i FROM generate_series(1, 1000000) i;
+SELECT 'User ' || i FROM generate_series(1, 1000000) i
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users_v4不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 问题：
 -- 1. UUID完全随机，无序
@@ -142,15 +161,34 @@ Page 3: [22..., 33...]
 **UUIDv7的解决方案**：
 
 ```sql
--- UUIDv7（时间排序）
-CREATE TABLE users_v7 (
+-- 性能测试：UUIDv7（时间排序）（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS users_v7 (
     id UUID PRIMARY KEY DEFAULT gen_uuid_v7(),  -- PostgreSQL 18
     name TEXT
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表users_v7已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表users_v7失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入100万行
+-- 性能测试：插入100万行（带错误处理）
+BEGIN;
 INSERT INTO users_v7 (name)
-SELECT 'User ' || i FROM generate_series(1, 1000000) i;
+SELECT 'User ' || i FROM generate_series(1, 1000000) i
+ON CONFLICT DO NOTHING;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表users_v7不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 优势：
 -- ✅ UUID按时间递增
@@ -208,27 +246,59 @@ Page 1: [018d..., 018e..., 018f..., 0190..., 0191...]
 **测试1：插入性能**:
 
 ```sql
--- 性能测试：插入性能对比
+-- 性能测试：插入性能对比（带错误处理）
 
--- UUIDv4测试
+-- 性能测试：UUIDv4测试（带错误处理）
 BEGIN;
-CREATE TABLE test_v4 (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), data TEXT);
-\timing on
+CREATE TABLE IF NOT EXISTS test_v4 (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), data TEXT);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表test_v4已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表test_v4失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO test_v4 (data) SELECT 'data' FROM generate_series(1, 1000000);
-\timing off
 -- 时间：8.5秒
 -- 索引大小：45 MB
-ROLLBACK;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_v4不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'UUIDv4插入测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- UUIDv7测试
+-- 性能测试：UUIDv7测试（带错误处理）
 BEGIN;
-CREATE TABLE test_v7 (id UUID PRIMARY KEY DEFAULT gen_uuid_v7(), data TEXT);
-\timing on
+CREATE TABLE IF NOT EXISTS test_v7 (id UUID PRIMARY KEY DEFAULT gen_uuid_v7(), data TEXT);
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表test_v7已存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表test_v7失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO test_v7 (data) SELECT 'data' FROM generate_series(1, 1000000);
-\timing off
 -- 时间：2.1秒（快4倍！）
 -- 索引大小：32 MB（小29%）
-ROLLBACK;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_v7不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'UUIDv7插入测试失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
 -- 性能指标：
 -- - 插入时间：UUIDv7比UUIDv4快4倍
@@ -247,18 +317,50 @@ ROLLBACK;
 **测试3：查询性能**:
 
 ```sql
--- 随机查询
+-- 性能测试：随机查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM test_v4 WHERE id = '<random_uuid>';
 -- 平均：0.12ms
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_v4不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'UUIDv4随机查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM test_v7 WHERE id = '<random_uuid>';
 -- 平均：0.10ms（快20%）
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_v7不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'UUIDv7随机查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 范围查询（按时间）
+-- 性能测试：范围查询（按时间）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM test_v7
 WHERE id >= uuid_extract_time('<start_uuid>')
   AND id < uuid_extract_time('<end_uuid>');
 -- UUIDv7支持，UUIDv4不支持
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表test_v7不存在';
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数uuid_extract_time不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'UUIDv7范围查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
@@ -270,37 +372,75 @@ WHERE id >= uuid_extract_time('<start_uuid>')
 **函数**：
 
 ```sql
--- PostgreSQL 18新函数
-gen_uuid_v7() → uuid
-
--- 示例
+-- 性能测试：PostgreSQL 18新函数（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT gen_uuid_v7();
 -- 输出：018d2a54-6c1f-7000-8000-123456789abc
+COMMIT;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数gen_uuid_v7不存在，请确认PostgreSQL版本为18+';
+    WHEN OTHERS THEN
+        RAISE NOTICE '生成UUIDv7失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 连续生成10个（按时间排序）
+-- 性能测试：连续生成10个（按时间排序）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT gen_uuid_v7() FROM generate_series(1, 10);
 -- 输出：
 -- 018d2a54-6c1f-7000-8000-...
 -- 018d2a54-6c1f-7001-8000-...  ← 注意序列递增
 -- 018d2a54-6c1f-7002-8000-...
 -- ...
+COMMIT;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数gen_uuid_v7不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '连续生成UUIDv7失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **在表中使用**：
 
 ```sql
-CREATE TABLE orders (
+-- 性能测试：在表中使用（带错误处理）
+BEGIN;
+CREATE TABLE IF NOT EXISTS orders (
     id UUID PRIMARY KEY DEFAULT gen_uuid_v7(),
     user_id BIGINT NOT NULL,
     total NUMERIC(10, 2),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+COMMIT;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表orders已存在';
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数gen_uuid_v7不存在，请确认PostgreSQL版本为18+';
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建表orders失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 插入数据
+-- 性能测试：插入数据（带错误处理）
+BEGIN;
 INSERT INTO orders (user_id, total)
-VALUES (123, 99.99);
-
+VALUES (123, 99.99)
+ON CONFLICT DO NOTHING;
 -- id自动生成UUIDv7
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '插入数据失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.2 提取时间戳
@@ -308,31 +448,72 @@ VALUES (123, 99.99);
 **函数**：
 
 ```sql
--- 从UUIDv7提取Unix时间戳（毫秒）
-uuid_extract_time(uuid) → bigint
-
--- 示例
+-- 性能测试：从UUIDv7提取Unix时间戳（毫秒）（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT uuid_extract_time('018d2a54-6c1f-7000-8000-123456789abc'::uuid);
 -- 输出：1701234567890（Unix毫秒）
+COMMIT;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数uuid_extract_time不存在，请确认PostgreSQL版本为18+';
+    WHEN OTHERS THEN
+        RAISE NOTICE '提取时间戳失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 转换为时间戳
+-- 性能测试：转换为时间戳（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT to_timestamp(uuid_extract_time('018d2a54-6c1f-7000-8000-123456789abc'::uuid) / 1000.0);
 -- 输出：2023-11-29 12:56:07.89+00
+COMMIT;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数uuid_extract_time不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '转换时间戳失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 **实用查询**：
 
 ```sql
--- 查询最近1小时的订单
+-- 性能测试：查询最近1小时的订单（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM orders
 WHERE uuid_extract_time(id) > extract(epoch from now() - interval '1 hour') * 1000;
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数uuid_extract_time不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '查询最近1小时订单失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 按日期范围查询
+-- 性能测试：按日期范围查询（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM orders
 WHERE id >= gen_uuid_v7_at('2024-01-01 00:00:00'::timestamptz)
   AND id < gen_uuid_v7_at('2024-02-01 00:00:00'::timestamptz);
+COMMIT;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE NOTICE '表orders不存在';
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数gen_uuid_v7_at不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '按日期范围查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ### 3.3 生成指定时间的UUIDv7
@@ -340,7 +521,8 @@ WHERE id >= gen_uuid_v7_at('2024-01-01 00:00:00'::timestamptz)
 **自定义函数**：
 
 ```sql
--- 生成指定时间的UUIDv7
+-- 性能测试：生成指定时间的UUIDv7（带错误处理）
+BEGIN;
 CREATE OR REPLACE FUNCTION gen_uuid_v7_at(ts timestamptz)
 RETURNS uuid AS $$
 DECLARE
@@ -361,12 +543,32 @@ BEGIN
         gen_random_bytes(9);  -- 剩余随机部分
 
     RETURN uuid_bytes::uuid;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'gen_uuid_v7_at执行失败: %', SQLERRM;
+        RAISE;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
+COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '创建函数gen_uuid_v7_at失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 
--- 使用
+-- 性能测试：使用（带错误处理和性能分析）
+BEGIN;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT gen_uuid_v7_at('2024-01-01 00:00:00'::timestamptz);
 -- 输出：018d0000-0000-7xxx-xxxx-xxxxxxxxxxxx
+COMMIT;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE NOTICE '函数gen_uuid_v7_at不存在';
+    WHEN OTHERS THEN
+        RAISE NOTICE '生成指定时间UUIDv7失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
 ```
 
 ---
