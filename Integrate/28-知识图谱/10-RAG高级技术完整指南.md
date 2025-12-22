@@ -63,6 +63,15 @@
     - [7.3 持续优化](#73-持续优化)
       - [A/B测试框架](#ab测试框架)
       - [反馈循环优化](#反馈循环优化)
+  - [6. 多模态RAG](#6-多模态rag)
+    - [6.1 图文混合检索](#61-图文混合检索)
+      - [多模态检索架构](#多模态检索架构)
+    - [6.2 多模态向量表示](#62-多模态向量表示)
+      - [CLIP模型集成](#clip模型集成)
+      - [多模态向量存储](#多模态向量存储)
+    - [6.3 跨模态对齐](#63-跨模态对齐)
+      - [跨模态检索优化](#跨模态检索优化)
+      - [多模态融合检索](#多模态融合检索)
   - [📚 参考资源](#-参考资源)
   - [📝 更新日志](#-更新日志)
 
@@ -2323,7 +2332,581 @@ class FeedbackLoop:
 
 ---
 
-*[多模态RAG章节将在下一版本补充]*
+## 6. 多模态RAG
+
+### 6.1 图文混合检索
+
+多模态RAG支持文本、图像、音频等多种模态的混合检索和生成。
+
+#### 多模态检索架构
+
+```python
+from typing import List, Dict, Union
+import numpy as np
+from PIL import Image
+import torch
+from transformers import CLIPProcessor, CLIPModel
+
+class MultimodalRAG:
+    """多模态RAG系统"""
+
+    def __init__(
+        self,
+        text_embedding_model,
+        image_embedding_model,
+        vector_store,
+        llm
+    ):
+        self.text_embedding_model = text_embedding_model
+        self.image_embedding_model = image_embedding_model
+        self.vector_store = vector_store
+        self.llm = llm
+
+        # CLIP模型用于图文对齐
+        self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+        self.clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+    def retrieve_multimodal(
+        self,
+        query: Union[str, Image.Image],
+        top_k: int = 10,
+        modalities: List[str] = ['text', 'image']
+    ) -> Dict[str, List[Dict]]:
+        """
+        多模态检索
+
+        Args:
+            query: 查询（文本或图像）
+            top_k: 返回Top K结果
+            modalities: 检索的模态列表
+
+        Returns:
+            {modality: [检索结果]}
+        """
+        results = {}
+
+        # 文本查询
+        if isinstance(query, str):
+            query_text = query
+
+            # 文本检索
+            if 'text' in modalities:
+                text_results = self._retrieve_text(query_text, top_k)
+                results['text'] = text_results
+
+            # 图像检索（使用文本查询）
+            if 'image' in modalities:
+                image_results = self._retrieve_images_by_text(query_text, top_k)
+                results['image'] = image_results
+
+        # 图像查询
+        elif isinstance(query, Image.Image):
+            query_image = query
+
+            # 图像检索
+            if 'image' in modalities:
+                image_results = self._retrieve_images_by_image(query_image, top_k)
+                results['image'] = image_results
+
+            # 文本检索（使用图像查询）
+            if 'text' in modalities:
+                text_results = self._retrieve_text_by_image(query_image, top_k)
+                results['text'] = text_results
+
+        return results
+
+    def _retrieve_text(self, query: str, top_k: int) -> List[Dict]:
+        """文本检索"""
+        docs = self.vector_store.similarity_search(query, k=top_k)
+        return [
+            {
+                'content': doc.page_content,
+                'metadata': doc.metadata,
+                'modality': 'text',
+                'score': 0.9
+            }
+            for doc in docs
+        ]
+
+    def _retrieve_images_by_text(self, query: str, top_k: int) -> List[Dict]:
+        """使用文本查询检索图像"""
+        # 使用CLIP将文本编码为向量
+        inputs = self.clip_processor(text=[query], return_tensors="pt", padding=True)
+        text_emb = self.clip_model.get_text_features(**inputs)
+        text_emb = text_emb / text_emb.norm(dim=-1, keepdim=True)
+
+        # 在图像向量库中搜索
+        # 这里假设图像向量已存储在vector_store中
+        image_results = self.vector_store.similarity_search_by_vector(
+            text_emb[0].detach().numpy(),
+            k=top_k
+        )
+
+        return [
+            {
+                'content': result['image_path'],
+                'metadata': result['metadata'],
+                'modality': 'image',
+                'score': float(result['similarity'])
+            }
+            for result in image_results
+        ]
+
+    def _retrieve_images_by_image(self, query_image: Image.Image, top_k: int) -> List[Dict]:
+        """使用图像查询检索图像"""
+        # 使用CLIP将图像编码为向量
+        inputs = self.clip_processor(images=[query_image], return_tensors="pt")
+        image_emb = self.clip_model.get_image_features(**inputs)
+        image_emb = image_emb / image_emb.norm(dim=-1, keepdim=True)
+
+        # 在图像向量库中搜索
+        image_results = self.vector_store.similarity_search_by_vector(
+            image_emb[0].detach().numpy(),
+            k=top_k
+        )
+
+        return [
+            {
+                'content': result['image_path'],
+                'metadata': result['metadata'],
+                'modality': 'image',
+                'score': float(result['similarity'])
+            }
+            for result in image_results
+        ]
+
+    def _retrieve_text_by_image(self, query_image: Image.Image, top_k: int) -> List[Dict]:
+        """使用图像查询检索文本"""
+        # 使用CLIP将图像编码为向量
+        inputs = self.clip_processor(images=[query_image], return_tensors="pt")
+        image_emb = self.clip_model.get_image_features(**inputs)
+        image_emb = image_emb / image_emb.norm(dim=-1, keepdim=True)
+
+        # 在文本向量库中搜索（使用图像向量）
+        text_results = self.vector_store.similarity_search_by_vector(
+            image_emb[0].detach().numpy(),
+            k=top_k
+        )
+
+        return [
+            {
+                'content': result['text'],
+                'metadata': result['metadata'],
+                'modality': 'text',
+                'score': float(result['similarity'])
+            }
+            for result in text_results
+        ]
+
+    def generate_multimodal_answer(
+        self,
+        query: Union[str, Image.Image],
+        retrieved_items: Dict[str, List[Dict]]
+    ) -> str:
+        """生成多模态答案"""
+        # 构建多模态上下文
+        context_parts = []
+
+        # 文本上下文
+        if 'text' in retrieved_items:
+            text_context = "\n\n".join([
+                f"文本片段 {i+1}: {item['content']}"
+                for i, item in enumerate(retrieved_items['text'][:5])
+            ])
+            context_parts.append(f"相关文本:\n{text_context}")
+
+        # 图像上下文（描述）
+        if 'image' in retrieved_items:
+            image_descriptions = []
+            for item in retrieved_items['image'][:5]:
+                # 使用图像描述模型生成描述
+                description = self._describe_image(item['content'])
+                image_descriptions.append(f"图像 {len(image_descriptions)+1}: {description}")
+            context_parts.append(f"相关图像:\n{chr(10).join(image_descriptions)}")
+
+        context = "\n\n".join(context_parts)
+
+        # 生成答案
+        query_text = query if isinstance(query, str) else "这张图片的内容"
+
+        prompt = f"""
+        基于以下多模态上下文回答查询。
+
+        查询: {query_text}
+
+        {context}
+
+        请生成一个准确、完整的答案，如果涉及图像内容，请详细描述。
+        """
+
+        response = self.llm.chat.completions.create(
+            model="gpt-4-vision-preview",  # 支持多模态的模型
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+
+        return response.choices[0].message.content
+
+    def _describe_image(self, image_path: str) -> str:
+        """生成图像描述"""
+        # 使用图像描述模型（如BLIP、GPT-4V等）
+        # 这里简化处理
+        return f"图像内容描述: {image_path}"
+```
+
+### 6.2 多模态向量表示
+
+#### CLIP模型集成
+
+```python
+class CLIPMultimodalEncoder:
+    """CLIP多模态编码器"""
+
+    def __init__(self, model_name: str = "openai/clip-vit-base-patch32"):
+        self.model = CLIPModel.from_pretrained(model_name)
+        self.processor = CLIPProcessor.from_pretrained(model_name)
+
+    def encode_text(self, texts: List[str]) -> np.ndarray:
+        """编码文本为向量"""
+        inputs = self.processor(text=texts, return_tensors="pt", padding=True)
+        with torch.no_grad():
+            text_features = self.model.get_text_features(**inputs)
+            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+        return text_features.numpy()
+
+    def encode_images(self, images: List[Image.Image]) -> np.ndarray:
+        """编码图像为向量"""
+        inputs = self.processor(images=images, return_tensors="pt")
+        with torch.no_grad():
+            image_features = self.model.get_image_features(**inputs)
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        return image_features.numpy()
+
+    def compute_similarity(
+        self,
+        text_emb: np.ndarray,
+        image_emb: np.ndarray
+    ) -> float:
+        """计算文本和图像的相似度"""
+        similarity = np.dot(text_emb, image_emb.T)
+        return float(similarity[0][0])
+```
+
+#### 多模态向量存储
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+
+class MultimodalVectorStore:
+    """多模态向量存储"""
+
+    def __init__(self, db_config, embedding_dim: int = 512):
+        self.conn = psycopg2.connect(**db_config)
+        register_vector(self.conn)
+        self.cursor = self.conn.cursor()
+        self.embedding_dim = embedding_dim
+        self._init_schema()
+
+    def _init_schema(self):
+        """初始化数据库模式"""
+        self.cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+        # 多模态文档表
+        self.cursor.execute(f"""
+            CREATE TABLE IF NOT EXISTS multimodal_documents (
+                id SERIAL PRIMARY KEY,
+                content TEXT,
+                content_type VARCHAR(20),  -- 'text' or 'image'
+                content_path TEXT,  -- 文件路径（图像）
+                embedding vector({self.embedding_dim}),
+                metadata JSONB,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        """)
+
+        # 创建向量索引
+        self.cursor.execute("""
+            CREATE INDEX IF NOT EXISTS multimodal_documents_embedding_idx
+            ON multimodal_documents
+            USING hnsw (embedding vector_cosine_ops);
+        """)
+
+        self.conn.commit()
+
+    def add_text(self, text: str, embedding: np.ndarray, metadata: Dict = None):
+        """添加文本文档"""
+        self.cursor.execute("""
+            INSERT INTO multimodal_documents (content, content_type, embedding, metadata)
+            VALUES (%s, 'text', %s, %s);
+        """, (text, embedding.tolist(), json.dumps(metadata or {})))
+        self.conn.commit()
+
+    def add_image(self, image_path: str, embedding: np.ndarray, metadata: Dict = None):
+        """添加图像文档"""
+        self.cursor.execute("""
+            INSERT INTO multimodal_documents (content_path, content_type, embedding, metadata)
+            VALUES (%s, 'image', %s, %s);
+        """, (image_path, embedding.tolist(), json.dumps(metadata or {})))
+        self.conn.commit()
+
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        content_type: str = None,
+        top_k: int = 10
+    ) -> List[Dict]:
+        """多模态搜索"""
+        type_filter = f"AND content_type = '{content_type}'" if content_type else ""
+
+        self.cursor.execute(f"""
+            SELECT id, content, content_path, content_type, metadata,
+                   1 - (embedding <=> %s::vector) AS similarity
+            FROM multimodal_documents
+            WHERE 1=1 {type_filter}
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s;
+        """, (query_embedding.tolist(), query_embedding.tolist(), top_k))
+
+        results = []
+        for row in self.cursor.fetchall():
+            results.append({
+                'id': row[0],
+                'content': row[1],
+                'content_path': row[2],
+                'content_type': row[3],
+                'metadata': row[4],
+                'similarity': float(row[5])
+            })
+
+        return results
+```
+
+### 6.3 跨模态对齐
+
+#### 跨模态检索优化
+
+```python
+class CrossModalAlignment:
+    """跨模态对齐优化"""
+
+    def __init__(self, clip_model, alignment_model=None):
+        self.clip_model = clip_model
+        self.alignment_model = alignment_model
+
+    def align_text_image(
+        self,
+        text_emb: np.ndarray,
+        image_emb: np.ndarray,
+        alignment_weight: float = 0.5
+    ) -> np.ndarray:
+        """
+        对齐文本和图像向量
+
+        Args:
+            text_emb: 文本向量
+            image_emb: 图像向量
+            alignment_weight: 对齐权重
+
+        Returns:
+            对齐后的向量
+        """
+        # 计算对齐向量
+        alignment_vector = alignment_weight * text_emb + (1 - alignment_weight) * image_emb
+
+        # 归一化
+        alignment_vector = alignment_vector / np.linalg.norm(alignment_vector)
+
+        return alignment_vector
+
+    def cross_modal_retrieval(
+        self,
+        query_embedding: np.ndarray,
+        target_modality: str,
+        vector_store: MultimodalVectorStore,
+        top_k: int = 10
+    ) -> List[Dict]:
+        """
+        跨模态检索
+
+        Args:
+            query_embedding: 查询向量（可以是文本或图像）
+            target_modality: 目标模态（'text' or 'image'）
+            vector_store: 向量存储
+            top_k: 返回Top K结果
+        """
+        # 如果查询和目标模态不同，进行对齐
+        if target_modality == 'image':
+            # 文本查询图像：使用CLIP对齐
+            aligned_embedding = self._align_for_image_retrieval(query_embedding)
+        else:
+            # 图像查询文本：使用CLIP对齐
+            aligned_embedding = self._align_for_text_retrieval(query_embedding)
+
+        # 检索
+        results = vector_store.search(
+            aligned_embedding,
+            content_type=target_modality,
+            top_k=top_k
+        )
+
+        return results
+
+    def _align_for_image_retrieval(self, text_emb: np.ndarray) -> np.ndarray:
+        """为图像检索对齐文本向量"""
+        # 使用CLIP的对齐能力
+        # 这里简化处理，实际可以使用更复杂的对齐模型
+        return text_emb
+
+    def _align_for_text_retrieval(self, image_emb: np.ndarray) -> np.ndarray:
+        """为文本检索对齐图像向量"""
+        # 使用CLIP的对齐能力
+        return image_emb
+```
+
+#### 多模态融合检索
+
+```python
+class MultimodalFusionRetriever:
+    """多模态融合检索器"""
+
+    def __init__(
+        self,
+        text_retriever,
+        image_retriever,
+        fusion_strategy: str = 'weighted'
+    ):
+        self.text_retriever = text_retriever
+        self.image_retriever = image_retriever
+        self.fusion_strategy = fusion_strategy
+
+    def fused_retrieve(
+        self,
+        query: Union[str, Image.Image],
+        top_k: int = 10,
+        text_weight: float = 0.6,
+        image_weight: float = 0.4
+    ) -> List[Dict]:
+        """
+        融合检索
+
+        Args:
+            query: 查询（文本或图像）
+            top_k: 返回Top K结果
+            text_weight: 文本检索权重
+            image_weight: 图像检索权重
+        """
+        # 文本检索
+        if isinstance(query, str):
+            text_results = self.text_retriever.retrieve(query, top_k=top_k * 2)
+            # 使用文本查询图像
+            image_results = self.image_retriever.retrieve_by_text(query, top_k=top_k * 2)
+        else:
+            # 图像查询
+            image_results = self.image_retriever.retrieve_by_image(query, top_k=top_k * 2)
+            # 使用图像查询文本
+            text_results = self.text_retriever.retrieve_by_image(query, top_k=top_k * 2)
+
+        # 融合结果
+        if self.fusion_strategy == 'weighted':
+            return self._weighted_fusion(text_results, image_results, text_weight, image_weight, top_k)
+        elif self.fusion_strategy == 'rrf':
+            return self._rrf_fusion(text_results, image_results, top_k)
+        else:
+            return self._simple_merge(text_results, image_results, top_k)
+
+    def _weighted_fusion(
+        self,
+        text_results: List[Dict],
+        image_results: List[Dict],
+        text_weight: float,
+        image_weight: float,
+        top_k: int
+    ) -> List[Dict]:
+        """加权融合"""
+        all_items = {}
+
+        # 添加文本结果
+        for item in text_results:
+            item_id = item.get('id', f"text_{len(all_items)}")
+            if item_id not in all_items:
+                all_items[item_id] = item
+                all_items[item_id]['final_score'] = 0.0
+            all_items[item_id]['final_score'] += item['score'] * text_weight
+
+        # 添加图像结果
+        for item in image_results:
+            item_id = item.get('id', f"image_{len(all_items)}")
+            if item_id not in all_items:
+                all_items[item_id] = item
+                all_items[item_id]['final_score'] = 0.0
+            all_items[item_id]['final_score'] += item['score'] * image_weight
+
+        # 排序
+        sorted_items = sorted(
+            all_items.values(),
+            key=lambda x: x['final_score'],
+            reverse=True
+        )
+
+        return sorted_items[:top_k]
+
+    def _rrf_fusion(
+        self,
+        text_results: List[Dict],
+        image_results: List[Dict],
+        top_k: int,
+        k: int = 60
+    ) -> List[Dict]:
+        """RRF融合"""
+        all_items = {}
+
+        # 文本结果排名
+        for rank, item in enumerate(text_results, 1):
+            item_id = item.get('id', f"text_{rank}")
+            if item_id not in all_items:
+                all_items[item_id] = item
+                all_items[item_id]['rrf_score'] = 0.0
+            all_items[item_id]['rrf_score'] += 1.0 / (k + rank)
+
+        # 图像结果排名
+        for rank, item in enumerate(image_results, 1):
+            item_id = item.get('id', f"image_{rank}")
+            if item_id not in all_items:
+                all_items[item_id] = item
+                all_items[item_id]['rrf_score'] = 0.0
+            all_items[item_id]['rrf_score'] += 1.0 / (k + rank)
+
+        # 排序
+        sorted_items = sorted(
+            all_items.values(),
+            key=lambda x: x['rrf_score'],
+            reverse=True
+        )
+
+        return sorted_items[:top_k]
+
+    def _simple_merge(
+        self,
+        text_results: List[Dict],
+        image_results: List[Dict],
+        top_k: int
+    ) -> List[Dict]:
+        """简单合并"""
+        merged = text_results + image_results
+        # 去重
+        seen = set()
+        unique = []
+        for item in merged:
+            item_id = item.get('id', hash(item.get('content', '')))
+            if item_id not in seen:
+                seen.add(item_id)
+                unique.append(item)
+
+        # 按分数排序
+        sorted_items = sorted(unique, key=lambda x: x.get('score', 0), reverse=True)
+        return sorted_items[:top_k]
+```
 
 ---
 
@@ -2343,7 +2926,10 @@ class FeedbackLoop:
   - 多阶段检索系统
   - Cross-Encoder重排序
   - Self-RAG架构
+  - Agentic RAG
+  - 多模态RAG
+  - RAG评估体系
 
 ---
 
-**下一步**: 补充Agentic RAG、多模态RAG和评估体系章节 | [返回目录](./README.md)
+**状态**: ✅ **文档完成** | [返回目录](./README.md)
