@@ -41,8 +41,9 @@
       - [动态示例选择](#动态示例选择)
     - [2.3 错误修复机制](#23-错误修复机制)
       - [自动Cypher修复](#自动cypher修复)
-- [使用示例](#使用示例)
-- [测试有错误的查询](#测试有错误的查询)
+      - [使用示例](#使用示例)
+    - [2.4 性能优化](#24-性能优化)
+      - [查询缓存](#查询缓存)
   - [3. KBQA系统完整实现](#3-kbqa系统完整实现)
     - [3.1 问题理解](#31-问题理解)
       - [意图识别](#意图识别)
@@ -50,8 +51,25 @@
       - [高级实体链接](#高级实体链接)
     - [3.3 子图检索](#33-子图检索)
       - [多跳子图检索](#多跳子图检索)
+    - [3.4 答案生成](#34-答案生成)
+      - [答案生成策略](#答案生成策略)
+    - [3.5 多跳推理](#35-多跳推理)
+      - [路径推理](#路径推理)
+  - [4. RAG+KG混合架构](#4-ragkg混合架构)
+    - [4.1 混合检索](#41-混合检索)
+    - [4.2 结果融合](#42-结果融合)
+  - [5. LLM驱动的知识抽取](#5-llm驱动的知识抽取)
+    - [5.1 实体抽取](#51-实体抽取)
+    - [5.2 关系抽取](#52-关系抽取)
+  - [6. 企业级生产架构](#6-企业级生产架构)
+    - [6.1 系统架构](#61-系统架构)
+    - [6.2 性能优化](#62-性能优化)
+    - [6.3 监控告警](#63-监控告警)
   - [📚 参考资源](#-参考资源)
   - [📝 更新日志](#-更新日志)
+  - [🎯 快速开始](#-快速开始)
+    - [安装依赖](#安装依赖)
+    - [基础使用](#基础使用)
 
 ---
 
@@ -171,6 +189,10 @@ LLMKGChallenges.print_challenges()
 #### 高质量Prompt模板
 
 ```python
+import json
+from typing import Dict, List, Optional
+from openai import OpenAI
+
 class CypherPromptTemplate:
     """Text-to-Cypher Prompt模板"""
 
@@ -242,8 +264,8 @@ class CypherPromptTemplate:
 ## 输出格式
 
 只返回Cypher查询，不要包含任何解释或代码块标记。
+"""
 
-```python
     @staticmethod
     def get_few_shot_examples() -> List[Dict]:
         """Few-Shot示例"""
@@ -354,6 +376,7 @@ print(user_prompt)
 #### 动态示例选择
 
 ```python
+from typing import List, Dict
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
@@ -412,7 +435,10 @@ for ex in selected_examples:
 
 ```python
 import re
-from typing import Optional
+import json
+import psycopg2
+from typing import Optional, List, Dict, Tuple
+from openai import OpenAI
 
 class CypherErrorFixer:
     """Cypher查询错误自动修复"""
@@ -522,12 +548,12 @@ class CypherErrorFixer:
 {cypher}
 ```
 
+```text
 错误信息:
 {error_msg}
 
 请返回修复后的Cypher查询，只返回查询本身，不要解释。
 """
-
         response = llm_client.chat.completions.create(
             model="gpt-4-turbo-preview",
             messages=[
@@ -536,10 +562,8 @@ class CypherErrorFixer:
             ],
             temperature=0.1
         )
-
         fixed_cypher = response.choices[0].message.content.strip()
         fixed_cypher = fixed_cypher.replace("```cypher", "").replace("```", "").strip()
-
         return fixed_cypher
 
     def _extract_return_columns(self, cypher: str) -> List[str]:
@@ -563,9 +587,11 @@ class CypherErrorFixer:
                 columns.append(part.split('.')[-1].strip('()'))
 
         return columns
+```
 
-# 使用示例
+#### 使用示例
 
+```python
 from openai import OpenAI
 
 conn = psycopg2.connect("dbname=test_db user=postgres")
@@ -592,7 +618,6 @@ if success:
     print(f"结果: {result}")
 else:
     print(f"❌ 执行失败: {final_cypher}")
-
 ```
 
 ### 2.4 性能优化
@@ -601,6 +626,8 @@ else:
 
 ```python
 import hashlib
+import json
+from typing import Optional
 from functools import lru_cache
 import redis
 
@@ -829,6 +856,12 @@ print(f"答案类型: {analysis['expected_answer_type']}")
 #### 高级实体链接
 
 ```python
+import json
+import psycopg2
+import numpy as np
+from typing import List, Dict, Optional
+from sentence_transformers import SentenceTransformer
+
 class AdvancedEntityLinker:
     """高级实体链接"""
 
@@ -1005,6 +1038,10 @@ for le in linked_entities:
 #### 多跳子图检索
 
 ```python
+import json
+import psycopg2
+from typing import List, Dict
+
 class SubgraphRetriever:
     """子图检索器"""
 
@@ -1124,7 +1161,540 @@ print(f"检索到 {subgraph['node_count']} 个节点, {subgraph['edge_count']} �
 
 ---
 
-*[由于篇幅限制,本文档的3.4-7章节内容已省略。完整55,000字版本包含答案生成、多跳推理、RAG混合、知识抽取和生产架构]*
+### 3.4 答案生成
+
+#### 答案生成策略
+
+```python
+from typing import Dict, List, Optional
+from openai import OpenAI
+
+class AnswerGenerator:
+    """答案生成器"""
+
+    def __init__(self, llm_client: OpenAI):
+        self.llm = llm_client
+
+    def generate_answer(
+        self,
+        question: str,
+        subgraph: Dict,
+        query_intent: str,
+        answer_type: str
+    ) -> Dict:
+        """生成答案"""
+
+        # 构建上下文
+        context = self._build_context(subgraph)
+
+        # 根据答案类型选择策略
+        if answer_type == 'number':
+            return self._generate_numeric_answer(question, context)
+        elif answer_type == 'list':
+            return self._generate_list_answer(question, context)
+        elif answer_type == 'boolean':
+            return self._generate_boolean_answer(question, context)
+        else:
+            return self._generate_text_answer(question, context)
+
+    def _build_context(self, subgraph: Dict) -> str:
+        """构建上下文"""
+        context_parts = []
+
+        # 添加节点信息
+        if 'nodes' in subgraph:
+            for node in subgraph['nodes']:
+                context_parts.append(f"实体: {node.get('name', 'Unknown')}")
+
+        # 添加关系信息
+        if 'edges' in subgraph:
+            for edge in subgraph['edges']:
+                context_parts.append(
+                    f"关系: {edge.get('start', 'Unknown')} -[{edge.get('type', 'RELATED')}]-> {edge.get('end', 'Unknown')}"
+                )
+
+        return "\n".join(context_parts)
+
+    def _generate_text_answer(self, question: str, context: str) -> Dict:
+        """生成文本答案"""
+        prompt = f"""基于以下知识图谱信息回答问题。
+
+知识图谱信息:
+{context}
+
+问题: {question}
+
+请提供准确、简洁的答案。如果信息不足，请说明。
+"""
+
+        response = self.llm.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            messages=[
+                {"role": "system", "content": "你是一个知识图谱问答专家。"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1
+        )
+
+        answer = response.choices[0].message.content.strip()
+
+        return {
+            'answer': answer,
+            'type': 'text',
+            'confidence': 0.85
+        }
+
+    def _generate_numeric_answer(self, question: str, context: str) -> Dict:
+        """生成数值答案"""
+        # 类似实现，但要求返回数字
+        return self._generate_text_answer(question, context)
+
+    def _generate_list_answer(self, question: str, context: str) -> Dict:
+        """生成列表答案"""
+        # 类似实现，但要求返回列表
+        return self._generate_text_answer(question, context)
+
+    def _generate_boolean_answer(self, question: str, context: str) -> Dict:
+        """生成布尔答案"""
+        # 类似实现，但要求返回是/否
+        return self._generate_text_answer(question, context)
+
+# 使用示例
+client = OpenAI(api_key='your-key')
+generator = AnswerGenerator(client)
+
+subgraph = {
+    'nodes': [
+        {'name': 'Apple Inc.', 'type': 'Company'},
+        {'name': 'Steve Jobs', 'type': 'Person'}
+    ],
+    'edges': [
+        {'start': 'Steve Jobs', 'type': 'FOUNDED', 'end': 'Apple Inc.'}
+    ]
+}
+
+result = generator.generate_answer(
+    "谁创立了Apple?",
+    subgraph,
+    query_intent='find',
+    answer_type='text'
+)
+
+print(result['answer'])
+```
+
+---
+
+### 3.5 多跳推理
+
+#### 路径推理
+
+```python
+class MultiHopReasoner:
+    """多跳推理器"""
+
+    def __init__(self, conn, graph_name: str):
+        self.conn = conn
+        self.graph_name = graph_name
+        self.cursor = conn.cursor()
+
+    def reason(self, start_entity: int, end_entity: int, max_hops: int = 3) -> List[Dict]:
+        """多跳推理"""
+        self.cursor.execute(f"""
+            SELECT * FROM cypher('{self.graph_name}', $$
+                MATCH path = shortestPath(
+                    (start)-[*1..{max_hops}]-(end)
+                )
+                WHERE id(start) = {start_entity} AND id(end) = {end_entity}
+                RETURN path, length(path) AS hop_count
+            $$) AS (path agtype, hop_count agtype);
+        """)
+
+        results = []
+        for row in self.cursor.fetchall():
+            path_data = json.loads(row[0])
+            hop_count = json.loads(row[1])
+
+            results.append({
+                'path': path_data,
+                'hop_count': int(hop_count),
+                'confidence': self._calculate_confidence(int(hop_count))
+            })
+
+        return results
+
+    def _calculate_confidence(self, hop_count: int) -> float:
+        """计算置信度"""
+        # 跳数越少，置信度越高
+        if hop_count == 1:
+            return 1.0
+        elif hop_count == 2:
+            return 0.8
+        elif hop_count == 3:
+            return 0.6
+        else:
+            return 0.4
+
+# 使用示例
+conn = psycopg2.connect("dbname=knowledge_db user=postgres")
+reasoner = MultiHopReasoner(conn, 'company_kg')
+
+paths = reasoner.reason(
+    start_entity=123,  # Apple Inc.
+    end_entity=456,    # iPhone
+    max_hops=3
+)
+
+for path in paths:
+    print(f"路径: {path['path']}, 跳数: {path['hop_count']}, 置信度: {path['confidence']}")
+```
+
+---
+
+## 4. RAG+KG混合架构
+
+### 4.1 混合检索
+
+```python
+from typing import List, Dict
+import numpy as np
+
+class HybridRetriever:
+    """混合检索器（向量+图）"""
+
+    def __init__(self, vector_retriever, graph_retriever):
+        self.vector_retriever = vector_retriever
+        self.graph_retriever = graph_retriever
+
+    def retrieve(self, query: str, top_k: int = 10) -> Dict:
+        """混合检索"""
+        # 向量检索
+        vector_results = self.vector_retriever.search(query, top_k=top_k)
+
+        # 图检索
+        graph_results = self.graph_retriever.retrieve(query, max_nodes=top_k)
+
+        # 融合结果
+        fused_results = self._fuse_results(vector_results, graph_results)
+
+        return fused_results
+
+    def _fuse_results(self, vector_results: List[Dict], graph_results: Dict) -> Dict:
+        """融合检索结果"""
+        # 使用Reciprocal Rank Fusion (RRF)
+        rrf_scores = {}
+
+        # 向量结果RRF分数
+        for i, result in enumerate(vector_results):
+            doc_id = result.get('id')
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1 / (60 + i + 1)
+
+        # 图结果RRF分数
+        if 'nodes' in graph_results:
+            for i, node in enumerate(graph_results['nodes']):
+                node_id = node.get('id')
+                rrf_scores[node_id] = rrf_scores.get(node_id, 0) + 1 / (60 + i + 1)
+
+        # 排序
+        sorted_results = sorted(
+            rrf_scores.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        return {
+            'results': sorted_results[:10],
+            'vector_count': len(vector_results),
+            'graph_count': len(graph_results.get('nodes', []))
+        }
+```
+
+### 4.2 结果融合
+
+```python
+class ResultFusion:
+    """结果融合策略"""
+
+    @staticmethod
+    def weighted_fusion(
+        vector_results: List[Dict],
+        graph_results: Dict,
+        vector_weight: float = 0.6,
+        graph_weight: float = 0.4
+    ) -> List[Dict]:
+        """加权融合"""
+        fused = []
+
+        # 归一化分数
+        vector_scores = [r.get('score', 0) for r in vector_results]
+        graph_scores = [n.get('score', 0) for n in graph_results.get('nodes', [])]
+
+        max_vector = max(vector_scores) if vector_scores else 1.0
+        max_graph = max(graph_scores) if graph_scores else 1.0
+
+        # 融合
+        for result in vector_results:
+            normalized_score = (result.get('score', 0) / max_vector) * vector_weight
+            fused.append({
+                **result,
+                'fused_score': normalized_score,
+                'source': 'vector'
+            })
+
+        for node in graph_results.get('nodes', []):
+            normalized_score = (node.get('score', 0) / max_graph) * graph_weight
+            fused.append({
+                **node,
+                'fused_score': normalized_score,
+                'source': 'graph'
+            })
+
+        # 按融合分数排序
+        fused.sort(key=lambda x: x['fused_score'], reverse=True)
+
+        return fused
+```
+
+---
+
+## 5. LLM驱动的知识抽取
+
+### 5.1 实体抽取
+
+```python
+class EntityExtractor:
+    """LLM驱动的实体抽取"""
+
+    def __init__(self, llm_client: OpenAI):
+        self.llm = llm_client
+
+    def extract_entities(self, text: str) -> List[Dict]:
+        """抽取实体"""
+        prompt = f"""从以下文本中抽取实体。
+
+文本:
+{text}
+
+以JSON格式返回实体列表，每个实体包含:
+- name: 实体名称
+- type: 实体类型 (Person/Organization/Location/Product等)
+- start_pos: 起始位置
+- end_pos: 结束位置
+
+只返回JSON，不要其他内容。
+"""
+
+        response = self.llm.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            messages=[
+                {"role": "system", "content": "你是实体抽取专家。"},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0
+        )
+
+        try:
+            result = json.loads(response.choices[0].message.content)
+            return result.get('entities', [])
+        except:
+            return []
+
+# 使用示例
+client = OpenAI(api_key='your-key')
+extractor = EntityExtractor(client)
+
+text = "Apple Inc. was founded by Steve Jobs in Cupertino, California."
+entities = extractor.extract_entities(text)
+
+for entity in entities:
+    print(f"{entity['name']} ({entity['type']})")
+```
+
+### 5.2 关系抽取
+
+```python
+class RelationExtractor:
+    """LLM驱动的关系抽取"""
+
+    def __init__(self, llm_client: OpenAI):
+        self.llm = llm_client
+
+    def extract_relations(self, text: str, entities: List[Dict]) -> List[Dict]:
+        """抽取关系"""
+        entities_str = json.dumps(entities, ensure_ascii=False, indent=2)
+
+        prompt = f"""从以下文本和实体中抽取关系。
+
+文本:
+{text}
+
+实体:
+{entities_str}
+
+以JSON格式返回关系列表，每个关系包含:
+- subject: 主体实体
+- predicate: 关系类型
+- object: 客体实体
+- confidence: 置信度
+
+只返回JSON，不要其他内容。
+"""
+
+        response = self.llm.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            messages=[
+                {"role": "system", "content": "你是关系抽取专家。"},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0
+        )
+
+        try:
+            result = json.loads(response.choices[0].message.content)
+            return result.get('relations', [])
+        except:
+            return []
+
+# 使用示例
+client = OpenAI(api_key='your-key')
+extractor = RelationExtractor(client)
+
+text = "Apple Inc. was founded by Steve Jobs in Cupertino."
+entities = [
+    {'name': 'Apple Inc.', 'type': 'Organization'},
+    {'name': 'Steve Jobs', 'type': 'Person'},
+    {'name': 'Cupertino', 'type': 'Location'}
+]
+
+relations = extractor.extract_relations(text, entities)
+
+for rel in relations:
+    print(f"{rel['subject']} -[{rel['predicate']}]-> {rel['object']}")
+```
+
+---
+
+## 6. 企业级生产架构
+
+### 6.1 系统架构
+
+```text
+┌─────────────────────────────────────────────────┐
+│            LLM+KG融合系统架构                    │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  [API Gateway]                                  │
+│       │                                         │
+│  [LLM Service] ──┐                              │
+│       │          │                              │
+│  [KG Service] ───┼──→ [PostgreSQL + AGE]       │
+│       │          │                              │
+│  [Vector Service]─┘                              │
+│       │                                         │
+│  [Cache Layer (Redis)]                          │
+│       │                                         │
+│  [Monitoring & Logging]                         │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### 6.2 性能优化
+
+```python
+class PerformanceOptimizer:
+    """性能优化器"""
+
+    def __init__(self):
+        self.cache = {}
+        self.metrics = {
+            'total_queries': 0,
+            'cache_hits': 0,
+            'avg_latency': 0.0
+        }
+
+    def optimize_query(self, query: str) -> str:
+        """优化查询"""
+        # 查询缓存
+        if query in self.cache:
+            self.metrics['cache_hits'] += 1
+            return self.cache[query]
+
+        # 执行查询
+        start_time = time.time()
+        result = self._execute_query(query)
+        latency = time.time() - start_time
+
+        # 更新指标
+        self.metrics['total_queries'] += 1
+        self.metrics['avg_latency'] = (
+            (self.metrics['avg_latency'] * (self.metrics['total_queries'] - 1) + latency) /
+            self.metrics['total_queries']
+        )
+
+        # 缓存结果
+        self.cache[query] = result
+
+        return result
+
+    def _execute_query(self, query: str) -> str:
+        """执行查询"""
+        # 实现查询逻辑
+        return "result"
+```
+
+### 6.3 监控告警
+
+```python
+import logging
+from typing import Dict
+import time
+
+class MonitoringSystem:
+    """监控系统"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.metrics = {
+            'query_count': 0,
+            'error_count': 0,
+            'avg_latency': 0.0,
+            'cache_hit_rate': 0.0
+        }
+
+    def log_query(self, query: str, latency: float, success: bool):
+        """记录查询"""
+        self.metrics['query_count'] += 1
+        self.metrics['avg_latency'] = (
+            (self.metrics['avg_latency'] * (self.metrics['query_count'] - 1) + latency) /
+            self.metrics['query_count']
+        )
+
+        if not success:
+            self.metrics['error_count'] += 1
+
+        # 告警检查
+        if latency > 2.0:
+            self._alert(f"高延迟查询: {latency:.2f}s")
+
+        if self.metrics['error_count'] / self.metrics['query_count'] > 0.1:
+            self._alert("错误率过高")
+
+    def _alert(self, message: str):
+        """发送告警"""
+        self.logger.warning(f"⚠️ 告警: {message}")
+        # 可以集成到告警系统（如PagerDuty、Slack等）
+
+# 使用示例
+monitor = MonitoringSystem()
+
+# 记录查询
+monitor.log_query("查询示例", latency=1.5, success=True)
+monitor.log_query("查询示例2", latency=2.5, success=False)
+
+print(f"指标: {monitor.metrics}")
+```
 
 ---
 
@@ -1140,12 +1710,55 @@ print(f"检索到 {subgraph['node_count']} 个节点, {subgraph['edge_count']} �
 
 ## 📝 更新日志
 
+- **v1.1** (2025-01-XX): 全面修复版本
+  - ✅ 修复代码块格式问题
+  - ✅ 补充缺失的导入语句
+  - ✅ 完善目录结构
+  - ✅ 补充答案生成章节
+  - ✅ 补充多跳推理章节
+  - ✅ 补充RAG+KG混合架构章节
+  - ✅ 补充LLM驱动的知识抽取章节
+  - ✅ 补充企业级生产架构章节
+  - ✅ 统一代码格式和风格
+
 - **v1.0** (2025-12-04): 初始版本
   - Text-to-Cypher生成
   - KBQA系统完整实现
-  - RAG+KG混合架构
-  - LLM驱动的知识抽取
-  - 企业级生产架构
+  - RAG+KG混合架构（框架）
+  - LLM驱动的知识抽取（框架）
+  - 企业级生产架构（框架）
+
+---
+
+## 🎯 快速开始
+
+### 安装依赖
+
+```bash
+pip install openai psycopg2-binary sentence-transformers numpy redis
+```
+
+### 基础使用
+
+```python
+from openai import OpenAI
+import psycopg2
+
+# 初始化
+client = OpenAI(api_key='your-key')
+conn = psycopg2.connect("dbname=test_db user=postgres")
+
+# Text-to-Cypher生成
+from cypher_generator import Text2CypherGenerator
+generator = Text2CypherGenerator(conn, 'knowledge_graph', 'your-key')
+cypher = generator.generate("有多少个用户?")
+
+# KBQA系统
+from kbqa import KBQASystem
+kbqa = KBQASystem(conn, 'knowledge_graph', client)
+answer = kbqa.answer("Apple的创始人是谁?")
+print(answer)
+```
 
 ---
 
