@@ -283,7 +283,7 @@ enable_builtin_connection_pooling = on
 
 **CAP结果**: CP系统，A从70% → 99.9%
 
-**参考**: [电商秒杀案例](../../../../DataBaseTheory/19-场景案例库/01-电商秒杀系统/README.md)
+**参考**: [实战案例](../../../../19-实战案例/README.md) - 电商秒杀系统案例
 
 ---
 

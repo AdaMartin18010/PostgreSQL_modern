@@ -12,7 +12,7 @@
 > **主题**: MVCC从并发控制到分布式事务基石的演化分析
 > **版本**: PostgreSQL 17 & 18
 > **状态**: ✅ 已完成
-> **关联文档**: [mvcc-cap-acid.md](../../view/mvcc-cap-acid.md)
+> **关联文档**: [MVCC-ACID-CAP统一框架](./MVCC-ACID-CAP统一框架.md)
 
 ---
 
@@ -203,7 +203,7 @@ universal(version_management_design_principle)
 
 ## 🔗 相关文档
 
-- [MVCC、ACID、CAP结构同构性深度探析](../../view/mvcc-cap-acid.md) - CAP-002
+- [MVCC-ACID-CAP统一框架](./MVCC-ACID-CAP统一框架.md) - MVCC、ACID、CAP结构同构性深度探析
 - [概念演化视角-一致性概念演进](概念演化视角-一致性概念演进.md) - CAP-ARG-006
 - [概念演化视角-ACID到BASE演进](概念演化视角-ACID到BASE演进.md) - CAP-ARG-007
 - [MVCC-ACID-CAP统一框架](MVCC-ACID-CAP统一框架.md)

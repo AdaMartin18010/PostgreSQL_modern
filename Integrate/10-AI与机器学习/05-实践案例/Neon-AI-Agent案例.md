@@ -371,7 +371,7 @@ SELECT cron.schedule(
 
 ## 八、关联主题
 
-- [Serverless与分支](../03-Serverless与分支/) - 技术原理
+- [云原生与容器化](../../../14-云原生与容器化/README.md) - Serverless相关
 - [AI Agent数据支撑](../04-应用场景/AI-Agent数据支撑.md) - 应用场景
 - [实施路径](../07-实施路径/) - 部署方案
 

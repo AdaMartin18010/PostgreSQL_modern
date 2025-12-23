@@ -556,7 +556,7 @@ FROM fused_data;
 
 ### 8.1 常见问题
 
-**问题1：扩展无法加载**
+**问题1：扩展无法加载**:
 
 ```sql
 -- 检查扩展状态
@@ -570,7 +570,7 @@ DROP EXTENSION IF EXISTS provsql;
 CREATE EXTENSION provsql;
 ```
 
-**问题2：溯源查询性能慢**
+**问题2：溯源查询性能慢**:
 
 ```sql
 -- 检查溯源缓存状态
@@ -582,7 +582,7 @@ ALTER SYSTEM SET provsql.cache_enabled = true;
 SELECT pg_reload_conf();
 ```
 
-**问题3：概率计算不准确**
+**问题3：概率计算不准确**:
 
 ```sql
 -- 检查概率精度设置

@@ -368,14 +368,14 @@ P: +25%（分区容错改善）
 ### MVCC-ACID-CAP项目
 
 - [PostgreSQL 18完整特性分析](./pg18-完整特性分析.md)
-- [PostgreSQL 18定理证明](../../04-形式化论证/形式化证明/PostgreSQL18定理证明.md)
-- [PostgreSQL 18性能模型](../../04-形式化论证/性能模型/PostgreSQL18性能模型.md)
+- [形式化方法](../../../25-理论体系/25.01-形式化方法/README.md) - 形式化证明相关
+- [性能调优](../../../30-性能调优/README.md) - 性能模型相关
 
 ### DataBaseTheory项目
 
-- [PostgreSQL 18新特性完整分析](../../../../DataBaseTheory/01-形式化方法与基础理论/01.07-PostgreSQL18新特性完整分析.md)
-- [迁移指南](../../../../DataBaseTheory/00-总览/PostgreSQL18迁移指南-2025-12-04.md)
-- [性能基准测试](../../../../DataBaseTheory/23-性能基准测试/README.md)
+- [PostgreSQL 18新特性](../../../../18-版本特性/02.01-PostgreSQL-18-新特性.md) - PostgreSQL 18新特性完整分析
+- [版本对比与迁移指南](../../../../18-版本特性/02.03-版本对比与迁移指南.md) - 迁移指南
+- [性能调优](../../../../30-性能调优/README.md) - 性能基准测试
 
 ---
 

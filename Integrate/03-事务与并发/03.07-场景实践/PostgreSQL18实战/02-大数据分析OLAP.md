@@ -268,4 +268,4 @@ autovacuum_max_workers = 8
 ---
 
 **文档完成** ✅
-**参考案例**: [OLAP分析系统](../../../DataBaseTheory/19-场景案例库/02-OLAP分析系统/README.md)
+**参考案例**: [实战案例](../../../../19-实战案例/README.md) - OLAP分析系统案例

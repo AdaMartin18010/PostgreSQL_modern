@@ -12,7 +12,7 @@
 > **主题**: 从ACID到BASE的理论适应性演进分析
 > **版本**: PostgreSQL 17 & 18
 > **状态**: ✅ 已完成
-> **关联文档**: [mvcc-cap-acid.md](../../view/mvcc-cap-acid.md)
+> **关联文档**: [MVCC-ACID-CAP统一框架](./MVCC-ACID-CAP统一框架.md)
 
 ---
 
@@ -199,7 +199,7 @@ Theory_Evolution ⟹ adapt_to(Practice_Environment)
 
 ## 🔗 相关文档
 
-- [MVCC、ACID、CAP结构同构性深度探析](../../view/mvcc-cap-acid.md) - CAP-002
+- [MVCC-ACID-CAP统一框架](./MVCC-ACID-CAP统一框架.md) - MVCC、ACID、CAP结构同构性深度探析
 - [概念演化视角-一致性概念演进](概念演化视角-一致性概念演进.md) - CAP-ARG-006
 - [BASE理论详解](../../01-理论基础/CAP理论/BASE理论详解.md)
 - [MVCC-ACID-CAP统一框架](MVCC-ACID-CAP统一框架.md)

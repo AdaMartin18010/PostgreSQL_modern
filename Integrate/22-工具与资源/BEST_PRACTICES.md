@@ -405,7 +405,7 @@ docker-compose up -d
 - **快速开始**: [QUICK_START.md](./QUICK_START.md)
 - **报告模板**: [REPORT_TEMPLATE.md](./REPORT_TEMPLATE.md)
 - **工具说明**: [tools/README.md](./tools/README.md)
-- **性能调优**: [../04-部署运维/04.06-性能调优实践.md](../04-部署运维/04.06-性能调优实践.md)
+- **性能调优**: [性能调优实践](../11-部署架构/单机部署/05.02-性能调优实践.md)
 
 ---
 

@@ -243,7 +243,7 @@ CREATE POLICY slow_policy
 
 #### 优化方案
 
-**方案1：使用JOIN代替子查询**
+**方案1：使用JOIN代替子查询**:
 
 ```sql
 CREATE POLICY optimized_policy
@@ -261,7 +261,7 @@ CREATE POLICY optimized_policy
 CREATE INDEX idx_user_permissions ON user_permissions(user_id, resource_id);
 ```
 
-**方案2：使用物化视图缓存权限**
+**方案2：使用物化视图缓存权限**:
 
 ```sql
 -- 创建权限缓存
@@ -288,7 +288,7 @@ CREATE POLICY cached_policy
     );
 ```
 
-**方案3：使用Security Barrier Views**
+**方案3：使用Security Barrier Views**:
 
 ```sql
 CREATE VIEW user_documents
@@ -430,7 +430,7 @@ ALTER TABLE sensitive_data SET (pgaudit.log = 'read, write');
 
 **审计日志示例**：
 
-```
+```text
 2025-01-01 10:00:00 UTC [12345]: [1-1] user=alice,db=mydb LOG:  AUDIT: SESSION,1,1,READ,SELECT,,,
     "SELECT * FROM sensitive_data WHERE id = 1",<not logged>
 2025-01-01 10:00:05 UTC [12346]: [1-1] user=bob,db=mydb LOG:  AUDIT: SESSION,2,1,WRITE,UPDATE,,,

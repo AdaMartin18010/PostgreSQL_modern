@@ -1362,9 +1362,9 @@ SELECT jsonb_path_query(data, '$.users[*].name') FROM documents;
 
 #### 9.1.6 相关文档
 
-- [数组与JSONB高级应用](../03-数据类型/数组与JSONB高级应用.md)
+- [多模型数据库](../../../07-多模型数据库/README.md) - JSONB相关
 - [JSONB索引优化](./JSONB索引优化.md)
-- [数据类型详解](../03-数据类型/数据类型详解.md)
+- [核心基础](../../../01-核心基础/README.md) - 数据类型相关
 - [PostgreSQL 17新特性总览](./README.md)
 
 ---

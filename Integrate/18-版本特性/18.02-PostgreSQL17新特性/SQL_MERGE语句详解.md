@@ -867,8 +867,8 @@ PostgreSQL 17 的 MERGE 语句为数据合并操作提供了强大而标准化�
 
 ### 9.6 相关文档
 
-- [SQL基础培训](../01-SQL基础/SQL基础培训.md)
-- [查询优化体系详解](../01-SQL基础/查询优化体系详解.md)
+- [SQL语言](../../../01-核心基础/01.04-SQL语言/01.03-SQL语言规范与标准.md)
+- [查询与优化](../../../02-查询与优化/README.md) - 查询优化体系
 - [PostgreSQL 17新特性总览](./README.md)
 
 - **[2ndQuadrant - PostgreSQL 17 MERGE](https://www.2ndquadrant.com/en/blog/postgresql-17-merge-statement/)**

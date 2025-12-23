@@ -408,7 +408,7 @@ comparison = manager.compare_experiments(['v1-docs', 'v2-docs'], test_queries)
 
 - [RAG 架构设计](./RAG架构设计.md)
 - [数据版本控制策略](./数据版本控制策略.md)
-- [LangChain 集成](../../07-技术堆栈/开发工具链/LangChain集成.md)
+- [LangChain 集成实践](./LangChain集成实践.md)
 
 ---
 

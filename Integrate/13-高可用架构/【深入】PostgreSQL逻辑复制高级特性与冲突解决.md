@@ -294,7 +294,7 @@ SHOW log_directory;
 
 ### 3.3 冲突解决策略
 
-**策略1：跳过冲突（适用于可容忍数据丢失）**
+**策略1：跳过冲突（适用于可容忍数据丢失）**:
 
 ```sql
 -- PostgreSQL 15+
@@ -305,7 +305,7 @@ ALTER SUBSCRIPTION my_sub SET (disable_on_error = false);
 -- 需要在日志中查看
 ```
 
-**策略2：手动解决冲突**
+**策略2：手动解决冲突**:
 
 ```sql
 -- 步骤1：查看冲突详情（从日志）
@@ -326,7 +326,7 @@ DELETE FROM users WHERE user_id = 123;  -- 然后复制会重新INSERT
 ALTER SUBSCRIPTION my_sub ENABLE;
 ```
 
-**策略3：使用触发器处理冲突**
+**策略3：使用触发器处理冲突**:
 
 ```sql
 -- 在订阅端创建冲突解决触发器
@@ -357,7 +357,7 @@ CREATE RULE users_insert_conflict AS
         WHERE user_id = NEW.user_id;
 ```
 
-**策略4：时间戳冲突解决（Last-Write-Wins）**
+**策略4：时间戳冲突解决（Last-Write-Wins）**:
 
 ```sql
 -- 表结构（添加时间戳列）
@@ -467,7 +467,7 @@ CREATE TRIGGER bidirectional_trigger
     EXECUTE FUNCTION bidirectional_lww_trigger();
 ```
 
-**方案2：使用pglogical扩展（推荐）**
+**方案2：使用pglogical扩展（推荐）**:
 
 ```bash
 # 安装pglogical

@@ -33,7 +33,7 @@
 
 ### CAP核心理论
 
-- [MVCC、ACID、CAP结构同构性多视角论证](../../view/mvcc_view.md) ⭐ 核心文档
+- [MVCC-ACID-CAP统一框架](../../15-分布式系统/MVCC-ACID-CAP统一框架.md) ⭐ 核心文档
 - [CAP定理完整定义与证明](CAP定理完整定义与证明.md) ⭐ 基础理论
 - [CAP定理的批判性分析](CAP定理的批判性分析.md) ⭐ 批判分析
 - [PACELC定理详解](PACELC定理详解.md) ⭐ 扩展理论
@@ -82,9 +82,8 @@
 
 ## 🔗 相关文档
 
-- [MVCC双视角认知体系](../../view/mvcc00.md)
-- [MVCC-ACID关联性全景论证](../../view/mvcc04.md)
-- [PostgreSQL MVCC与Rust并发模型同构性论证](../../view/postgresql_rust.md)
+- [MVCC高级分析与形式证明](../../03-事务与并发/03.01-MVCC高级分析与形式证明.md)
+- [同构性公理](../../03-事务与并发/公理系统/同构性公理.md)
 
 ---
 
