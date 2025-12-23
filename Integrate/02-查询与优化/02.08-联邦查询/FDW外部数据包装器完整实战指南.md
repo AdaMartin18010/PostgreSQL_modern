@@ -70,7 +70,7 @@
 #### 核心特性
 
 | 特性 | 说明 | 价值 |
-|------|------|------|
+| --- | --- | --- |
 | **异构数据访问** | 访问MySQL、MongoDB等 | 数据整合 |
 | **SQL统一查询** | 标准SQL查询外部数据 | 学习成本低 |
 | **透明集成** | 外部表如本地表 | 无需应用层改造 |
@@ -471,7 +471,7 @@ SELECT * FROM github_users LIMIT 10;
 ### 7.3 其他FDW扩展
 
 | FDW | 数据源 | 用途 |
-|-----|--------|------|
+| --- | --- | --- |
 | **oracle_fdw** | Oracle | Oracle集成 |
 | **tds_fdw** | SQL Server | SQL Server集成 |
 | **sqlite_fdw** | SQLite | SQLite集成 |
