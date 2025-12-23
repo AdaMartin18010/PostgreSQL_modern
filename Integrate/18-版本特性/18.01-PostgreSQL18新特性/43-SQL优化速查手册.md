@@ -577,6 +577,7 @@ amount TEXT  -- '99.99'
 
 -- ✅ 正确类型
 amount NUMERIC(10, 2)  -- 数值类型
+
 ```
 
 ---

@@ -705,7 +705,7 @@ ALTER COLUMN text_data SET STORAGE EXTENDED;
 -- 使用EXTENDED存储策略，启用TOAST压缩
 ```
 
-2. **优化压缩算法**：
+1. **优化压缩算法**：
 
 ```sql
 -- ✅ 好：优化压缩算法
@@ -713,7 +713,7 @@ ALTER COLUMN text_data SET STORAGE EXTENDED;
 -- 无需手动配置
 ```
 
-3. **监控TOAST大小**：
+1. **监控TOAST大小**：
 
 ```sql
 -- ✅ 好：监控TOAST大小
