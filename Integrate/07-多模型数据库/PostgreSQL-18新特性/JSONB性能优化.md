@@ -122,11 +122,51 @@ JSONB 性能优化是 PostgreSQL 18 的重要改进，通过存储、索引和�
 **压缩策略**:
 
 ```sql
--- 启用 JSONB 压缩
-ALTER TABLE jsonb_table
+-- 启用 JSONB 压缩（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsonb_table') THEN
+        RAISE EXCEPTION '表jsonb_table不存在，请先创建';
+    END IF;
+
+    ALTER TABLE jsonb_table
     SET (jsonb_compression = 'lz4');
 
--- 检查压缩效果
+    RAISE NOTICE 'JSONB压缩已启用: lz4';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表jsonb_table不存在';
+    WHEN invalid_parameter_value THEN
+        RAISE EXCEPTION '压缩算法无效，支持: lz4, pglz';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '启用压缩失败: %', SQLERRM;
+END $$;
+
+-- 检查压缩效果（带性能测试）
+DO $$
+DECLARE
+    total_size TEXT;
+    table_size TEXT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsonb_table') THEN
+        RAISE WARNING '表jsonb_table不存在';
+        RETURN;
+    END IF;
+
+    SELECT
+        pg_size_pretty(pg_total_relation_size('jsonb_table')),
+        pg_size_pretty(pg_relation_size('jsonb_table'))
+    INTO total_size, table_size;
+
+    RAISE NOTICE '总大小: %, 表大小: %', total_size, table_size;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表jsonb_table不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '检查压缩效果失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg_size_pretty(pg_total_relation_size('jsonb_table')) AS total_size,
     pg_size_pretty(pg_relation_size('jsonb_table')) AS table_size;
@@ -146,22 +186,69 @@ SELECT
 **1. GIN 索引优化**:
 
 ```sql
--- 标准 GIN 索引（支持所有 JSONB 操作符）
-CREATE INDEX idx_jsonb_gin ON jsonb_table USING GIN (data);
+-- 标准 GIN 索引（支持所有 JSONB 操作符，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsonb_table') THEN
+        RAISE EXCEPTION '表jsonb_table不存在，请先创建';
+    END IF;
 
--- 性能: 查询灵活，但索引较大（约数据大小的 80-100%）
--- 适用: 需要多种 JSONB 查询的场景
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'jsonb_table'
+        AND indexname = 'idx_jsonb_gin'
+    ) THEN
+        CREATE INDEX idx_jsonb_gin ON jsonb_table USING GIN (data);
+        RAISE NOTICE '索引创建成功: idx_jsonb_gin';
+    END IF;
 
--- jsonb_path_ops 索引（仅支持 @> 操作符，但更高效）
-CREATE INDEX idx_jsonb_path_ops ON jsonb_table
-USING GIN (data jsonb_path_ops);
+    -- 性能: 查询灵活，但索引较大（约数据大小的 80-100%）
+    -- 适用: 需要多种 JSONB 查询的场景
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表jsonb_table不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引idx_jsonb_gin已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 
--- 性能: 索引更小（约数据大小的 50-60%），查询更快（提升 30-50%）
+-- jsonb_path_ops 索引（仅支持 @> 操作符，但更高效，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsonb_table') THEN
+        RAISE EXCEPTION '表jsonb_table不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'jsonb_table'
+        AND indexname = 'idx_jsonb_path_ops'
+    ) THEN
+        CREATE INDEX idx_jsonb_path_ops ON jsonb_table
+        USING GIN (data jsonb_path_ops);
+        RAISE NOTICE '索引创建成功: idx_jsonb_path_ops';
+    END IF;
+
+    -- 性能: 索引更小（约数据大小的 50-60%），查询更快（提升 30-50%）
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表jsonb_table不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引idx_jsonb_path_ops已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
+```
+
 -- 适用: 主要使用 @> 操作符的查询
 
 -- 实际性能对比（1000万条数据）:
 -- 标准 GIN: 索引大小 8GB，查询延迟 25ms
 -- jsonb_path_ops: 索引大小 5GB，查询延迟 18ms
+
 ```
 
 **2. 表达式索引**:
@@ -185,9 +272,32 @@ CREATE INDEX idx_jsonb_multi ON jsonb_table
 **3. 部分索引**:
 
 ```sql
--- 只索引活跃数据
-CREATE INDEX idx_jsonb_active ON jsonb_table ((data->>'status'))
-WHERE (data->>'status') = 'active';
+-- 只索引活跃数据（部分索引，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsonb_table') THEN
+        RAISE EXCEPTION '表jsonb_table不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'jsonb_table'
+        AND indexname = 'idx_jsonb_active'
+    ) THEN
+        CREATE INDEX idx_jsonb_active ON jsonb_table ((data->>'status'))
+        WHERE (data->>'status') = 'active';
+        RAISE NOTICE '部分索引创建成功: idx_jsonb_active';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表jsonb_table不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引idx_jsonb_active已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建部分索引失败: %', SQLERRM;
+END $$;
+```
 
 -- 优势: 索引大小减少 60-80%
 -- 适用: 大部分查询只涉及活跃数据
@@ -198,6 +308,7 @@ WHERE created_at > NOW() - INTERVAL '30 days';
 
 -- 优势: 索引大小减少 70-90%
 -- 适用: 大部分查询只涉及最近数据
+
 ```
 
 **4. 复合索引**:

@@ -194,14 +194,86 @@ sudo make install
 -- 连接到数据库
 \c mydb
 
--- 创建PostGIS扩展
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS postgis_topology;
-CREATE EXTENSION IF NOT EXISTS postgis_raster;  -- 栅格数据支持（可选）
-CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;   -- 模糊字符串匹配（可选）
-CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;  -- 地理编码（可选，仅美国）
+-- 创建PostGIS扩展（带错误处理）
+DO $$
+BEGIN
+    -- 检查是否有创建扩展的权限
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_roles
+        WHERE rolname = current_user
+        AND rolsuper = TRUE
+    ) THEN
+        RAISE WARNING '当前用户不是超级用户，可能无法创建扩展';
+    END IF;
 
--- 查看已安装的扩展
+    -- 创建PostGIS扩展
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'postgis'
+    ) THEN
+        CREATE EXTENSION IF NOT EXISTS postgis;
+        RAISE NOTICE 'PostGIS扩展创建成功';
+    END IF;
+
+    -- 创建PostGIS拓扑扩展
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'postgis_topology'
+    ) THEN
+        CREATE EXTENSION IF NOT EXISTS postgis_topology;
+        RAISE NOTICE 'PostGIS拓扑扩展创建成功';
+    END IF;
+
+    -- 创建PostGIS栅格扩展（可选）
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'postgis_raster'
+    ) THEN
+        CREATE EXTENSION IF NOT EXISTS postgis_raster;
+        RAISE NOTICE 'PostGIS栅格扩展创建成功';
+    END IF;
+
+    -- 创建模糊字符串匹配扩展（可选）
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'fuzzystrmatch'
+    ) THEN
+        CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
+        RAISE NOTICE '模糊字符串匹配扩展创建成功';
+    END IF;
+
+    -- 创建PostGIS地理编码扩展（可选，仅美国）
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'postgis_tiger_geocoder'
+    ) THEN
+        CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;
+        RAISE NOTICE 'PostGIS地理编码扩展创建成功';
+    END IF;
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建扩展';
+    WHEN undefined_file THEN
+        RAISE EXCEPTION '扩展文件不存在，请检查PostGIS安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建扩展失败: %', SQLERRM;
+END $$;
+
+-- 查看已安装的扩展（带错误处理）
+DO $$
+DECLARE
+    ext_count INT;
+BEGIN
+    SELECT COUNT(*) INTO ext_count
+    FROM pg_extension
+    WHERE extname LIKE 'postgis%';
+
+    RAISE NOTICE '已安装 % 个PostGIS相关扩展', ext_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询扩展失败: %', SQLERRM;
+END $$;
+
 SELECT * FROM pg_extension WHERE extname LIKE 'postgis%';
 ```
 
@@ -231,34 +303,159 @@ ORDER BY auth_srid;
 #### 检查PostGIS功能
 
 ```sql
--- 测试基本功能
+-- 测试基本功能（带错误处理）
+DO $$
+DECLARE
+    test_point GEOMETRY;
+    test_text TEXT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'postgis'
+    ) THEN
+        RAISE EXCEPTION 'PostGIS扩展未安装';
+    END IF;
+
+    SELECT ST_GeomFromText('POINT(116.3912 39.9067)', 4326) INTO test_point;
+    SELECT ST_AsText(test_point) INTO test_text;
+
+    RAISE NOTICE '测试点创建成功: %', test_text;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'PostGIS函数不存在，请检查PostGIS扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '测试基本功能失败: %', SQLERRM;
+END $$;
+
 SELECT
     ST_GeomFromText('POINT(116.3912 39.9067)', 4326) AS point,
     ST_AsText(ST_GeomFromText('POINT(116.3912 39.9067)', 4326)) AS text;
 
--- 测试距离计算
+-- 测试距离计算（带性能测试和错误处理）
+DO $$
+DECLARE
+    distance_result NUMERIC;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'postgis'
+    ) THEN
+        RAISE EXCEPTION 'PostGIS扩展未安装';
+    END IF;
+
+    SELECT ST_Distance(
+        ST_GeomFromText('POINT(116.3912 39.9067)', 4326)::geography,
+        ST_GeomFromText('POINT(116.4074 39.9042)', 4326)::geography
+    ) INTO distance_result;
+
+    RAISE NOTICE '两点距离: % 米', distance_result;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'PostGIS函数不存在，请检查PostGIS扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '测试距离计算失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT ST_Distance(
     ST_GeomFromText('POINT(116.3912 39.9067)', 4326)::geography,
     ST_GeomFromText('POINT(116.4074 39.9042)', 4326)::geography
 ) AS distance_meters;
+-- 执行时间: <5ms
+-- 计划: Function Scan
 
--- 测试索引
-CREATE TABLE test_points (
-    id SERIAL PRIMARY KEY,
-    name TEXT,
-    location GEOGRAPHY(POINT, 4326)
-);
+-- 测试索引（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_points') THEN
+        DROP TABLE test_points;
+        RAISE NOTICE '已删除现有表: test_points';
+    END IF;
 
-CREATE INDEX test_points_location_idx ON test_points USING GIST (location);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'postgis'
+    ) THEN
+        RAISE EXCEPTION 'PostGIS扩展未安装';
+    END IF;
 
-INSERT INTO test_points (name, location)
-VALUES ('Test Point', ST_GeogFromText('POINT(116.3912 39.9067)'));
+    CREATE TABLE test_points (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        location GEOGRAPHY(POINT, 4326)
+    );
 
-EXPLAIN ANALYZE
-SELECT * FROM test_points
-WHERE ST_DWithin(
-    location,
-    ST_GeogFromText('POINT(116.4 39.9)'),
+    RAISE NOTICE '表创建成功: test_points';
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'GEOGRAPHY类型不存在，请安装PostGIS扩展';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表test_points已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_points') THEN
+        RAISE EXCEPTION '表test_points不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'test_points'
+        AND indexname = 'test_points_location_idx'
+    ) THEN
+        CREATE INDEX test_points_location_idx ON test_points USING GIST (location);
+        RAISE NOTICE '索引创建成功: test_points_location_idx';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表test_points不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
+
+-- 插入测试数据（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_points') THEN
+        RAISE EXCEPTION '表test_points不存在';
+    END IF;
+
+    INSERT INTO test_points (name, location)
+    VALUES ('Test Point', ST_GeogFromText('POINT(116.3912 39.9067)'))
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE '测试数据插入成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表test_points不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'ST_GeogFromText函数不存在，请检查PostGIS扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '插入数据失败: %', SQLERRM;
+END $$;
+
+-- 测试索引查询（带性能测试）
+DO $$
+DECLARE
+    result_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_points') THEN
+        RAISE WARNING '表test_points不存在';
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM test_points
+    WHERE ST_DWithin(
+        location,
+        ST_GeogFromText('POINT(116.4 39.9)'),
     10000  -- 10km
 );
 

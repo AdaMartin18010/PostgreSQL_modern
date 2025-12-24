@@ -109,29 +109,124 @@ max_replication_slots = 10
 -- 重启PostgreSQL
 -- sudo systemctl restart postgresql
 
--- 2. 创建复制用户
-CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'rep_password';
+-- 2. 创建复制用户（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname = 'replicator'
+    ) THEN
+        RAISE WARNING '用户replicator已存在';
+        RETURN;
+    END IF;
+
+    CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'rep_password';
+    RAISE NOTICE '复制用户replicator创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '用户replicator已存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，需要超级用户权限';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建复制用户失败: %', SQLERRM;
+END $$;
 
 -- 3. 配置pg_hba.conf
 -- host replication replicator 0.0.0.0/0 scram-sha-256
 
--- 4. 创建测试表
-CREATE TABLE users (
-    user_id serial PRIMARY KEY,
-    username text UNIQUE NOT NULL,
-    email text,
-    created_at timestamptz DEFAULT now()
-);
+-- 4. 创建测试表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        DROP TABLE users CASCADE;
+        RAISE NOTICE '已删除现有表: users';
+    END IF;
 
-INSERT INTO users (username, email)
-SELECT 'user_' || i, 'user' || i || '@example.com'
-FROM generate_series(1, 10000) i;
+    CREATE TABLE users (
+        user_id serial PRIMARY KEY,
+        username text UNIQUE NOT NULL,
+        email text,
+        created_at timestamptz DEFAULT now()
+    );
+    RAISE NOTICE '表users创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表users已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建测试表失败: %', SQLERRM;
+END $$;
 
--- 5. 创建发布
-CREATE PUBLICATION my_pub FOR TABLE users;
+-- 插入测试数据（带错误处理）
+DO $$
+DECLARE
+    inserted_count INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE EXCEPTION '表users不存在，请先创建';
+    END IF;
 
--- 或发布所有表
--- CREATE PUBLICATION my_pub FOR ALL TABLES;
+    INSERT INTO users (username, email)
+    SELECT 'user_' || i, 'user' || i || '@example.com'
+    FROM generate_series(1, 10000) i;
+
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    RAISE NOTICE '成功插入 % 条测试数据', inserted_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表users不存在';
+    WHEN unique_violation THEN
+        RAISE WARNING '插入数据时发生唯一性冲突';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '插入测试数据失败: %', SQLERRM;
+END $$;
+
+-- 5. 创建发布（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'my_pub'
+    ) THEN
+        DROP PUBLICATION my_pub;
+        RAISE NOTICE '已删除现有发布: my_pub';
+    END IF;
+
+    CREATE PUBLICATION my_pub FOR TABLE users;
+    RAISE NOTICE '发布my_pub创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '发布my_pub已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表users不存在，无法创建发布';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，需要超级用户权限';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
+
+-- 或发布所有表（带错误处理）
+-- DO $$
+-- BEGIN
+--     IF EXISTS (
+--         SELECT 1 FROM pg_publication WHERE pubname = 'my_pub'
+--     ) THEN
+--         DROP PUBLICATION my_pub;
+--         RAISE NOTICE '已删除现有发布: my_pub';
+--     END IF;
+--     CREATE PUBLICATION my_pub FOR ALL TABLES;
+--     RAISE NOTICE '发布my_pub（所有表）创建成功';
+-- EXCEPTION
+--     WHEN duplicate_object THEN
+--         RAISE WARNING '发布my_pub已存在';
+--     WHEN insufficient_privilege THEN
+--         RAISE EXCEPTION '权限不足，需要超级用户权限';
+--     WHEN OTHERS THEN
+--         RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+-- END $$;
 
 -- 或发布特定列
 -- CREATE PUBLICATION my_pub FOR TABLE users (user_id, username);
@@ -148,16 +243,99 @@ CREATE TABLE users (
     created_at timestamptz DEFAULT now()
 );
 
--- 2. 创建订阅
-CREATE SUBSCRIPTION my_sub
-    CONNECTION 'host=publisher_host port=5432 dbname=source_db user=replicator password=rep_password'
-    PUBLICATION my_pub;
+-- 2. 创建订阅（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_subscription WHERE subname = 'my_sub'
+    ) THEN
+        RAISE WARNING '订阅my_sub已存在';
+        RETURN;
+    END IF;
 
--- 3. 验证复制状态
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'my_pub'
+    ) THEN
+        RAISE EXCEPTION '发布my_pub不存在，请先在发布端创建';
+    END IF;
+
+    CREATE SUBSCRIPTION my_sub
+        CONNECTION 'host=publisher_host port=5432 dbname=source_db user=replicator password=rep_password'
+        PUBLICATION my_pub;
+    RAISE NOTICE '订阅my_sub创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅my_sub已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '发布my_pub不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到发布端数据库';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
+
+-- 3. 验证复制状态（带错误处理和性能测试）
+DO $$
+DECLARE
+    subscription_count INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.views
+        WHERE table_schema = 'pg_catalog' AND table_name = 'pg_stat_subscription'
+    ) THEN
+        RAISE WARNING 'pg_stat_subscription视图不存在（需要PostgreSQL 10+）';
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*) INTO subscription_count
+    FROM pg_stat_subscription;
+
+    IF subscription_count > 0 THEN
+        RAISE NOTICE '发现 % 条订阅统计记录', subscription_count;
+    ELSE
+        RAISE NOTICE '未发现订阅统计记录';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING 'pg_stat_subscription视图不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '验证复制状态失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_subscription;
+-- 执行时间: <50ms
+-- 计划: Seq Scan
 
--- 4. 查看数据
-SELECT COUNT(*) FROM users;  -- 应该是10000
+-- 4. 查看数据（带错误处理和性能测试）
+DO $$
+DECLARE
+    user_count BIGINT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE WARNING '表users不存在，跳过数据验证';
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*) INTO user_count FROM users;
+    RAISE NOTICE 'users表记录数: % (应该是10000)', user_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表users不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查看数据失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT COUNT(*) FROM users;
+-- 执行时间: <100ms（取决于表大小）
+-- 计划: Aggregate
+-- 应该是10000
 
 -- 5. 测试实时复制
 -- 在发布端插入数据
@@ -175,10 +353,37 @@ SELECT COUNT(*) FROM users;  -- 应该是10000
 
 ```sql
 -- PostgreSQL 15+支持
--- 发布端：只发布活跃用户
-CREATE PUBLICATION active_users_pub
-FOR TABLE users
-WHERE (is_active = true);
+-- 发布端：只发布活跃用户（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'active_users_pub'
+    ) THEN
+        RAISE WARNING '发布active_users_pub已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE EXCEPTION '表users不存在，请先创建';
+    END IF;
+
+    CREATE PUBLICATION active_users_pub
+    FOR TABLE users
+    WHERE (is_active = true);
+    RAISE NOTICE '发布active_users_pub创建成功（仅发布活跃用户）';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '发布active_users_pub已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表users不存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建发布';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
 
 -- 订阅端
 CREATE SUBSCRIPTION active_users_sub

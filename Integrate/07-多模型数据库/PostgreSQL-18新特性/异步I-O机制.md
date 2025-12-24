@@ -70,9 +70,6 @@
     - [5.2 JSONB 写入优化](#52-jsonb-写入优化)
       - [5.2.1 传统同步写入](#521-传统同步写入)
       - [5.2.2 异步写入优化](#522-异步写入优化)
-      - [5.2.3 最佳实践](#523-最佳实践)
-    - [5.3 批量写入示例](#53-批量写入示例)
-      - [5.3.1 Python 批量插入](#531-python-批量插入)
       - [5.3.2 性能优化技巧](#532-性能优化技巧)
       - [5.3.3 错误处理](#533-错误处理)
   - [6. 性能分析](#6-性能分析)
@@ -489,14 +486,40 @@ void async_io_write(jsonb_data) {
 PostgreSQL 18 支持并行文本处理，加速文本向量化：
 
 ```sql
--- 并行文本向量化
-SET max_parallel_workers_per_gather = 4;
+-- 并行文本向量化（带错误处理）
+DO $$
+BEGIN
+    SET max_parallel_workers_per_gather = 4;
+    RAISE NOTICE '并行工作线程数设置为4';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置并行工作线程数失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE documents_with_vectors AS
-SELECT
-    id,
-    content,
-    -- 并行处理文本向量化
+-- 创建文档向量表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents_with_vectors') THEN
+        DROP TABLE documents_with_vectors;
+        RAISE NOTICE '已删除现有表: documents_with_vectors';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE WARNING 'pgvector扩展未安装，向量类型可能不可用';
+    END IF;
+
+    CREATE TABLE documents_with_vectors AS
+    SELECT
+        id,
+        content,
+        -- 并行处理文本向量化
     embedding_function(content) as embedding
 FROM documents
 WHERE embedding IS NULL;
@@ -548,7 +571,37 @@ LIMIT 10;
 **联合查询示例**:
 
 ```sql
--- 时序 + 向量联合查询
+-- 时序 + 向量联合查询（带性能测试和错误处理）
+DO $$
+DECLARE
+    result_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_series') THEN
+        RAISE WARNING '表time_series不存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE WARNING '表documents不存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE WARNING 'pgvector扩展未安装，向量查询可能不可用';
+    END IF;
+
+    RAISE NOTICE '时序+向量联合查询准备完成';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '相关表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询准备失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     t.time,
     t.metrics,
@@ -567,7 +620,48 @@ LIMIT 100;
 **联合查询示例**:
 
 ```sql
--- 图 + 向量联合查询
+-- 图 + 向量联合查询（带性能测试和错误处理）
+DO $$
+DECLARE
+    graph_exists BOOLEAN;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'age'
+    ) THEN
+        RAISE WARNING 'Apache AGE扩展未安装，图查询可能不可用';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE WARNING '表documents不存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE WARNING 'pgvector扩展未安装，向量查询可能不可用';
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM ag_graph
+        WHERE graphname = 'knowledge_graph'
+    ) INTO graph_exists;
+
+    IF NOT graph_exists THEN
+        RAISE WARNING '图knowledge_graph不存在';
+    END IF;
+
+    RAISE NOTICE '图+向量联合查询准备完成';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '相关表或图不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询准备失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     n.id,
     n.properties,
@@ -779,12 +873,31 @@ SHOW async_io_threads;
 **PostgreSQL 17 同步写入**:
 
 ```sql
--- 传统同步写入（PostgreSQL 17）
-INSERT INTO documents (content, metadata)
-VALUES
-    ('{"title": "PostgreSQL", "body": "..."}', '{"author": "..."}'),
-    ('{"title": "pgvector", "body": "..."}', '{"author": "..."}');
+-- 传统同步写入（PostgreSQL 17，带错误处理和性能测试）
+DO $$
+DECLARE
+    insert_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    INSERT INTO documents (content, metadata)
+    VALUES
+        ('{"title": "PostgreSQL", "body": "..."}', '{"author": "..."}'),
+        ('{"title": "pgvector", "body": "..."}', '{"author": "..."}');
+
+    GET DIAGNOSTICS insert_count = ROW_COUNT;
+    RAISE NOTICE '同步写入完成: % 行', insert_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '同步写入失败: %', SQLERRM;
+END $$;
+
 -- 每个 INSERT 必须等待 I/O 完成
+
 ```
 
 #### 5.2.2 异步写入优化
@@ -792,13 +905,45 @@ VALUES
 **PostgreSQL 18 异步写入**:
 
 ```sql
--- PostgreSQL 18 异步写入（自动优化）
--- 相同 SQL，但内部使用异步 I/O
-INSERT INTO documents (content, metadata)
-VALUES
-    ('{"title": "PostgreSQL", "body": "..."}', '{"author": "..."}'),
-    ('{"title": "pgvector", "body": "..."}', '{"author": "..."}');
+-- PostgreSQL 18 异步写入（自动优化，带错误处理和性能测试）
+DO $$
+DECLARE
+    insert_count INT;
+    async_io_enabled BOOLEAN;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    -- 检查异步I/O是否启用
+    SELECT setting = 'on' INTO async_io_enabled
+    FROM pg_settings
+    WHERE name = 'async_io';
+
+    IF NOT async_io_enabled THEN
+        RAISE WARNING '异步I/O未启用，将使用同步I/O';
+    ELSE
+        RAISE NOTICE '异步I/O已启用，将自动优化写入';
+    END IF;
+
+    -- 相同 SQL，但内部使用异步 I/O
+    INSERT INTO documents (content, metadata)
+    VALUES
+        ('{"title": "PostgreSQL", "body": "..."}', '{"author": "..."}'),
+        ('{"title": "pgvector", "body": "..."}', '{"author": "..."}');
+
+    GET DIAGNOSTICS insert_count = ROW_COUNT;
+    RAISE NOTICE '异步写入完成: % 行', insert_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '异步写入失败: %', SQLERRM;
+END $$;
+```
+
 -- I/O 操作异步执行，不阻塞主线程
+
 ```
 
 #### 5.2.3 最佳实践

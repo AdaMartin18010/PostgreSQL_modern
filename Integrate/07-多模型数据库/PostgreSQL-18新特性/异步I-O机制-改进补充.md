@@ -48,7 +48,6 @@
   - [Phase 3: 配置优化建议补充](#phase-3-配置优化建议补充)
     - [3.1 参数配置详解](#31-参数配置详解)
       - [max\_parallel\_workers\_per\_gather](#max_parallel_workers_per_gather)
-      - [maintenance\_io\_concurrency](#maintenance_io_concurrency)
       - [wal\_io\_concurrency](#wal_io_concurrency)
     - [3.2 不同场景的配置模板](#32-不同场景的配置模板)
       - [OLTP场景配置](#oltp场景配置)
@@ -166,17 +165,57 @@
 #### 测试场景
 
 ```sql
--- 创建测试表
-CREATE TABLE bulk_write_test (
-    id BIGSERIAL PRIMARY KEY,
-    data TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 创建测试表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bulk_write_test') THEN
+        DROP TABLE bulk_write_test;
+        RAISE NOTICE '已删除现有表: bulk_write_test';
+    END IF;
 
--- 批量插入测试
-INSERT INTO bulk_write_test (data)
-SELECT md5(random()::text) || repeat('x', 1000)
-FROM generate_series(1, 1000000);
+    CREATE TABLE bulk_write_test (
+        id BIGSERIAL PRIMARY KEY,
+        data TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '表创建成功: bulk_write_test';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表bulk_write_test已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 批量插入测试（带错误处理和性能测试）
+DO $$
+DECLARE
+    insert_count BIGINT;
+    start_time TIMESTAMPTZ;
+    end_time TIMESTAMPTZ;
+    duration INTERVAL;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bulk_write_test') THEN
+        RAISE EXCEPTION '表bulk_write_test不存在，请先创建';
+    END IF;
+
+    start_time := clock_timestamp();
+
+    INSERT INTO bulk_write_test (data)
+    SELECT md5(random()::text) || repeat('x', 1000)
+    FROM generate_series(1, 1000000);
+
+    GET DIAGNOSTICS insert_count = ROW_COUNT;
+    end_time := clock_timestamp();
+    duration := end_time - start_time;
+
+    RAISE NOTICE '批量插入完成: % 行，耗时: %', insert_count, duration;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表bulk_write_test不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '批量插入失败: %', SQLERRM;
+END $$;
 ```
 
 #### 测试结果对比1
@@ -457,11 +496,37 @@ GROUP BY region, product_category;
 **配置示例**:
 
 ```sql
--- 根据CPU核心数配置
-ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
+-- 根据CPU核心数配置（带错误处理）
+DO $$
+DECLARE
+    cpu_cores INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_roles
+        WHERE rolname = current_user
+        AND rolsuper = TRUE
+    ) THEN
+        RAISE EXCEPTION '当前用户不是超级用户，无法修改系统配置';
+    END IF;
+
+    -- 获取CPU核心数（需要系统函数支持，这里使用默认值）
+    cpu_cores := 8;
+
+    ALTER SYSTEM SET max_parallel_workers_per_gather = cpu_cores;
+    RAISE NOTICE '并行工作线程数设置为: % (根据CPU核心数)', cpu_cores;
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法修改系统配置';
+    WHEN invalid_parameter_value THEN
+        RAISE EXCEPTION '参数值无效，max_parallel_workers_per_gather应为正整数';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '设置并行工作线程数失败: %', SQLERRM;
+END $$;
+```
 
 -- 与异步I/O配合使用
 ALTER SYSTEM SET effective_io_concurrency = 200;
+
 ```
 
 #### maintenance_io_concurrency

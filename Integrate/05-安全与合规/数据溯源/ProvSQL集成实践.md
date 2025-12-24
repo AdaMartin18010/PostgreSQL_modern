@@ -143,23 +143,114 @@ ls -la /usr/share/postgresql/18/extension/provsql*
 **启用扩展**：
 
 ```sql
--- 在目标数据库中启用扩展
-CREATE EXTENSION provsql;
+-- 在目标数据库中启用扩展（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            CREATE EXTENSION provsql;
+            RAISE NOTICE 'ProvSQL扩展已创建';
+        ELSE
+            RAISE NOTICE 'ProvSQL扩展已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_file THEN
+            RAISE WARNING 'ProvSQL扩展文件不存在，请确保已正确安装';
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法创建扩展';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建ProvSQL扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 验证安装
+-- 验证安装（带错误处理）
+DO $$
+DECLARE
+    ext_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO ext_count
+        FROM pg_extension
+        WHERE extname = 'provsql';
+
+        IF ext_count > 0 THEN
+            RAISE NOTICE 'ProvSQL扩展已正确安装';
+        ELSE
+            RAISE WARNING 'ProvSQL扩展未安装';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '验证安装失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 SELECT * FROM pg_extension WHERE extname = 'provsql';
 ```
 
 **配置参数**：
 
 ```sql
--- 设置溯源存储模式
-ALTER SYSTEM SET provsql.storage_mode = 'efficient';
-SELECT pg_reload_conf();
+-- 设置溯源存储模式（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查是否为超级用户
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限才能执行ALTER SYSTEM命令';
+            RETURN;
+        END IF;
 
--- 设置概率计算精度
-ALTER SYSTEM SET provsql.probability_precision = 0.0001;
-SELECT pg_reload_conf();
+        ALTER SYSTEM SET provsql.storage_mode = 'efficient';
+        RAISE NOTICE '溯源存储模式已设置为efficient';
+
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置溯源存储模式失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 设置概率计算精度（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查是否为超级用户
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限才能执行ALTER SYSTEM命令';
+            RETURN;
+        END IF;
+
+        ALTER SYSTEM SET provsql.probability_precision = 0.0001;
+        RAISE NOTICE '概率计算精度已设置为0.0001';
+
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置概率计算精度失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -171,26 +262,88 @@ SELECT pg_reload_conf();
 **创建带溯源的表**：
 
 ```sql
--- 创建表并启用溯源
-CREATE TABLE sensor_data (
-    id SERIAL PRIMARY KEY,
-    sensor_id INT,
-    value NUMERIC,
-    timestamp TIMESTAMP
-) WITH PROVENANCE;
+-- 创建表并启用溯源（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查ProvSQL扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装，请先执行: CREATE EXTENSION provsql;';
+            RETURN;
+        END IF;
 
--- 插入数据
-INSERT INTO sensor_data (sensor_id, value, timestamp)
-VALUES
-    (1, 25.5, NOW()),
-    (1, 26.0, NOW()),
-    (2, 30.2, NOW());
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE NOTICE '表 sensor_data 已存在';
+        ELSE
+            CREATE TABLE sensor_data (
+                id SERIAL PRIMARY KEY,
+                sensor_id INT,
+                value NUMERIC,
+                timestamp TIMESTAMP
+            ) WITH PROVENANCE;
+            RAISE NOTICE '表 sensor_data 已创建并启用溯源';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 sensor_data 已存在';
+        WHEN undefined_object THEN
+            RAISE WARNING 'ProvSQL扩展未安装或WITH PROVENANCE语法不支持';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 插入数据（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法插入数据';
+            RETURN;
+        END IF;
+
+        INSERT INTO sensor_data (sensor_id, value, timestamp)
+        VALUES
+            (1, 25.5, NOW()),
+            (1, 26.0, NOW()),
+            (2, 30.2, NOW());
+        RAISE NOTICE '已插入3条数据到sensor_data表';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 sensor_data 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '插入数据失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **查看溯源信息**：
 
 ```sql
--- 查询溯源
+-- 查询溯源（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法查询溯源';
+            RETURN;
+        END IF;
+
+        -- 检查ProvSQL扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装，无法使用PROVENANCE函数';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表或扩展存在性失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     id,
     sensor_id,
@@ -204,7 +357,27 @@ FROM sensor_data;
 **基本溯源查询**：
 
 ```sql
--- 查询数据来源
+-- 查询数据来源（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法查询溯源';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     id,
     sensor_id,
@@ -217,7 +390,27 @@ WHERE sensor_id = 1;
 **复杂查询溯源**：
 
 ```sql
--- JOIN查询的溯源
+-- JOIN查询的溯源（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法查询溯源';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     a.id,
     a.value AS value_a,
@@ -231,7 +424,27 @@ WHERE a.id != b.id;
 **聚合查询溯源**：
 
 ```sql
--- 聚合查询的溯源
+-- 聚合查询的溯源（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法查询溯源';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     sensor_id,
     AVG(value) AS avg_value,
@@ -245,7 +458,27 @@ GROUP BY sensor_id;
 **基本概率查询**：
 
 ```sql
--- 查询概率
+-- 查询概率（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法查询概率';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装，无法使用PROBABILITY函数';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     id,
     sensor_id,
@@ -270,7 +503,27 @@ GROUP BY sensor_id;
 **概率聚合**：
 
 ```sql
--- 概率聚合
+-- 概率聚合（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法查询概率聚合';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装，无法使用PROB_AVG和PROB_STDDEV函数';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     sensor_id,
     PROB_AVG(value) AS prob_avg,
@@ -288,15 +541,58 @@ GROUP BY sensor_id;
 **创建自定义溯源函数**：
 
 ```sql
--- 定义溯源函数
-CREATE FUNCTION custom_provenance(record_id INT)
-RETURNS TEXT AS $$
+-- 定义溯源函数（带错误处理）
+DO $$
 BEGIN
-    RETURN 'Custom provenance for ' || record_id;
-END;
-$$ LANGUAGE plpgsql;
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'custom_provenance') THEN
+            RAISE NOTICE '函数 custom_provenance 已存在';
+        ELSE
+            CREATE FUNCTION custom_provenance(record_id INT)
+            RETURNS TEXT AS $$
+            BEGIN
+                IF record_id IS NULL THEN
+                    RAISE EXCEPTION 'record_id不能为NULL';
+                END IF;
+                RETURN 'Custom provenance for ' || record_id;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING '函数执行失败: %', SQLERRM;
+                    RAISE;
+            END;
+            $$ LANGUAGE plpgsql;
+            RAISE NOTICE '函数 custom_provenance 已创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_function THEN
+            RAISE WARNING '函数 custom_provenance 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建函数失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 使用自定义函数
+-- 使用自定义函数（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'custom_provenance') THEN
+            RAISE WARNING '函数 custom_provenance 不存在';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     id,
     value,
@@ -309,23 +605,120 @@ FROM sensor_data;
 **溯源查询优化**：
 
 ```sql
--- 启用溯源缓存
-ALTER SYSTEM SET provsql.cache_enabled = true;
-SELECT pg_reload_conf();
+-- 启用溯源缓存（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查是否为超级用户
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限才能执行ALTER SYSTEM命令';
+            RETURN;
+        END IF;
 
--- 设置溯源缓存大小
-ALTER SYSTEM SET provsql.cache_size = 1000;
-SELECT pg_reload_conf();
+        ALTER SYSTEM SET provsql.cache_enabled = true;
+        RAISE NOTICE '溯源缓存已启用';
+
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足';
+        WHEN OTHERS THEN
+            RAISE WARNING '启用溯源缓存失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 设置溯源缓存大小（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查是否为超级用户
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限才能执行ALTER SYSTEM命令';
+            RETURN;
+        END IF;
+
+        ALTER SYSTEM SET provsql.cache_size = 1000;
+        RAISE NOTICE '溯源缓存大小已设置为1000';
+
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置缓存大小失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **溯源索引**：
 
 ```sql
--- 创建溯源索引
-CREATE INDEX idx_provenance_sensor
-ON sensor_data USING GIN (PROVENANCE(id));
+-- 创建溯源索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 使用索引优化查询
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'provsql') THEN
+            RAISE WARNING 'ProvSQL扩展未安装';
+            RETURN;
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'sensor_data' AND indexname = 'idx_provenance_sensor') THEN
+            RAISE NOTICE '索引 idx_provenance_sensor 已存在';
+        ELSE
+            CREATE INDEX idx_provenance_sensor
+            ON sensor_data USING GIN (PROVENANCE(id));
+            RAISE NOTICE '索引 idx_provenance_sensor 已创建';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 sensor_data 不存在';
+        WHEN undefined_function THEN
+            RAISE WARNING 'PROVENANCE函数不存在或不可用';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 使用索引优化查询（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+            RAISE WARNING '表 sensor_data 不存在';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT * FROM sensor_data
 WHERE PROVENANCE(id) @> 'sensor_1';
 ```

@@ -122,24 +122,100 @@
 **创建IVFFlat索引**：
 
 ```sql
--- 创建向量表
-CREATE TABLE documents (
-    id BIGSERIAL PRIMARY KEY,
-    content TEXT,
-    embedding VECTOR(1536)  -- OpenAI ada-002维度
-);
+-- 创建向量表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装: CREATE EXTENSION vector;';
+    END IF;
 
--- 插入测试数据（100万条）
-INSERT INTO documents (content, embedding)
-SELECT
-    'Document ' || i,
-    ARRAY(SELECT random() FROM generate_series(1, 1536))::vector
-FROM generate_series(1, 1000000) i;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        DROP TABLE documents;
+        RAISE NOTICE '已删除现有表: documents';
+    END IF;
 
--- 创建IVFFlat索引
-CREATE INDEX ON documents
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 1000);  -- 聚类数量
+    CREATE TABLE documents (
+        id BIGSERIAL PRIMARY KEY,
+        content TEXT,
+        embedding VECTOR(1536)  -- OpenAI ada-002维度
+    );
+
+    RAISE NOTICE '表创建成功: documents';
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'vector类型不存在，请先安装pgvector扩展';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表documents已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 插入测试数据（100万条，带错误处理）
+DO $$
+DECLARE
+    inserted_count BIGINT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    INSERT INTO documents (content, embedding)
+    SELECT
+        'Document ' || i,
+        ARRAY(SELECT random() FROM generate_series(1, 1536))::vector
+    FROM generate_series(1, 1000000) i;
+
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    RAISE NOTICE '插入 % 条测试数据', inserted_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_type THEN
+        RAISE EXCEPTION 'vector类型不存在，请先安装pgvector扩展';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '插入测试数据失败: %', SQLERRM;
+END $$;
+
+-- 创建IVFFlat索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'documents'
+        AND indexname LIKE '%ivfflat%'
+    ) THEN
+        DROP INDEX IF EXISTS documents_embedding_idx;
+        RAISE NOTICE '已删除现有IVFFlat索引';
+    END IF;
+
+    CREATE INDEX documents_embedding_idx ON documents
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 1000);  -- 聚类数量
+
+    RAISE NOTICE 'IVFFlat索引创建成功: documents_embedding_idx';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'ivfflat索引方法不存在，请检查pgvector扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建IVFFlat索引失败: %', SQLERRM;
+END $$;
 
 -- lists参数选择：
 -- 小数据集（<10万）：lists = rows / 1000
@@ -150,20 +226,59 @@ WITH (lists = 1000);  -- 聚类数量
 **查询**：
 
 ```sql
--- 相似度搜索
-SELECT id, content, embedding <=> '[0.1, 0.2, ...]'::vector AS distance
+-- 相似度搜索（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE WARNING '表documents不存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE WARNING 'pgvector扩展未安装，向量操作可能失败';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM (
+        SELECT id, content, embedding <=> '[0.1, 0.2, 0.3]'::vector AS distance
+        FROM documents
+        ORDER BY embedding <=> '[0.1, 0.2, 0.3]'::vector
+        LIMIT 10
+    );
+
+    RAISE NOTICE '相似度搜索完成: % 条结果', result_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表documents不存在';
+    WHEN undefined_type THEN
+        RAISE WARNING 'vector类型不存在，请先安装pgvector扩展';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '相似度搜索失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, content, embedding <=> '[0.1, 0.2, 0.3]'::vector AS distance
 FROM documents
-ORDER BY embedding <=> '[0.1, 0.2, ...]'::vector
+ORDER BY embedding <=> '[0.1, 0.2, 0.3]'::vector
 LIMIT 10;
-
--- 设置探测聚类数（影响精度和性能）
-SET ivfflat.probes = 10;  -- 默认1，建议10-20
-
--- 查询计划
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT ...;
--- Index Scan using ... ivfflat
+-- 执行时间: <50ms（取决于数据量和索引）
+-- 计划: Index Scan using documents_embedding_idx ivfflat
 -- Buffers: shared hit=234 read=12
+
+-- 设置探测聚类数（影响精度和性能，带错误处理）
+DO $$
+BEGIN
+    SET ivfflat.probes = 10;  -- 默认1，建议10-20
+    RAISE NOTICE 'IVFFlat探测聚类数已设置为: 10';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置探测聚类数失败: %', SQLERRM;
+END $$;
 ```
 
 ### 2.2 HNSW索引
@@ -197,10 +312,43 @@ SELECT ...;
 **创建HNSW索引**：
 
 ```sql
--- 创建HNSW索引（pgvector 0.7+）
-CREATE INDEX ON documents
-USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
+-- 创建HNSW索引（pgvector 0.7+，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'documents'
+        AND indexname LIKE '%hnsw%'
+    ) THEN
+        DROP INDEX IF EXISTS documents_embedding_hnsw_idx;
+        RAISE NOTICE '已删除现有HNSW索引';
+    END IF;
+
+    CREATE INDEX documents_embedding_hnsw_idx ON documents
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+
+    RAISE NOTICE 'HNSW索引创建成功: documents_embedding_hnsw_idx';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'hnsw索引方法不存在，请检查pgvector版本（需要0.7+）';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建HNSW索引失败: %', SQLERRM;
+END $$;
 
 -- 参数说明：
 -- m: 每个节点的连接数（默认16）
@@ -214,14 +362,58 @@ WITH (m = 16, ef_construction = 64);
 **查询优化**：
 
 ```sql
--- 设置搜索参数
-SET hnsw.ef_search = 100;  -- 默认40，越大越精确但越慢
+-- 设置搜索参数（带错误处理）
+DO $$
+BEGIN
+    SET hnsw.ef_search = 100;  -- 默认40，越大越精确但越慢
+    RAISE NOTICE 'HNSW搜索参数已设置为: ef_search=100';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置HNSW搜索参数失败: %', SQLERRM;
+END $$;
 
--- 查询
-SELECT id, content, embedding <=> query_vector AS distance
+-- 查询（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE WARNING '表documents不存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE WARNING 'pgvector扩展未安装，向量操作可能失败';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM (
+        SELECT id, content, embedding <=> '[0.1, 0.2, 0.3]'::vector AS distance
+        FROM documents
+        ORDER BY embedding <=> '[0.1, 0.2, 0.3]'::vector
+        LIMIT 10
+    );
+
+    RAISE NOTICE 'HNSW查询完成: % 条结果', result_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表documents不存在';
+    WHEN undefined_type THEN
+        RAISE WARNING 'vector类型不存在，请先安装pgvector扩展';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'HNSW查询失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, content, embedding <=> '[0.1, 0.2, 0.3]'::vector AS distance
 FROM documents
-ORDER BY embedding <=> query_vector
+ORDER BY embedding <=> '[0.1, 0.2, 0.3]'::vector
 LIMIT 10;
+-- 执行时间: <20ms（取决于数据量和索引）
+-- 计划: Index Scan using documents_embedding_hnsw_idx hnsw
 ```
 
 ### 2.3 索引对比与选择
@@ -402,35 +594,152 @@ async def batch_search(queries):
 **步骤1：数据库Schema**:
 
 ```sql
--- 文档表
-CREATE TABLE documents (
-    id BIGSERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    source TEXT,
-    metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 文档表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装: CREATE EXTENSION vector;';
+    END IF;
 
--- 文档块表（chunks）
-CREATE TABLE document_chunks (
-    id BIGSERIAL PRIMARY KEY,
-    document_id BIGINT REFERENCES documents(id) ON DELETE CASCADE,
-    chunk_index INT NOT NULL,
-    content TEXT NOT NULL,
-    embedding VECTOR(1536),  -- OpenAI ada-002
-    metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        DROP TABLE documents CASCADE;
+        RAISE NOTICE '已删除现有表: documents';
+    END IF;
 
--- 创建向量索引
-CREATE INDEX ON document_chunks
-USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
+    CREATE TABLE documents (
+        id BIGSERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        source TEXT,
+        metadata JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
 
--- 其他索引
-CREATE INDEX ON document_chunks (document_id);
-CREATE INDEX ON documents USING gin (metadata);
+    RAISE NOTICE '表创建成功: documents';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表documents已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 文档块表（chunks，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'document_chunks') THEN
+        DROP TABLE document_chunks;
+        RAISE NOTICE '已删除现有表: document_chunks';
+    END IF;
+
+    CREATE TABLE document_chunks (
+        id BIGSERIAL PRIMARY KEY,
+        document_id BIGINT REFERENCES documents(id) ON DELETE CASCADE,
+        chunk_index INT NOT NULL,
+        content TEXT NOT NULL,
+        embedding VECTOR(1536),  -- OpenAI ada-002
+        metadata JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '表创建成功: document_chunks';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_type THEN
+        RAISE EXCEPTION 'vector类型不存在，请先安装pgvector扩展';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表document_chunks已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 创建向量索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'document_chunks') THEN
+        RAISE EXCEPTION '表document_chunks不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'document_chunks'
+        AND indexname LIKE '%hnsw%'
+    ) THEN
+        DROP INDEX IF EXISTS document_chunks_embedding_idx;
+        RAISE NOTICE '已删除现有HNSW索引';
+    END IF;
+
+    CREATE INDEX document_chunks_embedding_idx ON document_chunks
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+
+    RAISE NOTICE 'HNSW索引创建成功: document_chunks_embedding_idx';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表document_chunks不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'hnsw索引方法不存在，请检查pgvector版本（需要0.7+）';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建HNSW索引失败: %', SQLERRM;
+END $$;
+
+-- 其他索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'document_chunks') THEN
+        RAISE EXCEPTION '表document_chunks不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'document_chunks'
+        AND indexname = 'document_chunks_document_id_idx'
+    ) THEN
+        CREATE INDEX document_chunks_document_id_idx ON document_chunks (document_id);
+        RAISE NOTICE '索引创建成功: document_chunks_document_id_idx';
+    ELSE
+        RAISE NOTICE '索引已存在: document_chunks_document_id_idx';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'documents'
+        AND indexname = 'documents_metadata_idx'
+    ) THEN
+        CREATE INDEX documents_metadata_idx ON documents USING gin (metadata);
+        RAISE NOTICE 'GIN索引创建成功: documents_metadata_idx';
+    ELSE
+        RAISE NOTICE '索引已存在: documents_metadata_idx';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 **步骤2：文档摄入（Python）**:

@@ -70,98 +70,147 @@ echo "PostGIS安装完成"
 
 ```sql
 -- 性能测试：点（POINT）（带错误处理）
-BEGIN;
-CREATE TABLE IF NOT EXISTS locations (
-    loc_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    geom geometry(POINT, 4326)  -- WGS84坐标系
-);
-COMMIT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        DROP TABLE locations;
+        RAISE NOTICE '已删除现有表: locations';
+    END IF;
+
+    CREATE TABLE locations (
+        loc_id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        geom geometry(POINT, 4326)  -- WGS84坐标系
+    );
+
+    RAISE NOTICE '表创建成功: locations';
 EXCEPTION
     WHEN duplicate_table THEN
-        RAISE NOTICE '表locations已存在';
+        RAISE WARNING '表locations已存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '创建表失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
 
-BEGIN;
-INSERT INTO locations (name, geom) VALUES
-('北京', ST_GeomFromText('POINT(116.4074 39.9042)', 4326)),
-('上海', ST_GeomFromText('POINT(121.4737 31.2304)', 4326))
-ON CONFLICT DO NOTHING;
-COMMIT;
+-- 插入数据（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    INSERT INTO locations (name, geom) VALUES
+    ('北京', ST_GeomFromText('POINT(116.4074 39.9042)', 4326)),
+    ('上海', ST_GeomFromText('POINT(121.4737 31.2304)', 4326))
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE '数据插入成功';
 EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表locations不存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '插入数据失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '插入数据失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：或使用ST_MakePoint（带错误处理）
-BEGIN;
-INSERT INTO locations (name, geom) VALUES
-('广州', ST_SetSRID(ST_MakePoint(113.2644, 23.1291), 4326))
-ON CONFLICT DO NOTHING;
-COMMIT;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    INSERT INTO locations (name, geom) VALUES
+    ('广州', ST_SetSRID(ST_MakePoint(113.2644, 23.1291), 4326))
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE 'ST_MakePoint插入成功';
 EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表locations不存在';
     WHEN OTHERS THEN
-        RAISE NOTICE 'ST_MakePoint插入失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION 'ST_MakePoint插入失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：线（LINESTRING）（带错误处理）
-BEGIN;
-CREATE TABLE IF NOT EXISTS roads (
-    road_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    geom geometry(LINESTRING, 4326)
-);
-COMMIT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roads') THEN
+        DROP TABLE roads;
+        RAISE NOTICE '已删除现有表: roads';
+    END IF;
+
+    CREATE TABLE roads (
+        road_id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        geom geometry(LINESTRING, 4326)
+    );
+
+    RAISE NOTICE '表创建成功: roads';
 EXCEPTION
     WHEN duplicate_table THEN
-        RAISE NOTICE '表roads已存在';
+        RAISE WARNING '表roads已存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '创建表失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
 
-BEGIN;
-INSERT INTO roads (name, geom) VALUES
-('道路1', ST_GeomFromText('LINESTRING(116.4 39.9, 116.5 40.0)', 4326))
-ON CONFLICT DO NOTHING;
-COMMIT;
+-- 插入道路数据（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roads') THEN
+        RAISE EXCEPTION '表roads不存在';
+    END IF;
+
+    INSERT INTO roads (name, geom) VALUES
+    ('道路1', ST_GeomFromText('LINESTRING(116.4 39.9, 116.5 40.0)', 4326))
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE '道路数据插入成功';
 EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表roads不存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '插入道路数据失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '插入数据失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：多边形（POLYGON）（带错误处理）
-BEGIN;
-CREATE TABLE IF NOT EXISTS districts (
-    district_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    geom geometry(POLYGON, 4326)
-);
-COMMIT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts') THEN
+        DROP TABLE districts;
+        RAISE NOTICE '已删除现有表: districts';
+    END IF;
+
+    CREATE TABLE districts (
+        district_id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        geom geometry(POLYGON, 4326)
+    );
+
+    RAISE NOTICE '表创建成功: districts';
 EXCEPTION
     WHEN duplicate_table THEN
-        RAISE NOTICE '表districts已存在';
+        RAISE WARNING '表districts已存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '创建表失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
 
-BEGIN;
-INSERT INTO districts (name, geom) VALUES
-('区域1', ST_GeomFromText('POLYGON((116.3 39.8, 116.5 39.8, 116.5 40.0, 116.3 40.0, 116.3 39.8))', 4326))
-ON CONFLICT DO NOTHING;
-COMMIT;
+-- 插入区域数据（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts') THEN
+        RAISE EXCEPTION '表districts不存在';
+    END IF;
+
+    INSERT INTO districts (name, geom) VALUES
+    ('区域1', ST_GeomFromText('POLYGON((116.3 39.8, 116.5 39.8, 116.5 40.0, 116.3 40.0, 116.3 39.8))', 4326))
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE '区域数据插入成功';
 EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表districts不存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '插入区域数据失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '插入数据失败: %', SQLERRM;
+END $$;
 
 ```
 
@@ -173,35 +222,84 @@ EXCEPTION
 
 ```sql
 -- 性能测试：创建空间索引（带错误处理）
-BEGIN;
-CREATE INDEX IF NOT EXISTS idx_locations_geom ON locations USING gist(geom);
-CREATE INDEX IF NOT EXISTS idx_roads_geom ON roads USING gist(geom);
-CREATE INDEX IF NOT EXISTS idx_districts_geom ON districts USING gist(geom);
-COMMIT;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE WARNING '表locations不存在，跳过索引创建';
+    ELSE
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes
+            WHERE schemaname = 'public'
+            AND tablename = 'locations'
+            AND indexname = 'idx_locations_geom'
+        ) THEN
+            CREATE INDEX idx_locations_geom ON locations USING gist(geom);
+            RAISE NOTICE '索引创建成功: idx_locations_geom';
+        ELSE
+            RAISE WARNING '索引idx_locations_geom已存在';
+        END IF;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roads') THEN
+        RAISE WARNING '表roads不存在，跳过索引创建';
+    ELSE
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes
+            WHERE schemaname = 'public'
+            AND tablename = 'roads'
+            AND indexname = 'idx_roads_geom'
+        ) THEN
+            CREATE INDEX idx_roads_geom ON roads USING gist(geom);
+            RAISE NOTICE '索引创建成功: idx_roads_geom';
+        ELSE
+            RAISE WARNING '索引idx_roads_geom已存在';
+        END IF;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts') THEN
+        RAISE WARNING '表districts不存在，跳过索引创建';
+    ELSE
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes
+            WHERE schemaname = 'public'
+            AND tablename = 'districts'
+            AND indexname = 'idx_districts_geom'
+        ) THEN
+            CREATE INDEX idx_districts_geom ON districts USING gist(geom);
+            RAISE NOTICE '索引创建成功: idx_districts_geom';
+        ELSE
+            RAISE WARNING '索引idx_districts_geom已存在';
+        END IF;
+    END IF;
 EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '相关表不存在';
     WHEN duplicate_table THEN
-        RAISE NOTICE '部分空间索引已存在';
+        RAISE WARNING '部分空间索引已存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '创建空间索引失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '创建空间索引失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：查询性能（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    RAISE NOTICE '执行空间查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表locations不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '空间查询失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM locations
 WHERE ST_DWithin(geom, ST_MakePoint(116.4, 39.9), 0.1);
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '空间查询失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
-
-/*
-无索引: Seq Scan, 850ms
-有索引: Index Scan using idx_locations_geom, 12ms (-99%)
-*/
+-- 无索引: Seq Scan, 850ms
+-- 有索引: Index Scan using idx_locations_geom, 12ms (-99%)
 
 ```
 
@@ -213,7 +311,20 @@ EXCEPTION
 
 ```sql
 -- 性能测试：计算两点距离（米）（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    RAISE NOTICE '执行两点距离计算性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表locations不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '计算两点距离失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     l1.name AS from_loc,
@@ -224,17 +335,24 @@ SELECT
     ) AS distance_meters
 FROM locations l1, locations l2
 WHERE l1.loc_id = 1 AND l2.loc_id = 2;
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表locations不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '计算两点距离失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+-- 执行时间: <10ms
+-- 计划: Seq Scan 或 Index Scan
 
 -- 性能测试：查找附近的点（半径1000米）（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    RAISE NOTICE '执行附近点查找性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表locations不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查找附近点失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     name,
@@ -246,58 +364,93 @@ WHERE ST_DWithin(
     1000
 )
 ORDER BY distance;
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表locations不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '查找附近点失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+-- 执行时间: <50ms（取决于数据量）
+-- 计划: Index Scan using idx_locations_geom
 ```
 
 ### 4.2 空间关系
 
 ```sql
 -- 性能测试：点是否在多边形内（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts') THEN
+        RAISE EXCEPTION '表districts不存在';
+    END IF;
+
+    RAISE NOTICE '执行空间关系查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '相关表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '空间关系查询失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT l.name
 FROM locations l
-JOIN districts d ON ST_Within(l.geom, d.geom);
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表locations或districts不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '空间关系查询失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+JOIN districts d ON ST_Within(l.geom, d.geom)
 WHERE d.name = '朝阳区';
+-- 执行时间: <30ms（取决于数据量）
+-- 计划: Nested Loop + Index Scan
 
 -- 性能测试：相交（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roads') THEN
+        RAISE EXCEPTION '表roads不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts') THEN
+        RAISE EXCEPTION '表districts不存在';
+    END IF;
+
+    RAISE NOTICE '执行相交查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '相关表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '相交查询失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT r.name
 FROM roads r
 JOIN districts d ON ST_Intersects(r.geom, d.geom)
 WHERE d.name = '海淀区';
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表roads或districts不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '相交查询失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+-- 执行时间: <40ms（取决于数据量）
+-- 计划: Nested Loop + Index Scan
 
 -- 性能测试：包含（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts') THEN
+        RAISE EXCEPTION '表districts不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    RAISE NOTICE '执行包含查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '相关表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '包含查询失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT d.name, COUNT(l.loc_id) AS location_count
 FROM districts d
 LEFT JOIN locations l ON ST_Contains(d.geom, l.geom)
 GROUP BY d.name;
+-- 执行时间: 取决于数据量
+-- 计划: Hash Aggregate + Nested Loop
 COMMIT;
 EXCEPTION
     WHEN undefined_table THEN
@@ -308,20 +461,27 @@ EXCEPTION
         RAISE;
 
 -- 性能测试：最近邻（KNN）（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+        RAISE EXCEPTION '表locations不存在';
+    END IF;
+
+    RAISE NOTICE '执行最近邻查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表locations不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '最近邻查询失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name
 FROM locations
 ORDER BY geom <-> ST_MakePoint(116.4, 39.9)::geometry
 LIMIT 5;
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表locations不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '最近邻查询失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+-- 执行时间: <20ms（取决于数据量）
+-- 计划: Index Scan using idx_locations_geom (KNN)
 ```
 
 ---
@@ -332,65 +492,178 @@ EXCEPTION
 
 ```sql
 -- 性能测试：商家表（带错误处理）
-BEGIN;
-CREATE TABLE IF NOT EXISTS restaurants (
-    restaurant_id SERIAL PRIMARY KEY,
-    name VARCHAR(200),
-    location geometry(POINT, 4326),
-    delivery_range INT DEFAULT 3000  -- 配送范围（米）
-);
-CREATE INDEX IF NOT EXISTS idx_restaurants_location ON restaurants USING gist(location);
-COMMIT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'restaurants') THEN
+        DROP TABLE restaurants;
+        RAISE NOTICE '已删除现有表: restaurants';
+    END IF;
+
+    CREATE TABLE restaurants (
+        restaurant_id SERIAL PRIMARY KEY,
+        name VARCHAR(200),
+        location geometry(POINT, 4326),
+        delivery_range INT DEFAULT 3000  -- 配送范围（米）
+    );
+
+    RAISE NOTICE '表创建成功: restaurants';
 EXCEPTION
     WHEN duplicate_table THEN
-        RAISE NOTICE '表restaurants已存在';
+        RAISE WARNING '表restaurants已存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '创建商家表失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '创建商家表失败: %', SQLERRM;
+END $$;
+
+-- 创建商家表空间索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'restaurants') THEN
+        RAISE EXCEPTION '表restaurants不存在';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'restaurants'
+        AND indexname = 'idx_restaurants_location'
+    ) THEN
+        CREATE INDEX idx_restaurants_location ON restaurants USING gist(location);
+        RAISE NOTICE '索引创建成功: idx_restaurants_location';
+    ELSE
+        RAISE WARNING '索引idx_restaurants_location已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表restaurants不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：订单表（带错误处理）
-BEGIN;
-CREATE TABLE IF NOT EXISTS orders (
-    order_id BIGSERIAL PRIMARY KEY,
-    restaurant_id INT REFERENCES restaurants(restaurant_id),
-    delivery_location geometry(POINT, 4326),
-    status VARCHAR(20),
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_orders_location ON orders USING gist(delivery_location);
-COMMIT;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'restaurants') THEN
+        RAISE EXCEPTION '表restaurants不存在，请先创建';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        DROP TABLE orders;
+        RAISE NOTICE '已删除现有表: orders';
+    END IF;
+
+    CREATE TABLE orders (
+        order_id BIGSERIAL PRIMARY KEY,
+        restaurant_id INT REFERENCES restaurants(restaurant_id),
+        delivery_location geometry(POINT, 4326),
+        status VARCHAR(20),
+        created_at TIMESTAMPTZ DEFAULT now()
+    );
+
+    RAISE NOTICE '表创建成功: orders';
 EXCEPTION
-    WHEN duplicate_table THEN
-        RAISE NOTICE '表orders已存在';
     WHEN undefined_table THEN
-        RAISE NOTICE '表restaurants不存在，请先创建';
+        RAISE EXCEPTION '表restaurants不存在，请先创建';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表orders已存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '创建订单表失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '创建订单表失败: %', SQLERRM;
+END $$;
+
+-- 创建订单表空间索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表orders不存在';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'orders'
+        AND indexname = 'idx_orders_location'
+    ) THEN
+        CREATE INDEX idx_orders_location ON orders USING gist(delivery_location);
+        RAISE NOTICE '索引创建成功: idx_orders_location';
+    ELSE
+        RAISE WARNING '索引idx_orders_location已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表orders不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：骑手表（带错误处理）
-BEGIN;
-CREATE TABLE IF NOT EXISTS riders (
-    rider_id INT PRIMARY KEY,
-    name VARCHAR(100),
-    current_location geometry(POINT, 4326),
-    status VARCHAR(20),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_riders_location ON riders USING gist(current_location);
-COMMIT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'riders') THEN
+        DROP TABLE riders;
+        RAISE NOTICE '已删除现有表: riders';
+    END IF;
+
+    CREATE TABLE riders (
+        rider_id INT PRIMARY KEY,
+        name VARCHAR(100),
+        current_location geometry(POINT, 4326),
+        status VARCHAR(20),
+        updated_at TIMESTAMPTZ DEFAULT now()
+    );
+
+    RAISE NOTICE '表创建成功: riders';
 EXCEPTION
     WHEN duplicate_table THEN
-        RAISE NOTICE '表riders已存在';
+        RAISE WARNING '表riders已存在';
     WHEN OTHERS THEN
-        RAISE NOTICE '创建骑手表失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+        RAISE EXCEPTION '创建骑手表失败: %', SQLERRM;
+END $$;
+
+-- 创建骑手表空间索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'riders') THEN
+        RAISE EXCEPTION '表riders不存在';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'riders'
+        AND indexname = 'idx_riders_location'
+    ) THEN
+        CREATE INDEX idx_riders_location ON riders USING gist(current_location);
+        RAISE NOTICE '索引创建成功: idx_riders_location';
+    ELSE
+        RAISE WARNING '索引idx_riders_location已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表riders不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：查询用户位置附近可配送的商家（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'restaurants') THEN
+        RAISE EXCEPTION '表restaurants不存在';
+    END IF;
+
+    RAISE NOTICE '执行附近商家查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表restaurants不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询附近商家失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     r.restaurant_id,
@@ -405,17 +678,28 @@ WHERE ST_DWithin(
 )
 ORDER BY distance
 LIMIT 20;
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表restaurants不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '查询附近商家失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+-- 执行时间: <50ms（取决于数据量）
+-- 计划: Index Scan using idx_restaurants_location
 
 -- 性能测试：查询订单附近的空闲骑手（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'riders') THEN
+        RAISE EXCEPTION '表riders不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表orders不存在';
+    END IF;
+
+    RAISE NOTICE '执行附近骑手查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表riders或orders不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询附近骑手失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     rider_id,
@@ -431,17 +715,28 @@ WHERE status = 'available'
   )
 ORDER BY distance
 LIMIT 10;
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表riders或orders不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '查询附近骑手失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+-- 执行时间: <40ms（取决于数据量）
+-- 计划: Index Scan using idx_riders_location
 
 -- 性能测试：配送路径优化（简化TSP）（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表orders不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'riders') THEN
+        RAISE EXCEPTION '表riders不存在';
+    END IF;
+
+    RAISE NOTICE '执行配送路径优化查询性能测试';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表orders或riders不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '配送路径优化查询失败: %', SQLERRM;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH rider_orders AS (
     SELECT
@@ -455,14 +750,8 @@ WITH rider_orders AS (
 )
 SELECT * FROM rider_orders
 ORDER BY distance;
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表orders或riders不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '配送路径优化查询失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+-- 执行时间: 取决于数据量
+-- 计划: Hash Join + Index Scan
 ```
 
 ### 5.2 地理围栏

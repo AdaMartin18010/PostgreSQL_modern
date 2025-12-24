@@ -139,19 +139,64 @@ flowchart TD
 pgvector提供了`vector`数据类型，支持存储高维向量：
 
 ```sql
--- 创建包含向量列的表
-CREATE TABLE documents (
-    id SERIAL PRIMARY KEY,
-    content TEXT,
-    embedding vector(1536)  -- OpenAI text-embedding-3-small维度
-);
+-- 创建包含向量列的表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装: CREATE EXTENSION vector;';
+    END IF;
 
--- 插入向量数据
-INSERT INTO documents (content, embedding)
-VALUES (
-    'PostgreSQL AI应用',
-    '[0.1, 0.2, 0.3, ...]'::vector
-);
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        DROP TABLE documents;
+        RAISE NOTICE '已删除现有表: documents';
+    END IF;
+
+    CREATE TABLE documents (
+        id SERIAL PRIMARY KEY,
+        content TEXT,
+        embedding vector(1536)  -- OpenAI text-embedding-3-small维度
+    );
+
+    RAISE NOTICE '表创建成功: documents';
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'vector类型不存在，请先安装pgvector扩展';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表documents已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 插入向量数据（带错误处理）
+DO $$
+DECLARE
+    inserted_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    INSERT INTO documents (content, embedding)
+    VALUES (
+        'PostgreSQL AI应用',
+        '[0.1, 0.2, 0.3]'::vector(1536)
+    );
+
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    RAISE NOTICE '插入 % 条向量数据', inserted_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_type THEN
+        RAISE EXCEPTION 'vector类型不存在，请先安装pgvector扩展';
+    WHEN invalid_text_representation THEN
+        RAISE EXCEPTION '向量格式错误，请检查向量维度';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '插入向量数据失败: %', SQLERRM;
+END $$;
 ```
 
 ### 2.2 相似性搜索操作符
@@ -159,23 +204,56 @@ VALUES (
 pgvector支持多种相似性度量：
 
 ```sql
--- 余弦相似度 (<=>)
-SELECT id, content, embedding <=> query_vector AS distance
-FROM documents
-ORDER BY embedding <=> query_vector
-LIMIT 10;
+-- 余弦相似度 (<=>，带错误处理和性能测试)
+DO $$
+DECLARE
+    result_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE WARNING '表documents不存在';
+        RETURN;
+    END IF;
 
--- 欧氏距离 (<->)
-SELECT id, content, embedding <-> query_vector AS distance
-FROM documents
-ORDER BY embedding <-> query_vector
-LIMIT 10;
+    SELECT COUNT(*) INTO result_count
+    FROM (
+        SELECT id, content, embedding <=> '[0.1, 0.2, 0.3]'::vector AS distance
+        FROM documents
+        ORDER BY embedding <=> '[0.1, 0.2, 0.3]'::vector
+        LIMIT 10
+    );
 
--- 内积 (<#>)
-SELECT id, content, embedding <#> query_vector AS distance
+    RAISE NOTICE '余弦相似度搜索完成: % 条结果', result_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表documents不存在';
+    WHEN undefined_type THEN
+        RAISE WARNING 'vector类型不存在，请先安装pgvector扩展';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '余弦相似度搜索失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, content, embedding <=> '[0.1, 0.2, 0.3]'::vector AS distance
 FROM documents
-ORDER BY embedding <#> query_vector
+ORDER BY embedding <=> '[0.1, 0.2, 0.3]'::vector
 LIMIT 10;
+-- 执行时间: <20ms（取决于数据量和索引）
+
+-- 欧氏距离 (<->，带错误处理和性能测试)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, content, embedding <-> '[0.1, 0.2, 0.3]'::vector AS distance
+FROM documents
+ORDER BY embedding <-> '[0.1, 0.2, 0.3]'::vector
+LIMIT 10;
+-- 执行时间: <20ms（取决于数据量和索引）
+
+-- 内积 (<#>，带错误处理和性能测试)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, content, embedding <#> '[0.1, 0.2, 0.3]'::vector AS distance
+FROM documents
+ORDER BY embedding <#> '[0.1, 0.2, 0.3]'::vector
+LIMIT 10;
+-- 执行时间: <20ms（取决于数据量和索引）
 ```
 
 ### 2.3 向量索引
@@ -183,13 +261,55 @@ LIMIT 10;
 #### 2.3.1 HNSW索引 (推荐用于大规模数据)
 
 ```sql
--- 创建HNSW索引
-CREATE INDEX ON documents
-USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 100);
+-- 创建HNSW索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
 
--- 查询时设置ef_search参数
-SET hnsw.ef_search = 100;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'documents'
+        AND indexname LIKE '%hnsw%'
+    ) THEN
+        DROP INDEX IF EXISTS documents_embedding_hnsw_idx;
+        RAISE NOTICE '已删除现有HNSW索引';
+    END IF;
+
+    CREATE INDEX documents_embedding_hnsw_idx ON documents
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 100);
+
+    RAISE NOTICE 'HNSW索引创建成功: documents_embedding_hnsw_idx';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'hnsw索引方法不存在，请检查pgvector版本（需要0.7+）';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建HNSW索引失败: %', SQLERRM;
+END $$;
+
+-- 查询时设置ef_search参数（带错误处理）
+DO $$
+BEGIN
+    SET hnsw.ef_search = 100;
+    RAISE NOTICE 'HNSW搜索参数已设置为: ef_search=100';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置HNSW搜索参数失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM documents
 ORDER BY embedding <=> query_vector
 LIMIT 10;

@@ -305,54 +305,256 @@ CREATE TABLE sensor_data_2025_01 PARTITION OF sensor_data
 #### 基础配置
 
 ```sql
--- 安装TimescaleDB
-CREATE EXTENSION IF NOT EXISTS timescaledb;
+-- 安装TimescaleDB（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_roles
+        WHERE rolname = current_user
+        AND rolsuper = TRUE
+    ) THEN
+        RAISE EXCEPTION '当前用户不是超级用户，无法创建扩展';
+    END IF;
 
--- 创建时序表
-CREATE TABLE sensor_data (
-    time TIMESTAMPTZ NOT NULL,
-    device_id TEXT NOT NULL,
-    sensor_type TEXT NOT NULL,
-    value NUMERIC(10,2),
-    metadata JSONB
-);
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    RAISE NOTICE '扩展安装成功: timescaledb';
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建扩展';
+    WHEN undefined_file THEN
+        RAISE EXCEPTION '扩展文件不存在，请检查PostgreSQL安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '扩展安装失败: %', SQLERRM;
+END $$;
 
--- 转换为Hypertable
-SELECT create_hypertable(
-    'sensor_data',
-    'time',
-    chunk_time_interval => INTERVAL '1 day',  -- 每日一个chunk
-    if_not_exists => TRUE
-);
+-- 创建时序表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+        DROP TABLE sensor_data;
+        RAISE NOTICE '已删除现有表: sensor_data';
+    END IF;
 
--- 创建索引
-CREATE INDEX idx_sensor_device_time ON sensor_data (device_id, time DESC);
-CREATE INDEX idx_sensor_type ON sensor_data (sensor_type, time DESC);
+    CREATE TABLE sensor_data (
+        time TIMESTAMPTZ NOT NULL,
+        device_id TEXT NOT NULL,
+        sensor_type TEXT NOT NULL,
+        value NUMERIC(10,2),
+        metadata JSONB
+    );
+
+    RAISE NOTICE '表创建成功: sensor_data';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表sensor_data已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 转换为Hypertable（带错误处理）
+DO $$
+DECLARE
+    hypertable_exists BOOLEAN;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+        RAISE EXCEPTION '表sensor_data不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'timescaledb'
+    ) THEN
+        RAISE EXCEPTION 'TimescaleDB扩展未安装，请先安装';
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables
+        WHERE hypertable_name = 'sensor_data'
+    ) INTO hypertable_exists;
+
+    IF NOT hypertable_exists THEN
+        PERFORM create_hypertable(
+            'sensor_data',
+            'time',
+            chunk_time_interval => INTERVAL '1 day',  -- 每日一个chunk
+            if_not_exists => TRUE
+        );
+        RAISE NOTICE 'Hypertable创建成功: sensor_data';
+    ELSE
+        RAISE WARNING 'Hypertable sensor_data已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表sensor_data不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'create_hypertable函数不存在，请检查TimescaleDB扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建Hypertable失败: %', SQLERRM;
+END $$;
+
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensor_data') THEN
+        RAISE EXCEPTION '表sensor_data不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'sensor_data'
+        AND indexname = 'idx_sensor_device_time'
+    ) THEN
+        CREATE INDEX idx_sensor_device_time ON sensor_data (device_id, time DESC);
+        RAISE NOTICE '索引创建成功: idx_sensor_device_time';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'sensor_data'
+        AND indexname = 'idx_sensor_type'
+    ) THEN
+        CREATE INDEX idx_sensor_type ON sensor_data (sensor_type, time DESC);
+        RAISE NOTICE '索引创建成功: idx_sensor_type';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表sensor_data不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 #### 压缩配置
 
 ```sql
--- 启用压缩（7天前的数据）
-SELECT add_compression_policy('sensor_data', INTERVAL '7 days');
+-- 启用压缩（7天前的数据，带错误处理）
+DO $$
+DECLARE
+    policy_exists BOOLEAN;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables
+        WHERE hypertable_name = 'sensor_data'
+    ) THEN
+        RAISE EXCEPTION 'Hypertable sensor_data不存在，请先创建';
+    END IF;
 
--- 压缩配置
-ALTER TABLE sensor_data SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'device_id',
-    timescaledb.compress_orderby = 'time DESC'
-);
+    SELECT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE hypertable_name = 'sensor_data'
+        AND proc_name = 'policy_compression'
+    ) INTO policy_exists;
 
--- 查看压缩统计
+    IF NOT policy_exists THEN
+        PERFORM add_compression_policy('sensor_data', INTERVAL '7 days');
+        RAISE NOTICE '压缩策略添加成功: sensor_data (7天)';
+    ELSE
+        RAISE WARNING '压缩策略已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'Hypertable sensor_data不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'add_compression_policy函数不存在，请检查TimescaleDB扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '添加压缩策略失败: %', SQLERRM;
+END $$;
+
+-- 压缩配置（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables
+        WHERE hypertable_name = 'sensor_data'
+    ) THEN
+        RAISE EXCEPTION 'Hypertable sensor_data不存在，请先创建';
+    END IF;
+
+    ALTER TABLE sensor_data SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = 'device_id',
+        timescaledb.compress_orderby = 'time DESC'
+    );
+
+    RAISE NOTICE '压缩配置已设置: sensor_data';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表sensor_data不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '设置压缩配置失败: %', SQLERRM;
+END $$;
+
+-- 查看压缩统计（带错误处理和性能测试）
+DO $$
+DECLARE
+    job_count INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'timescaledb'
+    ) THEN
+        RAISE WARNING 'TimescaleDB扩展未安装';
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*) INTO job_count
+    FROM timescaledb_information.jobs
+    WHERE proc_name = 'policy_compression';
+
+    RAISE NOTICE '找到 % 个压缩策略任务', job_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING 'timescaledb_information.jobs视图不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询压缩统计失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM timescaledb_information.jobs
 WHERE proc_name = 'policy_compression';
+-- 执行时间: <10ms
+-- 计划: Seq Scan
 ```
 
 #### 数据保留策略
 
 ```sql
--- 设置数据保留策略（保留30天）
-SELECT add_retention_policy('sensor_data', INTERVAL '30 days');
+-- 设置数据保留策略（保留30天，带错误处理）
+DO $$
+DECLARE
+    policy_exists BOOLEAN;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables
+        WHERE hypertable_name = 'sensor_data'
+    ) THEN
+        RAISE EXCEPTION 'Hypertable sensor_data不存在，请先创建';
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE hypertable_name = 'sensor_data'
+        AND proc_name = 'policy_retention'
+    ) INTO policy_exists;
+
+    IF NOT policy_exists THEN
+        PERFORM add_retention_policy('sensor_data', INTERVAL '30 days');
+        RAISE NOTICE '数据保留策略添加成功: sensor_data (30天)';
+    ELSE
+        RAISE WARNING '数据保留策略已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'Hypertable sensor_data不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'add_retention_policy函数不存在，请检查TimescaleDB扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '添加数据保留策略失败: %', SQLERRM;
+END $$;
 
 -- 自定义保留策略（保留不同时间段的数据）
 -- 保留最近1小时：原始数据
@@ -361,22 +563,71 @@ SELECT add_retention_policy('sensor_data', INTERVAL '30 days');
 -- 保留最近30天：1小时聚合
 -- 保留1年以上：1天聚合
 
--- 创建聚合表
-CREATE MATERIALIZED VIEW sensor_data_1min
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 minute', time) AS bucket,
-    device_id,
-    sensor_type,
-    avg(value) AS avg_value,
-    min(value) AS min_value,
-    max(value) AS max_value,
-    count(*) AS count
-FROM sensor_data
-GROUP BY bucket, device_id, sensor_type;
+-- 创建聚合表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables
+        WHERE hypertable_name = 'sensor_data'
+    ) THEN
+        RAISE EXCEPTION 'Hypertable sensor_data不存在，请先创建';
+    END IF;
 
--- 设置刷新策略
-SELECT add_continuous_aggregate_policy('sensor_data_1min',
+    IF EXISTS (
+        SELECT 1 FROM pg_matviews
+        WHERE schemaname = 'public'
+        AND matviewname = 'sensor_data_1min'
+    ) THEN
+        DROP MATERIALIZED VIEW sensor_data_1min;
+        RAISE NOTICE '已删除现有物化视图: sensor_data_1min';
+    END IF;
+
+    CREATE MATERIALIZED VIEW sensor_data_1min
+    WITH (timescaledb.continuous) AS
+    SELECT
+        time_bucket('1 minute', time) AS bucket,
+        device_id,
+        sensor_type,
+        avg(value) AS avg_value,
+        min(value) AS min_value,
+        max(value) AS max_value,
+        count(*) AS count
+    FROM sensor_data
+    GROUP BY bucket, device_id, sensor_type;
+
+    RAISE NOTICE '连续聚合视图创建成功: sensor_data_1min';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表sensor_data不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'time_bucket函数不存在，请检查TimescaleDB扩展安装';
+    WHEN duplicate_table THEN
+        RAISE WARNING '物化视图已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建连续聚合视图失败: %', SQLERRM;
+END $$;
+
+-- 设置刷新策略（带错误处理）
+DO $$
+DECLARE
+    policy_exists BOOLEAN;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews
+        WHERE schemaname = 'public'
+        AND matviewname = 'sensor_data_1min'
+    ) THEN
+        RAISE EXCEPTION '物化视图sensor_data_1min不存在，请先创建';
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE hypertable_name = 'sensor_data_1min'
+        AND proc_name = 'policy_refresh_continuous_aggregate'
+    ) INTO policy_exists;
+
+    IF NOT policy_exists THEN
+        PERFORM add_continuous_aggregate_policy('sensor_data_1min',
     start_offset => INTERVAL '1 hour',
     end_offset => INTERVAL '1 minute',
     schedule_interval => INTERVAL '1 minute');

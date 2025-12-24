@@ -210,7 +210,21 @@ mindmap
 传统优化器使用统计信息（如 `pg_stats`）和独立性假设进行基数估计，但在复杂查询中误差可能非常大。
 
 ```sql
--- 示例：多列相关性导致的估计误差
+-- 示例：多列相关性导致的估计误差（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行查询';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表存在性失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN ANALYZE
 SELECT * FROM users
 WHERE age BETWEEN 25 AND 35
@@ -220,6 +234,7 @@ WHERE age BETWEEN 25 AND 35
 -- 传统估计：假设 age、city、income 独立
 -- 估计基数 = total_rows * sel(age) * sel(city) * sel(income)
 -- 实际基数：可能因为列相关性而差异很大
+-- 注意：可以通过 EXPLAIN (ANALYZE, BUFFERS, VERBOSE) 查看详细的估计vs实际对比
 ```
 
 **误差原因**：
@@ -587,15 +602,53 @@ class AIQueryOptimizer:
 #### 3.2.1 查询日志收集
 
 ```sql
--- 启用查询日志收集
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+-- 启用查询日志收集（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查是否为超级用户
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限才能执行ALTER SYSTEM命令';
+            RETURN;
+        END IF;
 
--- 配置参数
-ALTER SYSTEM SET pg_stat_statements.track = 'all';
-ALTER SYSTEM SET pg_stat_statements.max = 10000;
-ALTER SYSTEM SET log_min_duration_statement = 100; -- 记录>100ms的查询
+        -- 检查并创建扩展
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+            CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+            RAISE NOTICE 'pg_stat_statements扩展已创建';
+        ELSE
+            RAISE NOTICE 'pg_stat_statements扩展已存在';
+        END IF;
 
-SELECT pg_reload_conf();
+        -- 配置参数
+        BEGIN
+            ALTER SYSTEM SET pg_stat_statements.track = 'all';
+            ALTER SYSTEM SET pg_stat_statements.max = 10000;
+            ALTER SYSTEM SET log_min_duration_statement = 100; -- 记录>100ms的查询
+            RAISE NOTICE '配置参数已设置';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING '权限不足，无法设置系统参数';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置系统参数失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 重载配置
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重载配置失败，可能需要重启PostgreSQL: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '启用查询日志收集失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ```python
@@ -940,19 +993,62 @@ EOF
 #### 4.1.2 PostgreSQL 配置
 
 ```sql
--- 启用必要的扩展和配置
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-CREATE EXTENSION IF NOT EXISTS pg_hint_plan;  -- 用于测试不同执行计划
+-- 启用必要的扩展和配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查是否为超级用户
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限才能执行ALTER SYSTEM命令';
+            RETURN;
+        END IF;
 
--- 调整配置
-ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements, pg_hint_plan';
-ALTER SYSTEM SET pg_stat_statements.max = 10000;
-ALTER SYSTEM SET pg_stat_statements.track = 'all';
-ALTER SYSTEM SET log_min_duration_statement = 100;
-ALTER SYSTEM SET log_line_prefix = '%m [%p] %q%u@%d ';
+        -- 检查并创建扩展
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+            CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+            RAISE NOTICE 'pg_stat_statements扩展已创建';
+        ELSE
+            RAISE NOTICE 'pg_stat_statements扩展已存在';
+        END IF;
 
--- 重启PostgreSQL以使配置生效
-SELECT pg_reload_conf();
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_hint_plan') THEN
+            CREATE EXTENSION IF NOT EXISTS pg_hint_plan;  -- 用于测试不同执行计划
+            RAISE NOTICE 'pg_hint_plan扩展已创建';
+        ELSE
+            RAISE NOTICE 'pg_hint_plan扩展已存在';
+        END IF;
+
+        -- 调整配置
+        BEGIN
+            ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements, pg_hint_plan';
+            ALTER SYSTEM SET pg_stat_statements.max = 10000;
+            ALTER SYSTEM SET pg_stat_statements.track = 'all';
+            ALTER SYSTEM SET log_min_duration_statement = 100;
+            ALTER SYSTEM SET log_line_prefix = '%m [%p] %q%u@%d ';
+            RAISE NOTICE '配置参数已设置';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING '权限不足，无法设置系统参数';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置系统参数失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 重载配置（注意：shared_preload_libraries需要重启PostgreSQL才能生效）
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载（注意：shared_preload_libraries更改需要重启PostgreSQL才能生效）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '启用扩展和配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.2 数据收集实现
@@ -1518,18 +1614,71 @@ ai_planner_hook(Query *parse, int cursorOptions, ParamListInfo boundParams)
 #### 4.5.2 Hook 机制
 
 ```sql
--- 创建扩展
-CREATE EXTENSION ai_optimizer;
+-- 创建扩展（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查是否为超级用户
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限才能创建扩展和执行ALTER SYSTEM命令';
+            RETURN;
+        END IF;
 
--- 配置
-ALTER SYSTEM SET shared_preload_libraries = 'ai_optimizer';
-ALTER SYSTEM SET ai_optimizer.model_path = '/path/to/model.pth';
-ALTER SYSTEM SET ai_optimizer.enable = on;
+        -- 检查并创建扩展
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'ai_optimizer') THEN
+            CREATE EXTENSION ai_optimizer;
+            RAISE NOTICE 'ai_optimizer扩展已创建';
+        ELSE
+            RAISE NOTICE 'ai_optimizer扩展已存在';
+        END IF;
 
--- 重启PostgreSQL
-SELECT pg_reload_conf();
+        -- 配置
+        BEGIN
+            ALTER SYSTEM SET shared_preload_libraries = 'ai_optimizer';
+            ALTER SYSTEM SET ai_optimizer.model_path = '/path/to/model.pth';
+            ALTER SYSTEM SET ai_optimizer.enable = on;
+            RAISE NOTICE '配置参数已设置';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING '权限不足，无法设置系统参数';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置系统参数失败: %', SQLERRM;
+                RAISE;
+        END;
 
--- 测试
+        -- 重载配置（注意：shared_preload_libraries需要重启PostgreSQL才能生效）
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载（注意：shared_preload_libraries更改需要重启PostgreSQL才能生效）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN undefined_file THEN
+            RAISE WARNING '扩展文件不存在，请确保ai_optimizer扩展已正确安装';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建扩展或配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 测试（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table') THEN
+            RAISE WARNING '表 large_table 不存在，无法执行测试查询';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表存在性失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN ANALYZE SELECT * FROM large_table WHERE condition;
 -- 应该看到AI优化器的影响
 ```
@@ -1593,26 +1742,58 @@ class ModelMonitor:
 #### 5.1.2 性能监控
 
 ```sql
--- 创建监控表
-CREATE TABLE ai_optimizer_performance (
-    id SERIAL PRIMARY KEY,
-    timestamp TIMESTAMPTZ DEFAULT NOW(),
-    query_id TEXT,
-    predicted_cost FLOAT,
-    actual_cost FLOAT,
-    cost_error_ratio FLOAT,
-    execution_time_ms FLOAT,
-    model_inference_time_ms FLOAT
-);
+-- 创建监控表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ai_optimizer_performance') THEN
+            RAISE NOTICE '表 ai_optimizer_performance 已存在';
+        ELSE
+            CREATE TABLE ai_optimizer_performance (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMPTZ DEFAULT NOW(),
+                query_id TEXT,
+                predicted_cost FLOAT,
+                actual_cost FLOAT,
+                cost_error_ratio FLOAT,
+                execution_time_ms FLOAT,
+                model_inference_time_ms FLOAT
+            );
+            RAISE NOTICE '表 ai_optimizer_performance 创建成功';
 
--- 监控视图
-CREATE VIEW ai_optimizer_stats AS
-SELECT
-    date_trunc('hour', timestamp) AS hour,
-    COUNT(*) AS num_queries,
-    AVG(cost_error_ratio) AS avg_cost_error,
-    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cost_error_ratio) AS median_cost_error,
-    PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY cost_error_ratio) AS p90_cost_error,
+            -- 创建索引以提高查询性能
+            CREATE INDEX idx_ai_opt_perf_timestamp ON ai_optimizer_performance(timestamp);
+            CREATE INDEX idx_ai_opt_perf_query_id ON ai_optimizer_performance(query_id);
+            RAISE NOTICE '索引已创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 ai_optimizer_performance 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建监控表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 监控视图（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_schema = 'public' AND table_name = 'ai_optimizer_stats') THEN
+            RAISE NOTICE '视图 ai_optimizer_stats 已存在';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ai_optimizer_performance') THEN
+                RAISE WARNING '表 ai_optimizer_performance 不存在，无法创建视图';
+                RETURN;
+            END IF;
+
+            CREATE VIEW ai_optimizer_stats AS
+            SELECT
+                date_trunc('hour', timestamp) AS hour,
+                COUNT(*) AS num_queries,
+                AVG(cost_error_ratio) AS avg_cost_error,
+                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cost_error_ratio) AS median_cost_error,
+                PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY cost_error_ratio) AS p90_cost_error,
     AVG(execution_time_ms) AS avg_execution_time,
     AVG(model_inference_time_ms) AS avg_inference_time
 FROM ai_optimizer_performance
@@ -1877,7 +2058,23 @@ class BestPractices:
 #### 6.1.2 实现方案
 
 ```sql
--- 典型OLTP查询
+-- 典型OLTP查询（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 orders 或 users 不存在，无法执行查询';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表存在性失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     o.order_id,
     o.order_date,
@@ -1938,7 +2135,25 @@ class OLTPOptimizer:
 #### 6.2.2 实现方案
 
 ```sql
--- 典型OLAP查询
+-- 典型OLAP查询（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'fact_sales') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dim_date') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dim_product') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dim_customer') THEN
+            RAISE WARNING '必需的维度表或事实表不存在，无法执行查询';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表存在性失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     d.date,
     p.product_category,

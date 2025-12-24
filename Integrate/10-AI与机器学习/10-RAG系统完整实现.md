@@ -53,45 +53,138 @@
 ## 2. 数据库Schema
 
 ```sql
--- 文档表
-CREATE TABLE documents (
-    doc_id BIGSERIAL PRIMARY KEY,
-    source_id VARCHAR(100),
-    doc_type VARCHAR(50),
-    title TEXT,
-    content TEXT,
-    metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+-- 文档表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装: CREATE EXTENSION vector;';
+    END IF;
 
--- 文档块表（Chunk）
-CREATE TABLE document_chunks (
-    chunk_id BIGSERIAL PRIMARY KEY,
-    doc_id BIGINT REFERENCES documents(doc_id) ON DELETE CASCADE,
-    chunk_index INT,
-    chunk_text TEXT,
-    embedding vector(768),
-    token_count INT,
-    metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE (doc_id, chunk_index)
-);
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        DROP TABLE documents CASCADE;
+        RAISE NOTICE '已删除现有表: documents';
+    END IF;
 
--- HNSW索引
-CREATE INDEX idx_chunks_embedding ON document_chunks
-USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
+    CREATE TABLE documents (
+        doc_id BIGSERIAL PRIMARY KEY,
+        source_id VARCHAR(100),
+        doc_type VARCHAR(50),
+        title TEXT,
+        content TEXT,
+        metadata JSONB,
+        created_at TIMESTAMPTZ DEFAULT now()
+    );
 
--- 查询日志
-CREATE TABLE query_logs (
-    query_id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT,
-    question TEXT,
-    retrieved_chunks BIGINT[],
-    answer TEXT,
-    latency_ms FLOAT,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+    RAISE NOTICE '表创建成功: documents';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表documents已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 文档块表（Chunk，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION '表documents不存在，请先创建';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'document_chunks') THEN
+        DROP TABLE document_chunks;
+        RAISE NOTICE '已删除现有表: document_chunks';
+    END IF;
+
+    CREATE TABLE document_chunks (
+        chunk_id BIGSERIAL PRIMARY KEY,
+        doc_id BIGINT REFERENCES documents(doc_id) ON DELETE CASCADE,
+        chunk_index INT,
+        chunk_text TEXT,
+        embedding vector(768),
+        token_count INT,
+        metadata JSONB,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        UNIQUE (doc_id, chunk_index)
+    );
+
+    RAISE NOTICE '表创建成功: document_chunks';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_type THEN
+        RAISE EXCEPTION 'vector类型不存在，请先安装pgvector扩展';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表document_chunks已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- HNSW索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'document_chunks') THEN
+        RAISE EXCEPTION '表document_chunks不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'document_chunks'
+        AND indexname = 'idx_chunks_embedding'
+    ) THEN
+        DROP INDEX idx_chunks_embedding;
+        RAISE NOTICE '已删除现有HNSW索引';
+    END IF;
+
+    CREATE INDEX idx_chunks_embedding ON document_chunks
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+
+    RAISE NOTICE 'HNSW索引创建成功: idx_chunks_embedding';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表document_chunks不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'hnsw索引方法不存在，请检查pgvector版本（需要0.7+）';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建HNSW索引失败: %', SQLERRM;
+END $$;
+
+-- 查询日志（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'query_logs') THEN
+        DROP TABLE query_logs;
+        RAISE NOTICE '已删除现有表: query_logs';
+    END IF;
+
+    CREATE TABLE query_logs (
+        query_id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT,
+        question TEXT,
+        retrieved_chunks BIGINT[],
+        answer TEXT,
+        latency_ms FLOAT,
+        created_at TIMESTAMPTZ DEFAULT now()
+    );
+
+    RAISE NOTICE '表创建成功: query_logs';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表query_logs已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
 ```
 
 ---

@@ -244,26 +244,66 @@ recovery_target_inclusive = true
 #### 场景2：恢复到特定LSN
 
 ```sql
--- 记录当前LSN
-SELECT pg_current_wal_lsn();  -- 假设：0/1234ABCD
+-- 记录当前LSN（带错误处理）
+DO $$
+DECLARE
+    current_lsn TEXT;
+BEGIN
+    SELECT pg_current_wal_lsn()::TEXT INTO current_lsn;
+    RAISE NOTICE '当前LSN: %', current_lsn;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '获取当前LSN失败: %', SQLERRM;
+END $$;
 
 -- 恢复到该LSN
-restore_command = 'cp /backup/wal_archive/%f %p'
-recovery_target_lsn = '0/1234ABCD'
+-- 注意：以下配置需要在postgresql.auto.conf或recovery.conf中设置
+-- restore_command = 'cp /backup/wal_archive/%f %p'
+-- recovery_target_lsn = '0/1234ABCD'
 ```
+
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+grep
 
 #### 场景3：恢复到命名还原点
 
 ```sql
--- 创建还原点
-SELECT pg_create_restore_point('before_major_update');
+-- 创建还原点（带错误处理）
+DO $$
+DECLARE
+    restore_point_lsn TEXT;
+BEGIN
+    SELECT pg_create_restore_point('before_major_update')::TEXT INTO restore_point_lsn;
+    RAISE NOTICE '还原点已创建: before_major_update, LSN: %', restore_point_lsn;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建还原点失败: %', SQLERRM;
+END $$;
 
--- 执行重大更新
-UPDATE users SET salary = salary * 1.1;
+-- 执行重大更新（带错误处理）
+DO $$
+DECLARE
+    updated_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION '表 users 不存在';
+    END IF;
+
+    UPDATE users SET salary = salary * 1.1;
+    GET DIAGNOSTICS updated_count = ROW_COUNT;
+
+    RAISE NOTICE '已更新 % 条记录', updated_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表 users 不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '更新失败: %', SQLERRM;
+END $$;
 
 -- 如果出错，恢复到还原点
-restore_command = 'cp /backup/wal_archive/%f %p'
-recovery_target_name = 'before_major_update'
+-- 注意：以下配置需要在postgresql.auto.conf或recovery.conf中设置
+-- restore_command = 'cp /backup/wal_archive/%f %p'
+-- recovery_target_name = 'before_major_update'
 ```
 
 #### 场景4：时间线恢复（多次PITR）
@@ -328,6 +368,9 @@ s3://company-backups-us-west/postgresql/
 
 ```bash
 #!/bin/bash
+# PostgreSQL完整备份脚本（带完整错误处理）
+
+set -euo pipefail  # 严格错误处理
 
 # 配置
 BACKUP_DIR="/backup/local"
@@ -341,71 +384,121 @@ PGDATABASE="postgres"
 LOG_FILE="/var/log/postgresql/backup.log"
 exec 1>> "$LOG_FILE" 2>&1
 
+# 错误处理函数
+error_exit() {
+    echo "错误: $1" >&2
+    echo "备份失败于: $(date)" >> "$LOG_FILE"
+    exit 1
+}
+
+# 检查依赖
+check_dependencies() {
+    command -v pg_basebackup >/dev/null 2>&1 || error_exit "pg_basebackup 未安装"
+    command -v pg_dumpall >/dev/null 2>&1 || error_exit "pg_dumpall 未安装"
+    command -v aws >/dev/null 2>&1 || error_exit "aws CLI 未安装"
+    command -v psql >/dev/null 2>&1 || error_exit "psql 未安装"
+}
+
+# 检查目录
+check_directories() {
+    [ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR" || error_exit "无法创建备份目录: $BACKUP_DIR"
+    [ -d "$BACKUP_DIR/base" ] || mkdir -p "$BACKUP_DIR/base" || error_exit "无法创建基础备份目录"
+    [ -d "$BACKUP_DIR/logical" ] || mkdir -p "$BACKUP_DIR/logical" || error_exit "无法创建逻辑备份目录"
+}
+
 echo "===== Backup started at $(date) ====="
+
+# 检查依赖和目录
+check_dependencies
+check_directories
 
 # 创建时间戳目录
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_PATH="$BACKUP_DIR/base/$TIMESTAMP"
-mkdir -p "$BACKUP_PATH"
+mkdir -p "$BACKUP_PATH" || error_exit "无法创建备份路径: $BACKUP_PATH"
 
-# 1. 基础备份
+# 1. 基础备份（带错误处理）
 echo "Creating base backup..."
-pg_basebackup \
-    -h $PGHOST \
-    -U $PGUSER \
+if ! pg_basebackup \
+    -h "$PGHOST" \
+    -U "$PGUSER" \
     -D "$BACKUP_PATH" \
     -Ft -z -P \
     -X stream \
     -c fast \
-    -l "base_backup_$TIMESTAMP" \
-    || { echo "Base backup failed"; exit 1; }
+    -l "base_backup_$TIMESTAMP"; then
+    error_exit "基础备份失败"
+fi
+echo "基础备份完成"
 
-# 2. 逻辑备份（补充）
+# 2. 逻辑备份（补充，带错误处理）
 echo "Creating logical backup..."
-pg_dumpall \
-    -h $PGHOST \
-    -U $PGUSER \
+LOGICAL_BACKUP_FILE="$BACKUP_DIR/logical/dump_$TIMESTAMP.sql.gz"
+if ! pg_dumpall \
+    -h "$PGHOST" \
+    -U "$PGUSER" \
     --clean --if-exists \
-    | gzip > "$BACKUP_DIR/logical/dump_$TIMESTAMP.sql.gz" \
-    || { echo "Logical backup failed"; exit 1; }
+    | gzip > "$LOGICAL_BACKUP_FILE"; then
+    error_exit "逻辑备份失败"
+fi
+echo "逻辑备份完成: $LOGICAL_BACKUP_FILE"
 
-# 3. 备份元数据
+# 3. 备份元数据（带错误处理）
 echo "Backing up metadata..."
-cat > "$BACKUP_PATH/backup_metadata.json" <<EOF
+METADATA_FILE="$BACKUP_PATH/backup_metadata.json"
+if ! cat > "$METADATA_FILE" <<EOF
 {
     "timestamp": "$TIMESTAMP",
     "type": "full",
-    "postgresql_version": "$(psql -h $PGHOST -U $PGUSER -t -c 'SELECT version()')".trim(),
-    "database_size": "$(psql -h $PGHOST -U $PGUSER -t -c 'SELECT pg_size_pretty(pg_database_size(current_database()))')".trim(),
-    "wal_location": "$(psql -h $PGHOST -U $PGUSER -t -c 'SELECT pg_current_wal_lsn()')".trim(),
-    "backup_size": "$(du -sh $BACKUP_PATH | cut -f1)"
+    "postgresql_version": "$(psql -h "$PGHOST" -U "$PGUSER" -t -c 'SELECT version()' | tr -d ' ')",
+    "database_size": "$(psql -h "$PGHOST" -U "$PGUSER" -t -c 'SELECT pg_size_pretty(pg_database_size(current_database()))' | tr -d ' ')",
+    "wal_location": "$(psql -h "$PGHOST" -U "$PGUSER" -t -c 'SELECT pg_current_wal_lsn()' | tr -d ' ')",
+    "backup_size": "$(du -sh "$BACKUP_PATH" | cut -f1)"
 }
 EOF
+then
+    error_exit "创建备份元数据失败"
+fi
+echo "备份元数据已创建"
 
-# 4. 上传到S3
+# 4. 上传到S3（带错误处理）
 echo "Uploading to S3..."
-aws s3 sync "$BACKUP_PATH" "$S3_BUCKET/base/$TIMESTAMP" \
-    --storage-class STANDARD_IA \
-    || { echo "S3 upload failed"; exit 1; }
+if ! aws s3 sync "$BACKUP_PATH" "$S3_BUCKET/base/$TIMESTAMP" \
+    --storage-class STANDARD_IA; then
+    error_exit "S3上传基础备份失败"
+fi
 
-aws s3 cp "$BACKUP_DIR/logical/dump_$TIMESTAMP.sql.gz" \
-    "$S3_BUCKET/logical/" \
-    || { echo "S3 upload failed"; exit 1; }
+if ! aws s3 cp "$LOGICAL_BACKUP_FILE" \
+    "$S3_BUCKET/logical/"; then
+    error_exit "S3上传逻辑备份失败"
+fi
+echo "S3上传完成"
 
-# 5. 清理旧备份
+# 5. 清理旧备份（带错误处理）
 echo "Cleaning old backups..."
-find "$BACKUP_DIR/base" -mindepth 1 -maxdepth 1 -type d -mtime +$RETENTION_DAYS -exec rm -rf {} \;
-find "$BACKUP_DIR/logical" -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete
+if ! find "$BACKUP_DIR/base" -mindepth 1 -maxdepth 1 -type d -mtime +$RETENTION_DAYS -exec rm -rf {} \; 2>/dev/null; then
+    echo "警告: 清理旧基础备份时出现问题" >&2
+fi
 
-# 6. 验证备份
+if ! find "$BACKUP_DIR/logical" -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete 2>/dev/null; then
+    echo "警告: 清理旧逻辑备份时出现问题" >&2
+fi
+echo "旧备份清理完成"
+
+# 6. 验证备份（带错误处理）
 echo "Verifying backup..."
 if [ -f "$BACKUP_PATH/base.tar.gz" ]; then
-    tar -tzf "$BACKUP_PATH/base.tar.gz" > /dev/null 2>&1 \
-        && echo "Backup verification: OK" \
-        || echo "Backup verification: FAILED"
+    if tar -tzf "$BACKUP_PATH/base.tar.gz" > /dev/null 2>&1; then
+        echo "备份验证: 成功"
+    else
+        error_exit "备份验证失败: 备份文件可能损坏"
+    fi
+else
+    echo "警告: 未找到基础备份文件" >&2
 fi
 
 echo "===== Backup completed at $(date) ====="
+echo "备份成功完成"
 ```
 
 **定时任务**（`/etc/cron.d/postgresql-backup`）：
@@ -431,33 +524,75 @@ echo "===== Backup completed at $(date) ====="
 **恢复步骤**：
 
 ```bash
+#!/bin/bash
+# PITR恢复脚本（带完整错误处理）
+
+set -euo pipefail  # 严格错误处理
+
+# 错误处理函数
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
 # 1. 确认恢复目标时间
 RECOVERY_TARGET="2025-01-01 15:30:44"  # 误删除前1秒
+BACKUP_DIR="/backup/base/20250101_020000"
+WAL_ARCHIVE="/backup/wal_archive"
+PGDATA="/var/lib/postgresql/17/main"
 
-# 2. 停止当前数据库
-sudo systemctl stop postgresql-17
+# 检查备份和目录
+[ -d "$BACKUP_DIR" ] || error_exit "备份目录不存在: $BACKUP_DIR"
+[ -f "$BACKUP_DIR/base.tar.gz" ] || error_exit "基础备份文件不存在"
+[ -d "$WAL_ARCHIVE" ] || error_exit "WAL归档目录不存在: $WAL_ARCHIVE"
 
-# 3. 备份当前数据目录（预防）
-sudo mv /var/lib/postgresql/17/main /var/lib/postgresql/17/main.broken.$(date +%s)
+# 2. 停止当前数据库（带错误处理）
+echo "停止PostgreSQL..."
+if ! sudo systemctl stop postgresql-17; then
+    error_exit "停止PostgreSQL失败"
+fi
 
-# 4. 恢复基础备份
-sudo mkdir /var/lib/postgresql/17/main
-sudo tar -xzf /backup/base/20250101_020000/base.tar.gz \
-    -C /var/lib/postgresql/17/main
+# 3. 备份当前数据目录（预防，带错误处理）
+if [ -d "$PGDATA" ]; then
+    BACKUP_BROKEN="$PGDATA.broken.$(date +%s)"
+    echo "备份当前数据目录到: $BACKUP_BROKEN"
+    if ! sudo mv "$PGDATA" "$BACKUP_BROKEN"; then
+        error_exit "备份当前数据目录失败"
+    fi
+fi
 
-# 5. 恢复WAL归档目录访问
-# 可以直接使用原归档，或复制到本地
-sudo mkdir /var/lib/postgresql/17/main/pg_wal_restore
-sudo cp /backup/wal_archive/* /var/lib/postgresql/17/main/pg_wal_restore/
+# 4. 恢复基础备份（带错误处理）
+echo "恢复基础备份..."
+if ! sudo mkdir -p "$PGDATA"; then
+    error_exit "创建数据目录失败"
+fi
 
-# 6. 创建recovery配置
-sudo tee /var/lib/postgresql/17/main/recovery.signal << EOF
+if ! sudo tar -xzf "$BACKUP_DIR/base.tar.gz" -C "$PGDATA"; then
+    error_exit "恢复基础备份失败"
+fi
+
+# 5. 恢复WAL归档目录访问（带错误处理）
+echo "准备WAL归档..."
+if ! sudo mkdir -p "$PGDATA/pg_wal_restore"; then
+    error_exit "创建WAL恢复目录失败"
+fi
+
+if ! sudo cp "$WAL_ARCHIVE"/* "$PGDATA/pg_wal_restore/" 2>/dev/null; then
+    echo "警告: 复制WAL归档文件失败，将使用原归档目录" >&2
+fi
+
+# 6. 创建recovery配置（带错误处理）
+echo "创建恢复配置..."
+if ! sudo tee "$PGDATA/recovery.signal" > /dev/null << EOF
 # recovery.signal - 标记数据库处于恢复模式
 EOF
+then
+    error_exit "创建recovery.signal失败"
+fi
 
-sudo tee /var/lib/postgresql/17/main/postgresql.auto.conf << EOF
+if ! sudo tee "$PGDATA/postgresql.auto.conf" > /dev/null << EOF
 # 恢复配置
-restore_command = 'cp /backup/wal_archive/%f %p'
+restore_command = 'cp $WAL_ARCHIVE/%f %p'
 recovery_target_time = '$RECOVERY_TARGET'
 recovery_target_action = 'promote'
 
@@ -470,28 +605,55 @@ recovery_target_action = 'promote'
 recovery_target_inclusive = true          # 包含目标事务
 recovery_target_timeline = 'latest'       # 恢复到最新时间线
 EOF
+then
+    error_exit "创建恢复配置文件失败"
+fi
 
-# 7. 设置权限
-sudo chown -R postgres:postgres /var/lib/postgresql/17/main
-sudo chmod 700 /var/lib/postgresql/17/main
+# 7. 设置权限（带错误处理）
+echo "设置权限..."
+if ! sudo chown -R postgres:postgres "$PGDATA"; then
+    error_exit "设置所有者失败"
+fi
 
-# 8. 启动恢复
-sudo systemctl start postgresql-17
+if ! sudo chmod 700 "$PGDATA"; then
+    error_exit "设置权限失败"
+fi
 
-# 9. 监控恢复进度
-sudo tail -f /var/log/postgresql/postgresql-17-main.log | grep -i recovery
+# 8. 启动恢复（带错误处理）
+echo "启动PostgreSQL恢复..."
+if ! sudo systemctl start postgresql-17; then
+    error_exit "启动PostgreSQL失败"
+fi
 
-# 10. 验证恢复
-psql -c "SELECT * FROM test_table WHERE id = 1"
-# 应该返回 'before disaster'
+# 9. 监控恢复进度（带超时）
+echo "监控恢复进度..."
+for i in {1..60}; do
+    if sudo systemctl is-active --quiet postgresql-17; then
+        if psql -c "SELECT pg_is_in_recovery();" 2>/dev/null | grep -q "f"; then
+            echo "恢复完成"
+            break
+        fi
+    fi
+    if [ $i -eq 60 ]; then
+        error_exit "恢复超时（60分钟）"
+    fi
+    echo "恢复进行中... ($i/60)"
+    sleep 60
+done
 
-psql -c "SELECT * FROM test_table WHERE id = 2"
-# 不应该存在（因为是恢复目标时间之后插入的）
+# 10. 验证恢复（带错误处理）
+echo "验证恢复..."
+if ! psql -c "SELECT * FROM test_table WHERE id = 1;" > /dev/null 2>&1; then
+    echo "警告: 验证查询失败" >&2
+fi
 
-# 11. 检查数据库状态
-psql -c "SELECT pg_is_in_recovery()"  # 应该返回 false（已提升）
-psql -c "SELECT pg_last_wal_replay_lsn()"
-psql -c "SELECT pg_current_wal_lsn()"
+# 11. 检查数据库状态（带错误处理）
+echo "检查数据库状态..."
+psql -c "SELECT pg_is_in_recovery() AS in_recovery;" || echo "警告: 检查恢复状态失败" >&2
+psql -c "SELECT pg_last_wal_replay_lsn() AS replay_lsn;" || echo "警告: 检查重放LSN失败" >&2
+psql -c "SELECT pg_current_wal_lsn() AS current_lsn;" || echo "警告: 检查当前LSN失败" >&2
+
+echo "PITR恢复流程完成"
 ```
 
 ### 1.4 PITR恢复监控
@@ -730,93 +892,191 @@ main "$@"
 ### 4.1 备份目录（backup_catalog）
 
 ```sql
-CREATE TABLE backup_catalog (
-    backup_id serial PRIMARY KEY,
-    backup_type text CHECK (backup_type IN ('full', 'incremental', 'logical', 'wal_archive')),
-    backup_path text NOT NULL,
-    backup_size bigint,
-    backup_time timestamptz DEFAULT now(),
-    wal_start_lsn pg_lsn,
-    wal_end_lsn pg_lsn,
-    postgresql_version text,
-    is_verified boolean DEFAULT false,
-    is_uploaded boolean DEFAULT false,
-    retention_until timestamptz,
-    notes text
-);
+-- 创建备份目录表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'backup_catalog') THEN
+        DROP TABLE backup_catalog;
+        RAISE NOTICE '已删除现有表: backup_catalog';
+    END IF;
 
-CREATE INDEX idx_backup_catalog_time ON backup_catalog(backup_time);
-CREATE INDEX idx_backup_catalog_type ON backup_catalog(backup_type);
+    CREATE TABLE backup_catalog (
+        backup_id serial PRIMARY KEY,
+        backup_type text CHECK (backup_type IN ('full', 'incremental', 'logical', 'wal_archive')),
+        backup_path text NOT NULL,
+        backup_size bigint,
+        backup_time timestamptz DEFAULT now(),
+        wal_start_lsn pg_lsn,
+        wal_end_lsn pg_lsn,
+        postgresql_version text,
+        is_verified boolean DEFAULT false,
+        is_uploaded boolean DEFAULT false,
+        retention_until timestamptz,
+        notes text
+    );
+
+    RAISE NOTICE '备份目录表创建成功: backup_catalog';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 backup_catalog 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建备份目录表失败: %', SQLERRM;
+END $$;
+
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'backup_catalog') THEN
+        RAISE EXCEPTION '表 backup_catalog 不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_backup_catalog_time') THEN
+        CREATE INDEX idx_backup_catalog_time ON backup_catalog(backup_time);
+        RAISE NOTICE '索引创建成功: idx_backup_catalog_time';
+    ELSE
+        RAISE WARNING '索引 idx_backup_catalog_time 已存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_backup_catalog_type') THEN
+        CREATE INDEX idx_backup_catalog_type ON backup_catalog(backup_type);
+        RAISE NOTICE '索引创建成功: idx_backup_catalog_type';
+    ELSE
+        RAISE WARNING '索引 idx_backup_catalog_type 已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表 backup_catalog 不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 ### 4.2 增量备份脚本（PostgreSQL 18+）
 
 ```bash
 #!/bin/bash
-# pg_incremental_backup.sh
+# pg_incremental_backup.sh - 增量备份脚本（带完整错误处理）
 
+set -euo pipefail  # 严格错误处理
+
+# 错误处理函数
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 配置
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_BASE="/backup/incremental"
 BACKUP_DIR="$BACKUP_BASE/$TIMESTAMP"
 
-# 查找最新的全备
-LAST_FULL=$(psql -t -c "
+# 检查命令
+command -v psql >/dev/null 2>&1 || error_exit "psql 命令未找到"
+command -v pg_basebackup >/dev/null 2>&1 || error_exit "pg_basebackup 命令未找到"
+command -v du >/dev/null 2>&1 || error_exit "du 命令未找到"
+
+# 检查目录
+[ -d "$BACKUP_BASE" ] || mkdir -p "$BACKUP_BASE" || error_exit "无法创建备份目录: $BACKUP_BASE"
+
+# 查找最新的全备（带错误处理）
+echo "查找最新的全备..."
+LAST_FULL=$(psql -t -A -c "
     SELECT backup_path
     FROM backup_catalog
     WHERE backup_type = 'full'
       AND is_verified = true
     ORDER BY backup_time DESC
     LIMIT 1
-")
+" 2>/dev/null || error_exit "查询备份目录失败")
 
 if [ -z "$LAST_FULL" ]; then
-    echo "ERROR: No full backup found. Please run full backup first."
-    exit 1
+    error_exit "未找到全备，请先运行全备"
 fi
 
-# 创建增量备份
-pg_basebackup \
+if [ ! -d "$LAST_FULL" ]; then
+    error_exit "全备目录不存在: $LAST_FULL"
+fi
+
+if [ ! -f "$LAST_FULL/backup_manifest" ]; then
+    error_exit "全备清单文件不存在: $LAST_FULL/backup_manifest"
+fi
+
+echo "找到最新全备: $LAST_FULL"
+
+# 创建增量备份（带错误处理）
+echo "创建增量备份..."
+[ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR" || error_exit "无法创建备份目录: $BACKUP_DIR"
+
+if ! pg_basebackup \
     -h localhost \
     -U postgres \
     -D "$BACKUP_DIR" \
     -Ft -z -P \
     --incremental="$LAST_FULL/backup_manifest" \
-    -l "incremental_backup_$TIMESTAMP"
+    -l "incremental_backup_$TIMESTAMP"; then
+    error_exit "创建增量备份失败"
+fi
 
-# 记录到catalog
-psql -c "
+echo "增量备份创建成功: $BACKUP_DIR"
+
+# 记录到catalog（带错误处理）
+echo "记录备份到目录..."
+BACKUP_SIZE=$(du -sb "$BACKUP_DIR" | cut -f1)
+[ -n "$BACKUP_SIZE" ] || error_exit "无法获取备份大小"
+
+if ! psql -c "
     INSERT INTO backup_catalog (
         backup_type, backup_path, backup_size,
         wal_start_lsn, wal_end_lsn
     ) VALUES (
         'incremental',
         '$BACKUP_DIR',
-        $(du -sb $BACKUP_DIR | cut -f1),
+        $BACKUP_SIZE,
         (SELECT pg_current_wal_lsn()),
         (SELECT pg_current_wal_lsn())
     )
-"
+"; then
+    error_exit "记录备份到目录失败"
+fi
 
-echo "Incremental backup completed: $BACKUP_DIR"
+echo "增量备份完成: $BACKUP_DIR"
 ```
 
 ### 4.3 增量恢复脚本
 
 ```bash
 #!/bin/bash
-# pg_incremental_restore.sh
+# pg_incremental_restore.sh - 增量恢复脚本（带完整错误处理）
 
+set -euo pipefail  # 严格错误处理
+
+# 错误处理函数
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 参数检查
 RECOVERY_TARGET_TIME=$1
 
 if [ -z "$RECOVERY_TARGET_TIME" ]; then
-    echo "Usage: $0 'YYYY-MM-DD HH:MM:SS'"
+    echo "用法: $0 'YYYY-MM-DD HH:MM:SS'"
     exit 1
 fi
 
-# 1. 查找需要的备份链
-psql -c "
+# 配置
+PGDATA="/var/lib/postgresql/17/main"
+
+# 检查命令
+command -v psql >/dev/null 2>&1 || error_exit "psql 命令未找到"
+command -v pg_combinebackup >/dev/null 2>&1 || error_exit "pg_combinebackup 命令未找到（PostgreSQL 18+）"
+
+# 1. 查找需要的备份链（带错误处理）
+echo "查找备份链..."
+BACKUP_CHAIN=$(psql -t -A -F, -c "
 WITH RECURSIVE backup_chain AS (
-    -- 找到目标时间前的最后一次全备
     SELECT backup_id, backup_type, backup_path, backup_time, 1 AS level
     FROM backup_catalog
     WHERE backup_type = 'full'
@@ -826,32 +1086,51 @@ WITH RECURSIVE backup_chain AS (
 
     UNION ALL
 
-    -- 找到该全备之后的所有增量备份
     SELECT b.backup_id, b.backup_type, b.backup_path, b.backup_time, bc.level + 1
     FROM backup_catalog b
     JOIN backup_chain bc ON b.backup_time > bc.backup_time
     WHERE b.backup_type = 'incremental'
       AND b.backup_time <= '$RECOVERY_TARGET_TIME'::timestamptz
 )
-SELECT * FROM backup_chain ORDER BY level;
-" -t -A -F, | while IFS=, read backup_id type path time level; do
-    echo "Restoring $type backup from $time..."
+SELECT backup_id || ',' || backup_type || ',' || backup_path || ',' || backup_time || ',' || level
+FROM backup_chain ORDER BY level;
+" 2>/dev/null)
+
+if [ -z "$BACKUP_CHAIN" ]; then
+    error_exit "未找到备份链"
+fi
+
+# 2. 恢复备份链（带错误处理）
+echo "$BACKUP_CHAIN" | while IFS=, read -r backup_id type path time level; do
+    echo "恢复 $type 备份 (级别 $level) 从 $time..."
+
+    [ -n "$path" ] || error_exit "备份路径为空"
+    [ -f "$path/base.tar.gz" ] || error_exit "备份文件不存在: $path/base.tar.gz"
 
     if [ "$type" = "full" ]; then
         # 恢复全备
-        rm -rf /var/lib/postgresql/17/main
-        mkdir /var/lib/postgresql/17/main
-        tar -xzf "$path/base.tar.gz" -C /var/lib/postgresql/17/main
+        echo "恢复全量备份..."
+        if [ -d "$PGDATA" ]; then
+            rm -rf "$PGDATA" || error_exit "删除旧数据目录失败"
+        fi
+        mkdir -p "$PGDATA" || error_exit "创建数据目录失败"
+
+        if ! tar -xzf "$path/base.tar.gz" -C "$PGDATA"; then
+            error_exit "恢复全量备份失败"
+        fi
     else
         # 应用增量备份
-        pg_combinebackup \
-            /var/lib/postgresql/17/main \
+        echo "应用增量备份..."
+        if ! pg_combinebackup \
+            "$PGDATA" \
             "$path" \
-            -o /var/lib/postgresql/17/main
+            -o "$PGDATA"; then
+            error_exit "应用增量备份失败"
+        fi
     fi
 done
 
-echo "Backup chain restored. Configure recovery and start PostgreSQL."
+echo "备份链恢复完成。请配置恢复参数并启动PostgreSQL。"
 ```
 
 ---
@@ -1038,22 +1317,61 @@ echo "====== 演练完成 ======"
 ### 5.3 灾备演练记录表
 
 ```sql
-CREATE TABLE dr_drill_log (
-    drill_id serial PRIMARY KEY,
-    drill_date timestamptz NOT NULL,
-    drill_scenario text NOT NULL,
-    recovery_duration_seconds int,
-    total_duration_seconds int,
-    rto_target_seconds int DEFAULT 1800,  -- 30分钟
-    rto_achieved boolean,
-    participants text[],
-    issues_found text[],
-    action_items text[],
-    notes text,
-    created_at timestamptz DEFAULT now()
-);
+-- 创建灾备演练记录表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dr_drill_log') THEN
+        DROP TABLE dr_drill_log;
+        RAISE NOTICE '已删除现有表: dr_drill_log';
+    END IF;
 
--- 查询演练历史
+    CREATE TABLE dr_drill_log (
+        drill_id serial PRIMARY KEY,
+        drill_date timestamptz NOT NULL,
+        drill_scenario text NOT NULL,
+        recovery_duration_seconds int,
+        total_duration_seconds int,
+        rto_target_seconds int DEFAULT 1800,  -- 30分钟
+        rto_achieved boolean,
+        participants text[],
+        issues_found text[],
+        action_items text[],
+        notes text,
+        created_at timestamptz DEFAULT now()
+    );
+
+    RAISE NOTICE '灾备演练记录表创建成功: dr_drill_log';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 dr_drill_log 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建灾备演练记录表失败: %', SQLERRM;
+END $$;
+
+-- 查询演练历史（带性能测试和错误处理）
+DO $$
+DECLARE
+    drill_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dr_drill_log') THEN
+        RAISE EXCEPTION '表 dr_drill_log 不存在';
+    END IF;
+
+    SELECT COUNT(*) INTO drill_count FROM dr_drill_log;
+
+    IF drill_count = 0 THEN
+        RAISE WARNING '演练记录表为空';
+    ELSE
+        RAISE NOTICE '找到 % 条演练记录', drill_count;
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表 dr_drill_log 不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询演练历史失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     drill_date,
     drill_scenario,
@@ -1117,24 +1435,98 @@ echo "Recovery test completed successfully"
 ### 6.2 数据一致性验证
 
 ```sql
--- 创建校验和表（备份时）
-CREATE TABLE backup_checksums (
-    table_name text PRIMARY KEY,
-    row_count bigint,
-    data_checksum text,
-    backup_time timestamptz DEFAULT now()
-);
+-- 创建校验和表（备份时，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'backup_checksums') THEN
+        DROP TABLE backup_checksums;
+        RAISE NOTICE '已删除现有表: backup_checksums';
+    END IF;
 
--- 生成校验和
-INSERT INTO backup_checksums (table_name, row_count, data_checksum)
-SELECT
-    tablename,
-    n_live_tup AS row_count,
-    md5(string_agg(ctid::text, '' ORDER BY ctid)) AS data_checksum
-FROM pg_stat_user_tables
-GROUP BY tablename, n_live_tup;
+    CREATE TABLE backup_checksums (
+        table_name text PRIMARY KEY,
+        row_count bigint,
+        data_checksum text,
+        backup_time timestamptz DEFAULT now()
+    );
 
--- 恢复后验证
+    RAISE NOTICE '校验和表创建成功: backup_checksums';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 backup_checksums 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建校验和表失败: %', SQLERRM;
+END $$;
+
+-- 生成校验和（带错误处理）
+DO $$
+DECLARE
+    inserted_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'backup_checksums') THEN
+        RAISE EXCEPTION '表 backup_checksums 不存在';
+    END IF;
+
+    INSERT INTO backup_checksums (table_name, row_count, data_checksum)
+    SELECT
+        tablename,
+        n_live_tup AS row_count,
+        md5(string_agg(ctid::text, '' ORDER BY ctid)) AS data_checksum
+    FROM pg_stat_user_tables
+    GROUP BY tablename, n_live_tup;
+
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    RAISE NOTICE '已插入 % 条校验和记录', inserted_count;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表 backup_checksums 不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '生成校验和失败: %', SQLERRM;
+END $$;
+
+-- 恢复后验证（带性能测试和错误处理）
+DO $$
+DECLARE
+    match_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'backup_checksums') THEN
+        RAISE EXCEPTION '表 backup_checksums 不存在';
+    END IF;
+
+    SELECT COUNT(*) INTO match_count
+    FROM (
+        SELECT
+            current.table_name,
+            current.row_count AS current_rows,
+            backup.row_count AS backup_rows,
+            current.row_count = backup.row_count AS row_count_match,
+            current.data_checksum = backup.data_checksum AS checksum_match
+        FROM (
+            SELECT
+                tablename AS table_name,
+                n_live_tup AS row_count,
+                md5(string_agg(ctid::text, '' ORDER BY ctid)) AS data_checksum
+            FROM pg_stat_user_tables
+            GROUP BY tablename, n_live_tup
+        ) current
+        FULL OUTER JOIN backup_checksums backup USING (table_name)
+        WHERE current.row_count != backup.row_count
+           OR current.data_checksum != backup.data_checksum
+    ) mismatches;
+
+    IF match_count = 0 THEN
+        RAISE NOTICE '所有表的校验和匹配，数据完整性验证通过';
+    ELSE
+        RAISE WARNING '发现 % 个表的校验和不匹配，数据可能已损坏', match_count;
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表 backup_checksums 不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '恢复后验证失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     current.table_name,
     current.row_count AS current_rows,
@@ -1152,6 +1544,8 @@ FROM (
 FULL OUTER JOIN backup_checksums backup USING (table_name)
 WHERE current.row_count != backup.row_count
    OR current.data_checksum != backup.data_checksum;
+-- 执行时间: 取决于表数量和大小
+-- 计划: Hash Join + Seq Scan
 ```
 
 ---
