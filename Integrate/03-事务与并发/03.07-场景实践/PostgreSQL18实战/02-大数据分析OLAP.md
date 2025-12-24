@@ -30,14 +30,60 @@
 **示例**:
 
 ```sql
--- 长时间聚合查询
-BEGIN;
+-- 长时间聚合查询（带错误处理和性能测试）
+DO $$
+DECLARE
+    query_start_time timestamp;
+    query_end_time timestamp;
+    execution_time interval;
+BEGIN
+    BEGIN TRANSACTION;
+
+    BEGIN
+        query_start_time := clock_timestamp();
+
+        -- 执行长时间聚合查询
+        PERFORM (
+            SELECT
+                DATE_TRUNC('month', order_date),
+                SUM(amount) as total_sales
+            FROM orders  -- 100亿行
+            GROUP BY 1
+        );
+
+        query_end_time := clock_timestamp();
+        execution_time := query_end_time - query_start_time;
+
+        RAISE NOTICE '聚合查询完成，执行时间: %', execution_time;
+
+        -- 检查执行时间是否过长
+        IF execution_time > INTERVAL '5 minutes' THEN
+            RAISE WARNING '查询执行时间过长 (%), 可能影响MVCC版本清理', execution_time;
+        END IF;
+
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '聚合查询失败: %', SQLERRM;
+            ROLLBACK;
+            RAISE;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '事务执行失败: %', SQLERRM;
+        IF transaction_in_progress() THEN
+            ROLLBACK;
+        END IF;
+        RAISE;
+END $$;
+
+-- 性能测试：长时间聚合查询
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS)
 SELECT
     DATE_TRUNC('month', order_date),
     SUM(amount) as total_sales
-FROM orders  -- 100亿行
+FROM orders
 GROUP BY 1;
--- 执行5分钟
 
 -- 问题：
 -- 1. 5分钟内无法清理旧版本
@@ -54,9 +100,19 @@ GROUP BY 1;
 **减少查询时间→减少MVCC影响**:
 
 ```sql
--- ⭐ PostgreSQL 18：8个worker并行
-SET max_parallel_workers_per_gather = 8;
+-- ⭐ PostgreSQL 18：8个worker并行（带错误处理和性能测试）
+DO $$
+BEGIN
+    -- 设置并行worker数量
+    PERFORM set_config('max_parallel_workers_per_gather', '8', false);
+    RAISE NOTICE '并行worker数量设置为8';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置并行worker数量失败: %', SQLERRM;
+END $$;
 
+-- 执行并行查询（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS)
 SELECT
     DATE_TRUNC('month', order_date),
     SUM(amount) as total_sales
@@ -72,6 +128,9 @@ GROUP BY 1;
 -- 版本清理阻塞时间：-76%
 ```
 
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+read_file
+
 ---
 
 ### 2.2 物化视图策略
@@ -79,25 +138,70 @@ GROUP BY 1;
 **预聚合减少实时查询**:
 
 ```sql
--- 创建物化视图
-CREATE MATERIALIZED VIEW mv_sales_monthly AS
-SELECT
-    DATE_TRUNC('month', order_date) as month,
-    SUM(amount) as total_sales,
-    COUNT(*) as tx_count
-FROM orders
-GROUP BY 1;
+-- 创建物化视图（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 删除已存在的物化视图（如果存在）
+        DROP MATERIALIZED VIEW IF EXISTS mv_sales_monthly CASCADE;
 
-CREATE UNIQUE INDEX ON mv_sales_monthly (month);
+        -- 创建物化视图
+        CREATE MATERIALIZED VIEW mv_sales_monthly AS
+        SELECT
+            DATE_TRUNC('month', order_date) as month,
+            SUM(amount) as total_sales,
+            COUNT(*) as tx_count
+        FROM orders
+        GROUP BY 1;
 
--- ⭐ PostgreSQL 18：增量刷新
-REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sales_monthly;
+        RAISE NOTICE '物化视图 mv_sales_monthly 创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建物化视图失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        -- 创建唯一索引
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_sales_monthly_month
+        ON mv_sales_monthly (month);
+        RAISE NOTICE '唯一索引创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- ⭐ PostgreSQL 18：增量刷新（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sales_monthly;
+        RAISE NOTICE '物化视图刷新成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '物化视图 mv_sales_monthly 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '刷新物化视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：查询物化视图
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM mv_sales_monthly ORDER BY month;
 
 -- MVCC优势：
 -- 1. 查询物化视图（已聚合，小表）
 -- 2. 快照时间：5分钟 → 10ms（-99.97%）
 -- 3. 不阻塞版本清理
 ```
+
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+read_file
 
 ---
 
@@ -106,20 +210,69 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sales_monthly;
 ### 3.1 分区策略
 
 ```sql
--- 按月分区
-CREATE TABLE orders (
-    order_id BIGINT,
-    customer_id BIGINT,
-    amount NUMERIC(10,2),
-    order_date DATE,
-    PRIMARY KEY (order_id, order_date)
-) PARTITION BY RANGE (order_date);
+-- 按月分区（带错误处理）
+DO $$
+BEGIN
+    -- 检查表是否已存在
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'orders') THEN
+        RAISE NOTICE '表 orders 已存在，跳过创建';
+        RETURN;
+    END IF;
 
--- 创建分区
-CREATE TABLE orders_2025_12 PARTITION OF orders
-FOR VALUES FROM ('2025-12-01') TO ('2026-01-01');
+    BEGIN
+        -- 创建分区表
+        CREATE TABLE orders (
+            order_id BIGINT,
+            customer_id BIGINT,
+            amount NUMERIC(10,2),
+            order_date DATE,
+            PRIMARY KEY (order_id, order_date)
+        ) PARTITION BY RANGE (order_date);
 
--- ⭐ PostgreSQL 18：分区裁剪优化
+        RAISE NOTICE '分区表 orders 创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 orders 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建分区表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 创建分区（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        CREATE TABLE IF NOT EXISTS orders_2025_12 PARTITION OF orders
+        FOR VALUES FROM ('2025-12-01') TO ('2026-01-01');
+        RAISE NOTICE '分区 orders_2025_12 创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '分区 orders_2025_12 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建分区失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- ⭐ PostgreSQL 18：分区裁剪优化（带性能测试）
+DO $$
+DECLARE
+    row_count bigint;
+BEGIN
+    -- 执行分区查询
+    SELECT COUNT(*) INTO row_count
+    FROM orders
+    WHERE order_date = '2025-12-04';
+
+    RAISE NOTICE '分区查询完成，返回 % 条记录', row_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '分区查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：验证分区裁剪
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
 SELECT * FROM orders
 WHERE order_date = '2025-12-04';
 
@@ -134,14 +287,46 @@ WHERE order_date = '2025-12-04';
 ### 3.2 分区级VACUUM
 
 ```sql
--- 独立VACUUM每个分区
-VACUUM (PARALLEL 4) orders_2025_12;
+-- 独立VACUUM每个分区（带错误处理）
+DO $$
+DECLARE
+    partition_name text;
+    vacuum_start_time timestamp;
+    vacuum_end_time timestamp;
+BEGIN
+    partition_name := 'orders_2025_12';
+
+    -- 检查分区是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_tables
+        WHERE schemaname = 'public' AND tablename = partition_name
+    ) THEN
+        RAISE WARNING '分区 % 不存在，跳过VACUUM', partition_name;
+        RETURN;
+    END IF;
+
+    BEGIN
+        vacuum_start_time := clock_timestamp();
+
+        -- 执行并行VACUUM
+        EXECUTE format('VACUUM (PARALLEL 4) %I', partition_name);
+
+        vacuum_end_time := clock_timestamp();
+        RAISE NOTICE '分区 % VACUUM完成，耗时: %',
+            partition_name, vacuum_end_time - vacuum_start_time;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '分区 % 不存在', partition_name;
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM分区 % 失败: %', partition_name, SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- MVCC优势：
 -- 1. 不影响其他分区查询
 -- 2. 每个分区独立清理
 -- 3. 并行清理多个分区
-```
 
 ---
 
@@ -152,20 +337,63 @@ VACUUM (PARALLEL 4) orders_2025_12;
 **快照隔离保证**:
 
 ```sql
--- OLAP查询使用REPEATABLE READ
-BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+-- OLAP查询使用REPEATABLE READ（带错误处理）
+DO $$
+DECLARE
+    total_sales numeric;
+    total_sales2 numeric;
+BEGIN
+    BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
--- 查询1：统计本月销售
+    BEGIN
+        -- 查询1：统计本月销售
+        SELECT SUM(amount) INTO total_sales
+        FROM orders
+        WHERE order_date >= '2025-12-01';
+
+        RAISE NOTICE '查询1结果: %', total_sales;
+
+        -- （此时有新订单插入）
+
+        -- 查询2：再次统计（应该与查询1一致，保证可重复读）
+        SELECT SUM(amount) INTO total_sales2
+        FROM orders
+        WHERE order_date >= '2025-12-01';
+
+        RAISE NOTICE '查询2结果: %', total_sales2;
+
+        -- 验证一致性
+        IF total_sales != total_sales2 THEN
+            RAISE WARNING '可重复读验证失败：查询1=%, 查询2=%', total_sales, total_sales2;
+        ELSE
+            RAISE NOTICE '可重复读验证通过：两次查询结果一致';
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            RAISE WARNING '序列化失败，事务回滚';
+            ROLLBACK;
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '查询失败: %', SQLERRM;
+            ROLLBACK;
+            RAISE;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '事务执行失败: %', SQLERRM;
+        IF transaction_in_progress() THEN
+            ROLLBACK;
+        END IF;
+        RAISE;
+END $$;
+
+-- 性能测试：REPEATABLE READ查询
+EXPLAIN (ANALYZE, BUFFERS)
 SELECT SUM(amount) FROM orders
 WHERE order_date >= '2025-12-01';
--- 结果：1,000,000
-
--- （此时有新订单插入）
-
--- 查询2：再次统计
-SELECT SUM(amount) FROM orders
-WHERE order_date >= '2025-12-01';
--- 结果：1,000,000（一致！）
 
 COMMIT;
 
@@ -181,12 +409,36 @@ COMMIT;
 **只读事务标记**:
 
 ```sql
--- ⭐ PostgreSQL 18：只读事务优化
+-- ⭐ PostgreSQL 18：只读事务优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN TRANSACTION READ ONLY;
+
+    BEGIN
+        -- 分析查询...
+        -- SELECT ...
+
+        RAISE NOTICE '只读事务执行成功';
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '只读事务执行失败: %', SQLERRM;
+            ROLLBACK;
+            RAISE;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '只读事务处理失败: %', SQLERRM;
+        IF transaction_in_progress() THEN
+            ROLLBACK;
+        END IF;
+        RAISE;
+END $$;
+
+-- 性能测试：只读事务
 BEGIN TRANSACTION READ ONLY;
-
--- 分析查询...
-SELECT ...
-
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM orders LIMIT 100;
 COMMIT;
 
 -- 优化效果：

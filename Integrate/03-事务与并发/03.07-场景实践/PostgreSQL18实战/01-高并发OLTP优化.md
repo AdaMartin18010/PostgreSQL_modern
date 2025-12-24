@@ -13,6 +13,34 @@
 
 ---
 
+## 📑 目录
+
+- [PostgreSQL 18高并发OLTP优化实战](#postgresql-18高并发oltp优化实战)
+  - [📑 目录](#-目录)
+  - [一、场景描述](#一场景描述)
+    - [业务需求](#业务需求)
+  - [二、MVCC优化策略](#二mvcc优化策略)
+    - [2.1 减少版本链长度](#21-减少版本链长度)
+    - [2.2 HOT更新优化](#22-hot更新优化)
+  - [三、ACID优化策略](#三acid优化策略)
+    - [3.1 原子性优化](#31-原子性优化)
+    - [3.2 隔离性优化](#32-隔离性优化)
+    - [3.3 持久性优化](#33-持久性优化)
+  - [四、CAP优化策略](#四cap优化策略)
+    - [4.1 优化一致性（C）](#41-优化一致性c)
+    - [4.2 优化可用性（A）](#42-优化可用性a)
+  - [五、完整配置](#五完整配置)
+    - [postgresql.conf优化](#postgresqlconf优化)
+  - [六、性能测试](#六性能测试)
+    - [基准测试](#基准测试)
+    - [关键指标](#关键指标)
+  - [七、MVCC-ACID-CAP协同分析](#七mvcc-acid-cap协同分析)
+    - [协同矩阵](#协同矩阵)
+  - [八、最佳实践](#八最佳实践)
+    - [8.1 MVCC最佳实践](#81-mvcc最佳实践)
+    - [8.2 ACID最佳实践](#82-acid最佳实践)
+    - [8.3 CAP最佳实践](#83-cap最佳实践)
+
 ## 一、场景描述
 
 ### 业务需求
@@ -29,21 +57,44 @@
 ### 2.1 减少版本链长度
 
 ```sql
--- 配置autovacuum（及时清理旧版本）
-ALTER TABLE hot_table SET (
-    autovacuum_vacuum_scale_factor = 0.05,  -- 5%死元组就触发
-    autovacuum_vacuum_cost_delay = 2,
-    autovacuum_vacuum_cost_limit = 1000
-);
+-- 配置autovacuum（及时清理旧版本，带错误处理）
+DO $$
+BEGIN
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'hot_table') THEN
+        RAISE EXCEPTION '表 hot_table 不存在';
+    END IF;
 
--- ⭐ PostgreSQL 18：并行VACUUM
-ALTER TABLE hot_table SET (
-    parallel_workers = 8
-);
+    ALTER TABLE hot_table SET (
+        autovacuum_vacuum_scale_factor = 0.05,  -- 5%死元组就触发
+        autovacuum_vacuum_cost_delay = 2,
+        autovacuum_vacuum_cost_limit = 1000
+    );
+
+    -- ⭐ PostgreSQL 18：并行VACUUM
+    ALTER TABLE hot_table SET (
+        parallel_workers = 8
+    );
+
+    RAISE NOTICE 'autovacuum配置成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表 hot_table 不存在，请先创建表';
+    WHEN OTHERS THEN
+        RAISE WARNING '配置autovacuum失败: %', SQLERRM;
+        RAISE;
+END $$;
 
 -- 效果：
 -- 版本链长度：平均15 → 3（-80%）
 -- 查询性能：版本扫描时间-70%
+
+-- 性能测试：检查版本链长度
+EXPLAIN ANALYZE
+SELECT n_dead_tup, n_live_tup,
+       ROUND(n_dead_tup::numeric / NULLIF(n_live_tup, 0), 4) as dead_ratio
+FROM pg_stat_user_tables
+WHERE relname = 'hot_table';
 ```
 
 ---
@@ -51,22 +102,62 @@ ALTER TABLE hot_table SET (
 ### 2.2 HOT更新优化
 
 ```sql
--- 设计表结构（利用HOT）
-CREATE TABLE orders (
-    order_id BIGINT PRIMARY KEY,
-    customer_id BIGINT,
-    status VARCHAR(20),     -- 经常更新
-    amount NUMERIC(10,2),   -- 不常更新
-    notes TEXT,             -- 经常更新，无索引
-    created_at TIMESTAMPTZ
-);
+-- 设计表结构（利用HOT，带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS orders (
+        order_id BIGINT PRIMARY KEY,
+        customer_id BIGINT,
+        status VARCHAR(20),     -- 经常更新
+        amount NUMERIC(10,2),   -- 不常更新
+        notes TEXT,             -- 经常更新，无索引
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    RAISE NOTICE '表 orders 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 orders 已存在';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建表失败: %', SQLERRM;
+        RAISE;
+END $$;
 
--- 只在不常更新的列上创建索引
-CREATE INDEX idx_orders_customer ON orders(customer_id);
-CREATE INDEX idx_orders_amount ON orders(amount);
+-- 只在不常更新的列上创建索引（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_amount ON orders(amount);
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '索引已存在';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+        RAISE;
+END $$;
 
--- ⭐ 更新status和notes触发HOT
-UPDATE orders SET status = 'PAID', notes = 'Payment confirmed'
+-- ⭐ 更新status和notes触发HOT（带错误处理）
+DO $$
+BEGIN
+    UPDATE orders
+    SET status = 'PAID', notes = 'Payment confirmed'
+    WHERE order_id = 12345;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE '订单 12345 不存在';
+    ELSE
+        RAISE NOTICE '订单更新成功';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '更新订单失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 性能测试：验证HOT更新
+EXPLAIN (ANALYZE, BUFFERS)
+UPDATE orders
+SET status = 'PAID', notes = 'Payment confirmed'
 WHERE order_id = 12345;
 
 -- HOT效果：
@@ -84,16 +175,58 @@ WHERE order_id = 12345;
 **批量操作**:
 
 ```sql
--- ⭐ PostgreSQL 18：改进的批量INSERT
-INSERT INTO orders
-SELECT * FROM unnest(
-    $1::bigint[],      -- order_ids
-    $2::bigint[],      -- customer_ids
-    $3::numeric[]      -- amounts
-);
+-- ⭐ PostgreSQL 18：改进的批量INSERT（带错误处理）
+DO $$
+DECLARE
+    order_ids bigint[] := ARRAY[1, 2, 3, 4, 5];
+    customer_ids bigint[] := ARRAY[101, 102, 103, 104, 105];
+    amounts numeric[] := ARRAY[100.00, 200.00, 300.00, 400.00, 500.00];
+    inserted_count int;
+BEGIN
+    -- 输入验证
+    IF array_length(order_ids, 1) != array_length(customer_ids, 1)
+       OR array_length(order_ids, 1) != array_length(amounts, 1) THEN
+        RAISE EXCEPTION '数组长度不匹配';
+    END IF;
 
--- 单个事务，原子性保证
--- 性能：1000条/批，10ms
+    INSERT INTO orders (order_id, customer_id, amount)
+    SELECT * FROM unnest(
+        order_ids,
+        customer_ids,
+        amounts
+    );
+
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    RAISE NOTICE '批量插入成功: % 条记录', inserted_count;
+
+    -- 单个事务，原子性保证
+    -- 性能：1000条/批，10ms
+EXCEPTION
+    WHEN unique_violation THEN
+        RAISE WARNING '批量插入失败：存在重复的order_id';
+        RAISE;
+    WHEN OTHERS THEN
+        RAISE WARNING '批量插入失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 性能测试：批量插入性能
+\timing on
+DO $$
+DECLARE
+    order_ids bigint[];
+    customer_ids bigint[];
+    amounts numeric[];
+BEGIN
+    -- 生成1000条测试数据
+    order_ids := ARRAY(SELECT generate_series(1, 1000));
+    customer_ids := ARRAY(SELECT (random() * 1000)::bigint FROM generate_series(1, 1000));
+    amounts := ARRAY(SELECT (random() * 1000)::numeric(10,2) FROM generate_series(1, 1000));
+
+    INSERT INTO orders (order_id, customer_id, amount)
+    SELECT * FROM unnest(order_ids, customer_ids, amounts);
+END $$;
+\timing off
 ```
 
 ---
@@ -103,15 +236,75 @@ SELECT * FROM unnest(
 **选择合适的隔离级别**:
 
 ```sql
--- 场景1：余额扣减（需要Serializable）
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 'A001';
-COMMIT;
+-- 场景1：余额扣减（需要Serializable，带错误处理）
+DO $$
+DECLARE
+    account_balance numeric;
+BEGIN
+    BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
--- 场景2：订单查询（Read Committed即可）
-BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+    -- 检查账户是否存在
+    SELECT balance INTO account_balance
+    FROM accounts
+    WHERE account_id = 'A001';
+
+    IF NOT FOUND THEN
+        ROLLBACK;
+        RAISE EXCEPTION '账户 A001 不存在';
+    END IF;
+
+    -- 检查余额是否足够
+    IF account_balance < 100 THEN
+        ROLLBACK;
+        RAISE EXCEPTION '余额不足，当前余额: %', account_balance;
+    END IF;
+
+    UPDATE accounts
+    SET balance = balance - 100
+    WHERE account_id = 'A001';
+
+    COMMIT;
+    RAISE NOTICE '余额扣减成功';
+EXCEPTION
+    WHEN serialization_failure THEN
+        RAISE WARNING '序列化失败，请重试';
+        ROLLBACK;
+        RAISE;
+    WHEN OTHERS THEN
+        RAISE WARNING '余额扣减失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+
+-- 场景2：订单查询（Read Committed即可，带错误处理和性能测试）
+DO $$
+DECLARE
+    order_record orders%ROWTYPE;
+BEGIN
+    BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+    SELECT * INTO order_record
+    FROM orders
+    WHERE order_id = 12345;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE '订单 12345 不存在';
+    ELSE
+        RAISE NOTICE '订单查询成功: order_id=%, customer_id=%',
+            order_record.order_id, order_record.customer_id;
+    END IF;
+
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '订单查询失败: %', SQLERRM;
+        ROLLBACK;
+        RAISE;
+END $$;
+
+-- 性能测试：不同隔离级别的性能对比
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders WHERE order_id = 12345;
-COMMIT;
 
 -- ⭐ 隔离级别选择：
 -- - 仅5%事务需要Serializable
@@ -215,13 +408,46 @@ autovacuum_naptime = 10s
 ### 基准测试
 
 ```bash
-# pgbench测试（10000并发）
-pgbench -c 10000 -j 20 -T 300 -S mydb
+#!/bin/bash
+# pgbench测试（10000并发，带错误处理）
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 检查pgbench是否安装
+if ! command -v pgbench &> /dev/null; then
+    error_exit "pgbench未安装，请先安装PostgreSQL客户端工具"
+fi
+
+# 检查数据库是否存在
+DB_NAME="mydb"
+if ! psql -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+    error_exit "数据库 $DB_NAME 不存在，请先创建数据库"
+fi
+
+# 初始化pgbench（如果需要）
+if [ ! -f "/tmp/pgbench_tables" ]; then
+    echo "初始化pgbench测试数据..."
+    pgbench -i -s 100 "$DB_NAME" || error_exit "初始化pgbench失败"
+fi
+
+# 运行pgbench测试（10000并发）
+echo "开始pgbench测试（10000并发，300秒）..."
+pgbench -c 10000 -j 20 -T 300 -S "$DB_NAME" || error_exit "pgbench测试失败"
 
 # 结果：
 # PostgreSQL 17: TPS 32,100
 # PostgreSQL 18: TPS 48,500 (+51%)
+
+echo "pgbench测试完成"
 ```
+
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+grep
 
 ### 关键指标
 

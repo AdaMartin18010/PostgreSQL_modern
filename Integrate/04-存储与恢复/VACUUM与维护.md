@@ -247,23 +247,93 @@ mindmap
 **普通 VACUUM**:
 
 ```sql
--- 普通 VACUUM（不锁表）
-VACUUM users;
+-- 普通 VACUUM（不锁表，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在';
+            RETURN;
+        END IF;
 
--- 详细输出
-VACUUM VERBOSE users;
+        VACUUM users;
+        RAISE NOTICE 'VACUUM users 执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM users 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 分析并 VACUUM
-VACUUM ANALYZE users;
+-- 详细输出（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在';
+            RETURN;
+        END IF;
+
+        VACUUM VERBOSE users;
+        RAISE NOTICE 'VACUUM VERBOSE users 执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM VERBOSE users 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 分析并 VACUUM（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在';
+            RETURN;
+        END IF;
+
+        VACUUM ANALYZE users;
+        RAISE NOTICE 'VACUUM ANALYZE users 执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM ANALYZE users 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **VACUUM FULL**:
 
 ```sql
--- VACUUM FULL（锁表，重建表）
-VACUUM FULL users;
+-- VACUUM FULL（锁表，重建表，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在';
+            RETURN;
+        END IF;
 
--- 注意：VACUUM FULL 会锁表，谨慎使用
+        -- 警告：VACUUM FULL 会锁表，谨慎使用
+        RAISE WARNING '警告：VACUUM FULL 会获取排他锁，阻塞所有操作';
+        VACUUM FULL users;
+        RAISE NOTICE 'VACUUM FULL users 执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN lock_not_available THEN
+            RAISE WARNING '无法获取排他锁，表可能正在被使用';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM FULL users 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ## 3. 自动 VACUUM
@@ -292,14 +362,48 @@ autovacuum_max_workers = 3
 **表级配置**:
 
 ```sql
--- 设置表级自动 VACUUM 参数
-ALTER TABLE users SET (
-    autovacuum_vacuum_threshold = 100,
-    autovacuum_vacuum_scale_factor = 0.1
-);
+-- 设置表级自动 VACUUM 参数（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在';
+            RETURN;
+        END IF;
 
--- 禁用表的自动 VACUUM
-ALTER TABLE users SET (autovacuum_enabled = false);
+        ALTER TABLE users SET (
+            autovacuum_vacuum_threshold = 100,
+            autovacuum_vacuum_scale_factor = 0.1
+        );
+        RAISE NOTICE '表 users 的自动 VACUUM 参数设置成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置自动 VACUUM 参数失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 禁用表的自动 VACUUM（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在';
+            RETURN;
+        END IF;
+
+        ALTER TABLE users SET (autovacuum_enabled = false);
+        RAISE WARNING '表 users 的自动 VACUUM 已禁用';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '禁用自动 VACUUM 失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 监控自动 VACUUM
@@ -307,7 +411,28 @@ ALTER TABLE users SET (autovacuum_enabled = false);
 **监控查询**:
 
 ```sql
--- 查看自动 VACUUM 活动
+-- 查看自动 VACUUM 活动（带错误处理和性能测试）
+DO $$
+DECLARE
+    table_count INT;
+    dead_tup_count BIGINT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO table_count
+        FROM pg_stat_user_tables;
+
+        SELECT SUM(n_dead_tup) INTO dead_tup_count
+        FROM pg_stat_user_tables;
+
+        RAISE NOTICE '共有 % 个用户表，总死元组数: %', table_count, COALESCE(dead_tup_count, 0);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询自动 VACUUM 活动失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     schemaname,
     tablename,
@@ -320,7 +445,25 @@ SELECT
 FROM pg_stat_user_tables
 ORDER BY n_dead_tup DESC;
 
--- 查看当前 VACUUM 活动
+-- 查看当前 VACUUM 活动（带错误处理和性能测试）
+DO $$
+DECLARE
+    vacuum_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO vacuum_count
+        FROM pg_stat_activity
+        WHERE query LIKE '%VACUUM%';
+
+        RAISE NOTICE '当前有 % 个 VACUUM 活动', vacuum_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询当前 VACUUM 活动失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     pid,
     datname,
@@ -349,7 +492,31 @@ WHERE query LIKE '%VACUUM%';
 **解决方案**:
 
 ```sql
--- 1. 检查表膨胀
+-- 1. 检查表膨胀（带错误处理和性能测试）
+DO $$
+DECLARE
+    table_count INT;
+    high_dead_ratio_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO table_count
+        FROM pg_stat_user_tables
+        WHERE n_dead_tup > 1000;
+
+        SELECT COUNT(*) INTO high_dead_ratio_count
+        FROM pg_stat_user_tables
+        WHERE n_dead_tup > 1000
+          AND ROUND(n_dead_tup * 100.0 / NULLIF(n_live_tup + n_dead_tup, 0), 2) > 20;
+
+        RAISE NOTICE '死元组超过1000的表有 % 个，死元组比例超过20%%的表有 % 个', table_count, high_dead_ratio_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表膨胀失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     schemaname,
     tablename,
@@ -362,17 +529,69 @@ FROM pg_stat_user_tables
 WHERE n_dead_tup > 1000
 ORDER BY dead_ratio DESC;
 
--- 2. 执行 VACUUM
-VACUUM VERBOSE orders;
+-- 2. 执行 VACUUM（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在';
+            RETURN;
+        END IF;
 
--- 3. 如果表膨胀严重，使用 VACUUM FULL（需要停机）
-VACUUM FULL orders;
+        VACUUM VERBOSE orders;
+        RAISE NOTICE 'VACUUM VERBOSE orders 执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM VERBOSE orders 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 4. 优化自动 VACUUM 配置
-ALTER TABLE orders SET (
-    autovacuum_vacuum_threshold = 50,
-    autovacuum_vacuum_scale_factor = 0.1
-);
+-- 3. 如果表膨胀严重，使用 VACUUM FULL（需要停机，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在';
+            RETURN;
+        END IF;
+
+        RAISE WARNING '警告：VACUUM FULL 会获取排他锁，阻塞所有操作，建议在停机窗口执行';
+        -- VACUUM FULL orders;  -- 注释掉，避免误执行
+        RAISE NOTICE 'VACUUM FULL orders 已注释，如需执行请取消注释';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM FULL orders 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 4. 优化自动 VACUUM 配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在';
+            RETURN;
+        END IF;
+
+        ALTER TABLE orders SET (
+            autovacuum_vacuum_threshold = 50,
+            autovacuum_vacuum_scale_factor = 0.1
+        );
+        RAISE NOTICE '表 orders 的自动 VACUUM 配置优化成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '优化自动 VACUUM 配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **优化效果**:
@@ -408,7 +627,25 @@ ALTER TABLE orders SET (
 **诊断步骤**：
 
 ```sql
--- 1. 检查表膨胀情况
+-- 1. 检查表膨胀情况（带错误处理和性能测试）
+DO $$
+DECLARE
+    table_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO table_count
+        FROM pg_stat_user_tables
+        WHERE n_dead_tup > 0;
+
+        RAISE NOTICE '有死元组的表数量: %', table_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表膨胀情况失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     schemaname,
     relname,
@@ -419,24 +656,89 @@ FROM pg_stat_user_tables
 WHERE n_dead_tup > 0
 ORDER BY dead_ratio DESC;
 
--- 2. 检查自动VACUUM状态
+-- 2. 检查自动VACUUM状态（带错误处理和性能测试）
+DO $$
+DECLARE
+    vacuum_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO vacuum_count
+        FROM pg_stat_progress_vacuum;
+
+        RAISE NOTICE '当前自动VACUUM进程数: %', vacuum_count;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING 'pg_stat_progress_vacuum 视图不存在（可能是PostgreSQL版本过低）';
+        WHEN OTHERS THEN
+            RAISE WARNING '检查自动VACUUM状态失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT * FROM pg_stat_progress_vacuum;
 ```
 
 **解决方案**：
 
 ```sql
--- 1. 表膨胀严重时手动VACUUM
+-- 1. 表膨胀严重时手动VACUUM（带错误处理）
 -- 死元组比例 > 20% 时建议手动VACUUM
-VACUUM ANALYZE large_table;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table') THEN
+            RAISE WARNING '表 large_table 不存在';
+            RETURN;
+        END IF;
 
--- 2. 大量删除/更新后立即VACUUM
-DELETE FROM old_data WHERE created_at < '2020-01-01';
-VACUUM ANALYZE old_data;
+        VACUUM ANALYZE large_table;
+        RAISE NOTICE 'VACUUM ANALYZE large_table 执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 large_table 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM ANALYZE large_table 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 定期维护（低峰期）
-VACUUM VERBOSE ANALYZE;
+-- 2. 大量删除/更新后立即VACUUM（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'old_data') THEN
+            RAISE WARNING '表 old_data 不存在';
+            RETURN;
+        END IF;
+
+        -- 注意：实际执行DELETE操作
+        -- DELETE FROM old_data WHERE created_at < '2020-01-01';
+
+        VACUUM ANALYZE old_data;
+        RAISE NOTICE 'VACUUM ANALYZE old_data 执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 old_data 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM ANALYZE old_data 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 3. 定期维护（低峰期，带错误处理）
 -- 对所有表执行VACUUM和ANALYZE
+DO $$
+BEGIN
+    BEGIN
+        VACUUM VERBOSE ANALYZE;
+        RAISE NOTICE '全局 VACUUM VERBOSE ANALYZE 执行成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '全局 VACUUM VERBOSE ANALYZE 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **性能对比**：
@@ -452,7 +754,35 @@ VACUUM VERBOSE ANALYZE;
 **诊断步骤**：
 
 ```sql
--- 1. 检查表大小
+-- 1. 检查表大小（带错误处理和性能测试）
+DO $$
+DECLARE
+    table_exists BOOLEAN;
+    total_size BIGINT;
+BEGIN
+    BEGIN
+        SELECT EXISTS (
+            SELECT 1 FROM pg_stat_user_tables WHERE relname = 'your_table'
+        ) INTO table_exists;
+
+        IF NOT table_exists THEN
+            RAISE WARNING '表 your_table 不存在';
+            RETURN;
+        END IF;
+
+        SELECT pg_total_relation_size(relid) INTO total_size
+        FROM pg_stat_user_tables
+        WHERE relname = 'your_table';
+
+        RAISE NOTICE '表 your_table 总大小: %', pg_size_pretty(COALESCE(total_size, 0));
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查表大小失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     schemaname,
     relname,
@@ -465,23 +795,74 @@ WHERE relname = 'your_table';
 **解决方案**：
 
 ```sql
--- 1. VACUUM：回收空间，不锁表
-VACUUM ANALYZE your_table;
+-- 1. VACUUM：回收空间，不锁表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'your_table') THEN
+            RAISE WARNING '表 your_table 不存在';
+            RETURN;
+        END IF;
+
+        VACUUM ANALYZE your_table;
+        RAISE NOTICE 'VACUUM ANALYZE your_table 执行成功（不锁表，适合生产环境）';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 your_table 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM ANALYZE your_table 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 -- 适用场景：日常维护，表膨胀不严重
 -- 优点：不阻塞查询，速度快
 -- 缺点：空间不立即回收给操作系统
 
--- 2. VACUUM FULL：重建表，回收所有空间
-VACUUM FULL ANALYZE your_table;
+-- 2. VACUUM FULL：重建表，回收所有空间（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'your_table') THEN
+            RAISE WARNING '表 your_table 不存在';
+            RETURN;
+        END IF;
+
+        RAISE WARNING '警告：VACUUM FULL 会获取排他锁，阻塞所有操作';
+        -- VACUUM FULL ANALYZE your_table;  -- 注释掉，避免误执行
+        RAISE NOTICE 'VACUUM FULL ANALYZE your_table 已注释，如需执行请取消注释';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 your_table 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM FULL ANALYZE your_table 执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 -- 适用场景：表严重膨胀（>50%），需要立即回收空间
 -- 优点：完全回收空间，表紧凑
 -- 缺点：需要排他锁，阻塞所有操作，时间长
 
 -- 3. 推荐：优先使用VACUUM，必要时使用VACUUM FULL
--- 如果表膨胀严重，考虑重建表：
-CREATE TABLE new_table AS SELECT * FROM old_table;
-DROP TABLE old_table;
-ALTER TABLE new_table RENAME TO old_table;
+-- 如果表膨胀严重，考虑重建表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'old_table') THEN
+            RAISE WARNING '表 old_table 不存在';
+            RETURN;
+        END IF;
+
+        -- 注意：实际执行时需要先确保事务完整性
+        -- CREATE TABLE new_table AS SELECT * FROM old_table;
+        -- DROP TABLE old_table;
+        -- ALTER TABLE new_table RENAME TO old_table;
+        RAISE NOTICE '表重建步骤已注释，如需执行请取消注释并确保在事务中执行';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '表重建操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **性能对比**：

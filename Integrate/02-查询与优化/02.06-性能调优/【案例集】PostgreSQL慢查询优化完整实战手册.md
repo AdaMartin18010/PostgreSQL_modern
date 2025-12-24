@@ -31,8 +31,6 @@
   - [3. 案例1：缺失索引](#3-案例1缺失索引)
     - [3.1 问题现象](#31-问题现象)
     - [3.2 诊断过程](#32-诊断过程)
-    - [3.3 解决方案](#33-解决方案)
-    - [3.4 最佳实践](#34-最佳实践)
   - [4. 案例2：索引选择不当](#4-案例2索引选择不当)
     - [4.1 问题现象](#41-问题现象)
     - [4.2 诊断过程](#42-诊断过程)
@@ -45,12 +43,9 @@
     - [5.4 JOIN优化技巧](#54-join优化技巧)
   - [6. 案例4：子查询优化](#6-案例4子查询优化)
     - [6.1 问题现象](#61-问题现象)
-    - [6.2 诊断过程](#62-诊断过程)
     - [6.3 解决方案](#63-解决方案)
       - [方案1：添加索引](#方案1添加索引)
       - [方案2：改写为JOIN](#方案2改写为join)
-      - [方案3：EXISTS替代IN](#方案3exists替代in)
-    - [6.4 子查询优化规则](#64-子查询优化规则)
   - [7. 案例5：分区表优化](#7-案例5分区表优化)
     - [7.1 问题现象](#71-问题现象)
     - [7.2 解决方案：时间分区](#72-解决方案时间分区)
@@ -175,8 +170,24 @@
 #### 安装与配置
 
 ```sql
--- 1. 安装扩展
-CREATE EXTENSION pg_stat_statements;
+-- 1. 安装扩展（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+            CREATE EXTENSION pg_stat_statements;
+            RAISE NOTICE 'pg_stat_statements 扩展创建成功';
+        ELSE
+            RAISE NOTICE 'pg_stat_statements 扩展已存在';
+        END IF;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法创建 pg_stat_statements 扩展';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建 pg_stat_statements 扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 2. 配置（postgresql.conf）
 -- shared_preload_libraries = 'pg_stat_statements'
@@ -184,17 +195,34 @@ CREATE EXTENSION pg_stat_statements;
 -- pg_stat_statements.track = all
 -- 重启PostgreSQL
 
--- 3. 查看Top 10慢查询（按平均执行时间）
+-- 3. 查看Top 10慢查询（按平均执行时间，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+            RAISE WARNING 'pg_stat_statements 扩展未安装，无法查看慢查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查看Top 10慢查询';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查看慢查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     queryid,
     LEFT(query, 100) AS query_snippet,
     calls,
     ROUND(mean_exec_time::numeric, 2) AS avg_ms,
     ROUND(total_exec_time::numeric, 2) AS total_ms,
-    ROUND((100 * total_exec_time / SUM(total_exec_time) OVER ())::numeric, 2) AS pct_total,
+    ROUND((100 * total_exec_time / NULLIF(SUM(total_exec_time) OVER (), 0))::numeric, 2) AS pct_total,
     rows
 FROM pg_stat_statements
 ORDER BY mean_exec_time DESC
+LIMIT 10;
 LIMIT 10;
 
 -- 4. 按总执行时间排序（找出累积影响最大的）
@@ -215,11 +243,41 @@ SELECT pg_stat_statements_reset();
 ### 2.2 EXPLAIN ANALYZE
 
 ```sql
--- 基本用法
+-- 基本用法（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行EXPLAIN ANALYZE';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN ANALYZE
 SELECT * FROM users WHERE email = 'test@example.com';
 
--- 详细输出
+-- 详细输出（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行详细EXPLAIN ANALYZE';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS, TIMING)
 SELECT * FROM users WHERE email = 'test@example.com';
 
@@ -250,20 +308,74 @@ SELECT * FROM users WHERE email = 'test@example.com';
 ### 2.4 实时监控
 
 ```sql
--- 查看当前运行的慢查询
+-- 查看当前运行的慢查询（带错误处理和性能测试）
+DO $$
+DECLARE
+    slow_query_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO slow_query_count
+        FROM pg_stat_activity
+        WHERE state != 'idle'
+        AND query_start < now() - INTERVAL '5 seconds';
+
+        IF slow_query_count > 0 THEN
+            RAISE WARNING '发现 % 个运行时间超过5秒的查询', slow_query_count;
+        ELSE
+            RAISE NOTICE '未发现运行时间超过5秒的查询';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查看慢查询失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     pid,
     now() - query_start AS duration,
     state,
-    query
+    LEFT(query, 100) as query_preview
 FROM pg_stat_activity
 WHERE state != 'idle'
   AND query_start < now() - INTERVAL '5 seconds'
 ORDER BY duration DESC;
 
--- 终止长时间运行的查询
-SELECT pg_cancel_backend(pid);  -- 优雅终止
-SELECT pg_terminate_backend(pid);  -- 强制终止
+-- 终止长时间运行的查询（带错误处理）
+-- 注意：应该根据实际pid值执行，这里提供示例
+DO $$
+DECLARE
+    v_pid INT;
+BEGIN
+    BEGIN
+        -- 获取第一个长时间运行的查询pid（示例）
+        SELECT pid INTO v_pid
+        FROM pg_stat_activity
+        WHERE state != 'idle'
+        AND query_start < now() - INTERVAL '5 seconds'
+        ORDER BY query_start
+        LIMIT 1;
+
+        IF v_pid IS NULL THEN
+            RAISE NOTICE '没有找到需要终止的查询';
+            RETURN;
+        END IF;
+
+        -- 优雅终止（示例，实际使用时需要确认）
+        -- PERFORM pg_cancel_backend(v_pid);
+        RAISE NOTICE '示例：可以通过 pg_cancel_backend(%) 优雅终止查询', v_pid;
+        RAISE NOTICE '或者使用 pg_terminate_backend(%) 强制终止查询', v_pid;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '终止查询失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 实际使用时（需要替换实际的pid值）：
+-- SELECT pg_cancel_backend(12345);  -- 优雅终止
+-- SELECT pg_terminate_backend(12345);  -- 强制终止
 ```
 
 ---
@@ -284,12 +396,28 @@ WHERE email = 'alice@example.com';
 ### 3.2 诊断过程
 
 ```sql
+-- 诊断过程（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行诊断';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始诊断查询性能问题';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '诊断查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, username, email, created_at
 FROM users
 WHERE email = 'alice@example.com';
 
--- 输出：
+-- 输出示例：
 -- Seq Scan on users  (cost=0.00..25833.00 rows=1 width=128) (actual time=1156.234..1156.235 rows=1 loops=1)
 --   Filter: (email = 'alice@example.com'::text)
 --   Rows Removed by Filter: 999999
@@ -300,48 +428,198 @@ WHERE email = 'alice@example.com';
 -- 关键发现：
 -- 1. Seq Scan（全表扫描）
 -- 2. Rows Removed by Filter: 999999（扫描了100万行）
-```
 
 ### 3.3 解决方案
 
 ```sql
--- 创建索引
-CREATE INDEX users_email_idx ON users(email);
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 再次执行查询
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'users' AND indexname = 'users_email_idx') THEN
+            RAISE WARNING '索引 users_email_idx 已存在';
+        ELSE
+            CREATE INDEX users_email_idx ON users(email);
+            RAISE NOTICE '索引 users_email_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 users_email_idx 已存在';
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 再次执行查询（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'users' AND indexname = 'users_email_idx') THEN
+            RAISE WARNING '索引 users_email_idx 不存在，查询可能仍然较慢';
+        END IF;
+        RAISE NOTICE '开始测试优化后的查询性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT id, username, email, created_at
 FROM users
 WHERE email = 'alice@example.com';
 
--- 输出：
+-- 输出示例：
 -- Index Scan using users_email_idx on users  (cost=0.42..8.44 rows=1 width=128) (actual time=0.034..0.035 rows=1 loops=1)
 --   Index Cond: (email = 'alice@example.com'::text)
 --   Buffers: shared hit=4
 -- Planning Time: 0.156 ms
 -- Execution Time: 0.052 ms
 
--- 性能提升：1156ms → 0.052ms（22000倍！）
-```
+-- 性能提升：1156ms → 0.052ms（约22000倍！）
 
 ### 3.4 最佳实践
 
 ```sql
--- 1. 为外键创建索引
-CREATE INDEX orders_user_id_idx ON orders(user_id);
+-- 1. 为外键创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 2. 为频繁查询的列创建索引
-CREATE INDEX users_created_at_idx ON users(created_at);
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_id_idx') THEN
+            CREATE INDEX orders_user_id_idx ON orders(user_id);
+            RAISE NOTICE '索引 orders_user_id_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 orders_user_id_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_user_id_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 复合索引（查询涉及多列）
-CREATE INDEX orders_user_status_idx ON orders(user_id, status);
+-- 2. 为频繁查询的列创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 4. 部分索引（只索引部分行）
-CREATE INDEX orders_pending_idx ON orders(user_id)
-WHERE status = 'pending';
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'users' AND indexname = 'users_created_at_idx') THEN
+            CREATE INDEX users_created_at_idx ON users(created_at);
+            RAISE NOTICE '索引 users_created_at_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 users_created_at_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 users_created_at_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 5. 表达式索引
-CREATE INDEX users_lower_email_idx ON users(LOWER(email));
+-- 3. 复合索引（查询涉及多列，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_status_idx') THEN
+            CREATE INDEX orders_user_status_idx ON orders(user_id, status);
+            RAISE NOTICE '索引 orders_user_status_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 orders_user_status_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_user_status_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 4. 部分索引（只索引部分行，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_pending_idx') THEN
+            CREATE INDEX orders_pending_idx ON orders(user_id)
+            WHERE status = 'pending';
+            RAISE NOTICE '部分索引 orders_pending_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 orders_pending_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_pending_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 5. 表达式索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'users' AND indexname = 'users_lower_email_idx') THEN
+            CREATE INDEX users_lower_email_idx ON users(LOWER(email));
+            RAISE NOTICE '表达式索引 users_lower_email_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 users_lower_email_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 users_lower_email_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -351,29 +629,88 @@ CREATE INDEX users_lower_email_idx ON users(LOWER(email));
 ### 4.1 问题现象
 
 ```sql
--- 查询慢，但已有索引
-CREATE INDEX orders_created_at_idx ON orders(created_at);
-CREATE INDEX orders_user_id_idx ON orders(user_id);
-CREATE INDEX orders_status_idx ON orders(status);
+-- 查询慢，但已有索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_created_at_idx') THEN
+            CREATE INDEX orders_created_at_idx ON orders(created_at);
+            RAISE NOTICE '索引 orders_created_at_idx 创建成功';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_id_idx') THEN
+            CREATE INDEX orders_user_id_idx ON orders(user_id);
+            RAISE NOTICE '索引 orders_user_id_idx 创建成功';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_status_idx') THEN
+            CREATE INDEX orders_status_idx ON orders(status);
+            RAISE NOTICE '索引 orders_status_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '部分索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 执行查询（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '执行查询（示例：执行时间500ms）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 SELECT * FROM orders
 WHERE user_id = 123
   AND status = 'completed'
   AND created_at >= '2025-01-01';
-
--- 执行时间：500ms
 ```
 
 ### 4.2 诊断过程
 
 ```sql
+-- 诊断过程（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行诊断';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始诊断索引选择问题';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '诊断查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM orders
 WHERE user_id = 123
   AND status = 'completed'
   AND created_at >= '2025-01-01';
 
--- 输出：
+-- 输出示例：
 -- Index Scan using orders_created_at_idx on orders  (cost=0.42..1234.56 rows=100 width=256) (actual time=12.3..498.7 rows=50 loops=1)
 --   Index Cond: (created_at >= '2025-01-01'::date)
 --   Filter: ((user_id = 123) AND (status = 'completed'::text))
@@ -388,58 +725,179 @@ WHERE user_id = 123
 ### 4.3 解决方案
 
 ```sql
--- 创建复合索引（匹配所有查询条件）
-CREATE INDEX orders_user_status_created_idx
-ON orders(user_id, status, created_at);
+-- 创建复合索引（匹配所有查询条件，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 或者根据选择性排序（高选择性在前）
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_status_created_idx') THEN
+            CREATE INDEX orders_user_status_created_idx
+            ON orders(user_id, status, created_at);
+            RAISE NOTICE '复合索引 orders_user_status_created_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 orders_user_status_created_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_user_status_created_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 或者根据选择性排序（高选择性在前，带错误处理）
 -- 假设：user_id有100万种，status只有5种，created_at中等
-CREATE INDEX orders_user_created_status_idx
-ON orders(user_id, created_at, status);
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 再次测试
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_created_status_idx') THEN
+            CREATE INDEX orders_user_created_status_idx
+            ON orders(user_id, created_at, status);
+            RAISE NOTICE '复合索引 orders_user_created_status_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 orders_user_created_status_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_user_created_status_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 再次测试（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试优化后的查询性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM orders
 WHERE user_id = 123
   AND status = 'completed'
   AND created_at >= '2025-01-01';
 
--- 输出：
+-- 输出示例：
 -- Index Scan using orders_user_status_created_idx on orders  (cost=0.42..45.23 rows=50 width=256) (actual time=0.123..0.456 rows=50 loops=1)
 --   Index Cond: ((user_id = 123) AND (status = 'completed'::text) AND (created_at >= '2025-01-01'::date))
 --   Buffers: shared hit=8
 -- Execution Time: 0.512 ms
 
--- 性能提升：500ms → 0.5ms（1000倍）
+-- 性能提升：500ms → 0.5ms（约1000倍）
 ```
 
 ### 4.4 复合索引最佳实践
 
 ```sql
--- 规则1：精确匹配在前，范围查询在后
+-- 规则1：精确匹配在前，范围查询在后（带错误处理）
 -- ✅ 好
-CREATE INDEX idx1 ON orders(user_id, created_at);
-WHERE user_id = 123 AND created_at >= '2025-01-01';
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- ❌ 坏
-CREATE INDEX idx2 ON orders(created_at, user_id);
--- created_at是范围查询，user_id无法利用索引
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'idx1') THEN
+            CREATE INDEX idx1 ON orders(user_id, created_at);
+            RAISE NOTICE '索引 idx1 创建成功（示例：精确匹配在前）';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 idx1 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 规则2：选择性高的列在前
+-- ❌ 坏：created_at是范围查询，user_id无法利用索引
+-- CREATE INDEX idx2 ON orders(created_at, user_id);  -- 不推荐
+
+-- 规则2：选择性高的列在前（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法计算选择性';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始计算列选择性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '计算选择性准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 -- 选择性 = DISTINCT值数量 / 总行数
+EXPLAIN ANALYZE
 SELECT
-    COUNT(DISTINCT user_id)::float / COUNT(*) AS user_id_selectivity,
-    COUNT(DISTINCT status)::float / COUNT(*) AS status_selectivity
+    COUNT(DISTINCT user_id)::float / NULLIF(COUNT(*), 0) AS user_id_selectivity,
+    COUNT(DISTINCT status)::float / NULLIF(COUNT(*), 0) AS status_selectivity
 FROM orders;
 -- user_id: 0.95 (高选择性)
 -- status: 0.005 (低选择性)
 -- → CREATE INDEX ON orders(user_id, status);
 
--- 规则3：考虑查询频率
--- 如果大部分查询只用user_id，少部分用user_id+status
--- → 创建两个索引更好
-CREATE INDEX orders_user_id_idx ON orders(user_id);
-CREATE INDEX orders_user_status_idx ON orders(user_id, status);
+-- 规则3：考虑查询频率（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        -- 如果大部分查询只用user_id，少部分用user_id+status
+        -- → 创建两个索引更好
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_id_idx') THEN
+            CREATE INDEX orders_user_id_idx ON orders(user_id);
+            RAISE NOTICE '索引 orders_user_id_idx 创建成功';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_status_idx') THEN
+            CREATE INDEX orders_user_status_idx ON orders(user_id, status);
+            RAISE NOTICE '索引 orders_user_status_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '部分索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -449,7 +907,24 @@ CREATE INDEX orders_user_status_idx ON orders(user_id, status);
 ### 5.1 问题现象
 
 ```sql
--- 多表JOIN查询慢
+-- 多表JOIN查询慢（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_items') THEN
+            RAISE WARNING '必需的表不存在，无法执行JOIN查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '执行多表JOIN查询（示例：执行时间8000ms）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 SELECT
     u.username,
     o.order_id,
@@ -459,13 +934,29 @@ FROM users u
 JOIN orders o ON u.id = o.user_id
 JOIN order_items oi ON o.id = oi.order_id
 WHERE u.created_at >= '2025-01-01';
-
--- 执行时间：8000ms
 ```
 
 ### 5.2 诊断过程
 
 ```sql
+-- 诊断过程（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_items') THEN
+            RAISE WARNING '必需的表不存在，无法执行诊断';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始诊断JOIN查询性能问题';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '诊断查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT
     u.username,
@@ -477,7 +968,7 @@ JOIN orders o ON u.id = o.user_id
 JOIN order_items oi ON o.id = oi.order_id
 WHERE u.created_at >= '2025-01-01';
 
--- 输出：
+-- 输出示例：
 -- Hash Join  (cost=45678.90..123456.78 rows=100000 width=128) (actual time=2345.67..7890.12 rows=95000 loops=1)
 --   Hash Cond: (o.user_id = u.id)
 --   ->  Seq Scan on orders o  (cost=0.00..34567.89 rows=500000 width=64) (actual time=0.012..1234.56 rows=500000 loops=1)
@@ -498,17 +989,114 @@ WHERE u.created_at >= '2025-01-01';
 ### 5.3 解决方案
 
 ```sql
--- 1. 为过滤条件创建索引
-CREATE INDEX users_created_at_idx ON users(created_at);
+-- 1. 为过滤条件创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 2. 为JOIN条件创建索引
-CREATE INDEX orders_user_id_idx ON orders(user_id);
-CREATE INDEX order_items_order_id_idx ON order_items(order_id);
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'users' AND indexname = 'users_created_at_idx') THEN
+            CREATE INDEX users_created_at_idx ON users(created_at);
+            RAISE NOTICE '索引 users_created_at_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 users_created_at_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 更新统计信息
-ANALYZE users, orders, order_items;
+-- 2. 为JOIN条件创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 再次测试
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_id_idx') THEN
+            CREATE INDEX orders_user_id_idx ON orders(user_id);
+            RAISE NOTICE '索引 orders_user_id_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_user_id_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_items') THEN
+            RAISE WARNING '表 order_items 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'order_items' AND indexname = 'order_items_order_id_idx') THEN
+            CREATE INDEX order_items_order_id_idx ON order_items(order_id);
+            RAISE NOTICE '索引 order_items_order_id_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 order_items 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 order_items_order_id_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 3. 更新统计信息（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_items') THEN
+            RAISE WARNING '必需的表不存在，无法更新统计信息';
+            RETURN;
+        END IF;
+
+        ANALYZE users, orders, order_items;
+        RAISE NOTICE '统计信息更新成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '更新统计信息失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 再次测试（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_items') THEN
+            RAISE WARNING '必需的表不存在，无法执行测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试优化后的JOIN查询性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT
     u.username,
@@ -520,7 +1108,7 @@ JOIN orders o ON u.id = o.user_id
 JOIN order_items oi ON o.id = oi.order_id
 WHERE u.created_at >= '2025-01-01';
 
--- 输出：
+-- 输出示例：
 -- Nested Loop  (cost=1.27..2345.67 rows=95000 width=128) (actual time=0.234..567.89 rows=95000 loops=1)
 --   ->  Nested Loop  (...)
 --         ->  Index Scan using users_created_at_idx on users u  (cost=0.42..234.56 rows=50000 width=32) (actual time=0.012..45.67 rows=50000 loops=1)
@@ -530,7 +1118,7 @@ WHERE u.created_at >= '2025-01-01';
 --   ->  Index Scan using order_items_order_id_idx on order_items oi  (cost=0.42..8.45 rows=2 width=64) (actual time=0.002..0.004 rows=2 loops=500000)
 --         Index Cond: (order_id = o.id)
 
--- 性能提升：8000ms → 568ms（14倍）
+-- 性能提升：8000ms → 568ms（约14倍）
 ```
 
 ### 5.4 JOIN优化技巧
@@ -571,25 +1159,55 @@ JOIN small_table ON ...;
 ### 6.1 问题现象
 
 ```sql
--- IN子查询慢
+-- IN子查询慢（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '必需的表不存在，无法执行IN子查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '执行IN子查询（示例：执行时间3000ms）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 SELECT * FROM orders
 WHERE user_id IN (
     SELECT id FROM users WHERE country = 'US'
 );
 
--- 执行时间：3000ms
-```
-
 ### 6.2 诊断过程
 
 ```sql
+-- 诊断过程（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '必需的表不存在，无法执行诊断';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始诊断IN子查询性能问题';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '诊断查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM orders
 WHERE user_id IN (
     SELECT id FROM users WHERE country = 'US'
 );
 
--- 输出：
+-- 输出示例：
 -- Hash Semi Join  (cost=34567.89..56789.01 rows=10000 width=256) (actual time=1234.56..2987.65 rows=10000 loops=1)
 --   Hash Cond: (orders.user_id = users.id)
 --   ->  Seq Scan on orders  (cost=0.00..12345.67 rows=100000 width=256) (actual time=0.012..567.89 rows=100000 loops=1)
@@ -617,18 +1235,49 @@ ANALYZE users, orders;
 #### 方案2：改写为JOIN
 
 ```sql
--- JOIN通常比IN子查询更快
+-- JOIN通常比IN子查询更快（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '必需的表不存在，无法执行JOIN查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '执行JOIN查询（示例：性能350ms，比方案1更快）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT o.* FROM orders o
 JOIN users u ON o.user_id = u.id
 WHERE u.country = 'US';
 
--- 性能：350ms（比方案1更快）
-```
-
 #### 方案3：EXISTS替代IN
 
 ```sql
--- 当子查询返回大量结果时，EXISTS更快
+-- 当子查询返回大量结果时，EXISTS更快（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '必需的表不存在，无法执行EXISTS查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '执行EXISTS查询（示例：性能380ms）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT * FROM orders o
 WHERE EXISTS (
     SELECT 1 FROM users u
@@ -636,21 +1285,51 @@ WHERE EXISTS (
       AND u.country = 'US'
 );
 
--- 性能：380ms
-```
-
 ### 6.4 子查询优化规则
 
 ```sql
--- 规则1：避免在SELECT列表中使用子查询（导致N+1问题）
--- ❌ 坏
-SELECT
-    o.order_id,
-    (SELECT u.username FROM users u WHERE u.id = o.user_id) AS username
-FROM orders o;
--- 每行都执行一次子查询！
+-- 规则1：避免在SELECT列表中使用子查询（导致N+1问题，带错误处理）
+-- ❌ 坏：每行都执行一次子查询！
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '必需的表不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE WARNING '示例：不推荐在SELECT列表中使用子查询（N+1问题）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- ✅ 好：使用JOIN
+-- SELECT
+--     o.order_id,
+--     (SELECT u.username FROM users u WHERE u.id = o.user_id) AS username
+-- FROM orders o;
+-- 每行都执行一次子查询，性能差！
+
+-- ✅ 好：使用JOIN（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '必需的表不存在，无法执行JOIN查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '执行JOIN查询（推荐方式）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     o.order_id,
     u.username
@@ -691,26 +1370,91 @@ FROM products;
 ### 7.1 问题现象
 
 ```sql
--- 历史订单表查询慢（10亿行）
+-- 历史订单表查询慢（10亿行，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '执行历史订单表查询（示例：10亿行，执行时间45000ms）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '执行查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 SELECT * FROM orders
 WHERE created_at >= '2025-01-01' AND created_at < '2025-02-01';
-
--- 执行时间：45000ms
 ```
 
 ### 7.2 解决方案：时间分区
 
 ```sql
--- 1. 创建分区表
-CREATE TABLE orders (
-    id BIGSERIAL,
-    user_id BIGINT NOT NULL,
-    amount DECIMAL(10,2),
-    status VARCHAR(20),
-    created_at TIMESTAMPTZ NOT NULL
-) PARTITION BY RANGE (created_at);
+-- 1. 创建分区表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 已存在，可能需要删除后重新创建分区表';
+            RETURN;
+        END IF;
 
--- 2. 创建月度分区
+        CREATE TABLE orders (
+            id BIGSERIAL,
+            user_id BIGINT NOT NULL,
+            amount DECIMAL(10,2),
+            status VARCHAR(20),
+            created_at TIMESTAMPTZ NOT NULL
+        ) PARTITION BY RANGE (created_at);
+        RAISE NOTICE '分区表 orders 创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 orders 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建分区表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 2. 创建月度分区（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '分区表 orders 不存在，无法创建分区';
+            RETURN;
+        END IF;
+
+        -- 创建2025年1月分区
+        IF NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = 'orders'::regclass AND inhrelid::regclass::text = 'orders_2025_01') THEN
+            CREATE TABLE orders_2025_01 PARTITION OF orders
+            FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+            RAISE NOTICE '分区 orders_2025_01 创建成功';
+        ELSE
+            RAISE NOTICE '分区 orders_2025_01 已存在';
+        END IF;
+
+        -- 创建2025年2月分区
+        IF NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = 'orders'::regclass AND inhrelid::regclass::text = 'orders_2025_02') THEN
+            CREATE TABLE orders_2025_02 PARTITION OF orders
+            FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+            RAISE NOTICE '分区 orders_2025_02 创建成功';
+        ELSE
+            RAISE NOTICE '分区 orders_2025_02 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '分区表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '分区已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建分区失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 CREATE TABLE orders_2024_01 PARTITION OF orders
     FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
 

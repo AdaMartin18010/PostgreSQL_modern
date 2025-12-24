@@ -179,30 +179,100 @@ mindmap
 **计算成本查询**:
 
 ```sql
--- 创建成本分析视图
-CREATE VIEW compute_cost_analysis AS
-SELECT
-    date_trunc('day', timestamp) AS day,
-    instance_type,
-    instance_hours,
-    instance_price_per_hour,
-    instance_hours * instance_price_per_hour AS compute_cost
-FROM instance_usage_metrics
-WHERE timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day, instance_type, instance_hours, instance_price_per_hour
-ORDER BY day DESC;
+-- 创建成本分析视图（带错误处理）
+DO $$
+BEGIN
+    -- 检查表是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'instance_usage_metrics'
+    ) THEN
+        RAISE EXCEPTION '表 instance_usage_metrics 不存在，请先创建该表';
+    END IF;
+
+    BEGIN
+        -- 删除已存在的视图（如果存在）
+        DROP VIEW IF EXISTS compute_cost_analysis;
+
+        -- 创建计算成本分析视图
+        CREATE VIEW compute_cost_analysis AS
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            instance_type,
+            instance_hours,
+            instance_price_per_hour,
+            COALESCE(instance_hours, 0) * COALESCE(instance_price_per_hour, 0) AS compute_cost
+        FROM instance_usage_metrics
+        WHERE timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day, instance_type, instance_hours, instance_price_per_hour
+        ORDER BY day DESC;
+
+        RAISE NOTICE '计算成本分析视图 compute_cost_analysis 创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建计算成本分析视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：查询计算成本分析视图
+EXPLAIN ANALYZE
+SELECT * FROM compute_cost_analysis
+LIMIT 100;
 ```
 
 **AWS成本分析**:
 
 ```bash
-# AWS Cost Explorer查询
+#!/bin/bash
+# AWS Cost Explorer查询（带错误处理）
+set -e
+set -u
+
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 检查AWS CLI是否安装
+if ! command -v aws &> /dev/null; then
+    error_exit "AWS CLI未安装，请先安装AWS CLI工具"
+fi
+
+# 检查AWS凭证是否配置
+if ! aws sts get-caller-identity &> /dev/null; then
+    error_exit "AWS凭证未配置，请先运行 'aws configure'"
+fi
+
+# 检查filter.json文件是否存在
+FILTER_FILE="${FILTER_FILE:-filter.json}"
+if [ ! -f "$FILTER_FILE" ]; then
+    echo "警告: filter.json文件不存在，将使用默认查询（无过滤条件）"
+    FILTER_OPTION=""
+else
+    FILTER_OPTION="--filter file://$FILTER_FILE"
+fi
+
+# 设置默认日期范围（如果未提供）
+START_DATE="${START_DATE:-2025-01-01}"
+END_DATE="${END_DATE:-2025-01-31}"
+
+echo "查询AWS成本数据: $START_DATE 到 $END_DATE"
+
+# 执行AWS Cost Explorer查询
 aws ce get-cost-and-usage \
-  --time-period Start=2025-01-01,End=2025-01-31 \
+  --time-period Start="$START_DATE",End="$END_DATE" \
   --granularity MONTHLY \
   --metrics BlendedCost \
   --group-by Type=DIMENSION,Key=SERVICE \
-  --filter file://filter.json
+  $FILTER_OPTION \
+  --output json > cost_report.json 2>&1
+
+if [ $? -eq 0 ]; then
+    echo "成本查询成功，结果已保存到 cost_report.json"
+else
+    error_exit "AWS成本查询失败，请检查错误信息"
+fi
 ```
 
 #### 2.1.3 成本论证
@@ -245,29 +315,64 @@ aws ce get-cost-and-usage \
 **存储成本查询**:
 
 ```sql
--- 存储成本分析
-CREATE VIEW storage_cost_analysis AS
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'data_storage' AS storage_type,
-    sum(storage_gb) AS total_gb,
-    sum(storage_gb * 0.115) AS storage_cost  -- GP3: $0.115/GB/月
-FROM storage_metrics
-WHERE timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+-- 存储成本分析（带错误处理）
+DO $$
+BEGIN
+    -- 检查表是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'storage_metrics'
+    ) THEN
+        RAISE EXCEPTION '表 storage_metrics 不存在，请先创建该表';
+    END IF;
 
-UNION ALL
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'backup_storage_metrics'
+    ) THEN
+        RAISE EXCEPTION '表 backup_storage_metrics 不存在，请先创建该表';
+    END IF;
 
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'backup_storage' AS storage_type,
-    sum(storage_gb) AS total_gb,
-    sum(storage_gb * 0.023) AS storage_cost  -- S3 Standard-IA: $0.023/GB/月
-FROM backup_storage_metrics
-WHERE timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+    BEGIN
+        -- 删除已存在的视图（如果存在）
+        DROP VIEW IF EXISTS storage_cost_analysis;
 
-ORDER BY day DESC, storage_type;
+        -- 创建存储成本分析视图
+        CREATE VIEW storage_cost_analysis AS
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'data_storage' AS storage_type,
+            COALESCE(sum(storage_gb), 0) AS total_gb,
+            COALESCE(sum(storage_gb * 0.115), 0) AS storage_cost  -- GP3: $0.115/GB/月
+        FROM storage_metrics
+        WHERE timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
+
+        UNION ALL
+
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'backup_storage' AS storage_type,
+            COALESCE(sum(storage_gb), 0) AS total_gb,
+            COALESCE(sum(storage_gb * 0.023), 0) AS storage_cost  -- S3 Standard-IA: $0.023/GB/月
+        FROM backup_storage_metrics
+        WHERE timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
+
+        ORDER BY day DESC, storage_type;
+
+        RAISE NOTICE '存储成本分析视图 storage_cost_analysis 创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建存储成本分析视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：查询存储成本分析视图
+EXPLAIN ANALYZE
+SELECT * FROM storage_cost_analysis
+LIMIT 100;
 ```
 
 #### 2.2.3 成本论证
@@ -391,12 +496,45 @@ ORDER BY day DESC, transfer_type;
 **CPU使用分析**:
 
 ```sql
--- CPU使用分析
+-- CPU使用分析（带错误处理和性能测试）
+DO $$
+DECLARE
+    table_exists boolean;
+    record_count bigint;
+BEGIN
+    -- 检查表是否存在
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'system_metrics'
+    ) INTO table_exists;
+
+    IF NOT table_exists THEN
+        RAISE EXCEPTION '表 system_metrics 不存在，请先创建该表';
+    END IF;
+
+    -- 检查数据是否存在
+    SELECT COUNT(*) INTO record_count
+    FROM system_metrics
+    WHERE timestamp > NOW() - INTERVAL '7 days';
+
+    IF record_count = 0 THEN
+        RAISE WARNING 'system_metrics表中没有最近7天的数据';
+        RETURN;
+    END IF;
+
+    RAISE NOTICE '找到 % 条最近7天的记录，开始CPU使用分析', record_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'CPU使用分析失败: %', SQLERRM;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     date_trunc('hour', timestamp) AS hour,
     avg(cpu_usage_percent) AS avg_cpu,
     max(cpu_usage_percent) AS max_cpu,
-    min(cpu_usage_percent) AS min_cpu
+    min(cpu_usage_percent) AS min_cpu,
+    count(*) AS record_count
 FROM system_metrics
 WHERE timestamp > NOW() - INTERVAL '7 days'
 GROUP BY hour
@@ -406,23 +544,65 @@ ORDER BY hour DESC;
 **CPU优化策略**:
 
 ```sql
--- 1. 优化慢查询（减少CPU使用）
-CREATE INDEX idx_orders_created_at ON orders(created_at);
-CREATE INDEX idx_orders_user_id ON orders(user_id);
+-- 1. 优化慢查询（减少CPU使用）- 带错误处理
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否存在
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'orders'
+        ) THEN
+            RAISE WARNING '表 orders 不存在，跳过索引创建';
+            RETURN;
+        END IF;
+
+        -- 创建索引（如果不存在）
+        CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+
+        RAISE NOTICE '索引创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 2. 使用连接池（减少连接开销）
--- pgBouncer配置
-[databases]
-mydb = host=localhost port=5432 dbname=mydb
+-- pgBouncer配置（配置文件示例，需要在pgbouncer.ini中配置）
+-- [databases]
+-- mydb = host=localhost port=5432 dbname=mydb
+--
+-- [pgbouncer]
+-- pool_mode = transaction
+-- max_client_conn = 1000
+-- default_pool_size = 25
 
-[pgbouncer]
-pool_mode = transaction
-max_client_conn = 1000
-default_pool_size = 25
+-- 3. 优化并行查询（提高CPU利用率）- 带错误处理
+DO $$
+BEGIN
+    -- 检查是否为超级用户
+    IF NOT current_setting('is_superuser')::boolean THEN
+        RAISE EXCEPTION '需要超级用户权限才能修改系统配置';
+    END IF;
 
--- 3. 优化并行查询（提高CPU利用率）
-ALTER SYSTEM SET max_parallel_workers_per_gather = 4;
-ALTER SYSTEM SET max_parallel_workers = 8;
+    BEGIN
+        ALTER SYSTEM SET max_parallel_workers_per_gather = 4;
+        ALTER SYSTEM SET max_parallel_workers = 8;
+        PERFORM pg_reload_conf();
+
+        RAISE NOTICE '并行查询配置已更新，配置已重新加载';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法修改系统配置';
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '设置并行查询配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 3.1.3 成本论证
@@ -462,8 +642,44 @@ ALTER SYSTEM SET max_parallel_workers = 8;
 **内存使用分析**:
 
 ```sql
--- 内存使用分析
+-- 内存使用分析（带错误处理和性能测试）
+DO $$
+DECLARE
+    setting_record RECORD;
+    total_shared_buffers text;
+BEGIN
+    RAISE NOTICE '查询内存配置参数...';
+
+    FOR setting_record IN
+        SELECT
+            name,
+            setting AS parameter,
+            unit,
+            source
+        FROM pg_settings
+        WHERE name IN (
+            'shared_buffers',
+            'effective_cache_size',
+            'work_mem',
+            'maintenance_work_mem',
+            'temp_buffers'
+        )
+        ORDER BY name
+    LOOP
+        RAISE NOTICE '参数: % = % % (来源: %)',
+            setting_record.name,
+            setting_record.parameter,
+            COALESCE(setting_record.unit, ''),
+            setting_record.source;
+    END LOOP;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '查询内存配置失败: %', SQLERRM;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
+    name,
     setting AS parameter,
     unit,
     source
@@ -474,23 +690,50 @@ WHERE name IN (
     'work_mem',
     'maintenance_work_mem',
     'temp_buffers'
-);
+)
+ORDER BY name;
 ```
 
 **内存优化策略**:
 
 ```sql
--- 1. 优化shared_buffers（25%内存）
-ALTER SYSTEM SET shared_buffers = '4GB';  -- 16GB内存系统
+-- 内存优化策略（带错误处理）
+DO $$
+BEGIN
+    -- 检查是否为超级用户
+    IF NOT current_setting('is_superuser')::boolean THEN
+        RAISE EXCEPTION '需要超级用户权限才能修改系统配置';
+    END IF;
 
--- 2. 优化effective_cache_size（75%内存）
-ALTER SYSTEM SET effective_cache_size = '12GB';
+    BEGIN
+        -- 1. 优化shared_buffers（25%内存，16GB内存系统）
+        ALTER SYSTEM SET shared_buffers = '4GB';
 
--- 3. 优化work_mem（避免过度分配）
-ALTER SYSTEM SET work_mem = '64MB';
+        -- 2. 优化effective_cache_size（75%内存）
+        ALTER SYSTEM SET effective_cache_size = '12GB';
 
--- 4. 优化maintenance_work_mem
-ALTER SYSTEM SET maintenance_work_mem = '1GB';
+        -- 3. 优化work_mem（避免过度分配）
+        ALTER SYSTEM SET work_mem = '64MB';
+
+        -- 4. 优化maintenance_work_mem
+        ALTER SYSTEM SET maintenance_work_mem = '1GB';
+
+        -- 重新加载配置
+        PERFORM pg_reload_conf();
+
+        RAISE NOTICE '内存优化配置已更新，配置已重新加载';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法修改系统配置';
+            RAISE;
+        WHEN invalid_parameter_value THEN
+            RAISE WARNING '参数值无效，请检查配置值';
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '设置内存优化配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 3.2.3 成本论证
@@ -553,24 +796,100 @@ LIMIT 20;
 **存储优化策略**:
 
 ```sql
--- 1. 数据压缩
-ALTER TABLE large_table SET (
-    toast_tuple_target = 128,
-    fillfactor = 90
-);
+-- 存储优化策略（带错误处理）
+DO $$
+DECLARE
+    table_name text := 'orders';
+    partition_name text := 'orders_2023_01';
+    archive_cutoff_date date := '2023-01-01';
+    table_exists boolean;
+BEGIN
+    -- 1. 数据压缩
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'large_table'
+        ) THEN
+            ALTER TABLE large_table SET (
+                toast_tuple_target = 128,
+                fillfactor = 90
+            );
+            RAISE NOTICE '表 large_table 压缩设置成功';
+        ELSE
+            RAISE WARNING '表 large_table 不存在，跳过压缩设置';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置表压缩失败: %', SQLERRM;
+    END;
 
--- 2. 分区表优化（删除旧分区）
-ALTER TABLE orders DETACH PARTITION orders_2023_01;
-DROP TABLE orders_2023_01;
+    -- 2. 分区表优化（删除旧分区）
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM pg_inherits i
+            JOIN pg_class c ON i.inhparent = c.oid
+            JOIN pg_class p ON i.inhrelid = p.oid
+            WHERE c.relname = table_name AND p.relname = partition_name
+        ) THEN
+            EXECUTE format('ALTER TABLE %I DETACH PARTITION %I', table_name, partition_name);
+            EXECUTE format('DROP TABLE %I', partition_name);
+            RAISE NOTICE '分区 % 已删除', partition_name;
+        ELSE
+            RAISE WARNING '分区 % 不存在', partition_name;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '删除分区失败: %', SQLERRM;
+    END;
 
--- 3. 数据归档
-CREATE TABLE orders_archive (LIKE orders INCLUDING ALL);
-INSERT INTO orders_archive
-SELECT * FROM orders WHERE created_at < '2023-01-01';
-DELETE FROM orders WHERE created_at < '2023-01-01';
+    -- 3. 数据归档
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = table_name
+        ) THEN
+            RAISE EXCEPTION '表 % 不存在', table_name;
+        END IF;
 
--- 4. VACUUM FULL（回收空间）
-VACUUM FULL orders;
+        -- 创建归档表
+        EXECUTE format('CREATE TABLE IF NOT EXISTS %I_archive (LIKE %I INCLUDING ALL)',
+            table_name, table_name);
+
+        -- 插入归档数据
+        EXECUTE format(
+            'INSERT INTO %I_archive SELECT * FROM %I WHERE created_at < %L',
+            table_name, table_name, archive_cutoff_date
+        );
+
+        -- 删除原始数据
+        EXECUTE format(
+            'DELETE FROM %I WHERE created_at < %L',
+            table_name, archive_cutoff_date
+        );
+
+        RAISE NOTICE '数据归档完成';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '数据归档失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    -- 4. VACUUM FULL（回收空间）
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = table_name
+        ) THEN
+            EXECUTE format('VACUUM FULL %I', table_name);
+            RAISE NOTICE '表 % VACUUM FULL完成', table_name;
+        ELSE
+            RAISE WARNING '表 % 不存在，跳过VACUUM', table_name;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM FULL失败: %', SQLERRM;
+    END;
+END $$;
 ```
 
 #### 3.3.3 成本论证
@@ -860,22 +1179,64 @@ az consumption reservation purchase \
 
 ```bash
 #!/bin/bash
-# 自动停止脚本
+# 自动停止脚本（带错误处理）
+set -e
+set -u
 
-INSTANCE_ID="postgresql-dev"
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
+
+# 配置变量
+INSTANCE_ID="${INSTANCE_ID:-postgresql-dev}"
+WORK_HOURS_START="${WORK_HOURS_START:-9}"
+WORK_HOURS_END="${WORK_HOURS_END:-18}"
+
+# 检查AWS CLI是否安装
+if ! command -v aws &> /dev/null; then
+    error_exit "AWS CLI未安装，请先安装AWS CLI工具"
+fi
+
+# 检查AWS凭证是否配置
+if ! aws sts get-caller-identity &> /dev/null; then
+    error_exit "AWS凭证未配置，请先运行 'aws configure'"
+fi
+
+# 获取当前小时
 CURRENT_HOUR=$(date +%H)
-WORK_HOURS_START=9
-WORK_HOURS_END=18
+echo "当前时间: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "当前小时: $CURRENT_HOUR"
+echo "工作时间: $WORK_HOURS_START:00 - $WORK_HOURS_END:00"
 
 # 检查是否在工作时间
 if [ $CURRENT_HOUR -ge $WORK_HOURS_START ] && [ $CURRENT_HOUR -lt $WORK_HOURS_END ]; then
-    echo "Working hours, keeping instance running"
+    echo "工作时间，保持实例运行"
     # 确保实例运行
-    aws rds start-db-instance --db-instance-identifier $INSTANCE_ID 2>/dev/null
+    if aws rds describe-db-instances --db-instance-identifier "$INSTANCE_ID" \
+        --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null | grep -q "stopped"; then
+        echo "启动实例: $INSTANCE_ID"
+        aws rds start-db-instance --db-instance-identifier "$INSTANCE_ID" || \
+            error_exit "启动实例失败"
+    else
+        echo "实例 $INSTANCE_ID 已在运行"
+    fi
 else
-    echo "Non-working hours, stopping instance"
-    # 停止实例
-    aws rds stop-db-instance --db-instance-identifier $INSTANCE_ID
+    echo "非工作时间，停止实例"
+    # 检查实例状态
+    INSTANCE_STATUS=$(aws rds describe-db-instances \
+        --db-instance-identifier "$INSTANCE_ID" \
+        --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo "not-found")
+
+    if [ "$INSTANCE_STATUS" = "available" ]; then
+        echo "停止实例: $INSTANCE_ID"
+        aws rds stop-db-instance --db-instance-identifier "$INSTANCE_ID" || \
+            error_exit "停止实例失败"
+    elif [ "$INSTANCE_STATUS" = "not-found" ]; then
+        error_exit "实例 $INSTANCE_ID 不存在"
+    else
+        echo "实例 $INSTANCE_ID 当前状态: $INSTANCE_STATUS"
+    fi
 fi
 ```
 

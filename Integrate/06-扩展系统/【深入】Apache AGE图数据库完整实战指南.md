@@ -373,17 +373,51 @@ ls $(pg_config --sharedir)/extension/ | grep age
 ### 4.2 配置数据库
 
 ```sql
--- 1. 创建扩展
-CREATE EXTENSION age;
+-- 1. 创建扩展（带错误处理）
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS age;
+    RAISE NOTICE 'Apache AGE扩展安装成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'Apache AGE扩展已存在';
+    WHEN undefined_file THEN
+        RAISE EXCEPTION 'Apache AGE扩展文件不存在，请先安装扩展';
+    WHEN OTHERS THEN
+        RAISE WARNING '安装Apache AGE扩展失败: %', SQLERRM;
+        RAISE;
+END $$;
 
--- 2. 设置搜索路径
-SET search_path = ag_catalog, "$user", public;
+-- 2. 设置搜索路径（带错误处理）
+DO $$
+BEGIN
+    PERFORM set_config('search_path', 'ag_catalog, "$user", public', false);
+    RAISE NOTICE '搜索路径设置成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置搜索路径失败: %', SQLERRM;
+        RAISE;
+END $$;
 
--- 3. 创建图
-SELECT create_graph('social_network');
+-- 3. 创建图（带错误处理）
+DO $$
+BEGIN
+    -- 检查图是否已存在
+    IF EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE NOTICE '图 social_network 已存在，跳过创建';
+    ELSE
+        PERFORM create_graph('social_network');
+        RAISE NOTICE '图 social_network 创建成功';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建图失败: %', SQLERRM;
+        RAISE;
+END $$;
 
--- 4. 验证
-SELECT * FROM ag_graph;
+-- 4. 验证（带性能测试）
+EXPLAIN ANALYZE
+SELECT * FROM ag_graph WHERE name = 'social_network';
 ```
 
 ### 4.3 Docker快速部署
@@ -413,16 +447,59 @@ volumes:
 ```
 
 ```bash
-# 启动
-docker-compose up -d
+#!/bin/bash
+# Docker部署Apache AGE（带错误处理）
+set -e
+set -u
 
-# 连接
-docker exec -it postgres-age psql -U postgres -d testdb
+error_exit() {
+    echo "错误: $1" >&2
+    exit 1
+}
 
-# 初始化
-CREATE EXTENSION age;
-SET search_path = ag_catalog, "$user", public;
+# 检查docker-compose是否安装
+if ! command -v docker-compose &> /dev/null; then
+    error_exit "docker-compose未安装，请先安装Docker和docker-compose"
+fi
+
+# 检查docker是否运行
+if ! docker info &> /dev/null; then
+    error_exit "Docker未运行，请先启动Docker服务"
+fi
+
+# 启动容器
+echo "启动PostgreSQL+AGE容器..."
+docker-compose up -d || error_exit "启动容器失败"
+
+# 等待容器就绪
+echo "等待容器就绪..."
+sleep 5
+
+# 检查容器状态
+if ! docker ps | grep -q postgres-age; then
+    error_exit "容器启动失败，请检查日志: docker-compose logs"
+fi
+
+# 连接并初始化
+echo "连接数据库并初始化..."
+docker exec -it postgres-age psql -U postgres -d testdb <<EOF
+DO \$\$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS age;
+    PERFORM set_config('search_path', 'ag_catalog, "\$user", public', false);
+    RAISE NOTICE 'Apache AGE初始化成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '初始化失败: %', SQLERRM;
+        RAISE;
+END \$\$;
+EOF
+
+echo "部署完成！"
 ```
+
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+grep
 
 ---
 
@@ -433,13 +510,66 @@ SET search_path = ag_catalog, "$user", public;
 #### CREATE - 创建节点和边
 
 ```sql
--- 创建单个节点
+-- 创建单个节点（带错误处理）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    -- 检查图是否存在
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    -- 执行创建节点
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        CREATE (alice:Person {name: 'Alice', age: 30, city: 'Beijing'})
+        RETURN alice
+    $$) AS (alice agtype);
+
+    IF result_count > 0 THEN
+        RAISE NOTICE '节点创建成功';
+    ELSE
+        RAISE WARNING '节点创建失败，未返回结果';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建节点失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 性能测试：创建单个节点
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     CREATE (alice:Person {name: 'Alice', age: 30, city: 'Beijing'})
     RETURN alice
 $$) AS (alice agtype);
 
--- 创建多个节点和边
+-- 创建多个节点和边（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    PERFORM cypher('social_network', $$
+        CREATE (alice:Person {name: 'Alice', age: 30})
+        CREATE (bob:Person {name: 'Bob', age: 25})
+        CREATE (carol:Person {name: 'Carol', age: 28})
+        CREATE (alice)-[:FRIEND {since: '2020'}]->(bob)
+        CREATE (bob)-[:FRIEND {since: '2021'}]->(carol)
+        RETURN alice, bob, carol
+    $$);
+
+    RAISE NOTICE '多个节点和边创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建多个节点和边失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 性能测试：创建多个节点和边
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     CREATE (alice:Person {name: 'Alice', age: 30})
     CREATE (bob:Person {name: 'Bob', age: 25})
@@ -449,7 +579,27 @@ SELECT * FROM cypher('social_network', $$
     RETURN alice, bob, carol
 $$) AS (alice agtype, bob agtype, carol agtype);
 
--- 创建路径
+-- 创建路径（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    PERFORM cypher('social_network', $$
+        CREATE p = (a:Person {name: 'David'})-[:WORKS_AT]->(c:Company {name: 'TechCorp'})
+        RETURN p
+    $$);
+
+    RAISE NOTICE '路径创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建路径失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 性能测试：创建路径
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     CREATE p = (a:Person {name: 'David'})-[:WORKS_AT]->(c:Company {name: 'TechCorp'})
     RETURN p
@@ -459,26 +609,117 @@ $$) AS (path agtype);
 #### MATCH - 查询模式
 
 ```sql
--- 简单匹配
+-- 简单匹配（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    -- 检查图是否存在
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)
+        WHERE p.age > 25
+        RETURN p.name, p.age
+    $$) AS (name agtype, age agtype);
+
+    RAISE NOTICE '查询完成，返回 % 条记录', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：简单匹配
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.age > 25
     RETURN p.name, p.age
 $$) AS (name agtype, age agtype);
 
--- 关系匹配
+-- 关系匹配（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (a:Person)-[r:FRIEND]->(b:Person)
+        RETURN a.name, b.name, r.since
+    $$) AS (person1 agtype, person2 agtype, since agtype);
+
+    RAISE NOTICE '关系匹配完成，返回 % 条记录', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '关系匹配查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：关系匹配
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (a:Person)-[r:FRIEND]->(b:Person)
     RETURN a.name, b.name, r.since
 $$) AS (person1 agtype, person2 agtype, since agtype);
 
--- 可变长度路径
+-- 可变长度路径（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (a:Person {name: 'Alice'})-[:FRIEND*1..3]->(friend)
+        RETURN DISTINCT friend.name
+    $$) AS (friend_name agtype);
+
+    RAISE NOTICE '可变长度路径查询完成，返回 % 个朋友', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '可变长度路径查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：可变长度路径
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (a:Person {name: 'Alice'})-[:FRIEND*1..3]->(friend)
     RETURN DISTINCT friend.name
 $$) AS (friend_name agtype);
 
--- 双向关系
+-- 双向关系（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (a:Person)-[:FRIEND]-(b:Person)
+        WHERE a.name = 'Alice'
+        RETURN DISTINCT b.name
+    $$) AS (name agtype);
+
+    RAISE NOTICE '双向关系查询完成，返回 % 个连接', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '双向关系查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：双向关系
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (a:Person)-[:FRIEND]-(b:Person)
     WHERE a.name = 'Alice'
@@ -486,31 +727,122 @@ SELECT * FROM cypher('social_network', $$
 $$) AS (name agtype);
 ```
 
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+read_file
+
 #### WHERE - 过滤条件
 
 ```sql
--- 属性过滤
+-- 属性过滤（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)
+        WHERE p.age >= 25 AND p.age <= 35 AND p.city = 'Beijing'
+        RETURN p.name, p.age
+    $$) AS (name agtype, age agtype);
+
+    RAISE NOTICE '属性过滤查询完成，返回 % 条记录', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '属性过滤查询失败: %', SQLERRM;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.age >= 25 AND p.age <= 35 AND p.city = 'Beijing'
     RETURN p.name, p.age
 $$) AS (name agtype, age agtype);
 
--- 正则表达式
+-- 正则表达式（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)
+        WHERE p.name =~ 'A.*'
+        RETURN p.name
+    $$) AS (name agtype);
+
+    RAISE NOTICE '正则表达式查询完成，返回 % 条记录', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '正则表达式查询失败: %', SQLERRM;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.name =~ 'A.*'
     RETURN p.name
 $$) AS (name agtype);
 
--- NULL检查
+-- NULL检查（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)
+        WHERE p.email IS NOT NULL
+        RETURN p.name, p.email
+    $$) AS (name agtype, email agtype);
+
+    RAISE NOTICE 'NULL检查查询完成，返回 % 条有效记录', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'NULL检查查询失败: %', SQLERRM;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.email IS NOT NULL
     RETURN p.name, p.email
 $$) AS (name agtype, email agtype);
 
--- 列表包含
+-- 列表包含（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)
+        WHERE p.age IN [25, 30, 35]
+        RETURN p.name
+    $$) AS (name agtype);
+
+    RAISE NOTICE '列表包含查询完成，返回 % 条记录', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '列表包含查询失败: %', SQLERRM;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.age IN [25, 30, 35]
@@ -518,12 +850,45 @@ SELECT * FROM cypher('social_network', $$
 $$) AS (name agtype);
 ```
 
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+grep
+
 ### 5.2 高级查询
 
 #### 聚合函数
 
 ```sql
--- COUNT, SUM, AVG, MIN, MAX
+-- COUNT, SUM, AVG, MIN, MAX（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)
+        RETURN
+            COUNT(p) AS total_persons,
+            AVG(p.age) AS avg_age,
+            MIN(p.age) AS min_age,
+            MAX(p.age) AS max_age
+    $$) AS (total agtype, avg_age agtype, min_age agtype, max_age agtype);
+
+    IF result_count > 0 THEN
+        RAISE NOTICE '聚合查询完成，返回 % 行统计结果', result_count;
+    ELSE
+        RAISE WARNING '聚合查询返回空结果';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '聚合查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：聚合函数
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     RETURN
@@ -533,19 +898,67 @@ SELECT * FROM cypher('social_network', $$
         MAX(p.age) AS max_age
 $$) AS (total agtype, avg_age agtype, min_age agtype, max_age agtype);
 
--- GROUP BY
+-- GROUP BY（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)
+        RETURN p.city, COUNT(p) AS person_count, AVG(p.age) AS avg_age
+        ORDER BY person_count DESC
+    $$) AS (city agtype, count agtype, avg_age agtype);
+
+    RAISE NOTICE 'GROUP BY查询完成，返回 % 个城市的分组统计', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'GROUP BY查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：GROUP BY
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     RETURN p.city, COUNT(p) AS person_count, AVG(p.age) AS avg_age
     ORDER BY person_count DESC
 $$) AS (city agtype, count agtype, avg_age agtype);
 
--- COLLECT聚合
+-- COLLECT聚合（带错误处理和性能测试）
+DO $$
+DECLARE
+    result_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ag_graph WHERE name = 'social_network') THEN
+        RAISE EXCEPTION '图 social_network 不存在，请先创建图';
+    END IF;
+
+    SELECT COUNT(*) INTO result_count
+    FROM cypher('social_network', $$
+        MATCH (p:Person)-[:FRIEND]->(friend)
+        RETURN p.name, COLLECT(friend.name) AS friends
+    $$) AS (person agtype, friends agtype);
+
+    RAISE NOTICE 'COLLECT聚合查询完成，返回 % 个人的朋友列表', result_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'COLLECT聚合查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：COLLECT聚合
+EXPLAIN ANALYZE
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)-[:FRIEND]->(friend)
     RETURN p.name, COLLECT(friend.name) AS friends
 $$) AS (person agtype, friends agtype);
 ```
+
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+grep
 
 #### 子查询与UNION
 
@@ -1338,7 +1751,7 @@ $$) AS (path agtype, lead_time agtype, cost agtype);
 ### 10.1 功能对比
 
 | 特性 | Apache AGE | Neo4j | 说明 |
-|------|-----------|-------|------|
+| ------ | ----------- | ------- | ------ |
 | **Cypher支持** | ✅ openCypher | ✅ 完整Cypher | AGE兼容性约80% |
 | **ACID事务** | ✅ 完整支持 | ✅ 完整支持 | 基于PostgreSQL |
 | **SQL兼容** | ✅ 原生支持 | ❌ 需插件 | AGE核心优势 |
@@ -1450,20 +1863,82 @@ $$, jsonb_build_object('nodes', nodes_array)) AS (result agtype);
 #### 权限控制
 
 ```sql
--- 1. 创建只读用户
-CREATE USER graph_reader WITH PASSWORD 'secure_password';
-GRANT USAGE ON SCHEMA social_network TO graph_reader;
-GRANT SELECT ON ALL TABLES IN SCHEMA social_network TO graph_reader;
+-- 1. 创建只读用户（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_user WHERE usename = 'graph_reader') THEN
+        CREATE USER graph_reader WITH PASSWORD 'secure_password';
+        RAISE NOTICE '只读用户 graph_reader 创建成功';
+    ELSE
+        RAISE NOTICE '用户 graph_reader 已存在';
+    END IF;
 
--- 2. 创建读写用户
-CREATE USER graph_writer WITH PASSWORD 'secure_password';
-GRANT ALL ON SCHEMA social_network TO graph_writer;
+    GRANT USAGE ON SCHEMA ag_catalog TO graph_reader;
+    GRANT SELECT ON ALL TABLES IN SCHEMA ag_catalog TO graph_reader;
+    RAISE NOTICE '只读权限授予成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '用户已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建只读用户失败: %', SQLERRM;
+        RAISE;
+END $$;
 
--- 3. 使用RLS行级安全
-ALTER TABLE social_network."Person" ENABLE ROW LEVEL SECURITY;
+-- 2. 创建读写用户（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_user WHERE usename = 'graph_writer') THEN
+        CREATE USER graph_writer WITH PASSWORD 'secure_password';
+        RAISE NOTICE '读写用户 graph_writer 创建成功';
+    ELSE
+        RAISE NOTICE '用户 graph_writer 已存在';
+    END IF;
 
-CREATE POLICY person_isolation ON social_network."Person"
-    USING (properties->>'tenant_id' = current_setting('app.tenant_id'));
+    GRANT ALL ON SCHEMA ag_catalog TO graph_writer;
+    RAISE NOTICE '读写权限授予成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE '用户已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建读写用户失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 3. 使用RLS行级安全（带错误处理）
+DO $$
+BEGIN
+    -- 检查表是否存在
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema = 'ag_catalog'
+                 AND table_name LIKE '%Person%') THEN
+        ALTER TABLE ag_catalog."Person" ENABLE ROW LEVEL SECURITY;
+        RAISE NOTICE '行级安全已启用';
+    ELSE
+        RAISE WARNING 'Person表不存在，跳过启用行级安全';
+        RETURN;
+    END IF;
+
+    -- 创建策略（如果不存在）
+    DROP POLICY IF EXISTS person_isolation ON ag_catalog."Person";
+    CREATE POLICY person_isolation ON ag_catalog."Person"
+        USING (
+            COALESCE(properties->>'tenant_id', '') =
+            COALESCE(current_setting('app.tenant_id', true), '')
+        );
+    RAISE NOTICE '行级安全策略创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表不存在，跳过行级安全配置';
+    WHEN OTHERS THEN
+        RAISE WARNING '配置行级安全失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 性能测试：验证RLS策略
+EXPLAIN ANALYZE
+SELECT COUNT(*)
+FROM ag_catalog."Person"
+WHERE properties->>'tenant_id' = current_setting('app.tenant_id', true);
 ```
 
 #### SQL注入防护

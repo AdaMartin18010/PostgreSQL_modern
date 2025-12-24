@@ -235,14 +235,38 @@ $$
 **PostgreSQL CP模式配置**：
 
 ```sql
--- 同步复制配置（CP模式）
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_write';  -- 或 'remote_apply'
+-- 同步复制配置（CP模式，带错误处理）
+DO $$
+BEGIN
+    -- 检查是否为超级用户
+    IF NOT current_setting('is_superuser')::boolean THEN
+        RAISE EXCEPTION '需要超级用户权限才能修改系统配置';
+    END IF;
+
+    ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+    ALTER SYSTEM SET synchronous_commit = 'remote_write';  -- 或 'remote_apply'
+
+    -- 重新加载配置
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE '同步复制配置已更新（CP模式）';
+    RAISE NOTICE '请确保备库 standby1 和 standby2 已配置并运行';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '配置同步复制失败: %', SQLERRM;
+        RAISE;
+END $$;
 
 -- CP模式特征：
 -- 1. 主库等待备库确认后才提交
 -- 2. 分区时，如果无法联系到足够备库，主库阻塞写入
 -- 3. 保证强一致性，但牺牲可用性
+
+-- 性能测试：验证同步复制状态
+EXPLAIN ANALYZE
+SELECT application_name, sync_state, sync_priority
+FROM pg_stat_replication
+WHERE sync_state = 'sync';
 ```
 
 ### 3.2 AP模式系统
@@ -265,14 +289,37 @@ ALTER SYSTEM SET synchronous_commit = 'remote_write';  -- 或 'remote_apply'
 **PostgreSQL AP模式配置**：
 
 ```sql
--- 异步复制配置（AP模式）
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- 异步复制配置（AP模式，带错误处理）
+DO $$
+BEGIN
+    -- 检查是否为超级用户
+    IF NOT current_setting('is_superuser')::boolean THEN
+        RAISE EXCEPTION '需要超级用户权限才能修改系统配置';
+    END IF;
+
+    ALTER SYSTEM SET synchronous_standby_names = '';
+    ALTER SYSTEM SET synchronous_commit = 'local';
+
+    -- 重新加载配置
+    PERFORM pg_reload_conf();
+
+    RAISE NOTICE '异步复制配置已更新（AP模式）';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '配置异步复制失败: %', SQLERRM;
+        RAISE;
+END $$;
 
 -- AP模式特征：
 -- 1. 主库立即提交，不等待备库
 -- 2. 分区时，主库继续服务
 -- 3. 保证高可用性，但可能数据不一致
+
+-- 性能测试：验证异步复制状态
+EXPLAIN ANALYZE
+SELECT application_name, sync_state,
+       pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes
+FROM pg_stat_replication;
 ```
 
 ### 3.3 CA模式系统
@@ -417,7 +464,40 @@ ALTER SYSTEM SET synchronous_commit = 'local';
 **CP模式监控**：
 
 ```sql
--- 监控同步延迟
+-- 监控同步延迟（带错误处理）
+DO $$
+DECLARE
+    sync_count int;
+    max_lag_bytes bigint;
+BEGIN
+    -- 检查同步复制状态
+    SELECT COUNT(*) INTO sync_count
+    FROM pg_stat_replication
+    WHERE sync_state = 'sync';
+
+    IF sync_count = 0 THEN
+        RAISE NOTICE '当前没有同步复制的备库';
+        RETURN;
+    END IF;
+
+    -- 获取最大延迟
+    SELECT COALESCE(MAX(pg_wal_lsn_diff(pg_current_wal_lsn(), flush_lsn)), 0)
+    INTO max_lag_bytes
+    FROM pg_stat_replication
+    WHERE sync_state = 'sync';
+
+    IF max_lag_bytes > 104857600 THEN  -- 超过100MB
+        RAISE WARNING '同步复制延迟较大: % MB', max_lag_bytes / 1048576;
+    ELSE
+        RAISE NOTICE '同步复制延迟正常: % KB', max_lag_bytes / 1024;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '监控同步延迟时出错: %', SQLERRM;
+END $$;
+
+-- 性能测试：监控同步延迟
+EXPLAIN ANALYZE
 SELECT
     application_name,
     sync_state,
@@ -425,7 +505,27 @@ SELECT
 FROM pg_stat_replication
 WHERE sync_state = 'sync';
 
--- 监控阻塞情况
+-- 监控阻塞情况（带错误处理和性能测试）
+DO $$
+DECLARE
+    blocked_count int;
+BEGIN
+    SELECT COUNT(*) INTO blocked_count
+    FROM pg_stat_activity
+    WHERE wait_event_type = 'IPC';
+
+    IF blocked_count > 0 THEN
+        RAISE WARNING '检测到 % 个阻塞的进程', blocked_count;
+    ELSE
+        RAISE NOTICE '当前没有阻塞的进程';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '监控阻塞情况时出错: %', SQLERRM;
+END $$;
+
+-- 性能测试：监控阻塞情况
+EXPLAIN ANALYZE
 SELECT
     pid,
     wait_event_type,
@@ -438,11 +538,46 @@ WHERE wait_event_type = 'IPC';
 **AP模式监控**：
 
 ```sql
--- 监控复制延迟
+-- 监控复制延迟（带错误处理和性能测试）
+DO $$
+DECLARE
+    replication_count int;
+    max_lag_bytes bigint;
+BEGIN
+    -- 检查复制状态
+    SELECT COUNT(*) INTO replication_count
+    FROM pg_stat_replication;
+
+    IF replication_count = 0 THEN
+        RAISE NOTICE '当前没有配置复制';
+        RETURN;
+    END IF;
+
+    -- 获取最大延迟
+    SELECT COALESCE(MAX(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)), 0)
+    INTO max_lag_bytes
+    FROM pg_stat_replication;
+
+    IF max_lag_bytes > 1073741824 THEN  -- 超过1GB
+        RAISE WARNING '复制延迟较大: % MB', max_lag_bytes / 1048576;
+    ELSE
+        RAISE NOTICE '复制延迟正常: % KB', max_lag_bytes / 1024;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '监控复制延迟时出错: %', SQLERRM;
+END $$;
+
+-- 性能测试：监控复制延迟
+EXPLAIN ANALYZE
 SELECT
     application_name,
     pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes,
-    EXTRACT(EPOCH FROM (now() - pg_stat_file('pg_wal/' || pg_walfile_name(replay_lsn))::timestamp)) AS lag_seconds
+    CASE
+        WHEN replay_lsn IS NOT NULL THEN
+            EXTRACT(EPOCH FROM (now() - pg_stat_file('pg_wal/' || pg_walfile_name(replay_lsn))::timestamp))
+        ELSE NULL
+    END AS lag_seconds
 FROM pg_stat_replication;
 ```
 

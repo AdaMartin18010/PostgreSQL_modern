@@ -69,13 +69,49 @@ AI Act 适用于：
 **实施方法**:
 
 ```sql
--- 创建数据主权标签
-ALTER TABLE user_data ADD COLUMN data_sovereignty TEXT[];
+-- 创建数据主权标签（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否存在
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'user_data'
+        ) THEN
+            RAISE EXCEPTION '表 user_data 不存在，请先创建该表';
+        END IF;
 
--- 设置主权标签
-UPDATE user_data
-SET data_sovereignty = ARRAY['EU', 'DE']
-WHERE user_country = 'Germany';
+        -- 检查列是否已存在
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'user_data'
+              AND column_name = 'data_sovereignty'
+        ) THEN
+            RAISE NOTICE '列 data_sovereignty 已存在，跳过添加';
+        ELSE
+            -- 添加数据主权标签列
+            ALTER TABLE user_data ADD COLUMN data_sovereignty TEXT[];
+            RAISE NOTICE '列 data_sovereignty 添加成功';
+        END IF;
+
+        -- 设置主权标签
+        UPDATE user_data
+        SET data_sovereignty = ARRAY['EU', 'DE']
+        WHERE user_country = 'Germany';
+
+        RAISE NOTICE '主权标签设置成功，影响行数: %', ROW_COUNT;
+    EXCEPTION
+        WHEN duplicate_column THEN
+            RAISE NOTICE '列 data_sovereignty 已存在';
+        WHEN undefined_table THEN
+            RAISE WARNING '表 user_data 不存在';
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '创建数据主权标签失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.2 数据留存要求
@@ -89,14 +125,42 @@ WHERE user_country = 'Germany';
 **实施方法**:
 
 ```sql
--- 创建数据留存表
-CREATE TABLE data_retention (
-    id BIGSERIAL PRIMARY KEY,
-    table_name TEXT,
-    record_id BIGINT,
-    retention_until TIMESTAMPTZ,
-    retention_reason TEXT
-);
+-- 创建数据留存表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否已存在
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'data_retention'
+        ) THEN
+            RAISE NOTICE '表 data_retention 已存在，跳过创建';
+            RETURN;
+        END IF;
+
+        -- 创建数据留存表
+        CREATE TABLE data_retention (
+            id BIGSERIAL PRIMARY KEY,
+            table_name TEXT NOT NULL,
+            record_id BIGINT NOT NULL,
+            retention_until TIMESTAMPTZ NOT NULL,
+            retention_reason TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        -- 创建索引
+        CREATE INDEX idx_data_retention_table_record ON data_retention(table_name, record_id);
+        CREATE INDEX idx_data_retention_until ON data_retention(retention_until);
+
+        RAISE NOTICE '数据留存表 data_retention 创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 data_retention 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建数据留存表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 审计追踪要求
@@ -110,16 +174,45 @@ CREATE TABLE data_retention (
 **实施方法**:
 
 ```sql
--- 使用 Ledger 表
-CREATE TABLE user_data_ledger (
-    id BIGSERIAL PRIMARY KEY,
-    operation TEXT,
-    old_data JSONB,
-    new_data JSONB,
-    timestamp TIMESTAMPTZ,
-    user_id TEXT,
-    hash TEXT
-);
+-- 使用 Ledger 表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否已存在
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'user_data_ledger'
+        ) THEN
+            RAISE NOTICE '表 user_data_ledger 已存在，跳过创建';
+            RETURN;
+        END IF;
+
+        -- 创建 Ledger 表
+        CREATE TABLE user_data_ledger (
+            id BIGSERIAL PRIMARY KEY,
+            operation TEXT NOT NULL,
+            old_data JSONB,
+            new_data JSONB,
+            timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            user_id TEXT NOT NULL,
+            hash TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        -- 创建索引
+        CREATE INDEX idx_user_data_ledger_timestamp ON user_data_ledger(timestamp);
+        CREATE INDEX idx_user_data_ledger_user_id ON user_data_ledger(user_id);
+        CREATE INDEX idx_user_data_ledger_operation ON user_data_ledger(operation);
+
+        RAISE NOTICE 'Ledger 表 user_data_ledger 创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 user_data_ledger 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建 Ledger 表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.4 透明度要求
@@ -134,58 +227,139 @@ CREATE TABLE user_data_ledger (
 **实施方法**:
 
 ```sql
--- 创建数据来源追踪表
-CREATE TABLE data_lineage (
-    id BIGSERIAL PRIMARY KEY,
-    table_name TEXT NOT NULL,
-    record_id BIGINT,
-    data_source TEXT,  -- 数据来源
-    collection_date TIMESTAMPTZ,
-    collection_method TEXT,  -- 收集方法
-    consent_status TEXT,  -- 同意状态
-    usage_purpose TEXT,  -- 使用目的
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 创建数据来源追踪表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_lineage') THEN
+            RAISE NOTICE '表 data_lineage 已存在，跳过创建';
+        ELSE
+            CREATE TABLE data_lineage (
+                id BIGSERIAL PRIMARY KEY,
+                table_name TEXT NOT NULL,
+                record_id BIGINT,
+                data_source TEXT,
+                collection_date TIMESTAMPTZ,
+                collection_method TEXT,
+                consent_status TEXT,
+                usage_purpose TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX idx_data_lineage_table_record ON data_lineage(table_name, record_id);
+            RAISE NOTICE '数据来源追踪表 data_lineage 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 data_lineage 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建数据来源追踪表失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 创建模型决策追踪表
-CREATE TABLE model_decision_log (
-    id BIGSERIAL PRIMARY KEY,
-    model_name TEXT NOT NULL,
-    model_version TEXT,
-    input_data JSONB,  -- 输入数据
-    output_result JSONB,  -- 输出结果
-    decision_process JSONB,  -- 决策过程
-    confidence_score NUMERIC,
-    timestamp TIMESTAMPTZ DEFAULT NOW()
-);
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'model_decision_log') THEN
+            RAISE NOTICE '表 model_decision_log 已存在，跳过创建';
+        ELSE
+            CREATE TABLE model_decision_log (
+                id BIGSERIAL PRIMARY KEY,
+                model_name TEXT NOT NULL,
+                model_version TEXT,
+                input_data JSONB,
+                output_result JSONB,
+                decision_process JSONB,
+                confidence_score NUMERIC,
+                timestamp TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX idx_model_decision_log_model ON model_decision_log(model_name, timestamp);
+            RAISE NOTICE '模型决策追踪表 model_decision_log 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 model_decision_log 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建模型决策追踪表失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 创建数据使用记录表
-CREATE TABLE data_usage_log (
-    id BIGSERIAL PRIMARY KEY,
-    table_name TEXT,
-    record_id BIGINT,
-    usage_purpose TEXT,
-    used_by TEXT,  -- 使用者
-    usage_date TIMESTAMPTZ DEFAULT NOW(),
-    consent_verified BOOLEAN
-);
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_usage_log') THEN
+            RAISE NOTICE '表 data_usage_log 已存在，跳过创建';
+        ELSE
+            CREATE TABLE data_usage_log (
+                id BIGSERIAL PRIMARY KEY,
+                table_name TEXT NOT NULL,
+                record_id BIGINT,
+                usage_purpose TEXT,
+                used_by TEXT,
+                usage_date TIMESTAMPTZ DEFAULT NOW(),
+                consent_verified BOOLEAN
+            );
+            CREATE INDEX idx_data_usage_log_table_record ON data_usage_log(table_name, record_id);
+            CREATE INDEX idx_data_usage_log_timestamp ON data_usage_log(usage_date);
+            RAISE NOTICE '数据使用记录表 data_usage_log 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 data_usage_log 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建数据使用记录表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **可解释性要求**:
 
 ```sql
--- 创建模型可解释性表
-CREATE TABLE model_explainability (
-    id BIGSERIAL PRIMARY KEY,
-    model_name TEXT NOT NULL,
-    prediction_id BIGINT,
-    feature_importance JSONB,  -- 特征重要性
-    decision_path JSONB,  -- 决策路径
-    explanation_text TEXT,  -- 解释文本
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 创建模型可解释性表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'model_explainability') THEN
+            RAISE NOTICE '表 model_explainability 已存在，跳过创建';
+        ELSE
+            CREATE TABLE model_explainability (
+                id BIGSERIAL PRIMARY KEY,
+                model_name TEXT NOT NULL,
+                prediction_id BIGINT NOT NULL,
+                feature_importance JSONB,
+                decision_path JSONB,
+                explanation_text TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX idx_model_explainability_model_prediction ON model_explainability(model_name, prediction_id);
+            RAISE NOTICE '模型可解释性表 model_explainability 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 model_explainability 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建模型可解释性表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查询模型决策解释
+-- 查询模型决策解释（带错误处理和性能测试）
+DO $$
+DECLARE
+    record_count int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'model_decision_log') THEN
+        RAISE WARNING '表 model_decision_log 不存在，无法查询';
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*) INTO record_count
+    FROM model_decision_log
+    WHERE timestamp > NOW() - INTERVAL '1 day';
+
+    RAISE NOTICE '找到 % 条最近1天的模型决策记录', record_count;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '查询模型决策解释失败: %', SQLERRM;
+END $$;
+
+EXPLAIN ANALYZE
 SELECT
     mdl.model_name,
     mdl.output_result,
@@ -204,35 +378,138 @@ ORDER BY mdl.timestamp DESC;
 ### 3.1 数据分类
 
 ```sql
--- 数据分类表
-CREATE TABLE data_classification (
-    table_name TEXT,
-    column_name TEXT,
-    data_type TEXT,  -- 'personal', 'sensitive', 'public'
-    sovereignty_tags TEXT[],
-    retention_period INTERVAL
-);
+-- 数据分类表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否已存在
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'data_classification'
+        ) THEN
+            RAISE NOTICE '表 data_classification 已存在，跳过创建';
+            RETURN;
+        END IF;
+
+        -- 创建数据分类表
+        CREATE TABLE data_classification (
+            table_name TEXT NOT NULL,
+            column_name TEXT,
+            data_type TEXT NOT NULL,  -- 'personal', 'sensitive', 'public'
+            sovereignty_tags TEXT[],
+            retention_period INTERVAL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (table_name, COALESCE(column_name, ''))
+        );
+
+        -- 创建索引
+        CREATE INDEX idx_data_classification_data_type ON data_classification(data_type);
+
+        RAISE NOTICE '数据分类表 data_classification 创建成功';
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 data_classification 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建数据分类表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.2 访问控制
 
 ```sql
--- 基于主权的访问控制
-CREATE POLICY "sovereignty_access_control"
-ON user_data FOR SELECT
-USING (
-    current_setting('user.country') = ANY(data_sovereignty)
-);
+-- 基于主权的访问控制（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否存在
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'user_data'
+        ) THEN
+            RAISE EXCEPTION '表 user_data 不存在，请先创建该表';
+        END IF;
+
+        -- 检查是否已启用RLS
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_tables
+            WHERE schemaname = 'public'
+              AND tablename = 'user_data'
+              AND rowsecurity = TRUE
+        ) THEN
+            ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
+            RAISE NOTICE '已为用户表启用行级安全';
+        END IF;
+
+        -- 删除已存在的策略（如果存在）
+        DROP POLICY IF EXISTS "sovereignty_access_control" ON user_data;
+
+        -- 创建基于主权的访问控制策略
+        CREATE POLICY "sovereignty_access_control"
+        ON user_data FOR SELECT
+        USING (
+            current_setting('user.country', TRUE) = ANY(data_sovereignty)
+        );
+
+        RAISE NOTICE '基于主权的访问控制策略创建成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 user_data 不存在';
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '创建访问控制策略失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 审计日志
 
 ```sql
--- 自动审计日志
-CREATE TRIGGER audit_trigger
-AFTER INSERT OR UPDATE OR DELETE ON user_data
-FOR EACH ROW
-EXECUTE FUNCTION log_audit_event();
+-- 自动审计日志（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否存在
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'user_data'
+        ) THEN
+            RAISE EXCEPTION '表 user_data 不存在，请先创建该表';
+        END IF;
+
+        -- 检查函数是否存在
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE n.nspname = 'public' AND p.proname = 'log_audit_event'
+        ) THEN
+            RAISE EXCEPTION '函数 log_audit_event 不存在，请先创建该函数';
+        END IF;
+
+        -- 删除已存在的触发器（如果存在）
+        DROP TRIGGER IF EXISTS audit_trigger ON user_data;
+
+        -- 创建自动审计日志触发器
+        CREATE TRIGGER audit_trigger
+        AFTER INSERT OR UPDATE OR DELETE ON user_data
+        FOR EACH ROW
+        EXECUTE FUNCTION log_audit_event();
+
+        RAISE NOTICE '自动审计日志触发器创建成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 user_data 不存在';
+            RAISE;
+        WHEN undefined_function THEN
+            RAISE WARNING '函数 log_audit_event 不存在';
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '创建审计日志触发器失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -253,23 +530,54 @@ EXECUTE FUNCTION log_audit_event();
 **实施建议**:
 
 ```sql
--- 创建数据分类表
-CREATE TABLE data_classification (
-    table_name TEXT PRIMARY KEY,
-    data_category TEXT NOT NULL,  -- 'personal', 'sensitive', 'public'
-    sovereignty_required BOOLEAN DEFAULT TRUE,
-    retention_period INTERVAL,
-    access_control_level TEXT,  -- 'strict', 'moderate', 'open'
-    classification_date DATE DEFAULT CURRENT_DATE
-);
+-- 创建数据分类表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_classification') THEN
+            RAISE NOTICE '表 data_classification 已存在，跳过创建';
+        ELSE
+            CREATE TABLE data_classification (
+                table_name TEXT PRIMARY KEY,
+                data_category TEXT NOT NULL,
+                sovereignty_required BOOLEAN DEFAULT TRUE,
+                retention_period INTERVAL,
+                access_control_level TEXT,
+                classification_date DATE DEFAULT CURRENT_DATE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX idx_data_classification_category ON data_classification(data_category);
+            RAISE NOTICE '数据分类表创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 data_classification 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建数据分类表失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 自动分类数据
-INSERT INTO data_classification (table_name, data_category, sovereignty_required, retention_period, access_control_level)
-VALUES
-    ('user_data', 'personal', TRUE, INTERVAL '7 years', 'strict'),
-    ('training_data', 'important', TRUE, INTERVAL '10 years', 'moderate'),
-    ('model_versions', 'important', TRUE, NULL, 'strict'),
-    ('audit_log', 'general', FALSE, INTERVAL '1 year', 'moderate');
+    -- 自动分类数据
+    BEGIN
+        INSERT INTO data_classification (table_name, data_category, sovereignty_required, retention_period, access_control_level)
+        VALUES
+            ('user_data', 'personal', TRUE, INTERVAL '7 years', 'strict'),
+            ('training_data', 'important', TRUE, INTERVAL '10 years', 'moderate'),
+            ('model_versions', 'important', TRUE, NULL, 'strict'),
+            ('audit_log', 'general', FALSE, INTERVAL '1 year', 'moderate')
+        ON CONFLICT (table_name) DO UPDATE
+        SET data_category = EXCLUDED.data_category,
+            sovereignty_required = EXCLUDED.sovereignty_required,
+            retention_period = EXCLUDED.retention_period,
+            access_control_level = EXCLUDED.access_control_level;
+
+        RAISE NOTICE '数据分类数据插入成功，影响行数: %', ROW_COUNT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入数据分类数据失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.2 访问控制策略
@@ -284,24 +592,89 @@ VALUES
 **实施示例**:
 
 ```sql
--- 创建角色和权限
-CREATE ROLE data_analyst;
-CREATE ROLE data_scientist;
-CREATE ROLE compliance_officer;
+-- 创建角色和权限（带错误处理）
+DO $$
+BEGIN
+    -- 创建角色
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_analyst') THEN
+            CREATE ROLE data_analyst;
+            RAISE NOTICE '角色 data_analyst 创建成功';
+        ELSE
+            RAISE NOTICE '角色 data_analyst 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '角色 data_analyst 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建角色 data_analyst 失败: %', SQLERRM;
+    END;
 
--- 基于主权的访问控制策略
-CREATE POLICY "sovereignty_based_access"
-ON user_data FOR SELECT
-TO data_analyst
-USING (
-    current_setting('user.country', TRUE) = ANY(data_sovereignty)
-);
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_scientist') THEN
+            CREATE ROLE data_scientist;
+            RAISE NOTICE '角色 data_scientist 创建成功';
+        ELSE
+            RAISE NOTICE '角色 data_scientist 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '角色 data_scientist 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建角色 data_scientist 失败: %', SQLERRM;
+    END;
 
--- 管理员可以访问所有数据
-CREATE POLICY "admin_full_access"
-ON user_data FOR ALL
-TO compliance_officer
-USING (TRUE);
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'compliance_officer') THEN
+            CREATE ROLE compliance_officer;
+            RAISE NOTICE '角色 compliance_officer 创建成功';
+        ELSE
+            RAISE NOTICE '角色 compliance_officer 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '角色 compliance_officer 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建角色 compliance_officer 失败: %', SQLERRM;
+    END;
+
+    -- 创建访问控制策略
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_data') THEN
+            RAISE EXCEPTION '表 user_data 不存在，请先创建该表';
+        END IF;
+
+        -- 启用RLS
+        ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
+
+        -- 删除已存在的策略
+        DROP POLICY IF EXISTS "sovereignty_based_access" ON user_data;
+        DROP POLICY IF EXISTS "admin_full_access" ON user_data;
+
+        -- 创建基于主权的访问控制策略
+        CREATE POLICY "sovereignty_based_access"
+        ON user_data FOR SELECT
+        TO data_analyst
+        USING (
+            current_setting('user.country', TRUE) = ANY(data_sovereignty)
+        );
+
+        -- 管理员可以访问所有数据
+        CREATE POLICY "admin_full_access"
+        ON user_data FOR ALL
+        TO compliance_officer
+        USING (TRUE);
+
+        RAISE NOTICE '访问控制策略创建成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 user_data 不存在';
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '创建访问控制策略失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.3 审计日志管理
