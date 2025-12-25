@@ -27,14 +27,21 @@
 
 ## 1. 概述
 
-PostgreSQL基金会（PostgreSQL Global Development Group）是PostgreSQL数据库项目的核心组织。
+PostgreSQL基金会（PostgreSQL Global Development Group，简称PGDG）是PostgreSQL数据库项目的核心组织，负责协调和管理PostgreSQL的全球开发工作。
 
 **基金会职责**:
 
-- 协调PostgreSQL开发
-- 管理PostgreSQL项目
-- 推广PostgreSQL使用
-- 支持社区发展
+- 协调PostgreSQL开发 - 协调全球开发者的工作，确保开发方向一致
+- 管理PostgreSQL项目 - 管理代码仓库、发布流程、版本控制
+- 推广PostgreSQL使用 - 推广PostgreSQL在企业和个人用户中的使用
+- 支持社区发展 - 支持PostgreSQL社区的发展和成长
+
+**基金会性质**:
+
+- **非营利组织** - PostgreSQL基金会是一个非营利性组织
+- **开源项目** - PostgreSQL是完全开源的项目，采用PostgreSQL License
+- **社区驱动** - 由全球PostgreSQL社区共同维护和发展
+- **技术导向** - 专注于技术发展和质量提升
 
 ---
 
@@ -53,21 +60,89 @@ PostgreSQL基金会（PostgreSQL Global Development Group）是PostgreSQL数据�
 
 ### 3.1 组织结构
 
+PostgreSQL基金会的组织结构包括：
+
 ```text
 PostgreSQL基金会
-├── 核心团队
-├── 开发团队
-├── 文档团队
-└── 社区团队
+├── 核心团队（Core Team）
+│   ├── 核心开发者（Core Developers）
+│   ├── 提交者（Committers）
+│   └── 维护者（Maintainers）
+├── 开发团队（Development Team）
+│   ├── 功能开发者
+│   ├── 补丁审查者
+│   └── 测试人员
+├── 文档团队（Documentation Team）
+│   ├── 文档编写者
+│   ├── 文档审查者
+│   └── 翻译团队
+└── 社区团队（Community Team）
+    ├── 社区支持者
+    ├── 活动组织者
+    └── 推广人员
 ```
+
+**核心团队职责**：
+
+- **核心开发者**：负责PostgreSQL核心功能的开发和维护
+- **提交者**：拥有代码提交权限，负责代码审查和合并
+- **维护者**：负责特定模块或功能的长期维护
+
+**开发团队职责**：
+
+- **功能开发者**：开发新功能和改进现有功能
+- **补丁审查者**：审查和测试社区提交的补丁
+- **测试人员**：进行功能测试和回归测试
+
+**文档团队职责**：
+
+- **文档编写者**：编写和更新PostgreSQL文档
+- **文档审查者**：审查文档的准确性和完整性
+- **翻译团队**：将文档翻译成多种语言
 
 ### 3.2 决策机制
 
+PostgreSQL基金会的决策机制包括：
+
 ```text
-- 技术决策：核心团队
-- 社区决策：社区投票
-- 发布决策：发布团队
+技术决策流程：
+1. 提案提交（RFC - Request for Comments）
+   ↓
+2. 社区讨论（邮件列表、IRC、Slack）
+   ↓
+3. 技术审查（核心团队审查）
+   ↓
+4. 补丁提交和审查
+   ↓
+5. 测试和验证
+   ↓
+6. 代码合并
+
+社区决策流程：
+1. 社区提案
+   ↓
+2. 社区讨论和投票
+   ↓
+3. 核心团队决策
+   ↓
+4. 实施和反馈
+
+发布决策流程：
+1. 功能冻结（Feature Freeze）
+   ↓
+2. Beta版本发布
+   ↓
+3. RC版本发布
+   ↓
+4. 正式版本发布
 ```
+
+**决策原则**：
+
+- **技术优先** - 技术决策基于技术优劣，而非个人偏好
+- **社区共识** - 重要决策需要社区广泛讨论和共识
+- **质量第一** - 所有决策都以代码质量和系统稳定性为优先
+- **开放透明** - 所有决策过程都在公开渠道进行
 
 ---
 
@@ -75,15 +150,70 @@ PostgreSQL基金会
 
 ### 4.1 年度活动
 
-- **PostgreSQL Conference** - 年度大会
-- **地区会议** - 各地区会议
-- **在线活动** - 在线研讨会
+PostgreSQL基金会组织和支持多种社区活动：
+
+**主要活动**：
+
+1. **PostgreSQL Conference（PgConf）** - 年度全球大会
+   - 时间：每年举办一次
+   - 地点：不同国家/地区轮流举办
+   - 内容：技术演讲、培训、社区交流
+   - 参与：全球PostgreSQL用户和开发者
+
+2. **地区会议** - 各地区PostgreSQL会议
+   - **PgConf.EU** - 欧洲PostgreSQL会议
+   - **PgConf.US** - 美国PostgreSQL会议
+   - **PgConf.Asia** - 亚洲PostgreSQL会议
+   - **PgConf.China** - 中国PostgreSQL会议
+
+3. **在线活动** - 在线研讨会和网络会议
+   - **PostgreSQL Webinar** - 定期在线技术分享
+   - **社区聚会** - 在线社区聚会和讨论
+   - **培训课程** - 在线培训课程
+
+**活动参与方式**：
+
+- **演讲者** - 提交演讲提案，分享技术经验
+- **参与者** - 注册参加会议，学习交流
+- **赞助商** - 赞助会议，支持社区发展
+- **志愿者** - 参与会议组织，服务社区
 
 ### 4.2 社区支持
 
-- **技术支持** - 社区支持
-- **文档维护** - 文档更新
-- **培训资源** - 培训材料
+PostgreSQL基金会提供全面的社区支持：
+
+**技术支持**：
+
+- **邮件列表** - 官方技术支持邮件列表
+  - <pgsql-general@postgresql.org> - 一般技术讨论
+  - <pgsql-hackers@postgresql.org> - 开发讨论
+  - <pgsql-admin@postgresql.org> - 管理问题
+
+- **IRC频道** - 实时技术支持
+  - #postgresql - 主要技术支持频道
+  - #postgresql-dev - 开发讨论频道
+
+- **Slack工作区** - 社区协作平台
+  - PostgreSQL Slack - 社区协作和交流
+
+**文档维护**：
+
+- **官方文档** - 完整的PostgreSQL官方文档
+  - 英文文档：<https://www.postgresql.org/docs/>
+  - 中文文档：<https://postgresql.ac.cn/docs/current/>
+
+- **Wiki** - PostgreSQL Wiki知识库
+  - 技术文章、最佳实践、常见问题
+
+- **博客** - PostgreSQL Planet博客聚合
+  - 社区成员的技术博客和文章
+
+**培训资源**：
+
+- **官方培训** - PostgreSQL官方培训课程
+- **在线教程** - 在线学习教程和视频
+- **认证考试** - PostgreSQL认证考试
+- **学习资源** - 学习指南和参考材料
 
 ---
 
