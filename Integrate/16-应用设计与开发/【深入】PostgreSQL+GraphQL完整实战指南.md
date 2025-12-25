@@ -25,23 +25,23 @@
     - [1.3 三大主流方案](#13-三大主流方案)
   - [2. GraphQL基础](#2-graphql基础)
     - [2.1 核心概念](#21-核心概念)
-      - [Schema定义语言（SDL）](#schema定义语言sdl)
-      - [查询示例](#查询示例)
+      - [2.1.1 Schema定义语言（SDL）](#211-schema定义语言sdl)
+      - [2.1.2 查询示例](#212-查询示例)
     - [2.2 GraphQL架构](#22-graphql架构)
   - [3. PostGraphile完整指南](#3-postgraphile完整指南)
     - [3.1 什么是PostGraphile？](#31-什么是postgraphile)
-      - [核心优势](#核心优势)
+      - [3.1.1 核心优势](#311-核心优势)
     - [3.2 安装与配置](#32-安装与配置)
-      - [快速开始](#快速开始)
-      - [生产配置](#生产配置)
+      - [3.2.1 快速开始](#321-快速开始)
+      - [3.2.2 生产配置](#322-生产配置)
     - [3.3 数据库设计最佳实践](#33-数据库设计最佳实践)
-      - [表设计](#表设计)
+      - [3.3.1 表设计](#331-表设计)
       - [自定义函数 → GraphQL Mutation](#自定义函数--graphql-mutation)
     - [3.4 权限控制（RLS）](#34-权限控制rls)
     - [3.5 实战查询示例](#35-实战查询示例)
   - [4. Hasura引擎](#4-hasura引擎)
     - [4.1 什么是Hasura？](#41-什么是hasura)
-      - [核心特性](#核心特性-1)
+      - [4.1.1 核心特性](#411-核心特性)
     - [4.2 Docker部署](#42-docker部署)
     - [4.3 快速配置](#43-快速配置)
       - [通过Console配置](#通过console配置)
@@ -74,12 +74,9 @@
       - [核心Schema](#核心schema)
       - [实时动态订阅](#实时动态订阅)
     - [9.2 案例2：实时协作工具](#92-案例2实时协作工具)
-      - [需求](#需求-1)
-      - [架构选择](#架构选择-1)
+      - [9.2.1 需求](#921-需求)
+      - [9.2.2 架构选择](#922-架构选择)
       - [Operational Transform实现](#operational-transform实现)
-  - [10. 最佳实践](#10-最佳实践)
-    - [10.1 Schema设计](#101-schema设计)
-      - [✅ 推荐做法](#-推荐做法)
       - [❌ 避免的做法](#-避免的做法)
     - [10.2 安全最佳实践](#102-安全最佳实践)
     - [10.3 性能最佳实践](#103-性能最佳实践)
@@ -194,7 +191,7 @@ PostgreSQL → GraphQL的价值：
 
 ### 2.1 核心概念
 
-#### Schema定义语言（SDL）
+#### 2.1.1 Schema定义语言（SDL）
 
 ```graphql
 # 类型定义
@@ -235,7 +232,7 @@ type Subscription {
 }
 ```
 
-#### 查询示例
+#### 2.1.2 查询示例
 
 ```graphql
 # 基础查询
@@ -327,7 +324,7 @@ subscription {
 
 **PostGraphile**（原PostGraphQL）自动将PostgreSQL数据库转换为GraphQL API。
 
-#### 核心优势
+#### 3.1.1 核心优势
 
 ```text
 ✅ 零配置自动生成
@@ -350,7 +347,7 @@ subscription {
 
 ### 3.2 安装与配置
 
-#### 快速开始
+#### 3.2.1 快速开始
 
 ```bash
 # 安装
@@ -363,93 +360,251 @@ postgraphile -c "postgres://user:pass@localhost/mydb" -s public
 # http://localhost:5000/graphiql
 ```
 
-#### 生产配置
+#### 3.2.2 生产配置
 
 ```javascript
-// server.js
+// server.js（带完整错误处理）
 const { postgraphile } = require('postgraphile');
 const express = require('express');
 
 const app = express();
 
-app.use(
-  postgraphile('postgres://user:pass@localhost/mydb', 'public', {
-    // 开发配置
-    watchPg: true,                    // 监听数据库变化
-    graphiql: true,                   // 启用GraphiQL
-    enhanceGraphiql: true,            // 增强GraphiQL
+// 环境变量配置
+const DB_URL = process.env.DATABASE_URL || 'postgres://user:pass@localhost/mydb';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
-    // 性能配置
-    retryOnInitFail: true,
-    dynamicJson: true,
-    setofFunctionsContainNulls: false,
-    ignoreRBAC: false,
+// 验证必需的环境变量
+if (!process.env.DATABASE_URL && !DB_URL) {
+  console.error('Error: DATABASE_URL environment variable is required');
+  process.exit(1);
+}
 
-    // 订阅配置
-    subscriptions: true,
-    simpleSubscriptions: true,
+if (!process.env.JWT_SECRET && JWT_SECRET === 'your-secret-key') {
+  console.warn('Warning: Using default JWT secret. Set JWT_SECRET environment variable for production.');
+}
 
-    // JWT认证
-    jwtSecret: 'your-secret-key',
-    jwtPgTypeIdentifier: 'public.jwt_token',
+try {
+  // 加载PostGraphile插件（带错误处理）
+  let plugins = [];
+  try {
+    plugins.push(require('@graphile-contrib/pg-simplify-inflector'));
+  } catch (error) {
+    console.warn('Warning: @graphile-contrib/pg-simplify-inflector not found, skipping');
+  }
 
-    // 高级配置
-    appendPlugins: [
-      require('@graphile-contrib/pg-simplify-inflector'),
-      require('postgraphile-plugin-connection-filter')
-    ],
+  try {
+    plugins.push(require('postgraphile-plugin-connection-filter'));
+  } catch (error) {
+    console.warn('Warning: postgraphile-plugin-connection-filter not found, skipping');
+  }
 
-    // CORS
-    enableCors: true,
+  app.use(
+    postgraphile(DB_URL, 'public', {
+      // 开发配置
+      watchPg: process.env.NODE_ENV !== 'production',  // 生产环境不监听
+      graphiql: process.env.NODE_ENV !== 'production', // 生产环境禁用GraphiQL
+      enhanceGraphiql: process.env.NODE_ENV !== 'production',
 
-    // 日志
-    showErrorStack: process.env.NODE_ENV === 'development',
-    extendedErrors: ['hint', 'detail', 'errcode']
-  })
-);
+      // 性能配置
+      retryOnInitFail: true,
+      dynamicJson: true,
+      setofFunctionsContainNulls: false,
+      ignoreRBAC: false,
 
-app.listen(5000, () => {
-  console.log('PostGraphile server running on http://localhost:5000/graphql');
+      // 订阅配置
+      subscriptions: true,
+      simpleSubscriptions: true,
+
+      // JWT认证
+      jwtSecret: JWT_SECRET,
+      jwtPgTypeIdentifier: 'public.jwt_token',
+
+      // 高级配置
+      appendPlugins: plugins.length > 0 ? plugins : undefined,
+
+      // CORS
+      enableCors: true,
+
+      // 日志
+      showErrorStack: process.env.NODE_ENV === 'development',
+      extendedErrors: ['hint', 'detail', 'errcode'],
+
+      // 错误处理
+      handleErrors: (errors, req, res) => {
+        console.error('GraphQL errors:', errors);
+        // 生产环境隐藏详细错误
+        if (process.env.NODE_ENV === 'production') {
+          return errors.map(error => ({
+            message: 'An error occurred',
+            locations: error.locations,
+            path: error.path
+          }));
+        }
+        return errors;
+      }
+    })
+  );
+
+  // 全局错误处理中间件
+  app.use((err, req, res, next) => {
+    console.error('Express error:', err);
+    res.status(500).json({
+      error: process.env.NODE_ENV === 'production'
+        ? 'Internal server error'
+        : err.message
+    });
+  });
+
+  // 启动服务器（带错误处理）
+  app.listen(PORT, () => {
+    console.log(`PostGraphile server running on http://localhost:${PORT}/graphql`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  }).on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Error: Port ${PORT} is already in use`);
+      process.exit(1);
+    } else {
+      console.error('Server error:', error);
+      process.exit(1);
+    }
+  });
+} catch (error) {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+}
+
+// 优雅关闭
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, closing server...');
+  process.exit(0);
 });
 ```
 
 ### 3.3 数据库设计最佳实践
 
-#### 表设计
+#### 3.3.1 表设计
 
 ```sql
--- 1. 用户表
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
-  email TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 1. 用户表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        DROP TABLE users CASCADE;
+        RAISE NOTICE '已删除现有表: users';
+    END IF;
 
--- 2. 帖子表（外键自动生成关联）
-CREATE TABLE posts (
-  id SERIAL PRIMARY KEY,
-  author_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  content TEXT,
-  published BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+    CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
 
--- 3. 评论表
-CREATE TABLE comments (
-  id SERIAL PRIMARY KEY,
-  post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-  author_id INT NOT NULL REFERENCES users(id),
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+    RAISE NOTICE '用户表创建成功: users';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 users 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建用户表失败: %', SQLERRM;
+END $$;
 
--- 4. 添加注释（自动生成GraphQL文档）
-COMMENT ON TABLE users IS 'Platform users';
-COMMENT ON COLUMN users.username IS 'Unique username';
-COMMENT ON TABLE posts IS 'User posts';
+-- 2. 帖子表（外键自动生成关联，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        DROP TABLE posts CASCADE;
+        RAISE NOTICE '已删除现有表: posts';
+    END IF;
+
+    -- 检查users表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
+
+    CREATE TABLE posts (
+        id SERIAL PRIMARY KEY,
+        author_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        content TEXT,
+        published BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '帖子表创建成功: posts';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 posts 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建帖子表失败: %', SQLERRM;
+END $$;
+
+-- 3. 评论表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'comments') THEN
+        DROP TABLE comments CASCADE;
+        RAISE NOTICE '已删除现有表: comments';
+    END IF;
+
+    -- 检查posts表和users表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        RAISE EXCEPTION 'posts表不存在，无法创建外键约束';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
+
+    CREATE TABLE comments (
+        id SERIAL PRIMARY KEY,
+        post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        author_id INT NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '评论表创建成功: comments';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表或users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 comments 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建评论表失败: %', SQLERRM;
+END $$;
+
+-- 4. 添加注释（自动生成GraphQL文档，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        COMMENT ON TABLE users IS 'Platform users';
+        COMMENT ON COLUMN users.username IS 'Unique username';
+        RAISE NOTICE 'users表注释已添加';
+    ELSE
+        RAISE WARNING 'users表不存在，跳过注释';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        COMMENT ON TABLE posts IS 'User posts';
+        RAISE NOTICE 'posts表注释已添加';
+    ELSE
+        RAISE WARNING 'posts表不存在，跳过注释';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表不存在，跳过注释';
+    WHEN OTHERS THEN
+        RAISE WARNING '添加注释失败: %', SQLERRM;
+END $$;
 ```
 
 **生成的GraphQL Schema**:
@@ -484,24 +639,84 @@ type Post {
 #### 自定义函数 → GraphQL Mutation
 
 ```sql
--- 创建帖子函数
-CREATE FUNCTION create_post(
+-- 创建帖子函数（带错误处理）
+CREATE OR REPLACE FUNCTION create_post(
   title TEXT,
   content TEXT
 ) RETURNS posts AS $$
-  INSERT INTO posts (author_id, title, content)
-  VALUES (current_user_id(), title, content)
-  RETURNING *;
-$$ LANGUAGE sql VOLATILE STRICT SECURITY DEFINER;
+DECLARE
+  user_id INT;
+  new_post posts;
+BEGIN
+  -- 参数验证
+  IF title IS NULL OR length(trim(title)) = 0 THEN
+    RAISE EXCEPTION 'title不能为空';
+  END IF;
 
--- 搜索函数
-CREATE FUNCTION search_posts(search_term TEXT)
+  -- 获取当前用户ID（假设有current_user_id函数）
+  BEGIN
+    user_id := current_user_id();
+  EXCEPTION
+    WHEN undefined_function THEN
+      RAISE EXCEPTION 'current_user_id函数不存在';
+    WHEN OTHERS THEN
+      RAISE EXCEPTION '获取用户ID失败: %', SQLERRM;
+  END;
+
+  IF user_id IS NULL THEN
+    RAISE EXCEPTION '用户未登录';
+  END IF;
+
+  -- 检查users表是否存在
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+    RAISE EXCEPTION 'posts表不存在';
+  END IF;
+
+  -- 插入数据
+  BEGIN
+    INSERT INTO posts (author_id, title, content)
+    VALUES (user_id, title, content)
+    RETURNING * INTO new_post;
+
+    RETURN new_post;
+  EXCEPTION
+    WHEN foreign_key_violation THEN
+      RAISE EXCEPTION '用户不存在: %', user_id;
+    WHEN not_null_violation THEN
+      RAISE EXCEPTION '必填字段不能为空';
+    WHEN OTHERS THEN
+      RAISE EXCEPTION '创建帖子失败: %', SQLERRM;
+  END;
+END;
+$$ LANGUAGE plpgsql VOLATILE STRICT SECURITY DEFINER;
+
+-- 搜索函数（带错误处理）
+CREATE OR REPLACE FUNCTION search_posts(search_term TEXT)
 RETURNS SETOF posts AS $$
+BEGIN
+  -- 参数验证
+  IF search_term IS NULL OR length(trim(search_term)) = 0 THEN
+    RAISE EXCEPTION '搜索词不能为空';
+  END IF;
+
+  -- 检查表是否存在
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+    RAISE EXCEPTION 'posts表不存在';
+  END IF;
+
+  -- 执行搜索
+  RETURN QUERY
   SELECT * FROM posts
   WHERE title ILIKE '%' || search_term || '%'
      OR content ILIKE '%' || search_term || '%'
   ORDER BY created_at DESC;
-$$ LANGUAGE sql STABLE;
+EXCEPTION
+  WHEN undefined_table THEN
+    RAISE EXCEPTION 'posts表不存在';
+  WHEN OTHERS THEN
+    RAISE EXCEPTION '搜索帖子失败: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql STABLE;
 ```
 
 **生成的GraphQL**:
@@ -519,27 +734,88 @@ type Query {
 ### 3.4 权限控制（RLS）
 
 ```sql
--- 启用RLS
-ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+-- 启用RLS（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        RAISE EXCEPTION 'posts表不存在，无法启用RLS';
+    END IF;
 
--- 策略：用户只能查看已发布的帖子或自己的帖子
-CREATE POLICY posts_select ON posts
-  FOR SELECT
-  USING (
-    published = TRUE
-    OR author_id = current_user_id()
-  );
+    ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+    RAISE NOTICE 'RLS已启用: posts';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '启用RLS失败: %', SQLERRM;
+END $$;
 
--- 策略：用户只能修改自己的帖子
-CREATE POLICY posts_update ON posts
-  FOR UPDATE
-  USING (author_id = current_user_id())
-  WITH CHECK (author_id = current_user_id());
+-- 策略：用户只能查看已发布的帖子或自己的帖子（带错误处理）
+DO $$
+BEGIN
+    -- 删除现有策略（如果存在）
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'posts' AND policyname = 'posts_select') THEN
+        DROP POLICY posts_select ON posts;
+        RAISE NOTICE '已删除现有策略: posts_select';
+    END IF;
 
--- 策略：用户只能删除自己的帖子
-CREATE POLICY posts_delete ON posts
-  FOR DELETE
-  USING (author_id = current_user_id());
+    CREATE POLICY posts_select ON posts
+        FOR SELECT
+        USING (
+            published = TRUE
+            OR author_id = current_user_id()
+        );
+
+    RAISE NOTICE '策略创建成功: posts_select';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建SELECT策略失败: %', SQLERRM;
+END $$;
+
+-- 策略：用户只能修改自己的帖子（带错误处理）
+DO $$
+BEGIN
+    -- 删除现有策略（如果存在）
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'posts' AND policyname = 'posts_update') THEN
+        DROP POLICY posts_update ON posts;
+        RAISE NOTICE '已删除现有策略: posts_update';
+    END IF;
+
+    CREATE POLICY posts_update ON posts
+        FOR UPDATE
+        USING (author_id = current_user_id())
+        WITH CHECK (author_id = current_user_id());
+
+    RAISE NOTICE '策略创建成功: posts_update';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建UPDATE策略失败: %', SQLERRM;
+END $$;
+
+-- 策略：用户只能删除自己的帖子（带错误处理）
+DO $$
+BEGIN
+    -- 删除现有策略（如果存在）
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'posts' AND policyname = 'posts_delete') THEN
+        DROP POLICY posts_delete ON posts;
+        RAISE NOTICE '已删除现有策略: posts_delete';
+    END IF;
+
+    CREATE POLICY posts_delete ON posts
+        FOR DELETE
+        USING (author_id = current_user_id());
+
+    RAISE NOTICE '策略创建成功: posts_delete';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建DELETE策略失败: %', SQLERRM;
+END $$;
 ```
 
 **效果**：GraphQL查询自动应用RLS规则，无需在Resolver中编码权限逻辑！
@@ -654,7 +930,7 @@ query {
 
 **Hasura** 是开源的实时GraphQL引擎，即时为PostgreSQL生成GraphQL API。
 
-#### 核心特性
+#### 4.1.1 核心特性
 
 ```text
 ✅ 即时GraphQL API
@@ -939,23 +1215,77 @@ function LatestPosts() {
 **Webhook处理**:
 
 ```javascript
-// webhooks/order-created.js
+// webhooks/order-created.js（带完整错误处理）
 app.post('/webhooks/order-created', async (req, res) => {
-  const { event, table, trigger } = req.body;
-  const newOrder = event.data.new;
+  try {
+    // 参数验证
+    if (!req.body || !req.body.event || !req.body.event.data) {
+      return res.status(400).json({
+        error: 'Invalid webhook payload',
+        success: false
+      });
+    }
 
-  // 发送邮件通知
-  await sendEmail({
-    to: newOrder.customer_email,
-    subject: 'Order Confirmed',
-    body: `Your order #${newOrder.id} has been confirmed!`
-  });
+    const { event, table, trigger } = req.body;
+    const newOrder = event.data.new;
 
-  // 调用库存服务
-  await inventoryService.reserve(newOrder.items);
+    if (!newOrder || !newOrder.id) {
+      return res.status(400).json({
+        error: 'Invalid order data',
+        success: false
+      });
+    }
 
-  // 返回200确认处理
-  res.status(200).json({ success: true });
+    // 发送邮件通知（带错误处理）
+    try {
+      if (newOrder.customer_email) {
+        await sendEmail({
+          to: newOrder.customer_email,
+          subject: 'Order Confirmed',
+          body: `Your order #${newOrder.id} has been confirmed!`
+        });
+        console.log(`Email sent to ${newOrder.customer_email} for order #${newOrder.id}`);
+      } else {
+        console.warn(`No customer email for order #${newOrder.id}`);
+      }
+    } catch (emailError) {
+      // 邮件发送失败不影响整体流程，记录日志
+      console.error('Failed to send email:', emailError);
+      // 可以选择记录到错误追踪系统
+    }
+
+    // 调用库存服务（带错误处理）
+    try {
+      if (newOrder.items && Array.isArray(newOrder.items) && newOrder.items.length > 0) {
+        await inventoryService.reserve(newOrder.items);
+        console.log(`Inventory reserved for order #${newOrder.id}`);
+      } else {
+        console.warn(`No items found for order #${newOrder.id}`);
+      }
+    } catch (inventoryError) {
+      // 库存服务失败需要回滚，但这里只是通知，返回错误
+      console.error('Failed to reserve inventory:', inventoryError);
+      return res.status(500).json({
+        error: 'Failed to reserve inventory',
+        details: inventoryError.message,
+        success: false
+      });
+    }
+
+    // 返回200确认处理
+    res.status(200).json({
+      success: true,
+      orderId: newOrder.id
+    });
+  } catch (error) {
+    // 全局错误处理
+    console.error('Webhook processing error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+      success: false
+    });
+  }
 });
 ```
 
@@ -1085,93 +1415,378 @@ const typeDefs = `#graphql
   }
 `;
 
-// Resolvers
+// Resolvers（带完整错误处理）
 const resolvers = {
   Query: {
-    users: () => prisma.user.findMany(),
-
-    user: (_: any, { id }: { id: string }) =>
-      prisma.user.findUnique({ where: { id: Number(id) } }),
-
-    posts: (_: any, { published }: { published?: boolean }) =>
-      prisma.post.findMany({
-        where: published !== undefined ? { published } : undefined,
-        orderBy: { createdAt: 'desc' }
-      }),
-
-    post: (_: any, { id }: { id: string }) =>
-      prisma.post.findUnique({ where: { id: Number(id) } })
-  },
-
-  Mutation: {
-    createUser: (_: any, { username, email }: { username: string; email: string }) =>
-      prisma.user.create({
-        data: { username, email }
-      }),
-
-    createPost: (_: any, args: { title: string; content?: string; authorId: string }) =>
-      prisma.post.create({
-        data: {
-          title: args.title,
-          content: args.content,
-          authorId: Number(args.authorId)
-        }
-      }),
-
-    publishPost: async (_: any, { id }: { id: string }) => {
-      return prisma.post.update({
-        where: { id: Number(id) },
-        data: { published: true }
-      });
+    users: async () => {
+      try {
+        return await prisma.user.findMany();
+      } catch (error: any) {
+        console.error('Failed to fetch users:', error);
+        throw new Error(`Failed to fetch users: ${error.message}`);
+      }
     },
 
-    deletePost: async (_: any, { id }: { id: string }) => {
-      await prisma.post.delete({ where: { id: Number(id) } });
-      return true;
+    user: async (_: any, { id }: { id: string }) => {
+      try {
+        if (!id) {
+          throw new Error('User ID is required');
+        }
+
+        const userId = Number(id);
+        if (isNaN(userId)) {
+          throw new Error('Invalid user ID format');
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (!user) {
+          throw new Error(`User with ID ${id} not found`);
+        }
+
+        return user;
+      } catch (error: any) {
+        console.error(`Failed to fetch user ${id}:`, error);
+        throw error;
+      }
+    },
+
+    posts: async (_: any, { published }: { published?: boolean }) => {
+      try {
+        return await prisma.post.findMany({
+          where: published !== undefined ? { published } : undefined,
+          orderBy: { createdAt: 'desc' }
+        });
+      } catch (error: any) {
+        console.error('Failed to fetch posts:', error);
+        throw new Error(`Failed to fetch posts: ${error.message}`);
+      }
+    },
+
+    post: async (_: any, { id }: { id: string }) => {
+      try {
+        if (!id) {
+          throw new Error('Post ID is required');
+        }
+
+        const postId = Number(id);
+        if (isNaN(postId)) {
+          throw new Error('Invalid post ID format');
+        }
+
+        const post = await prisma.post.findUnique({ where: { id: postId } });
+
+        if (!post) {
+          throw new Error(`Post with ID ${id} not found`);
+        }
+
+        return post;
+      } catch (error: any) {
+        console.error(`Failed to fetch post ${id}:`, error);
+        throw error;
+      }
     }
   },
 
-  // 关联字段解析
-  User: {
-    posts: (parent: any) =>
-      prisma.post.findMany({ where: { authorId: parent.id } }),
+  Mutation: {
+    createUser: async (_: any, { username, email }: { username: string; email: string }) => {
+      try {
+        // 参数验证
+        if (!username || typeof username !== 'string' || username.trim().length === 0) {
+          throw new Error('Username is required and must be a non-empty string');
+        }
 
-    comments: (parent: any) =>
-      prisma.comment.findMany({ where: { authorId: parent.id } })
+        if (!email || typeof email !== 'string' || !email.includes('@')) {
+          throw new Error('Valid email is required');
+        }
+
+        return await prisma.user.create({
+          data: { username: username.trim(), email: email.trim() }
+        });
+      } catch (error: any) {
+        console.error('Failed to create user:', error);
+
+        // 处理Prisma唯一约束错误
+        if (error.code === 'P2002') {
+          throw new Error(`User with ${error.meta?.target?.join(', ') || 'this data'} already exists`);
+        }
+
+        throw error;
+      }
+    },
+
+    createPost: async (_: any, args: { title: string; content?: string; authorId: string }) => {
+      try {
+        // 参数验证
+        if (!args.title || typeof args.title !== 'string' || args.title.trim().length === 0) {
+          throw new Error('Title is required and must be a non-empty string');
+        }
+
+        if (!args.authorId) {
+          throw new Error('Author ID is required');
+        }
+
+        const authorId = Number(args.authorId);
+        if (isNaN(authorId)) {
+          throw new Error('Invalid author ID format');
+        }
+
+        // 检查作者是否存在
+        const author = await prisma.user.findUnique({ where: { id: authorId } });
+        if (!author) {
+          throw new Error(`Author with ID ${args.authorId} not found`);
+        }
+
+        return await prisma.post.create({
+          data: {
+            title: args.title.trim(),
+            content: args.content?.trim() || null,
+            authorId: authorId
+          }
+        });
+      } catch (error: any) {
+        console.error('Failed to create post:', error);
+
+        // 处理Prisma外键约束错误
+        if (error.code === 'P2003') {
+          throw new Error('Invalid author ID: author does not exist');
+        }
+
+        throw error;
+      }
+    },
+
+    publishPost: async (_: any, { id }: { id: string }) => {
+      try {
+        if (!id) {
+          throw new Error('Post ID is required');
+        }
+
+        const postId = Number(id);
+        if (isNaN(postId)) {
+          throw new Error('Invalid post ID format');
+        }
+
+        const post = await prisma.post.update({
+          where: { id: postId },
+          data: { published: true }
+        });
+
+        return post;
+      } catch (error: any) {
+        console.error(`Failed to publish post ${id}:`, error);
+
+        // 处理Prisma记录不存在错误
+        if (error.code === 'P2025') {
+          throw new Error(`Post with ID ${id} not found`);
+        }
+
+        throw error;
+      }
+    },
+
+    deletePost: async (_: any, { id }: { id: string }) => {
+      try {
+        if (!id) {
+          throw new Error('Post ID is required');
+        }
+
+        const postId = Number(id);
+        if (isNaN(postId)) {
+          throw new Error('Invalid post ID format');
+        }
+
+        await prisma.post.delete({ where: { id: postId } });
+        return true;
+      } catch (error: any) {
+        console.error(`Failed to delete post ${id}:`, error);
+
+        // 处理Prisma记录不存在错误
+        if (error.code === 'P2025') {
+          throw new Error(`Post with ID ${id} not found`);
+        }
+
+        throw error;
+      }
+    }
+  },
+
+  // 关联字段解析（带错误处理）
+  User: {
+    posts: async (parent: any) => {
+      try {
+        if (!parent || !parent.id) {
+          throw new Error('Invalid parent user object');
+        }
+        return await prisma.post.findMany({ where: { authorId: parent.id } });
+      } catch (error: any) {
+        console.error(`Failed to fetch posts for user ${parent?.id}:`, error);
+        throw new Error(`Failed to fetch posts: ${error.message}`);
+      }
+    },
+
+    comments: async (parent: any) => {
+      try {
+        if (!parent || !parent.id) {
+          throw new Error('Invalid parent user object');
+        }
+        return await prisma.comment.findMany({ where: { authorId: parent.id } });
+      } catch (error: any) {
+        console.error(`Failed to fetch comments for user ${parent?.id}:`, error);
+        throw new Error(`Failed to fetch comments: ${error.message}`);
+      }
+    }
   },
 
   Post: {
-    author: (parent: any) =>
-      prisma.user.findUnique({ where: { id: parent.authorId } }),
+    author: async (parent: any) => {
+      try {
+        if (!parent || !parent.authorId) {
+          throw new Error('Invalid parent post object or missing authorId');
+        }
+        const author = await prisma.user.findUnique({ where: { id: parent.authorId } });
+        if (!author) {
+          throw new Error(`Author with ID ${parent.authorId} not found`);
+        }
+        return author;
+      } catch (error: any) {
+        console.error(`Failed to fetch author for post ${parent?.id}:`, error);
+        throw error;
+      }
+    },
 
-    comments: (parent: any) =>
-      prisma.comment.findMany({ where: { postId: parent.id } })
+    comments: async (parent: any) => {
+      try {
+        if (!parent || !parent.id) {
+          throw new Error('Invalid parent post object');
+        }
+        return await prisma.comment.findMany({ where: { postId: parent.id } });
+      } catch (error: any) {
+        console.error(`Failed to fetch comments for post ${parent?.id}:`, error);
+        throw new Error(`Failed to fetch comments: ${error.message}`);
+      }
+    }
   },
 
   Comment: {
-    post: (parent: any) =>
-      prisma.post.findUnique({ where: { id: parent.postId } }),
+    post: async (parent: any) => {
+      try {
+        if (!parent || !parent.postId) {
+          throw new Error('Invalid parent comment object or missing postId');
+        }
+        const post = await prisma.post.findUnique({ where: { id: parent.postId } });
+        if (!post) {
+          throw new Error(`Post with ID ${parent.postId} not found`);
+        }
+        return post;
+      } catch (error: any) {
+        console.error(`Failed to fetch post for comment ${parent?.id}:`, error);
+        throw error;
+      }
+    },
 
-    author: (parent: any) =>
-      prisma.user.findUnique({ where: { id: parent.authorId } })
+    author: async (parent: any) => {
+      try {
+        if (!parent || !parent.authorId) {
+          throw new Error('Invalid parent comment object or missing authorId');
+        }
+        const author = await prisma.user.findUnique({ where: { id: parent.authorId } });
+        if (!author) {
+          throw new Error(`Author with ID ${parent.authorId} not found`);
+        }
+        return author;
+      } catch (error: any) {
+        console.error(`Failed to fetch author for comment ${parent?.id}:`, error);
+        throw error;
+      }
+    }
   }
 };
 
+// 启动服务器（带完整错误处理）
+async function startServer() {
+  try {
+    const server = new ApolloServer({
+      typeDefs,
+      resolvers,
+      // 全局错误处理
+      formatError: (error) => {
+        console.error('GraphQL Error:', error);
+        // 生产环境隐藏内部错误
+        if (process.env.NODE_ENV === 'production') {
+          return {
+            message: 'An error occurred',
+            extensions: {
+              code: error.extensions?.code || 'INTERNAL_ERROR'
+            }
+          };
+        }
+        return error;
+      }
+    });
+
+    // 验证Prisma连接
+    try {
+      await prisma.$connect();
+      console.log('✅ Prisma connected to database');
+    } catch (error) {
+      console.error('❌ Failed to connect to database:', error);
+      throw new Error('Database connection failed');
+    }
+
+    const { url } = await startStandaloneServer(server, {
+      listen: { port: parseInt(process.env.PORT || '4000', 10) },
+      context: async ({ req }) => {
+        try {
+          const user = await getUserFromToken(req.headers.authorization);
+          return {
+            prisma,
+            user
+          };
+        } catch (error) {
+          console.error('Error getting user from token:', error);
+          // 返回null而不是抛出错误，允许匿名访问
+          return {
+            prisma,
+            user: null
+          };
+        }
+      }
+    });
+
+    console.log(`🚀 Server ready at ${url}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// 优雅关闭
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing server...');
+  try {
+    await prisma.$disconnect();
+    console.log('Prisma disconnected');
+  } catch (error) {
+    console.error('Error disconnecting Prisma:', error);
+  }
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, closing server...');
+  try {
+    await prisma.$disconnect();
+    console.log('Prisma disconnected');
+  } catch (error) {
+    console.error('Error disconnecting Prisma:', error);
+  }
+  process.exit(0);
+});
+
 // 启动服务器
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-});
-
-const { url } = await startStandaloneServer(server, {
-  listen: { port: 4000 },
-  context: async ({ req }) => ({
-    prisma,
-    user: await getUserFromToken(req.headers.authorization)
-  })
-});
-
-console.log(`🚀 Server ready at ${url}`);
+startServer();
 ```
 
 ### 5.4 DataLoader（N+1优化）
@@ -1179,55 +1794,185 @@ console.log(`🚀 Server ready at ${url}`);
 ```typescript
 import DataLoader from 'dataloader';
 
-// 创建DataLoader
+// 创建User DataLoader（带完整错误处理）
 const createUserLoader = () =>
   new DataLoader(async (userIds: readonly number[]) => {
-    const users = await prisma.user.findMany({
-      where: { id: { in: [...userIds] } }
-    });
+    try {
+      // 参数验证
+      if (!userIds || userIds.length === 0) {
+        return [];
+      }
 
-    // 按请求顺序返回
-    return userIds.map(id => users.find(user => user.id === id));
+      // 过滤无效的ID
+      const validIds = userIds.filter(id => id != null && typeof id === 'number' && id > 0);
+      if (validIds.length === 0) {
+        return userIds.map(() => null);
+      }
+
+      // 去重
+      const uniqueIds = [...new Set(validIds)];
+
+      const users = await prisma.user.findMany({
+        where: { id: { in: uniqueIds } }
+      });
+
+      // 创建ID到用户的映射
+      const userMap = new Map(users.map(user => [user.id, user]));
+
+      // 按请求顺序返回（包括null表示未找到）
+      return userIds.map(id => {
+        if (id == null || typeof id !== 'number' || id <= 0) {
+          return null;
+        }
+        return userMap.get(id) || null;
+      });
+    } catch (error) {
+      console.error('DataLoader error in createUserLoader:', error);
+      // 返回null数组，而不是抛出错误
+      return userIds.map(() => null);
+    }
+  }, {
+    // 配置选项
+    batch: true,  // 启用批处理
+    cache: true,  // 启用缓存
+    maxBatchSize: 100  // 限制批次大小
   });
 
+// 创建PostsByAuthor DataLoader（带完整错误处理）
 const createPostsByAuthorLoader = () =>
   new DataLoader(async (authorIds: readonly number[]) => {
-    const posts = await prisma.post.findMany({
-      where: { authorId: { in: [...authorIds] } }
-    });
+    try {
+      // 参数验证
+      if (!authorIds || authorIds.length === 0) {
+        return [];
+      }
 
-    // 按作者分组
-    return authorIds.map(authorId =>
-      posts.filter(post => post.authorId === authorId)
-    );
+      // 过滤无效的ID
+      const validIds = authorIds.filter(id => id != null && typeof id === 'number' && id > 0);
+      if (validIds.length === 0) {
+        return authorIds.map(() => []);
+      }
+
+      // 去重
+      const uniqueIds = [...new Set(validIds)];
+
+      const posts = await prisma.post.findMany({
+        where: { authorId: { in: uniqueIds } },
+        orderBy: { createdAt: 'desc' }  // 排序
+      });
+
+      // 按作者分组
+      const postsByAuthor = new Map<number, any[]>();
+      posts.forEach(post => {
+        if (!postsByAuthor.has(post.authorId)) {
+          postsByAuthor.set(post.authorId, []);
+        }
+        postsByAuthor.get(post.authorId)!.push(post);
+      });
+
+      // 按请求顺序返回
+      return authorIds.map(authorId => {
+        if (authorId == null || typeof authorId !== 'number' || authorId <= 0) {
+          return [];
+        }
+        return postsByAuthor.get(authorId) || [];
+      });
+    } catch (error) {
+      console.error('DataLoader error in createPostsByAuthorLoader:', error);
+      // 返回空数组，而不是抛出错误
+      return authorIds.map(() => []);
+    }
+  }, {
+    // 配置选项
+    batch: true,
+    cache: true,
+    maxBatchSize: 100
   });
 
-// 在context中提供
+// 在context中提供（带错误处理）
 const server = new ApolloServer({
   typeDefs,
   resolvers,
 });
 
 await startStandaloneServer(server, {
-  context: async ({ req }) => ({
-    prisma,
-    loaders: {
-      user: createUserLoader(),
-      postsByAuthor: createPostsByAuthorLoader()
+  context: async ({ req }) => {
+    try {
+      return {
+        prisma,
+        loaders: {
+          user: createUserLoader(),
+          postsByAuthor: createPostsByAuthorLoader()
+        }
+      };
+    } catch (error) {
+      console.error('Error creating context:', error);
+      // 返回基础context，即使loaders初始化失败
+      return {
+        prisma,
+        loaders: {
+          user: createUserLoader(),  // 重新创建，即使可能失败
+          postsByAuthor: createPostsByAuthorLoader()
+        }
+      };
     }
-  })
+  }
 });
 
-// 在Resolver中使用
+// 在Resolver中使用（带错误处理）
 const resolvers = {
   Post: {
-    author: (parent: any, _: any, context: any) =>
-      context.loaders.user.load(parent.authorId)
+    author: async (parent: any, _: any, context: any) => {
+      try {
+        if (!parent || !parent.authorId) {
+          throw new Error('Invalid parent post object or missing authorId');
+        }
+
+        if (!context || !context.loaders || !context.loaders.user) {
+          // 降级到直接查询
+          return await prisma.user.findUnique({ where: { id: parent.authorId } });
+        }
+
+        const user = await context.loaders.user.load(parent.authorId);
+        return user;
+      } catch (error) {
+        console.error('Error loading author:', error);
+        // 降级到直接查询
+        try {
+          return await prisma.user.findUnique({ where: { id: parent?.authorId } });
+        } catch (fallbackError) {
+          console.error('Fallback query also failed:', fallbackError);
+          return null;
+        }
+      }
+    }
   },
 
   User: {
-    posts: (parent: any, _: any, context: any) =>
-      context.loaders.postsByAuthor.load(parent.id)
+    posts: async (parent: any, _: any, context: any) => {
+      try {
+        if (!parent || !parent.id) {
+          throw new Error('Invalid parent user object or missing id');
+        }
+
+        if (!context || !context.loaders || !context.loaders.postsByAuthor) {
+          // 降级到直接查询
+          return await prisma.post.findMany({ where: { authorId: parent.id } });
+        }
+
+        const posts = await context.loaders.postsByAuthor.load(parent.id);
+        return posts || [];
+      } catch (error) {
+        console.error('Error loading posts:', error);
+        // 降级到直接查询
+        try {
+          return await prisma.post.findMany({ where: { authorId: parent?.id } });
+        } catch (fallbackError) {
+          console.error('Fallback query also failed:', fallbackError);
+          return [];
+        }
+      }
+    }
   }
 };
 ```
@@ -1242,33 +1987,88 @@ const resolvers = {
 
 ```sql
 -- 创建JWT类型
-CREATE TYPE jwt_token AS (
-  role TEXT,
-  user_id INTEGER,
-  exp INTEGER
-);
+-- 创建JWT token类型（带错误处理）
+DO $$
+BEGIN
+    -- 检查类型是否已存在
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'jwt_token') THEN
+        DROP TYPE jwt_token CASCADE;
+        RAISE NOTICE '已删除现有类型: jwt_token';
+    END IF;
 
--- 登录函数
-CREATE FUNCTION authenticate(
+    CREATE TYPE jwt_token AS (
+        role TEXT,
+        user_id INTEGER,
+        exp INTEGER
+    );
+
+    RAISE NOTICE '类型创建成功: jwt_token';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '类型jwt_token已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建类型失败: %', SQLERRM;
+END $$;
+
+-- 登录函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION authenticate(
   username TEXT,
   password TEXT
 ) RETURNS jwt_token AS $$
 DECLARE
   account users;
 BEGIN
-  SELECT * INTO account
-  FROM users
-  WHERE users.username = authenticate.username;
+  -- 参数验证
+  IF username IS NULL OR length(trim(username)) = 0 THEN
+    RAISE EXCEPTION '用户名不能为空';
+  END IF;
+
+  IF password IS NULL OR length(password) = 0 THEN
+    RAISE EXCEPTION '密码不能为空';
+  END IF;
+
+  -- 检查users表是否存在
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+    RAISE EXCEPTION 'users表不存在';
+  END IF;
+
+  -- 查询用户
+  BEGIN
+    SELECT * INTO account
+    FROM users
+    WHERE users.username = authenticate.username;
+
+    IF NOT FOUND THEN
+      -- 为了安全，不暴露用户是否存在
+      RAISE EXCEPTION '用户名或密码错误';
+    END IF;
+  EXCEPTION
+    WHEN undefined_table THEN
+      RAISE EXCEPTION 'users表不存在';
+    WHEN OTHERS THEN
+      RAISE EXCEPTION '查询用户失败: %', SQLERRM;
+  END;
+
+  -- 验证密码
+  IF account.password IS NULL THEN
+    RAISE EXCEPTION '用户密码未设置';
+  END IF;
 
   IF account.password = crypt(password, account.password) THEN
+    -- 密码正确，返回JWT token
     RETURN (
       'user_role',
       account.id,
       extract(epoch FROM NOW() + INTERVAL '7 days')
     )::jwt_token;
   ELSE
-    RETURN NULL;
+    -- 密码错误
+    RAISE EXCEPTION '用户名或密码错误';
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- 记录错误但不暴露详细信息
+    RAISE EXCEPTION '认证失败';
 END;
 $$ LANGUAGE plpgsql STRICT SECURITY DEFINER;
 ```
@@ -1276,63 +2076,231 @@ $$ LANGUAGE plpgsql STRICT SECURITY DEFINER;
 #### Hasura JWT
 
 ```javascript
-// 生成JWT
+// 生成JWT（带完整错误处理）
 const jwt = require('jsonwebtoken');
 
-function generateToken(user) {
-  return jwt.sign(
-    {
-      'https://hasura.io/jwt/claims': {
-        'x-hasura-allowed-roles': ['user', 'admin'],
-        'x-hasura-default-role': 'user',
-        'x-hasura-user-id': user.id.toString()
+/**
+ * 生成JWT token
+ * @param {Object} user - 用户对象，必须包含id属性
+ * @param {Array<string>} roles - 用户角色数组，默认为['user']
+ * @param {string} defaultRole - 默认角色，默认为'user'
+ * @returns {string} JWT token
+ * @throws {Error} 如果参数无效或JWT_SECRET未设置
+ */
+function generateToken(user, roles = ['user'], defaultRole = 'user') {
+  try {
+    // 参数验证
+    if (!user) {
+      throw new Error('User object is required');
+    }
+
+    if (!user.id) {
+      throw new Error('User id is required');
+    }
+
+    if (!Array.isArray(roles) || roles.length === 0) {
+      throw new Error('Roles must be a non-empty array');
+    }
+
+    if (!defaultRole || typeof defaultRole !== 'string') {
+      throw new Error('Default role must be a non-empty string');
+    }
+
+    // 检查JWT_SECRET是否设置
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET environment variable is not set');
+    }
+
+    if (jwtSecret.length < 32) {
+      console.warn('Warning: JWT_SECRET should be at least 32 characters long for security');
+    }
+
+    // 生成token
+    const token = jwt.sign(
+      {
+        'https://hasura.io/jwt/claims': {
+          'x-hasura-allowed-roles': roles,
+          'x-hasura-default-role': defaultRole,
+          'x-hasura-user-id': user.id.toString()
+        }
+      },
+      jwtSecret,
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+        issuer: process.env.JWT_ISSUER || 'hasura',
+        audience: process.env.JWT_AUDIENCE || 'hasura'
       }
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+    );
+
+    return token;
+  } catch (error) {
+    console.error('Failed to generate JWT token:', error);
+    throw error;
+  }
 }
+
+/**
+ * 验证JWT token
+ * @param {string} token - JWT token
+ * @returns {Object} 解码后的token payload
+ * @throws {Error} 如果token无效或过期
+ */
+function verifyToken(token) {
+  try {
+    if (!token) {
+      throw new Error('Token is required');
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET environment variable is not set');
+    }
+
+    const decoded = jwt.verify(token, jwtSecret, {
+      issuer: process.env.JWT_ISSUER || 'hasura',
+      audience: process.env.JWT_AUDIENCE || 'hasura'
+    });
+
+    return decoded;
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      throw new Error('Invalid token');
+    } else if (error.name === 'TokenExpiredError') {
+      throw new Error('Token has expired');
+    } else {
+      console.error('Token verification error:', error);
+      throw new Error('Token verification failed');
+    }
+  }
+}
+
+module.exports = { generateToken, verifyToken };
 ```
 
 ### 6.2 Row Level Security（RLS）
 
 ```sql
--- 创建当前用户函数
-CREATE FUNCTION current_user_id() RETURNS INTEGER AS $$
-  SELECT nullif(current_setting('jwt.claims.user_id', true), '')::integer;
-$$ LANGUAGE sql STABLE;
+-- 创建当前用户函数（带错误处理）
+CREATE OR REPLACE FUNCTION current_user_id() RETURNS INTEGER AS $$
+BEGIN
+  RETURN nullif(current_setting('jwt.claims.user_id', true), '')::integer;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- 如果JWT设置不存在，返回NULL（允许匿名访问）
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
--- 启用RLS
-ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+-- 启用RLS（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+        RAISE NOTICE 'RLS已启用: posts';
+    ELSE
+        RAISE WARNING '表posts不存在，跳过RLS启用';
+    END IF;
 
--- Posts策略
-CREATE POLICY posts_select_policy ON posts
-  FOR SELECT
-  USING (
-    published = TRUE
-    OR author_id = current_user_id()
-  );
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'comments') THEN
+        ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+        RAISE NOTICE 'RLS已启用: comments';
+    ELSE
+        RAISE WARNING '表comments不存在，跳过RLS启用';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '启用RLS失败: %', SQLERRM;
+END $$;
 
-CREATE POLICY posts_insert_policy ON posts
-  FOR INSERT
-  WITH CHECK (author_id = current_user_id());
+-- Posts策略（带错误处理）
+DO $$
+BEGIN
+    -- 删除现有策略（如果存在）
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'posts' AND policyname = 'posts_select_policy') THEN
+        DROP POLICY posts_select_policy ON posts;
+    END IF;
 
-CREATE POLICY posts_update_policy ON posts
-  FOR UPDATE
-  USING (author_id = current_user_id())
-  WITH CHECK (author_id = current_user_id());
+    CREATE POLICY posts_select_policy ON posts
+        FOR SELECT
+        USING (
+            published = TRUE
+            OR author_id = current_user_id()
+        );
+    RAISE NOTICE '策略创建成功: posts_select_policy';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建SELECT策略失败: %', SQLERRM;
+END $$;
 
-CREATE POLICY posts_delete_policy ON posts
-  FOR DELETE
-  USING (author_id = current_user_id());
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'posts' AND policyname = 'posts_insert_policy') THEN
+        DROP POLICY posts_insert_policy ON posts;
+    END IF;
 
--- Comments策略
-CREATE POLICY comments_select_policy ON comments
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM posts
+    CREATE POLICY posts_insert_policy ON posts
+        FOR INSERT
+        WITH CHECK (author_id = current_user_id());
+    RAISE NOTICE '策略创建成功: posts_insert_policy';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建INSERT策略失败: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'posts' AND policyname = 'posts_update_policy') THEN
+        DROP POLICY posts_update_policy ON posts;
+    END IF;
+
+    CREATE POLICY posts_update_policy ON posts
+        FOR UPDATE
+        USING (author_id = current_user_id())
+        WITH CHECK (author_id = current_user_id());
+    RAISE NOTICE '策略创建成功: posts_update_policy';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建UPDATE策略失败: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'posts' AND policyname = 'posts_delete_policy') THEN
+        DROP POLICY posts_delete_policy ON posts;
+    END IF;
+
+    CREATE POLICY posts_delete_policy ON posts
+        FOR DELETE
+        USING (author_id = current_user_id());
+    RAISE NOTICE '策略创建成功: posts_delete_policy';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建DELETE策略失败: %', SQLERRM;
+END $$;
+
+-- Comments策略（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'comments' AND policyname = 'comments_select_policy') THEN
+        DROP POLICY comments_select_policy ON comments;
+    END IF;
+
+    CREATE POLICY comments_select_policy ON comments
+        FOR SELECT
+        USING (
+            EXISTS (
+                SELECT 1 FROM posts
       WHERE posts.id = comments.post_id
         AND (posts.published = TRUE OR posts.author_id = current_user_id())
     )
@@ -1504,14 +2472,63 @@ LEFT JOIN users ON posts.author_id = users.id;
 ### 8.2 连接池
 
 ```javascript
-// PostGraphile连接池配置
+// PostGraphile连接池配置（带完整错误处理）
 const { Pool } = require('pg');
 
+// 创建连接池（带错误处理）
 const pgPool = new Pool({
-  connectionString: 'postgres://user:pass@localhost/db',
-  max: 20,                    // 最大连接数
+  connectionString: process.env.DATABASE_URL || 'postgres://user:pass@localhost/db',
+  max: parseInt(process.env.DB_MAX_CONNECTIONS || '20', 10),  // 最大连接数
   idleTimeoutMillis: 30000,   // 空闲超时
-  connectionTimeoutMillis: 2000
+  connectionTimeoutMillis: 2000,
+  // 连接重试配置
+  retryDelayMs: 1000,
+  retryAttempts: 3
+});
+
+// 监听连接池错误
+pgPool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client:', err);
+  // 可以在这里实现重连逻辑或告警
+});
+
+// 监听连接池连接事件
+pgPool.on('connect', (client) => {
+  console.log('New client connected to database');
+});
+
+// 测试连接
+async function testConnection() {
+  try {
+    const client = await pgPool.connect();
+    const result = await client.query('SELECT NOW()');
+    console.log('Database connection test successful:', result.rows[0]);
+    client.release();
+    return true;
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    return false;
+  }
+}
+
+// 启动时测试连接
+testConnection().then((success) => {
+  if (!success) {
+    console.error('Failed to connect to database. Exiting...');
+    process.exit(1);
+  }
+});
+
+// 优雅关闭
+process.on('SIGINT', async () => {
+  console.log('Closing database pool...');
+  try {
+    await pgPool.end();
+    console.log('Database pool closed successfully');
+  } catch (error) {
+    console.error('Error closing database pool:', error);
+  }
+  process.exit(0);
 });
 
 app.use(
@@ -1524,49 +2541,176 @@ app.use(
 ### 8.3 缓存策略
 
 ```javascript
-// Apollo Server缓存
+// Apollo Server缓存（带完整错误处理）
 import { ApolloServer } from '@apollo/server';
 import { KeyvAdapter } from '@apollo/utils.keyvadapter';
 import Keyv from 'keyv';
 
+// 创建Redis缓存连接（带错误处理）
+let cacheAdapter;
+try {
+  const keyv = new Keyv('redis://localhost:6379');
+
+  // 监听错误
+  keyv.on('error', (error) => {
+    console.error('Redis cache error:', error);
+    // 可以选择降级到内存缓存
+  });
+
+  // 测试连接
+  await keyv.set('test', 'connection-test');
+  const testValue = await keyv.get('test');
+  if (testValue !== 'connection-test') {
+    throw new Error('Redis cache connection test failed');
+  }
+  await keyv.delete('test');
+
+  console.log('Redis cache connected successfully');
+  cacheAdapter = new KeyvAdapter(keyv);
+} catch (error) {
+  console.error('Failed to initialize Redis cache, falling back to in-memory cache:', error);
+  // 降级到内存缓存
+  cacheAdapter = new KeyvAdapter(new Keyv());
+}
+
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  cache: new KeyvAdapter(new Keyv('redis://localhost:6379')),
+  cache: cacheAdapter,
   plugins: [
     {
       async requestDidStart() {
         return {
-          async willSendResponse({ response }) {
-            // 设置缓存控制
-            response.http.headers.set(
-              'Cache-Control',
-              'public, max-age=60, s-maxage=3600'
-            );
+          async willSendResponse({ response, errors }) {
+            try {
+              // 如果有错误，不设置缓存
+              if (errors && errors.length > 0) {
+                response.http.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+                return;
+              }
+
+              // 设置缓存控制
+              response.http.headers.set(
+                'Cache-Control',
+                'public, max-age=60, s-maxage=3600'
+              );
+            } catch (error) {
+              console.error('Error setting cache headers:', error);
+              // 失败时设置无缓存
+              response.http.headers.set('Cache-Control', 'no-cache');
+            }
           }
         };
       }
     }
   ]
 });
+
+// 启动服务器（带错误处理）
+try {
+  const { url } = await startStandaloneServer(server, {
+    listen: { port: 4000 }
+  });
+  console.log(`Server ready at ${url}`);
+} catch (error) {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+}
 ```
 
 ### 8.4 查询复杂度限制
 
 ```javascript
-// 限制查询深度和复杂度
+// 限制查询深度和复杂度（带完整错误处理）
 import { createComplexityLimitRule } from 'graphql-validation-complexity';
+import { GraphQLError } from 'graphql';
+
+const MAX_COMPLEXITY = 1000;
+const WARNING_COMPLEXITY = 500;
+
+// 创建复杂度限制规则（带错误处理）
+const complexityLimitRule = createComplexityLimitRule(MAX_COMPLEXITY, {
+  onCost: (cost, node) => {
+    try {
+      // 记录查询成本
+      if (cost > WARNING_COMPLEXITY) {
+        console.warn(`High complexity query detected: ${cost}`, {
+          query: node.loc?.source?.body?.substring(0, 200) // 记录前200个字符
+        });
+      }
+
+      // 如果超过限制，抛出错误
+      if (cost > MAX_COMPLEXITY) {
+        throw new GraphQLError(
+          `Query complexity ${cost} exceeds maximum allowed complexity of ${MAX_COMPLEXITY}`,
+          {
+            extensions: {
+              code: 'COMPLEXITY_LIMIT_EXCEEDED',
+              complexity: cost,
+              maxComplexity: MAX_COMPLEXITY
+            }
+          }
+        );
+      }
+    } catch (error) {
+      // 如果是GraphQLError，直接抛出
+      if (error instanceof GraphQLError) {
+        throw error;
+      }
+      // 其他错误记录日志但不中断查询
+      console.error('Error in complexity calculation:', error);
+    }
+  },
+  // 自定义成本计算函数
+  createError: (max, actual) => {
+    return new GraphQLError(
+      `Query complexity ${actual} exceeds maximum allowed complexity of ${max}`,
+      {
+        extensions: {
+          code: 'COMPLEXITY_LIMIT_EXCEEDED',
+          complexity: actual,
+          maxComplexity: max
+        }
+      }
+    );
+  }
+});
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
   validationRules: [
-    createComplexityLimitRule(1000, {
-      onCost: (cost) => {
-        console.log('Query cost:', cost);
-      }
-    })
-  ]
+    complexityLimitRule
+  ],
+  // 全局错误处理
+  formatError: (error) => {
+    console.error('GraphQL Error:', error);
+
+    // 如果是复杂度错误，返回详细信息
+    if (error.extensions?.code === 'COMPLEXITY_LIMIT_EXCEEDED') {
+      return {
+        message: error.message,
+        extensions: {
+          code: error.extensions.code,
+          complexity: error.extensions.complexity,
+          maxComplexity: error.extensions.maxComplexity
+        }
+      };
+    }
+
+    // 生产环境隐藏内部错误详情
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        message: 'An error occurred',
+        extensions: {
+          code: error.extensions?.code || 'INTERNAL_ERROR'
+        }
+      };
+    }
+
+    // 开发环境返回完整错误信息
+    return error;
+  }
 });
 ```
 
@@ -1585,7 +2729,7 @@ const server = new ApolloServer({
 
 #### 架构选择
 
-**Hasura + PostgreSQL + Redis**
+**Hasura + PostgreSQL + Redis**:
 
 ```yaml
 # 架构
@@ -1598,46 +2742,160 @@ Frontend (React)
 #### 核心Schema
 
 ```sql
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  username TEXT UNIQUE NOT NULL,
-  avatar_url TEXT,
-  bio TEXT,
-  follower_count INT DEFAULT 0,
-  following_count INT DEFAULT 0
-);
+-- 社交网络表结构（带错误处理）
+-- 1. 用户表
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        DROP TABLE users CASCADE;
+        RAISE NOTICE '已删除现有表: users';
+    END IF;
 
-CREATE TABLE posts (
-  id SERIAL PRIMARY KEY,
-  author_id INT REFERENCES users(id),
-  content TEXT NOT NULL,
-  image_url TEXT,
-  like_count INT DEFAULT 0,
-  comment_count INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+    CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        avatar_url TEXT,
+        bio TEXT,
+        follower_count INT DEFAULT 0,
+        following_count INT DEFAULT 0
+    );
 
-CREATE TABLE comments (
-  id SERIAL PRIMARY KEY,
-  post_id INT REFERENCES posts(id) ON DELETE CASCADE,
-  author_id INT REFERENCES users(id),
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+    RAISE NOTICE '用户表创建成功: users';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 users 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建用户表失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE likes (
-  user_id INT REFERENCES users(id),
-  post_id INT REFERENCES posts(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (user_id, post_id)
-);
+-- 2. 帖子表
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        DROP TABLE posts CASCADE;
+        RAISE NOTICE '已删除现有表: posts';
+    END IF;
 
-CREATE TABLE follows (
-  follower_id INT REFERENCES users(id),
-  following_id INT REFERENCES users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (follower_id, following_id)
-);
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
+
+    CREATE TABLE posts (
+        id SERIAL PRIMARY KEY,
+        author_id INT REFERENCES users(id),
+        content TEXT NOT NULL,
+        image_url TEXT,
+        like_count INT DEFAULT 0,
+        comment_count INT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '帖子表创建成功: posts';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 posts 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建帖子表失败: %', SQLERRM;
+END $$;
+
+-- 3. 评论表
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'comments') THEN
+        DROP TABLE comments CASCADE;
+        RAISE NOTICE '已删除现有表: comments';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        RAISE EXCEPTION 'posts表不存在，无法创建外键约束';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
+
+    CREATE TABLE comments (
+        id SERIAL PRIMARY KEY,
+        post_id INT REFERENCES posts(id) ON DELETE CASCADE,
+        author_id INT REFERENCES users(id),
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '评论表创建成功: comments';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表或users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 comments 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建评论表失败: %', SQLERRM;
+END $$;
+
+-- 4. 点赞表
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'likes') THEN
+        DROP TABLE likes CASCADE;
+        RAISE NOTICE '已删除现有表: likes';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        RAISE EXCEPTION 'posts表不存在，无法创建外键约束';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
+
+    CREATE TABLE likes (
+        user_id INT REFERENCES users(id),
+        post_id INT REFERENCES posts(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (user_id, post_id)
+    );
+
+    RAISE NOTICE '点赞表创建成功: likes';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'posts表或users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 likes 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建点赞表失败: %', SQLERRM;
+END $$;
+
+-- 5. 关注表
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'follows') THEN
+        DROP TABLE follows CASCADE;
+        RAISE NOTICE '已删除现有表: follows';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
+
+    CREATE TABLE follows (
+        follower_id INT REFERENCES users(id),
+        following_id INT REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (follower_id, following_id),
+        CONSTRAINT no_self_follow CHECK (follower_id != following_id)
+    );
+
+    RAISE NOTICE '关注表创建成功: follows';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 follows 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建关注表失败: %', SQLERRM;
+END $$;
 ```
 
 #### 实时动态订阅
@@ -1672,42 +2930,92 @@ subscription FeedSubscription($userId: Int!) {
 
 ### 9.2 案例2：实时协作工具
 
-#### 需求
+#### 9.2.1 需求
 
 - 多人同时编辑文档
 - 实时同步光标位置
 - 操作历史记录
 - 冲突解决
 
-#### 架构选择
+#### 9.2.2 架构选择
 
-**PostGraphile + PostgreSQL + WebSocket**
+**PostGraphile + PostgreSQL + WebSocket**:
 
 #### Operational Transform实现
 
 ```sql
-CREATE TABLE documents (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  content TEXT,
-  version INT DEFAULT 0,
-  created_by INT REFERENCES users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 实时协作表结构（带错误处理）
+-- 1. 文档表
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        DROP TABLE documents CASCADE;
+        RAISE NOTICE '已删除现有表: documents';
+    END IF;
 
-CREATE TABLE operations (
-  id SERIAL PRIMARY KEY,
-  document_id INT REFERENCES documents(id),
-  user_id INT REFERENCES users(id),
-  operation_type TEXT NOT NULL, -- insert, delete, retain
-  position INT NOT NULL,
-  content TEXT,
-  version INT NOT NULL,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
-);
+    -- 检查users表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
 
--- 应用操作的函数
-CREATE FUNCTION apply_operation(
+    CREATE TABLE documents (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT,
+        version INT DEFAULT 0,
+        created_by INT REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '文档表创建成功: documents';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 documents 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建文档表失败: %', SQLERRM;
+END $$;
+
+-- 2. 操作记录表
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'operations') THEN
+        DROP TABLE operations CASCADE;
+        RAISE NOTICE '已删除现有表: operations';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION 'documents表不存在，无法创建外键约束';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
+
+    CREATE TABLE operations (
+        id SERIAL PRIMARY KEY,
+        document_id INT REFERENCES documents(id) ON DELETE CASCADE,
+        user_id INT REFERENCES users(id),
+        operation_type TEXT NOT NULL CHECK (operation_type IN ('insert', 'delete', 'retain')),
+        position INT NOT NULL CHECK (position >= 0),
+        content TEXT,
+        version INT NOT NULL,
+        timestamp TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    RAISE NOTICE '操作记录表创建成功: operations';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'documents表或users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 operations 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建操作记录表失败: %', SQLERRM;
+END $$;
+
+-- 应用操作的函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION apply_operation(
   doc_id INT,
   op_type TEXT,
   pos INT,
@@ -1716,31 +3024,103 @@ CREATE FUNCTION apply_operation(
 ) RETURNS documents AS $$
 DECLARE
   doc documents;
+  current_content TEXT;
 BEGIN
-  -- 锁定文档
-  SELECT * INTO doc FROM documents WHERE id = doc_id FOR UPDATE;
+  -- 参数验证
+  IF doc_id IS NULL THEN
+    RAISE EXCEPTION '文档ID不能为空';
+  END IF;
 
-  -- 检查版本
+  IF op_type IS NULL OR op_type NOT IN ('insert', 'delete', 'retain') THEN
+    RAISE EXCEPTION '无效的操作类型: % (必须是: insert, delete, retain)', op_type;
+  END IF;
+
+  IF pos IS NULL OR pos < 0 THEN
+    RAISE EXCEPTION '无效的位置: % (必须 >= 0)', pos;
+  END IF;
+
+  IF expected_version IS NULL OR expected_version < 0 THEN
+    RAISE EXCEPTION '无效的版本号: % (必须 >= 0)', expected_version;
+  END IF;
+
+  -- 锁定文档（带错误处理）
+  BEGIN
+    SELECT * INTO doc FROM documents WHERE id = doc_id FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION '文档不存在: %', doc_id;
+    END IF;
+  EXCEPTION
+    WHEN undefined_table THEN
+      RAISE EXCEPTION 'documents表不存在';
+    WHEN OTHERS THEN
+      RAISE EXCEPTION '查询文档失败: %', SQLERRM;
+  END;
+
+  -- 检查版本冲突
   IF doc.version != expected_version THEN
-    RAISE EXCEPTION 'Version conflict: expected %, got %', expected_version, doc.version;
+    RAISE EXCEPTION '版本冲突: 期望版本 %, 当前版本 %', expected_version, doc.version;
+  END IF;
+
+  -- 保存当前内容
+  current_content := COALESCE(doc.content, '');
+
+  -- 验证位置有效性
+  IF pos > length(current_content) THEN
+    RAISE EXCEPTION '位置超出范围: % > % (内容长度)', pos, length(current_content);
   END IF;
 
   -- 应用操作
-  CASE op_type
-    WHEN 'insert' THEN
-      doc.content := left(doc.content, pos) || op_content || substring(doc.content FROM pos + 1);
-    WHEN 'delete' THEN
-      doc.content := left(doc.content, pos) || substring(doc.content FROM pos + length(op_content) + 1);
-  END CASE;
+  BEGIN
+    CASE op_type
+      WHEN 'insert' THEN
+        IF op_content IS NULL THEN
+          RAISE EXCEPTION 'insert操作需要提供content';
+        END IF;
+        doc.content := left(current_content, pos) || op_content || substring(current_content FROM pos + 1);
+
+      WHEN 'delete' THEN
+        IF op_content IS NULL THEN
+          RAISE EXCEPTION 'delete操作需要提供content';
+        END IF;
+        IF pos + length(op_content) > length(current_content) THEN
+          RAISE EXCEPTION '删除范围超出内容长度';
+        END IF;
+        doc.content := left(current_content, pos) || substring(current_content FROM pos + length(op_content) + 1);
+
+      WHEN 'retain' THEN
+        -- retain操作不需要修改内容
+        doc.content := current_content;
+
+      ELSE
+        RAISE EXCEPTION '未知的操作类型: %', op_type;
+    END CASE;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE EXCEPTION '应用操作失败: %', SQLERRM;
+  END;
 
   -- 更新版本
   doc.version := doc.version + 1;
 
-  UPDATE documents SET content = doc.content, version = doc.version WHERE id = doc_id;
+  -- 更新数据库
+  BEGIN
+    UPDATE documents SET content = doc.content, version = doc.version WHERE id = doc_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION '更新文档失败: 文档不存在或已被删除';
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE EXCEPTION '更新文档失败: %', SQLERRM;
+  END;
+
   RETURN doc;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'apply_operation失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
-```
+$$ LANGUAGE plpgsql VOLATILE;
 
 ---
 
@@ -1751,25 +3131,98 @@ $$ LANGUAGE plpgsql;
 #### ✅ 推荐做法
 
 ```sql
--- 1. 使用有意义的命名
-CREATE TABLE blog_posts (  -- ✅ 清晰
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,  -- URL友好
-  author_id INT REFERENCES users(id)
-);
+-- 1. 使用有意义的命名（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'blog_posts') THEN
+        DROP TABLE blog_posts CASCADE;
+        RAISE NOTICE '已删除现有表: blog_posts';
+    END IF;
 
--- 2. 添加注释（自动生成文档）
-COMMENT ON TABLE blog_posts IS 'User blog posts';
-COMMENT ON COLUMN blog_posts.slug IS 'URL-friendly identifier';
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建外键约束';
+    END IF;
 
--- 3. 合理使用索引
-CREATE INDEX blog_posts_author_id_idx ON blog_posts(author_id);
-CREATE INDEX blog_posts_slug_idx ON blog_posts(slug);
+    CREATE TABLE blog_posts (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        slug TEXT UNIQUE NOT NULL,  -- URL友好
+        author_id INT REFERENCES users(id)
+    );
 
--- 4. 使用约束
-ALTER TABLE blog_posts ADD CONSTRAINT slug_format
-  CHECK (slug ~ '^[a-z0-9-]+$');
+    RAISE NOTICE '表创建成功: blog_posts';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '表 blog_posts 已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 2. 添加注释（自动生成文档，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'blog_posts') THEN
+        COMMENT ON TABLE blog_posts IS 'User blog posts';
+        COMMENT ON COLUMN blog_posts.slug IS 'URL-friendly identifier';
+        RAISE NOTICE '注释添加成功';
+    ELSE
+        RAISE WARNING 'blog_posts表不存在，无法添加注释';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '添加注释失败: %', SQLERRM;
+END $$;
+
+-- 3. 合理使用索引（带错误处理）
+DO $$
+BEGIN
+    -- 创建author_id索引
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'blog_posts' AND indexname = 'blog_posts_author_id_idx') THEN
+        CREATE INDEX blog_posts_author_id_idx ON blog_posts(author_id);
+        RAISE NOTICE '索引创建成功: blog_posts_author_id_idx';
+    ELSE
+        RAISE NOTICE '索引已存在: blog_posts_author_id_idx';
+    END IF;
+
+    -- 创建slug索引
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'blog_posts' AND indexname = 'blog_posts_slug_idx') THEN
+        CREATE INDEX blog_posts_slug_idx ON blog_posts(slug);
+        RAISE NOTICE '索引创建成功: blog_posts_slug_idx';
+    ELSE
+        RAISE NOTICE '索引已存在: blog_posts_slug_idx';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'blog_posts表不存在，无法创建索引';
+    WHEN duplicate_object THEN
+        RAISE WARNING '索引已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
+
+-- 4. 使用约束（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_schema = 'public' AND table_name = 'blog_posts' AND constraint_name = 'slug_format') THEN
+        ALTER TABLE blog_posts DROP CONSTRAINT slug_format;
+        RAISE NOTICE '已删除现有约束: slug_format';
+    END IF;
+
+    ALTER TABLE blog_posts ADD CONSTRAINT slug_format
+        CHECK (slug ~ '^[a-z0-9-]+$');
+    RAISE NOTICE '约束创建成功: slug_format';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'blog_posts表不存在';
+    WHEN duplicate_object THEN
+        RAISE WARNING '约束已存在';
+    WHEN check_violation THEN
+        RAISE EXCEPTION '约束检查失败，请检查现有数据是否符合约束条件';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建约束失败: %', SQLERRM;
+END $$;
 ```
 
 #### ❌ 避免的做法
@@ -1797,30 +3250,111 @@ CREATE TABLE orders (
 ### 10.2 安全最佳实践
 
 ```sql
--- 1. 永远启用RLS
-ALTER TABLE sensitive_table ENABLE ROW LEVEL SECURITY;
+-- 1. 永远启用RLS（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sensitive_table') THEN
+        ALTER TABLE sensitive_table ENABLE ROW LEVEL SECURITY;
+        RAISE NOTICE 'RLS已启用: sensitive_table';
+    ELSE
+        RAISE WARNING '表sensitive_table不存在，跳过RLS启用';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表sensitive_table不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '启用RLS失败: %', SQLERRM;
+END $$;
 
--- 2. 最小权限原则
-GRANT SELECT ON users TO graphql_user;
-GRANT INSERT, UPDATE ON posts TO graphql_user;
--- 不要GRANT ALL
+-- 2. 最小权限原则（带错误处理）
+DO $$
+BEGIN
+    -- 检查用户是否存在
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'graphql_user') THEN
+        -- 授予权限
+        GRANT SELECT ON users TO graphql_user;
+        GRANT INSERT, UPDATE ON posts TO graphql_user;
+        RAISE NOTICE '权限授予成功: graphql_user';
+    ELSE
+        RAISE WARNING '用户graphql_user不存在，请先创建用户';
+    END IF;
 
--- 3. 敏感字段使用视图
-CREATE VIEW public_user_profile AS
-SELECT id, username, avatar_url, bio
-FROM users;
--- 不暴露email, password_hash等
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE WARNING '表users不存在';
+    END IF;
 
--- 4. 审计日志
-CREATE TABLE audit_log (
-  id SERIAL PRIMARY KEY,
-  table_name TEXT NOT NULL,
-  operation TEXT NOT NULL,
-  user_id INT,
-  old_data JSONB,
-  new_data JSONB,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
-);
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+        RAISE WARNING '表posts不存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在，无法授予权限';
+    WHEN invalid_role_specification THEN
+        RAISE EXCEPTION '用户graphql_user不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '授予权限失败: %', SQLERRM;
+END $$;
+
+-- 3. 敏感字段使用视图（带错误处理）
+DO $$
+BEGIN
+    -- 检查源表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在，无法创建视图';
+    END IF;
+
+    -- 删除现有视图（如果存在）
+    IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_schema = 'public' AND table_name = 'public_user_profile') THEN
+        DROP VIEW public_user_profile CASCADE;
+        RAISE NOTICE '已删除现有视图: public_user_profile';
+    END IF;
+
+    CREATE VIEW public_user_profile AS
+    SELECT id, username, avatar_url, bio
+    FROM users;
+    -- 不暴露email, password_hash等敏感字段
+
+    RAISE NOTICE '视图创建成功: public_user_profile';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION 'users表不存在';
+    WHEN duplicate_table THEN
+        RAISE WARNING '视图已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建视图失败: %', SQLERRM;
+END $$;
+
+-- 4. 审计日志（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'audit_log') THEN
+        DROP TABLE audit_log CASCADE;
+        RAISE NOTICE '已删除现有表: audit_log';
+    END IF;
+
+    CREATE TABLE audit_log (
+        id SERIAL PRIMARY KEY,
+        table_name TEXT NOT NULL,
+        operation TEXT NOT NULL CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE')),
+        user_id INT,
+        old_data JSONB,
+        new_data JSONB,
+        timestamp TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- 创建索引以提高查询性能
+    CREATE INDEX audit_log_table_name_idx ON audit_log(table_name);
+    CREATE INDEX audit_log_timestamp_idx ON audit_log(timestamp);
+    CREATE INDEX audit_log_user_id_idx ON audit_log(user_id) WHERE user_id IS NOT NULL;
+
+    RAISE NOTICE '审计日志表创建成功: audit_log';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表audit_log已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建审计日志表失败: %', SQLERRM;
+END $$;
 ```
 
 ### 10.3 性能最佳实践
@@ -1916,29 +3450,130 @@ CREATE TABLE events_2025_01 PARTITION OF events
 **A**: GraphQL不直接处理文件，使用以下方案：
 
 ```javascript
-// 方案1：graphql-upload
+// 方案1：graphql-upload（带完整错误处理）
 import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.js';
+import { createWriteStream } from 'fs';
+import { join } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
-app.use('/graphql', graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+// 配置上传中间件（带错误处理）
+app.use('/graphql', graphqlUploadExpress({
+  maxFileSize: 10000000,  // 10MB
+  maxFiles: 10,
+  // 自定义错误处理
+  processRequest: (request, response, next) => {
+    try {
+      // 验证文件大小和数量
+      if (request.files && request.files.length > 10) {
+        return response.status(400).json({
+          error: 'Too many files. Maximum 10 files allowed.'
+        });
+      }
+      next();
+    } catch (error) {
+      console.error('Upload middleware error:', error);
+      response.status(500).json({
+        error: 'File upload processing failed'
+      });
+    }
+  }
+}));
 
 // Schema
 const typeDefs = `
   scalar Upload
+
+  type File {
+    filename: String!
+    mimetype: String!
+    url: String!
+    size: Int!
+  }
 
   type Mutation {
     uploadFile(file: Upload!): File!
   }
 `;
 
-// Resolver
+// Resolver（带完整错误处理）
 const resolvers = {
   Mutation: {
     uploadFile: async (_, { file }) => {
-      const { createReadStream, filename, mimetype } = await file;
-      // 上传到S3/本地存储
-      const stream = createReadStream();
-      // ...
-      return { filename, mimetype, url: uploadedUrl };
+      try {
+        // 参数验证
+        if (!file) {
+          throw new Error('File is required');
+        }
+
+        const { createReadStream, filename, mimetype, encoding } = await file;
+
+        // 验证文件类型
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+        if (!allowedMimeTypes.includes(mimetype)) {
+          throw new Error(`File type ${mimetype} is not allowed. Allowed types: ${allowedMimeTypes.join(', ')}`);
+        }
+
+        // 生成唯一文件名
+        const fileExtension = filename.split('.').pop();
+        const uniqueFilename = `${uuidv4()}.${fileExtension}`;
+        const filePath = join(__dirname, 'uploads', uniqueFilename);
+
+        // 确保上传目录存在
+        const fs = require('fs');
+        const uploadDir = join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        // 上传文件
+        return new Promise((resolve, reject) => {
+          const stream = createReadStream();
+          const writeStream = createWriteStream(filePath);
+          let fileSize = 0;
+
+          stream.pipe(writeStream);
+
+          stream.on('data', (chunk) => {
+            fileSize += chunk.length;
+            // 检查文件大小
+            if (fileSize > 10000000) {  // 10MB
+              writeStream.destroy();
+              fs.unlinkSync(filePath);
+              reject(new Error('File size exceeds 10MB limit'));
+            }
+          });
+
+          stream.on('error', (error) => {
+            console.error('Stream error:', error);
+            writeStream.destroy();
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+            reject(new Error('File upload failed: ' + error.message));
+          });
+
+          writeStream.on('finish', () => {
+            const uploadedUrl = `/uploads/${uniqueFilename}`;
+            resolve({
+              filename: uniqueFilename,
+              mimetype,
+              url: uploadedUrl,
+              size: fileSize
+            });
+          });
+
+          writeStream.on('error', (error) => {
+            console.error('Write stream error:', error);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+            reject(new Error('File write failed: ' + error.message));
+          });
+        });
+      } catch (error) {
+        console.error('File upload error:', error);
+        throw new Error(`File upload failed: ${error.message}`);
+      }
     }
   }
 };
@@ -2034,19 +3669,63 @@ class ValidationError extends GraphQLError {
   }
 }
 
-// 在Resolver中使用
+// 在Resolver中使用（带完整错误处理）
 const resolvers = {
   Mutation: {
     createPost: async (_, { title, content }, context) => {
-      if (!context.user) {
-        throw new AuthenticationError('You must be logged in');
-      }
+      try {
+        // 认证检查
+        if (!context.user || !context.user.id) {
+          throw new AuthenticationError('You must be logged in');
+        }
 
-      if (!title || title.length < 5) {
-        throw new ValidationError('Title must be at least 5 characters', 'title');
-      }
+        // 参数验证
+        if (!title || typeof title !== 'string') {
+          throw new ValidationError('Title is required', 'title');
+        }
 
-      // ...
+        if (title.trim().length < 5) {
+          throw new ValidationError('Title must be at least 5 characters', 'title');
+        }
+
+        if (title.length > 200) {
+          throw new ValidationError('Title must be less than 200 characters', 'title');
+        }
+
+        // 数据库操作（带错误处理）
+        try {
+          const post = await db.query(
+            'INSERT INTO posts (author_id, title, content) VALUES ($1, $2, $3) RETURNING *',
+            [context.user.id, title, content || null]
+          );
+
+          if (!post.rows || post.rows.length === 0) {
+            throw new Error('Failed to create post');
+          }
+
+          return post.rows[0];
+        } catch (dbError) {
+          console.error('Database error:', dbError);
+
+          // 数据库错误处理
+          if (dbError.code === '23503') { // 外键约束错误
+            throw new ValidationError('Invalid user', 'author_id');
+          } else if (dbError.code === '23505') { // 唯一约束错误
+            throw new ValidationError('Post with this title already exists', 'title');
+          } else {
+            throw new Error('Database operation failed');
+          }
+        }
+      } catch (error) {
+        // 如果是GraphQL错误，直接抛出
+        if (error instanceof AuthenticationError || error instanceof ValidationError) {
+          throw error;
+        }
+
+        // 其他错误转换为GraphQL错误
+        console.error('Unexpected error:', error);
+        throw new Error(`Failed to create post: ${error.message}`);
+      }
     }
   }
 };

@@ -1,9 +1,10 @@
-# PostgreSQL程序开发设计完整指南 - Rust/Golang/Python集成
+# PostgreSQL程序开发设计完整指南 - Rust/Golang/Python/JavaScript/TypeScript集成
 
 > **PostgreSQL版本**: 17+/18+
 > **适用场景**: 应用开发、数据库集成、性能优化
 > **难度等级**: ⭐⭐⭐⭐ 高级
 > **最后更新**: 2025年1月
+> **注意**: JavaScript/TypeScript集成指南请参考[程序开发设计完整指南-JavaScript-TypeScript.md](./程序开发设计完整指南-JavaScript-TypeScript.md)
 
 ---
 
@@ -113,6 +114,8 @@ flowchart TD
 | **Rust** | ⭐⭐⭐⭐⭐ | 异步/多线程 | 所有权系统 | ⭐⭐⭐ | ⭐⭐⭐⭐ | 系统级、高性能 | ✅ tokio-postgres, sqlx |
 | **Golang** | ⭐⭐⭐⭐ | goroutine | GC | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 微服务、高并发 | ✅ database/sql, pgx |
 | **Python** | ⭐⭐⭐ | 异步/多线程 | GC | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 业务应用、数据分析 | ✅ psycopg2, SQLAlchemy, asyncpg |
+| **JavaScript** | ⭐⭐⭐ | 事件循环 | GC | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Node.js应用、Web应用 | ✅ pg, postgres.js |
+| **TypeScript** | ⭐⭐⭐⭐ | 事件循环 | GC | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 大型项目、类型安全 | ✅ Prisma, TypeORM |
 
 ---
 
