@@ -124,12 +124,55 @@ BEGIN;
 SELECT plan(5);
 
 -- 测试函数
-CREATE OR REPLACE FUNCTION calculate_total(amount NUMERIC, tax_rate NUMERIC)
-RETURNS NUMERIC AS $$
+-- 计算总价函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION calculate_total(
+    p_amount NUMERIC,
+    p_tax_rate NUMERIC
+)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_result NUMERIC;
 BEGIN
-    RETURN amount * (1 + tax_rate);
+    -- 参数验证
+    IF p_amount IS NULL THEN
+        RAISE EXCEPTION '金额不能为空';
+    END IF;
+
+    IF p_tax_rate IS NULL THEN
+        RAISE EXCEPTION '税率不能为空';
+    END IF;
+
+    IF p_amount < 0 THEN
+        RAISE EXCEPTION '金额不能为负数: %', p_amount;
+    END IF;
+
+    IF p_tax_rate < 0 OR p_tax_rate > 1 THEN
+        RAISE EXCEPTION '税率必须在0-1之间: %', p_tax_rate;
+    END IF;
+
+    -- 计算总价
+    BEGIN
+        v_result := p_amount * (1 + p_tax_rate);
+
+        -- 检查数值溢出
+        IF v_result IS NULL THEN
+            RAISE EXCEPTION '计算结果为空';
+        END IF;
+
+        RETURN v_result;
+    EXCEPTION
+        WHEN numeric_value_out_of_range THEN
+            RAISE EXCEPTION '计算结果超出数值范围';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '计算总价失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'calculate_total执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 测试用例
 SELECT ok(
@@ -220,24 +263,75 @@ LIMIT 100;
 
 ```sql
 -- 创建测试数据生成函数
+-- 生成测试数据函数（带完整错误处理和安全验证）
 CREATE OR REPLACE FUNCTION generate_test_data(
     p_table_name TEXT,
     p_row_count INT
 )
-RETURNS void AS $$
+RETURNS void
+LANGUAGE plpgsql
+AS $$
 DECLARE
     i INT;
+    v_inserted_count INT := 0;
 BEGIN
-    FOR i IN 1..p_row_count LOOP
-        EXECUTE format('INSERT INTO %I (name, email, created_at) VALUES ($1, $2, $3)',
-            p_table_name)
-        USING
-            'User ' || i,
-            'user' || i || '@example.com',
-            NOW() - (random() * INTERVAL '365 days');
-    END LOOP;
+    -- 参数验证
+    IF p_table_name IS NULL OR length(trim(p_table_name)) = 0 THEN
+        RAISE EXCEPTION '表名不能为空';
+    END IF;
+
+    IF p_row_count IS NULL OR p_row_count <= 0 THEN
+        RAISE EXCEPTION '行数必须大于0: %', p_row_count;
+    END IF;
+
+    IF p_row_count > 1000000 THEN
+        RAISE EXCEPTION '行数过大: % (最大1000000)', p_row_count;
+    END IF;
+
+    -- 验证表名格式（防止SQL注入）
+    IF p_table_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '表名格式无效: % (只允许字母、数字、下划线)', p_table_name;
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = p_table_name) THEN
+        RAISE EXCEPTION '表不存在: %', p_table_name;
+    END IF;
+
+    -- 生成测试数据
+    BEGIN
+        FOR i IN 1..p_row_count LOOP
+            BEGIN
+                EXECUTE format('INSERT INTO %I (name, email, created_at) VALUES ($1, $2, $3)',
+                    p_table_name)
+                USING
+                    'User ' || i,
+                    'user' || i || '@example.com',
+                    NOW() - (random() * INTERVAL '365 days');
+
+                v_inserted_count := v_inserted_count + 1;
+            EXCEPTION
+                WHEN undefined_table THEN
+                    RAISE EXCEPTION '表不存在: %', p_table_name;
+                WHEN undefined_column THEN
+                    RAISE EXCEPTION '表 % 缺少必要的列 (name, email, created_at)', p_table_name;
+                WHEN unique_violation THEN
+                    RAISE WARNING '第 % 条记录违反唯一约束，跳过', i;
+                WHEN OTHERS THEN
+                    RAISE WARNING '插入第 % 条记录失败: %', i, SQLERRM;
+            END;
+        END LOOP;
+
+        RAISE NOTICE '测试数据生成完成: 成功插入 % 条记录到表 %', v_inserted_count, p_table_name;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '生成测试数据失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'generate_test_data执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 ```
 
 ### 3.2 测试数据隔离

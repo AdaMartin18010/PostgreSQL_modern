@@ -10,7 +10,7 @@
 
 ## 📑 目录
 
-- [PostgreSQL程序开发设计完整指南 - Rust/Golang/Python集成](#postgresql程序开发设计完整指南---rustgolangpython集成)
+- [PostgreSQL程序开发设计完整指南 - Rust/Golang/Python/JavaScript/TypeScript集成](#postgresql程序开发设计完整指南---rustgolangpythonjavascripttypescript集成)
   - [📑 目录](#-目录)
   - [📊 知识体系思维导图](#-知识体系思维导图)
   - [📊 编程语言选型决策树](#-编程语言选型决策树)

@@ -222,25 +222,82 @@ SELECT execute_dynamic_query('SELECT * FROM users LIMIT 10');
 #### 带参数的EXECUTE
 
 ```sql
--- 使用USING子句传递参数
+-- 使用USING子句传递参数（带完整错误处理和安全验证）
 CREATE OR REPLACE FUNCTION update_user_dynamic(
-    user_id INTEGER,
-    column_name TEXT,
-    new_value TEXT
+    p_user_id INTEGER,
+    p_column_name TEXT,
+    p_new_value TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_query TEXT;
+    v_allowed_columns TEXT[] := ARRAY['name', 'email', 'phone', 'display_name'];
 BEGIN
-    -- 使用format和quote_ident安全构建查询
-    v_query := format(
-        'UPDATE users SET %I = $1 WHERE id = $2',
-        column_name
-    );
+    -- 参数验证
+    IF p_user_id IS NULL OR p_user_id <= 0 THEN
+        RAISE EXCEPTION '用户ID无效: %', p_user_id;
+    END IF;
 
-    EXECUTE v_query USING new_value, user_id;
+    IF p_column_name IS NULL OR length(trim(p_column_name)) = 0 THEN
+        RAISE EXCEPTION '列名不能为空';
+    END IF;
+
+    IF p_new_value IS NULL THEN
+        RAISE EXCEPTION '新值不能为空';
+    END IF;
+
+    -- 验证列名格式（防止SQL注入）
+    IF p_column_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '列名格式无效: %', p_column_name;
+    END IF;
+
+    -- 白名单验证：只允许更新指定列（增强安全性）
+    IF NOT (p_column_name = ANY(v_allowed_columns)) THEN
+        RAISE EXCEPTION '不允许更新列: % (允许的列: %)', p_column_name, array_to_string(v_allowed_columns, ', ');
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在';
+    END IF;
+
+    -- 检查列是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users'
+          AND column_name = p_column_name
+    ) THEN
+        RAISE EXCEPTION '列不存在: users.%', p_column_name;
+    END IF;
+
+    -- 使用format和quote_ident安全构建查询
+    BEGIN
+        v_query := format(
+            'UPDATE users SET %I = $1 WHERE id = $2',
+            p_column_name
+        );
+
+        EXECUTE v_query USING p_new_value, p_user_id;
+
+        IF NOT FOUND THEN
+            RAISE WARNING '用户不存在或未更新: user_id=%', p_user_id;
+        ELSE
+            RAISE NOTICE '更新成功: users.% = % (user_id=%)', p_column_name, p_new_value, p_user_id;
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION 'users表不存在';
+        WHEN undefined_column THEN
+            RAISE EXCEPTION '列不存在: %', p_column_name;
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '更新失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'update_user_dynamic执行失败: %', SQLERRM;
 END;
 $$;
 ```
@@ -399,30 +456,85 @@ BEGIN
 END;
 $$;
 
--- ✅ 安全：使用format和%L
-CREATE OR REPLACE FUNCTION safe_query(user_input TEXT)
+-- ✅ 安全：使用format和%L（带完整错误处理）
+CREATE OR REPLACE FUNCTION safe_query(p_user_input TEXT)
 RETURNS TABLE(id INTEGER)
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_query TEXT;
 BEGIN
-    -- 安全：%L自动转义
-    v_query := format('SELECT id FROM users WHERE name = %L', user_input);
-    RETURN QUERY EXECUTE v_query;
+    -- 参数验证
+    IF p_user_input IS NULL OR length(trim(p_user_input)) = 0 THEN
+        RAISE EXCEPTION '用户输入不能为空';
+    END IF;
+
+    -- 检查输入长度（防止DoS攻击）
+    IF length(p_user_input) > 1000 THEN
+        RAISE EXCEPTION '输入过长: % (最大1000字符)', length(p_user_input);
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在';
+    END IF;
+
+    -- 安全：%L自动转义（防止SQL注入）
+    BEGIN
+        v_query := format('SELECT id FROM users WHERE name = %L', trim(p_user_input));
+        RETURN QUERY EXECUTE v_query;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION 'users表不存在';
+        WHEN syntax_error THEN
+            RAISE EXCEPTION 'SQL语法错误';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查询失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'safe_query执行失败: %', SQLERRM;
 END;
 $$;
 
--- ✅ 最安全：使用USING参数
-CREATE OR REPLACE FUNCTION safest_query(user_input TEXT)
+-- ✅ 最安全：使用USING参数（带完整错误处理）
+CREATE OR REPLACE FUNCTION safest_query(p_user_input TEXT)
 RETURNS TABLE(id INTEGER)
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_query TEXT;
 BEGIN
-    v_query := 'SELECT id FROM users WHERE name = $1';
-    RETURN QUERY EXECUTE v_query USING user_input;
+    -- 参数验证
+    IF p_user_input IS NULL OR length(trim(p_user_input)) = 0 THEN
+        RAISE EXCEPTION '用户输入不能为空';
+    END IF;
+
+    -- 检查输入长度（防止DoS攻击）
+    IF length(p_user_input) > 1000 THEN
+        RAISE EXCEPTION '输入过长: % (最大1000字符)', length(p_user_input);
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在';
+    END IF;
+
+    -- 最安全：使用USING参数（完全防止SQL注入）
+    BEGIN
+        v_query := 'SELECT id FROM users WHERE name = $1';
+        RETURN QUERY EXECUTE v_query USING trim(p_user_input);
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION 'users表不存在';
+        WHEN syntax_error THEN
+            RAISE EXCEPTION 'SQL语法错误';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查询失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'safest_query执行失败: %', SQLERRM;
 END;
 $$;
 ```
@@ -682,38 +794,70 @@ $$;
 #### 安全处理动态表名
 
 ```sql
--- 安全处理动态表名
+-- 安全处理动态表名（带完整错误处理和安全验证）
 CREATE OR REPLACE FUNCTION query_dynamic_table(
-    table_name TEXT,
-    limit_count INTEGER DEFAULT 100
+    p_table_name TEXT,
+    p_limit_count INTEGER DEFAULT 100
 )
 RETURNS TABLE(result JSONB)
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_query TEXT;
+    v_allowed_tables TEXT[] := ARRAY['users', 'orders', 'products', 'categories'];
 BEGIN
+    -- 参数验证
+    IF p_table_name IS NULL OR length(trim(p_table_name)) = 0 THEN
+        RAISE EXCEPTION '表名不能为空';
+    END IF;
+
+    IF p_limit_count IS NULL OR p_limit_count <= 0 THEN
+        RAISE EXCEPTION '限制数量无效: % (必须大于0)', p_limit_count;
+    END IF;
+
+    IF p_limit_count > 10000 THEN
+        RAISE EXCEPTION '限制数量过大: % (最大10000)', p_limit_count;
+    END IF;
+
     -- 验证表名格式（只允许字母、数字、下划线）
-    IF table_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
-        RAISE EXCEPTION 'Invalid table name: %', table_name;
+    IF p_table_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '表名格式无效: % (只允许字母、数字、下划线)', p_table_name;
+    END IF;
+
+    -- 白名单验证：只允许查询指定表（增强安全性）
+    IF NOT (p_table_name = ANY(v_allowed_tables)) THEN
+        RAISE EXCEPTION '不允许查询表: % (允许的表: %)', p_table_name, array_to_string(v_allowed_tables, ', ');
     END IF;
 
     -- 检查表是否存在
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables
-        WHERE table_name = query_dynamic_table.table_name
+        WHERE table_schema = 'public'
+          AND table_name = p_table_name
     ) THEN
-        RAISE EXCEPTION 'Table does not exist: %', table_name;
+        RAISE EXCEPTION '表不存在: %', p_table_name;
     END IF;
 
     -- 安全构建查询
-    v_query := format(
-        'SELECT to_jsonb(t.*) FROM %I t LIMIT %s',
-        table_name,
-        limit_count
-    );
+    BEGIN
+        v_query := format(
+            'SELECT to_jsonb(t.*) FROM %I t LIMIT %s',
+            p_table_name,
+            p_limit_count
+        );
 
-    RETURN QUERY EXECUTE v_query;
+        RETURN QUERY EXECUTE v_query;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表不存在: %', p_table_name;
+        WHEN syntax_error THEN
+            RAISE EXCEPTION 'SQL语法错误: %', SQLERRM;
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查询失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'query_dynamic_table执行失败: %', SQLERRM;
 END;
 $$;
 ```
@@ -723,10 +867,10 @@ $$;
 #### 安全处理动态列名
 
 ```sql
--- 安全处理动态列名
+-- 安全处理动态列名（带完整错误处理和安全验证）
 CREATE OR REPLACE FUNCTION query_dynamic_columns(
-    table_name TEXT,
-    column_names TEXT[]
+    p_table_name TEXT,
+    p_column_names TEXT[]
 )
 RETURNS TABLE(result JSONB)
 LANGUAGE plpgsql
@@ -736,37 +880,88 @@ DECLARE
     v_column_list TEXT;
     v_col TEXT;
     v_valid_columns TEXT[];
+    v_allowed_columns TEXT[];
 BEGIN
-    -- 验证列名存在
-    SELECT array_agg(column_name)
-    INTO v_valid_columns
-    FROM information_schema.columns
-    WHERE table_name = query_dynamic_columns.table_name
-      AND column_name = ANY(column_names);
-
-    IF v_valid_columns IS NULL THEN
-        RAISE EXCEPTION 'No valid columns found';
+    -- 参数验证
+    IF p_table_name IS NULL OR length(trim(p_table_name)) = 0 THEN
+        RAISE EXCEPTION '表名不能为空';
     END IF;
 
-    -- 构建列列表
-    SELECT string_agg(quote_ident(col), ', ')
-    INTO v_column_list
-    FROM unnest(v_valid_columns) AS col;
+    IF p_column_names IS NULL OR array_length(p_column_names, 1) IS NULL OR array_length(p_column_names, 1) = 0 THEN
+        RAISE EXCEPTION '列名数组不能为空';
+    END IF;
 
-    -- 构建查询
-    v_query := format(
-        'SELECT jsonb_build_object(%s) FROM %I',
-        (
-            SELECT string_agg(
-                format('%L, %I', col, col),
-                ', '
-            )
-            FROM unnest(v_valid_columns) AS col
-        ),
-        table_name
-    );
+    IF array_length(p_column_names, 1) > 50 THEN
+        RAISE EXCEPTION '列数量过多: % (最大50个)', array_length(p_column_names, 1);
+    END IF;
 
-    RETURN QUERY EXECUTE v_query;
+    -- 验证表名格式
+    IF p_table_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '表名格式无效: %', p_table_name;
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = p_table_name
+    ) THEN
+        RAISE EXCEPTION '表不存在: %', p_table_name;
+    END IF;
+
+    -- 验证每个列名格式
+    FOREACH v_col IN ARRAY p_column_names
+    LOOP
+        IF v_col !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+            RAISE EXCEPTION '列名格式无效: %', v_col;
+        END IF;
+    END LOOP;
+
+    -- 验证列名存在并获取有效列
+    BEGIN
+        SELECT array_agg(column_name)
+        INTO v_valid_columns
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = p_table_name
+          AND column_name = ANY(p_column_names);
+
+        IF v_valid_columns IS NULL OR array_length(v_valid_columns, 1) IS NULL THEN
+            RAISE EXCEPTION '没有找到有效列: 表=%，请求的列=%', p_table_name, array_to_string(p_column_names, ', ');
+        END IF;
+
+        -- 检查是否有无效列
+        IF array_length(v_valid_columns, 1) < array_length(p_column_names, 1) THEN
+            RAISE WARNING '部分列不存在: 表=%，有效列=%', p_table_name, array_to_string(v_valid_columns, ', ');
+        END IF;
+
+        -- 构建查询（使用jsonb_object_agg构建JSONB对象）
+        v_query := format(
+            'SELECT jsonb_object_agg(key, value) AS result FROM (SELECT %s FROM %I) t',
+            (
+                SELECT string_agg(
+                    format('%I AS key, %I AS value', col, col),
+                    ', '
+                )
+                FROM unnest(v_valid_columns) AS col
+            ),
+            p_table_name
+        );
+
+        RETURN QUERY EXECUTE v_query;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表不存在: %', p_table_name;
+        WHEN undefined_column THEN
+            RAISE EXCEPTION '列不存在';
+        WHEN syntax_error THEN
+            RAISE EXCEPTION 'SQL语法错误: %', SQLERRM;
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查询失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'query_dynamic_columns执行失败: %', SQLERRM;
 END;
 $$;
 ```

@@ -559,32 +559,114 @@ def copy_import_documents(documents, embeddings):
 
 ```sql
 -- 创建更新函数
+-- 更新文档向量嵌入（带完整错误处理）
 CREATE OR REPLACE FUNCTION update_document_embedding(
-    doc_id BIGINT,
-    new_embedding vector(1536)
+    p_doc_id BIGINT,
+    p_new_embedding vector(1536)
 )
-RETURNS void AS $$
+RETURNS void
+LANGUAGE plpgsql
+AS $$
 BEGIN
-    UPDATE documents
-    SET embedding = new_embedding,
-        updated_at = NOW()
-    WHERE id = doc_id;
+    -- 参数验证
+    IF p_doc_id IS NULL OR p_doc_id <= 0 THEN
+        RAISE EXCEPTION '文档ID无效: %', p_doc_id;
+    END IF;
+
+    IF p_new_embedding IS NULL THEN
+        RAISE EXCEPTION '向量嵌入不能为空';
+    END IF;
+
+    -- 检查pgvector扩展是否存在
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，无法使用向量操作';
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION 'documents表不存在';
+    END IF;
+
+    -- 更新向量嵌入
+    BEGIN
+        UPDATE documents
+        SET embedding = p_new_embedding,
+            updated_at = NOW()
+        WHERE id = p_doc_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '文档不存在: %', p_doc_id;
+        END IF;
+
+        RAISE NOTICE '文档向量更新成功: doc_id=%', p_doc_id;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION 'documents表不存在';
+        WHEN invalid_parameter_value THEN
+            RAISE EXCEPTION '向量维度不匹配';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '更新文档向量失败: %', SQLERRM;
+    END;
 
     -- HNSW索引支持增量更新，无需重建
     -- IVFFlat索引需要定期重建
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'update_document_embedding执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
--- 定期重建IVFFlat索引（如果需要）
+-- 定期重建IVFFlat索引（带完整错误处理）
 CREATE OR REPLACE FUNCTION rebuild_ivfflat_index()
-RETURNS void AS $$
+RETURNS void
+LANGUAGE plpgsql
+AS $$
 BEGIN
-    DROP INDEX IF EXISTS idx_docs_embed_ivfflat;
-    CREATE INDEX idx_docs_embed_ivfflat
-    ON documents USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100);
+    -- 检查pgvector扩展是否存在
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，无法使用IVFFlat索引';
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+        RAISE EXCEPTION 'documents表不存在，无法重建索引';
+    END IF;
+
+    -- 检查是否有数据
+    IF NOT EXISTS (SELECT 1 FROM documents WHERE embedding IS NOT NULL LIMIT 1) THEN
+        RAISE WARNING 'documents表中没有向量数据，跳过索引重建';
+        RETURN;
+    END IF;
+
+    -- 删除旧索引
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'documents' AND indexname = 'idx_docs_embed_ivfflat') THEN
+            DROP INDEX idx_docs_embed_ivfflat;
+            RAISE NOTICE '已删除旧索引: idx_docs_embed_ivfflat';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '删除旧索引失败: %', SQLERRM;
+    END;
+
+    -- 创建新索引
+    BEGIN
+        CREATE INDEX idx_docs_embed_ivfflat
+        ON documents USING ivfflat (embedding vector_cosine_ops)
+        WITH (lists = 100);
+
+        RAISE NOTICE 'IVFFlat索引重建成功: idx_docs_embed_ivfflat';
+    EXCEPTION
+        WHEN undefined_function THEN
+            RAISE EXCEPTION 'IVFFlat索引类型不可用，请检查pgvector扩展';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '创建IVFFlat索引失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'rebuild_ivfflat_index执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 ```
 
 ---

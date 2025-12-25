@@ -371,23 +371,47 @@ $$;
 **异常处理**:
 
 ```sql
-CREATE FUNCTION safe_divide(a DECIMAL, b DECIMAL)
+-- 安全除法函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION safe_divide(p_a DECIMAL, p_b DECIMAL)
 RETURNS DECIMAL
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    result DECIMAL;
+    v_result DECIMAL;
 BEGIN
+    -- 参数验证
+    IF p_a IS NULL THEN
+        RAISE EXCEPTION '被除数不能为空';
+    END IF;
+
+    IF p_b IS NULL THEN
+        RAISE EXCEPTION '除数不能为空';
+    END IF;
+
     BEGIN
-        result := a / b;
-        RETURN result;
+        -- 执行除法运算
+        v_result := p_a / p_b;
+
+        -- 检查结果是否有效
+        IF v_result IS NULL THEN
+            RAISE WARNING '除法运算结果为空';
+            RETURN NULL;
+        END IF;
+
+        RETURN v_result;
+
     EXCEPTION
         WHEN division_by_zero THEN
-            RAISE NOTICE 'Division by zero';
-            RETURN NULL;
+            RAISE EXCEPTION '除零错误: % / %', p_a, p_b;
+        WHEN numeric_value_out_of_range THEN
+            RAISE EXCEPTION '数值超出范围: % / % 的结果超出DECIMAL类型范围', p_a, p_b;
         WHEN OTHERS THEN
-            RAISE EXCEPTION 'Unexpected error: %', SQLERRM;
+            RAISE EXCEPTION '除法运算失败: %', SQLERRM;
     END;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'safe_divide执行失败: %', SQLERRM;
 END;
 $$;
 ```
@@ -398,16 +422,30 @@ $$;
 
 ```sql
 -- 自定义异常
-CREATE FUNCTION validate_age(age INTEGER)
+-- ✅ 自定义异常（带完整参数验证）
+CREATE OR REPLACE FUNCTION validate_age(p_age INTEGER)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF age < 0 OR age > 150 THEN
-        RAISE EXCEPTION 'Invalid age: %', age;
+    -- 参数验证
+    IF p_age IS NULL THEN
+        RAISE EXCEPTION '年龄不能为空';
+    END IF;
+
+    IF p_age < 0 THEN
+        RAISE EXCEPTION '年龄无效: % (年龄不能为负数)', p_age;
+    END IF;
+
+    IF p_age > 150 THEN
+        RAISE EXCEPTION '年龄无效: % (年龄超出合理范围，最大值为150)', p_age;
     END IF;
 
     RETURN TRUE;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'validate_age执行失败: %', SQLERRM;
 END;
 $$;
 ```
@@ -429,52 +467,162 @@ $$;
 **解决方案**:
 
 ```sql
-CREATE FUNCTION process_order(order_id INTEGER)
+-- 订单处理函数（带完整错误处理和验证）
+CREATE OR REPLACE FUNCTION process_order(p_order_id INTEGER)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    order_total DECIMAL;
-    user_balance DECIMAL;
-    product_stock INTEGER;
+    v_order_total DECIMAL;
+    v_user_balance DECIMAL;
+    v_product_stock INTEGER;
+    v_user_id INTEGER;
+    v_product_id INTEGER;
+    v_order_status TEXT;
 BEGIN
-    -- 1. 检查库存
-    SELECT stock INTO product_stock
-    FROM products
-    WHERE id = (SELECT product_id FROM orders WHERE id = order_id);
-
-    IF product_stock < 1 THEN
-        RAISE EXCEPTION 'Insufficient stock';
+    -- 参数验证
+    IF p_order_id IS NULL OR p_order_id <= 0 THEN
+        RAISE EXCEPTION '订单ID无效: %', p_order_id;
     END IF;
 
-    -- 2. 检查余额
-    SELECT balance INTO user_balance
-    FROM users
-    WHERE id = (SELECT user_id FROM orders WHERE id = order_id);
-
-    SELECT total_amount INTO order_total
-    FROM orders WHERE id = order_id;
-
-    IF user_balance < order_total THEN
-        RAISE EXCEPTION 'Insufficient balance';
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION 'orders表不存在';
     END IF;
 
-    -- 3. 扣款
-    UPDATE users
-    SET balance = balance - order_total
-    WHERE id = (SELECT user_id FROM orders WHERE id = order_id);
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+        RAISE EXCEPTION 'products表不存在';
+    END IF;
 
-    -- 4. 扣库存
-    UPDATE products
-    SET stock = stock - 1
-    WHERE id = (SELECT product_id FROM orders WHERE id = order_id);
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在';
+    END IF;
 
-    -- 5. 更新订单状态
-    UPDATE orders
-    SET status = 'completed'
-    WHERE id = order_id;
+    -- 1. 检查订单是否存在并获取订单信息
+    BEGIN
+        SELECT total_amount, user_id, product_id, status
+        INTO v_order_total, v_user_id, v_product_id, v_order_status
+        FROM orders
+        WHERE id = p_order_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '订单不存在: %', p_order_id;
+        END IF;
+
+        IF v_order_total IS NULL OR v_order_total <= 0 THEN
+            RAISE EXCEPTION '订单金额无效: %', v_order_total;
+        END IF;
+
+        IF v_order_status = 'completed' THEN
+            RAISE EXCEPTION '订单已完成，无需重复处理';
+        END IF;
+
+        IF v_order_status = 'cancelled' THEN
+            RAISE EXCEPTION '订单已取消，无法处理';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查询订单信息失败: %', SQLERRM;
+    END;
+
+    -- 2. 检查库存
+    BEGIN
+        SELECT stock INTO v_product_stock
+        FROM products
+        WHERE id = v_product_id
+        FOR UPDATE;  -- 行级锁，防止并发
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '产品不存在: %', v_product_id;
+        END IF;
+
+        IF v_product_stock IS NULL OR v_product_stock < 1 THEN
+            RAISE EXCEPTION '库存不足: 产品ID=%，当前库存=%', v_product_id, v_product_stock;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '检查库存失败: %', SQLERRM;
+    END;
+
+    -- 3. 检查余额
+    BEGIN
+        SELECT balance INTO v_user_balance
+        FROM users
+        WHERE id = v_user_id
+        FOR UPDATE;  -- 行级锁，防止并发
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '用户不存在: %', v_user_id;
+        END IF;
+
+        IF v_user_balance IS NULL THEN
+            v_user_balance := 0;
+        END IF;
+
+        IF v_user_balance < v_order_total THEN
+            RAISE EXCEPTION '余额不足: 用户ID=%，当前余额=%，订单金额=%', v_user_id, v_user_balance, v_order_total;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '检查余额失败: %', SQLERRM;
+    END;
+
+    -- 4. 扣款
+    BEGIN
+        UPDATE users
+        SET balance = balance - v_order_total,
+            updated_at = NOW()
+        WHERE id = v_user_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '更新用户余额失败: 用户ID=%', v_user_id;
+        END IF;
+    EXCEPTION
+        WHEN numeric_value_out_of_range THEN
+            RAISE EXCEPTION '余额计算结果超出范围';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '扣款失败: %', SQLERRM;
+    END;
+
+    -- 5. 扣库存
+    BEGIN
+        UPDATE products
+        SET stock = stock - 1,
+            updated_at = NOW()
+        WHERE id = v_product_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '更新产品库存失败: 产品ID=%', v_product_id;
+        END IF;
+    EXCEPTION
+        WHEN check_violation THEN
+            RAISE EXCEPTION '库存不足，无法扣减';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '扣库存失败: %', SQLERRM;
+    END;
+
+    -- 6. 更新订单状态
+    BEGIN
+        UPDATE orders
+        SET status = 'completed',
+            completed_at = NOW(),
+            updated_at = NOW()
+        WHERE id = p_order_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '更新订单状态失败: 订单ID=%', p_order_id;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '更新订单状态失败: %', SQLERRM;
+    END;
 
     RETURN TRUE;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        -- 记录详细错误信息
+        RAISE EXCEPTION 'process_order执行失败 (订单ID=%): %', p_order_id, SQLERRM;
 END;
 $$;
 ```
@@ -533,24 +681,49 @@ $$;
 2. **尽量使用 SQL 而非循环**（性能好）
 
    ```sql
-   -- ✅ 好：使用 SQL（性能好）
-   CREATE FUNCTION update_order_totals()
+   -- ✅ 好：使用 SQL（性能好，带完整错误处理）
+   CREATE OR REPLACE FUNCTION update_order_totals()
    RETURNS INTEGER
    LANGUAGE plpgsql
    AS $$
    DECLARE
-       updated_count INTEGER;
+       v_updated_count INTEGER := 0;
    BEGIN
-       UPDATE orders o
-       SET total_amount = (
-           SELECT SUM(quantity * price)
-           FROM order_items
-           WHERE order_id = o.id
-       )
-       WHERE EXISTS (SELECT 1 FROM order_items WHERE order_id = o.id);
+       -- 检查表是否存在
+       IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+           RAISE EXCEPTION 'orders表不存在';
+       END IF;
 
-       GET DIAGNOSTICS updated_count = ROW_COUNT;
-       RETURN updated_count;
+       IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_items') THEN
+           RAISE EXCEPTION 'order_items表不存在';
+       END IF;
+
+       -- 使用SQL批量更新
+       BEGIN
+           UPDATE orders o
+           SET total_amount = COALESCE((
+               SELECT SUM(quantity * price)
+               FROM order_items
+               WHERE order_id = o.id
+           ), 0),
+           updated_at = NOW()
+           WHERE EXISTS (SELECT 1 FROM order_items WHERE order_id = o.id);
+
+           GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+           RAISE NOTICE '更新了 % 条订单记录', v_updated_count;
+       EXCEPTION
+           WHEN undefined_table THEN
+               RAISE EXCEPTION 'orders或order_items表不存在';
+           WHEN numeric_value_out_of_range THEN
+               RAISE EXCEPTION '计算金额超出数值范围';
+           WHEN OTHERS THEN
+               RAISE EXCEPTION '更新订单总金额失败: %', SQLERRM;
+       END;
+
+       RETURN v_updated_count;
+   EXCEPTION
+       WHEN OTHERS THEN
+           RAISE EXCEPTION 'update_order_totals执行失败: %', SQLERRM;
    END;
    $$;
 
@@ -582,20 +755,54 @@ $$;
 3. **批量处理数据**（减少网络往返）
 
    ```sql
-   -- ✅ 好：批量处理（减少网络往返）
-   CREATE FUNCTION process_orders_batch(order_ids INTEGER[])
+   -- ✅ 好：批量处理（减少网络往返，带完整错误处理）
+   CREATE OR REPLACE FUNCTION process_orders_batch(p_order_ids INTEGER[])
    RETURNS INTEGER
    LANGUAGE plpgsql
    AS $$
    DECLARE
-       processed_count INTEGER;
+       v_processed_count INTEGER := 0;
    BEGIN
-       UPDATE orders
-       SET status = 'processed'
-       WHERE id = ANY(order_ids);
+       -- 参数验证
+       IF p_order_ids IS NULL OR array_length(p_order_ids, 1) IS NULL THEN
+           RAISE EXCEPTION '订单ID数组不能为空';
+       END IF;
 
-       GET DIAGNOSTICS processed_count = ROW_COUNT;
-       RETURN processed_count;
+       IF array_length(p_order_ids, 1) = 0 THEN
+           RAISE WARNING '订单ID数组为空，无需处理';
+           RETURN 0;
+       END IF;
+
+       IF array_length(p_order_ids, 1) > 10000 THEN
+           RAISE EXCEPTION '订单数量过大: % (最大支持10000条)', array_length(p_order_ids, 1);
+       END IF;
+
+       -- 检查表是否存在
+       IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+           RAISE EXCEPTION 'orders表不存在';
+       END IF;
+
+       -- 批量更新订单状态
+       BEGIN
+           UPDATE orders
+           SET status = 'processed',
+               updated_at = NOW()
+           WHERE id = ANY(p_order_ids)
+             AND status != 'processed';  -- 避免重复处理
+
+           GET DIAGNOSTICS v_processed_count = ROW_COUNT;
+           RAISE NOTICE '批量处理了 % 条订单', v_processed_count;
+       EXCEPTION
+           WHEN undefined_table THEN
+               RAISE EXCEPTION 'orders表不存在';
+           WHEN OTHERS THEN
+               RAISE EXCEPTION '批量处理订单失败: %', SQLERRM;
+       END;
+
+       RETURN v_processed_count;
+   EXCEPTION
+       WHEN OTHERS THEN
+           RAISE EXCEPTION 'process_orders_batch执行失败: %', SQLERRM;
    END;
    $$;
 
