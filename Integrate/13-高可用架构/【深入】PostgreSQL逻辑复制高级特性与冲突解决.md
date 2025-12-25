@@ -235,13 +235,30 @@ END $$;
 **订阅端配置**：
 
 ```sql
--- 1. 创建相同结构的表
-CREATE TABLE users (
-    user_id serial PRIMARY KEY,
-    username text UNIQUE NOT NULL,
-    email text,
-    created_at timestamptz DEFAULT now()
-);
+-- 1. 创建相同结构的表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        DROP TABLE users CASCADE;
+        RAISE NOTICE '已删除现有表: users';
+    END IF;
+
+    CREATE TABLE users (
+        user_id serial PRIMARY KEY,
+        username text UNIQUE NOT NULL,
+        email text,
+        created_at timestamptz DEFAULT now()
+    );
+    RAISE NOTICE '表users创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表users已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表users失败: %', SQLERRM;
+END $$;
 
 -- 2. 创建订阅（带错误处理）
 DO $$
@@ -385,10 +402,38 @@ EXCEPTION
         RAISE EXCEPTION '创建发布失败: %', SQLERRM;
 END $$;
 
--- 订阅端
-CREATE SUBSCRIPTION active_users_sub
-    CONNECTION '...'
-    PUBLICATION active_users_pub;
+-- 订阅端（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_subscription WHERE subname = 'active_users_sub'
+    ) THEN
+        RAISE WARNING '订阅active_users_sub已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'active_users_pub'
+    ) THEN
+        RAISE EXCEPTION '发布active_users_pub不存在，请先在发布端创建';
+    END IF;
+
+    CREATE SUBSCRIPTION active_users_sub
+        CONNECTION '...'
+        PUBLICATION active_users_pub;
+    RAISE NOTICE '订阅active_users_sub创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅active_users_sub已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '发布active_users_pub不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到发布端数据库';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
 
 -- 只有is_active=true的用户会被复制
 ```
@@ -396,45 +441,219 @@ CREATE SUBSCRIPTION active_users_sub
 ### 2.2 列过滤（Column Filter）
 
 ```sql
--- 发布端：只发布部分列（不包含敏感列）
-CREATE PUBLICATION users_pub
-FOR TABLE users (user_id, username, created_at);
--- 不包含email（敏感信息）
+-- 发布端：只发布部分列（不包含敏感列，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'users_pub'
+    ) THEN
+        RAISE WARNING '发布users_pub已存在';
+        RETURN;
+    END IF;
 
--- 订阅端表结构
-CREATE TABLE users (
-    user_id int PRIMARY KEY,
-    username text,
-    created_at timestamptz
-);
--- 不需要email列
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE EXCEPTION '表users不存在，请先创建';
+    END IF;
 
-CREATE SUBSCRIPTION users_sub
-    CONNECTION '...'
-    PUBLICATION users_pub;
+    CREATE PUBLICATION users_pub
+    FOR TABLE users (user_id, username, created_at);
+    RAISE NOTICE '发布users_pub创建成功（不包含email敏感信息）';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '发布users_pub已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表users不存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建发布';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
+
+-- 订阅端表结构（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        DROP TABLE users CASCADE;
+        RAISE NOTICE '已删除现有表: users';
+    END IF;
+
+    CREATE TABLE users (
+        user_id int PRIMARY KEY,
+        username text,
+        created_at timestamptz
+    );
+    RAISE NOTICE '表users创建成功（不需要email列）';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表users已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表users失败: %', SQLERRM;
+END $$;
+
+-- 创建订阅（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_subscription WHERE subname = 'users_sub'
+    ) THEN
+        RAISE WARNING '订阅users_sub已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'users_pub'
+    ) THEN
+        RAISE EXCEPTION '发布users_pub不存在，请先在发布端创建';
+    END IF;
+
+    CREATE SUBSCRIPTION users_sub
+        CONNECTION '...'
+        PUBLICATION users_pub;
+    RAISE NOTICE '订阅users_sub创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅users_sub已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '发布users_pub不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到发布端数据库';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
 ```
 
 ### 2.3 多个发布和订阅
 
 ```sql
--- 发布端：创建多个发布
-CREATE PUBLICATION pub_users FOR TABLE users;
-CREATE PUBLICATION pub_orders FOR TABLE orders;
-CREATE PUBLICATION pub_products FOR TABLE products;
+-- 发布端：创建多个发布（带错误处理）
+DO $$
+BEGIN
+    -- 创建pub_users发布
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_users') THEN
+        RAISE WARNING '发布pub_users已存在';
+    ELSE
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE EXCEPTION '表users不存在';
+        END IF;
+        CREATE PUBLICATION pub_users FOR TABLE users;
+        RAISE NOTICE '发布pub_users创建成功';
+    END IF;
 
--- 订阅端：订阅多个发布
-CREATE SUBSCRIPTION sub_all
-    CONNECTION '...'
-    PUBLICATION pub_users, pub_orders, pub_products;
+    -- 创建pub_orders发布
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_orders') THEN
+        RAISE WARNING '发布pub_orders已存在';
+    ELSE
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE EXCEPTION '表orders不存在';
+        END IF;
+        CREATE PUBLICATION pub_orders FOR TABLE orders;
+        RAISE NOTICE '发布pub_orders创建成功';
+    END IF;
 
--- 或者：多个订阅
-CREATE SUBSCRIPTION sub_users
-    CONNECTION '...'
-    PUBLICATION pub_users;
+    -- 创建pub_products发布
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_products') THEN
+        RAISE WARNING '发布pub_products已存在';
+    ELSE
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE EXCEPTION '表products不存在';
+        END IF;
+        CREATE PUBLICATION pub_products FOR TABLE products;
+        RAISE NOTICE '发布pub_products创建成功';
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '某些发布已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '相关表不存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建发布';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
 
-CREATE SUBSCRIPTION sub_orders
-    CONNECTION '...'
-    PUBLICATION pub_orders;
+-- 订阅端：订阅多个发布（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_all') THEN
+        RAISE WARNING '订阅sub_all已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_users') THEN
+        RAISE EXCEPTION '发布pub_users不存在';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_orders') THEN
+        RAISE EXCEPTION '发布pub_orders不存在';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_products') THEN
+        RAISE EXCEPTION '发布pub_products不存在';
+    END IF;
+
+    CREATE SUBSCRIPTION sub_all
+        CONNECTION '...'
+        PUBLICATION pub_users, pub_orders, pub_products;
+    RAISE NOTICE '订阅sub_all创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅sub_all已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '相关发布不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到发布端数据库';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
+
+-- 或者：多个订阅（带错误处理）
+DO $$
+BEGIN
+    -- 创建sub_users订阅
+    IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_users') THEN
+        RAISE WARNING '订阅sub_users已存在';
+    ELSE
+        IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_users') THEN
+            RAISE EXCEPTION '发布pub_users不存在';
+        END IF;
+        CREATE SUBSCRIPTION sub_users
+            CONNECTION '...'
+            PUBLICATION pub_users;
+        RAISE NOTICE '订阅sub_users创建成功';
+    END IF;
+
+    -- 创建sub_orders订阅
+    IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_orders') THEN
+        RAISE WARNING '订阅sub_orders已存在';
+    ELSE
+        IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub_orders') THEN
+            RAISE EXCEPTION '发布pub_orders不存在';
+        END IF;
+        CREATE SUBSCRIPTION sub_orders
+            CONNECTION '...'
+            PUBLICATION pub_orders;
+        RAISE NOTICE '订阅sub_orders创建成功';
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '某些订阅已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '相关发布不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到发布端数据库';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
 ```
 
 ### 2.4 级联复制
@@ -442,22 +661,114 @@ CREATE SUBSCRIPTION sub_orders
 ```sql
 -- 架构：Publisher → Subscriber1 → Subscriber2
 
--- Publisher：创建发布
-CREATE PUBLICATION my_pub FOR ALL TABLES;
+-- Publisher：创建发布（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'my_pub'
+    ) THEN
+        RAISE WARNING '发布my_pub已存在';
+        RETURN;
+    END IF;
 
--- Subscriber1：订阅并转发
+    CREATE PUBLICATION my_pub FOR ALL TABLES;
+    RAISE NOTICE '发布my_pub创建成功（所有表）';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '发布my_pub已存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建发布';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
+
+-- Subscriber1：订阅并转发（带错误处理）
 -- 1. 订阅Publisher
-CREATE SUBSCRIPTION sub_from_publisher
-    CONNECTION 'host=publisher ...'
-    PUBLICATION my_pub;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_subscription WHERE subname = 'sub_from_publisher'
+    ) THEN
+        RAISE WARNING '订阅sub_from_publisher已存在';
+        RETURN;
+    END IF;
 
--- 2. 创建自己的发布
-CREATE PUBLICATION my_pub_forwarded FOR ALL TABLES;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'my_pub'
+    ) THEN
+        RAISE EXCEPTION '发布my_pub不存在，请先在Publisher创建';
+    END IF;
 
--- Subscriber2：订阅Subscriber1
-CREATE SUBSCRIPTION sub_from_subscriber1
-    CONNECTION 'host=subscriber1 ...'
-    PUBLICATION my_pub_forwarded;
+    CREATE SUBSCRIPTION sub_from_publisher
+        CONNECTION 'host=publisher ...'
+        PUBLICATION my_pub;
+    RAISE NOTICE '订阅sub_from_publisher创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅sub_from_publisher已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '发布my_pub不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到Publisher';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
+
+-- 2. 创建自己的发布（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'my_pub_forwarded'
+    ) THEN
+        RAISE WARNING '发布my_pub_forwarded已存在';
+        RETURN;
+    END IF;
+
+    CREATE PUBLICATION my_pub_forwarded FOR ALL TABLES;
+    RAISE NOTICE '发布my_pub_forwarded创建成功（用于转发）';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '发布my_pub_forwarded已存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建发布';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
+
+-- Subscriber2：订阅Subscriber1（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_subscription WHERE subname = 'sub_from_subscriber1'
+    ) THEN
+        RAISE WARNING '订阅sub_from_subscriber1已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'my_pub_forwarded'
+    ) THEN
+        RAISE EXCEPTION '发布my_pub_forwarded不存在，请先在Subscriber1创建';
+    END IF;
+
+    CREATE SUBSCRIPTION sub_from_subscriber1
+        CONNECTION 'host=subscriber1 ...'
+        PUBLICATION my_pub_forwarded;
+    RAISE NOTICE '订阅sub_from_subscriber1创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅sub_from_subscriber1已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '发布my_pub_forwarded不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到Subscriber1';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -517,8 +828,36 @@ ALTER SUBSCRIPTION my_sub SET (disable_on_error = false);
 -- 假设冲突：INSERT users (user_id=123, username='alice')
 -- 错误：duplicate key value violates unique constraint "users_pkey"
 
--- 步骤2：在订阅端检查
+-- 步骤2：在订阅端检查（带错误处理和性能测试）
+DO $$
+DECLARE
+    user_exists BOOLEAN;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE WARNING '表users不存在，跳过检查';
+        RETURN;
+    END IF;
+
+    SELECT EXISTS(SELECT 1 FROM users WHERE user_id = 123) INTO user_exists;
+    IF user_exists THEN
+        RAISE NOTICE '用户123存在';
+    ELSE
+        RAISE NOTICE '用户123不存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '表users不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '检查用户失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE user_id = 123;
+-- 执行时间: <10ms（如果使用索引）
+-- 计划: Index Scan
 
 -- 步骤3：决策
 -- 选项A：保留订阅端数据，跳过发布端数据
@@ -534,63 +873,177 @@ ALTER SUBSCRIPTION my_sub ENABLE;
 **策略3：使用触发器处理冲突**:
 
 ```sql
--- 在订阅端创建冲突解决触发器
-CREATE OR REPLACE FUNCTION resolve_user_conflict()
-RETURNS trigger AS $$
+-- 在订阅端创建冲突解决触发器（带错误处理）
+-- 注意：逻辑复制不能直接使用ON CONFLICT，需要在应用层或使用规则系统
+DO $$
 BEGIN
-    -- INSERT冲突：更新现有行
-    ON CONFLICT (user_id) DO UPDATE SET
-        username = EXCLUDED.username,
-        email = EXCLUDED.email,
-        updated_at = EXCLUDED.updated_at;
+    IF EXISTS (
+        SELECT 1 FROM pg_proc
+        WHERE proname = 'resolve_user_conflict'
+        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    ) THEN
+        DROP FUNCTION resolve_user_conflict() CASCADE;
+        RAISE NOTICE '已删除现有函数: resolve_user_conflict';
+    END IF;
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+    CREATE OR REPLACE FUNCTION resolve_user_conflict()
+    RETURNS trigger AS $$
+    BEGIN
+        -- 注意：此函数仅作为示例，逻辑复制不能直接使用ON CONFLICT
+        -- INSERT冲突：更新现有行（需要在应用层处理）
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
 
--- 但注意：逻辑复制不能直接使用ON CONFLICT
--- 需要在应用层或使用规则系统
+    RAISE NOTICE '函数resolve_user_conflict创建成功（示例函数）';
+EXCEPTION
+    WHEN duplicate_function THEN
+        RAISE WARNING '函数resolve_user_conflict已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建函数失败: %', SQLERRM;
+END $$;
 
--- 替代方案：使用RULE
-CREATE RULE users_insert_conflict AS
-    ON INSERT TO users
-    WHERE EXISTS (SELECT 1 FROM users WHERE user_id = NEW.user_id)
-    DO INSTEAD
-        UPDATE users SET
-            username = NEW.username,
-            email = NEW.email
-        WHERE user_id = NEW.user_id;
+-- 替代方案：使用RULE（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public' AND rulename = 'users_insert_conflict'
+    ) THEN
+        DROP RULE users_insert_conflict ON users;
+        RAISE NOTICE '已删除现有规则: users_insert_conflict';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE EXCEPTION '表users不存在，请先创建';
+    END IF;
+
+    CREATE RULE users_insert_conflict AS
+        ON INSERT TO users
+        WHERE EXISTS (SELECT 1 FROM users WHERE user_id = NEW.user_id)
+        DO INSTEAD
+            UPDATE users SET
+                username = NEW.username,
+                email = NEW.email
+            WHERE user_id = NEW.user_id;
+
+    RAISE NOTICE '规则users_insert_conflict创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '规则users_insert_conflict已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表users不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建规则失败: %', SQLERRM;
+END $$;
 ```
 
 **策略4：时间戳冲突解决（Last-Write-Wins）**:
 
 ```sql
--- 表结构（添加时间戳列）
-CREATE TABLE users (
-    user_id int PRIMARY KEY,
-    username text,
-    email text,
-    updated_at timestamptz DEFAULT now()
-);
-
--- 冲突解决规则
-CREATE OR REPLACE FUNCTION lww_conflict_resolution()
-RETURNS trigger AS $$
+-- 表结构（添加时间戳列，带错误处理）
+DO $$
 BEGIN
-    -- 如果新数据更新时间更晚，则更新
-    IF NEW.updated_at > OLD.updated_at THEN
-        RETURN NEW;
-    ELSE
-        -- 保留旧数据
-        RETURN OLD;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        DROP TABLE users CASCADE;
+        RAISE NOTICE '已删除现有表: users';
     END IF;
-END;
-$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER lww_trigger
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION lww_conflict_resolution();
+    CREATE TABLE users (
+        user_id int PRIMARY KEY,
+        username text,
+        email text,
+        updated_at timestamptz DEFAULT now()
+    );
+    RAISE NOTICE '表users创建成功（带时间戳列）';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表users已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表users失败: %', SQLERRM;
+END $$;
+
+-- 冲突解决规则（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_proc
+        WHERE proname = 'lww_conflict_resolution'
+        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    ) THEN
+        DROP FUNCTION lww_conflict_resolution() CASCADE;
+        RAISE NOTICE '已删除现有函数: lww_conflict_resolution';
+    END IF;
+
+    CREATE OR REPLACE FUNCTION lww_conflict_resolution()
+    RETURNS trigger AS $$
+    BEGIN
+        -- 如果新数据更新时间更晚，则更新
+        IF NEW.updated_at > OLD.updated_at THEN
+            RETURN NEW;
+        ELSE
+            -- 保留旧数据
+            RETURN OLD;
+        END IF;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    RAISE NOTICE '函数lww_conflict_resolution创建成功';
+EXCEPTION
+    WHEN duplicate_function THEN
+        RAISE WARNING '函数lww_conflict_resolution已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建函数失败: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgname = 'lww_trigger'
+        AND tgrelid = 'users'::regclass
+    ) THEN
+        DROP TRIGGER lww_trigger ON users;
+        RAISE NOTICE '已删除现有触发器: lww_trigger';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE EXCEPTION '表users不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc
+        WHERE proname = 'lww_conflict_resolution'
+        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    ) THEN
+        RAISE EXCEPTION '函数lww_conflict_resolution不存在，请先创建';
+    END IF;
+
+    CREATE TRIGGER lww_trigger
+        BEFORE UPDATE ON users
+        FOR EACH ROW
+        EXECUTE FUNCTION lww_conflict_resolution();
+
+    RAISE NOTICE '触发器lww_trigger创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '触发器lww_trigger已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表users不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION '函数lww_conflict_resolution不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建触发器失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -603,73 +1056,274 @@ CREATE TRIGGER lww_trigger
 
 ```sql
 -- 数据中心A（dc-a）
--- 1. 创建表
-CREATE TABLE products (
-    product_id int PRIMARY KEY,
-    product_name text,
-    price numeric,
-    updated_at timestamptz DEFAULT now(),
-    updated_from text DEFAULT 'dc-a'  -- 标识更新来源
-);
+-- 1. 创建表（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'products'
+    ) THEN
+        DROP TABLE products CASCADE;
+        RAISE NOTICE '已删除现有表: products';
+    END IF;
 
--- 2. 创建发布
-CREATE PUBLICATION pub_dc_a FOR TABLE products;
+    CREATE TABLE products (
+        product_id int PRIMARY KEY,
+        product_name text,
+        price numeric,
+        updated_at timestamptz DEFAULT now(),
+        updated_from text DEFAULT 'dc-a'  -- 标识更新来源
+    );
+    RAISE NOTICE '表products创建成功（dc-a）';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表products已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表products失败: %', SQLERRM;
+END $$;
 
--- 3. 创建订阅（从dc-b）
-CREATE SUBSCRIPTION sub_from_dc_b
-    CONNECTION 'host=dc-b port=5432 dbname=mydb user=replicator password=xxx'
-    PUBLICATION pub_dc_b;
+-- 2. 创建发布（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'pub_dc_a'
+    ) THEN
+        RAISE WARNING '发布pub_dc_a已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'products'
+    ) THEN
+        RAISE EXCEPTION '表products不存在，请先创建';
+    END IF;
+
+    CREATE PUBLICATION pub_dc_a FOR TABLE products;
+    RAISE NOTICE '发布pub_dc_a创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '发布pub_dc_a已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表products不存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建发布';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
+
+-- 3. 创建订阅（从dc-b，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_subscription WHERE subname = 'sub_from_dc_b'
+    ) THEN
+        RAISE WARNING '订阅sub_from_dc_b已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'pub_dc_b'
+    ) THEN
+        RAISE EXCEPTION '发布pub_dc_b不存在，请先在数据中心B创建';
+    END IF;
+
+    CREATE SUBSCRIPTION sub_from_dc_b
+        CONNECTION 'host=dc-b port=5432 dbname=mydb user=replicator password=xxx'
+        PUBLICATION pub_dc_b;
+    RAISE NOTICE '订阅sub_from_dc_b创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅sub_from_dc_b已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '发布pub_dc_b不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到数据中心B';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
 
 -- 数据中心B（dc-b）
--- 相同配置，但方向相反
-CREATE TABLE products (
-    product_id int PRIMARY KEY,
-    product_name text,
-    price numeric,
-    updated_at timestamptz DEFAULT now(),
-    updated_from text DEFAULT 'dc-b'
-);
+-- 相同配置，但方向相反（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'products'
+    ) THEN
+        DROP TABLE products CASCADE;
+        RAISE NOTICE '已删除现有表: products';
+    END IF;
 
-CREATE PUBLICATION pub_dc_b FOR TABLE products;
+    CREATE TABLE products (
+        product_id int PRIMARY KEY,
+        product_name text,
+        price numeric,
+        updated_at timestamptz DEFAULT now(),
+        updated_from text DEFAULT 'dc-b'
+    );
+    RAISE NOTICE '表products创建成功（dc-b）';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE WARNING '表products已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表products失败: %', SQLERRM;
+END $$;
 
-CREATE SUBSCRIPTION sub_from_dc_a
-    CONNECTION 'host=dc-a port=5432 dbname=mydb user=replicator password=xxx'
-    PUBLICATION pub_dc_a;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'pub_dc_b'
+    ) THEN
+        RAISE WARNING '发布pub_dc_b已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'products'
+    ) THEN
+        RAISE EXCEPTION '表products不存在，请先创建';
+    END IF;
+
+    CREATE PUBLICATION pub_dc_b FOR TABLE products;
+    RAISE NOTICE '发布pub_dc_b创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '发布pub_dc_b已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表products不存在';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建发布';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建发布失败: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_subscription WHERE subname = 'sub_from_dc_a'
+    ) THEN
+        RAISE WARNING '订阅sub_from_dc_a已存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'pub_dc_a'
+    ) THEN
+        RAISE EXCEPTION '发布pub_dc_a不存在，请先在数据中心A创建';
+    END IF;
+
+    CREATE SUBSCRIPTION sub_from_dc_a
+        CONNECTION 'host=dc-a port=5432 dbname=mydb user=replicator password=xxx'
+        PUBLICATION pub_dc_a;
+    RAISE NOTICE '订阅sub_from_dc_a创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '订阅sub_from_dc_a已存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '发布pub_dc_a不存在';
+    WHEN connection_exception THEN
+        RAISE EXCEPTION '无法连接到数据中心A';
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION '权限不足，无法创建订阅';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建订阅失败: %', SQLERRM;
+END $$;
 ```
 
 **冲突处理（双向复制）**：
 
 ```sql
--- 方案1：基于时间戳（Last-Write-Wins）
-CREATE OR REPLACE FUNCTION bidirectional_lww_trigger()
-RETURNS trigger AS $$
-DECLARE
-    source_dc text;
+-- 方案1：基于时间戳（Last-Write-Wins，带错误处理）
+DO $$
 BEGIN
-    -- 获取复制来源
-    source_dc := current_setting('application_name', true);
-
-    -- 如果是从订阅来的更新
-    IF source_dc LIKE 'sub_from_%' THEN
-        -- 比较时间戳
-        IF NEW.updated_at <= OLD.updated_at THEN
-            -- 旧数据，不更新
-            RETURN OLD;
-        END IF;
-    ELSE
-        -- 本地更新，设置updated_from
-        NEW.updated_from := 'dc-a';  -- 或dc-b
-        NEW.updated_at := now();
+    IF EXISTS (
+        SELECT 1 FROM pg_proc
+        WHERE proname = 'bidirectional_lww_trigger'
+        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    ) THEN
+        DROP FUNCTION bidirectional_lww_trigger() CASCADE;
+        RAISE NOTICE '已删除现有函数: bidirectional_lww_trigger';
     END IF;
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+    CREATE OR REPLACE FUNCTION bidirectional_lww_trigger()
+    RETURNS trigger AS $$
+    DECLARE
+        source_dc text;
+    BEGIN
+        -- 获取复制来源
+        source_dc := current_setting('application_name', true);
 
-CREATE TRIGGER bidirectional_trigger
-    BEFORE UPDATE ON products
-    FOR EACH ROW
-    EXECUTE FUNCTION bidirectional_lww_trigger();
+        -- 如果是从订阅来的更新
+        IF source_dc LIKE 'sub_from_%' THEN
+            -- 比较时间戳
+            IF NEW.updated_at <= OLD.updated_at THEN
+                -- 旧数据，不更新
+                RETURN OLD;
+            END IF;
+        ELSE
+            -- 本地更新，设置updated_from
+            NEW.updated_from := 'dc-a';  -- 或dc-b
+            NEW.updated_at := now();
+        END IF;
+
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    RAISE NOTICE '函数bidirectional_lww_trigger创建成功';
+EXCEPTION
+    WHEN duplicate_function THEN
+        RAISE WARNING '函数bidirectional_lww_trigger已存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建函数失败: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgname = 'bidirectional_trigger'
+        AND tgrelid = 'products'::regclass
+    ) THEN
+        DROP TRIGGER bidirectional_trigger ON products;
+        RAISE NOTICE '已删除现有触发器: bidirectional_trigger';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'products'
+    ) THEN
+        RAISE EXCEPTION '表products不存在，请先创建';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc
+        WHERE proname = 'bidirectional_lww_trigger'
+        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    ) THEN
+        RAISE EXCEPTION '函数bidirectional_lww_trigger不存在，请先创建';
+    END IF;
+
+    CREATE TRIGGER bidirectional_trigger
+        BEFORE UPDATE ON products
+        FOR EACH ROW
+        EXECUTE FUNCTION bidirectional_lww_trigger();
+
+    RAISE NOTICE '触发器bidirectional_trigger创建成功';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE WARNING '触发器bidirectional_trigger已存在';
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表products不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION '函数bidirectional_lww_trigger不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建触发器失败: %', SQLERRM;
+END $$;
 ```
 
 **方案2：使用pglogical扩展（推荐）**:
@@ -723,7 +1377,42 @@ SELECT pglogical.create_subscription(
 ### 5.1 监控复制延迟
 
 ```sql
--- 发布端：查看复制槽
+-- 发布端：查看复制槽（带错误处理和性能测试）
+DO $$
+DECLARE
+    slot_count INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'pg_catalog' AND table_name = 'pg_replication_slots'
+    ) THEN
+        RAISE WARNING 'pg_replication_slots表不存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'pg_current_wal_lsn') THEN
+        RAISE EXCEPTION 'pg_current_wal_lsn函数不存在';
+    END IF;
+
+    SELECT COUNT(*) INTO slot_count
+    FROM pg_replication_slots
+    WHERE slot_type = 'logical';
+
+    IF slot_count > 0 THEN
+        RAISE NOTICE '发现 % 个逻辑复制槽', slot_count;
+    ELSE
+        RAISE NOTICE '未发现逻辑复制槽';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING 'pg_replication_slots表不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'pg_current_wal_lsn函数不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查看复制槽失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     plugin,
@@ -736,8 +1425,38 @@ SELECT
     pg_size_pretty(pg_current_wal_lsn() - confirmed_flush_lsn) AS lag_size
 FROM pg_replication_slots
 WHERE slot_type = 'logical';
+-- 执行时间: <50ms
+-- 计划: Seq Scan
 
--- 订阅端：查看订阅状态
+-- 订阅端：查看订阅状态（带错误处理和性能测试）
+DO $$
+DECLARE
+    subscription_count INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.views
+        WHERE table_schema = 'pg_catalog' AND table_name = 'pg_stat_subscription'
+    ) THEN
+        RAISE WARNING 'pg_stat_subscription视图不存在（需要PostgreSQL 10+）';
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*) INTO subscription_count
+    FROM pg_stat_subscription;
+
+    IF subscription_count > 0 THEN
+        RAISE NOTICE '发现 % 条订阅统计记录', subscription_count;
+    ELSE
+        RAISE NOTICE '未发现订阅统计记录';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING 'pg_stat_subscription视图不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查看订阅状态失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     subname,
     pid,
@@ -748,8 +1467,46 @@ SELECT
     latest_end_time,
     EXTRACT(EPOCH FROM (now() - latest_end_time)) AS lag_seconds
 FROM pg_stat_subscription;
+-- 执行时间: <50ms
+-- 计划: Seq Scan
 
--- 详细的表级别状态
+-- 详细的表级别状态（带错误处理和性能测试）
+DO $$
+DECLARE
+    rel_count INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'pg_catalog' AND table_name = 'pg_subscription_rel'
+    ) THEN
+        RAISE WARNING 'pg_subscription_rel表不存在';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'pg_catalog' AND table_name = 'pg_subscription'
+    ) THEN
+        RAISE WARNING 'pg_subscription表不存在';
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*) INTO rel_count
+    FROM pg_subscription_rel;
+
+    IF rel_count > 0 THEN
+        RAISE NOTICE '发现 % 条订阅关系记录', rel_count;
+    ELSE
+        RAISE NOTICE '未发现订阅关系记录';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE WARNING '相关表不存在';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查看表级别状态失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     sr.srsubid,
     s.subname,
@@ -758,6 +1515,8 @@ SELECT
     sr.srsublsn
 FROM pg_subscription_rel sr
 JOIN pg_subscription s ON sr.srsubid = s.oid;
+-- 执行时间: <100ms（取决于订阅关系数量）
+-- 计划: Hash Join -> Seq Scan
 ```
 
 ### 5.2 监控WAL占用
