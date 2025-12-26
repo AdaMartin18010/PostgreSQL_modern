@@ -92,22 +92,195 @@
 **PostgreSQL配置**：
 
 ```sql
--- 库存管理：CP模式
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-UPDATE inventory SET quantity = quantity - 1
-WHERE product_id = 1 AND quantity > 0;
-COMMIT;
+-- 电商场景CAP-ACID选择（带完整错误处理）
+-- 库存管理：CP模式（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory') THEN
+            RAISE WARNING '表 inventory 不存在，无法执行库存管理';
+            RETURN;
+        END IF;
 
--- 订单处理：AP模式
-BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
-INSERT INTO orders (user_id, product_id, quantity) VALUES (1, 1, 1);
-COMMIT;
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        RAISE NOTICE '开始库存管理（CP模式，SERIALIZABLE隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 支付处理：CP模式
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-INSERT INTO payments (account_id, amount) VALUES (1, 100);
-COMMIT;
+    BEGIN
+        BEGIN;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE inventory SET quantity = quantity - 1
+            WHERE product_id = 1 AND quantity > 0;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '库存不足或商品不存在';
+            ELSE
+                RAISE NOTICE '库存扣减成功（CP模式，强一致性）';
+            END IF;
+        EXCEPTION
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务需要重试';
+                RAISE;
+            WHEN check_violation THEN
+                RAISE WARNING '库存约束违反（库存不能为负）';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新库存失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '库存管理事务提交成功';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '序列化冲突，事务已中止，需要重试';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 订单处理：AP模式（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行订单处理';
+            RETURN;
+        END IF;
+
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '开始订单处理（AP模式，READ COMMITTED隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO orders (user_id, product_id, quantity) VALUES (1, 1, 1);
+
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+            IF v_inserted > 0 THEN
+                RAISE NOTICE '订单创建成功（AP模式，高可用性）';
+            ELSE
+                RAISE WARNING '订单创建失败';
+            END IF;
+        EXCEPTION
+            WHEN foreign_key_violation THEN
+                RAISE WARNING '外键约束违反（user_id或product_id不存在）';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '创建订单失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '订单处理事务提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 支付处理：CP模式（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+    v_payment_id INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'payments') THEN
+            RAISE WARNING '表 accounts 或 payments 不存在，无法执行支付处理';
+            RETURN;
+        END IF;
+
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        RAISE NOTICE '开始支付处理（CP模式，SERIALIZABLE隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '账户 1 不存在或余额不足';
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '账户余额扣减成功';
+        EXCEPTION
+            WHEN check_violation THEN
+                RAISE WARNING '余额约束违反（余额不能为负）';
+                RAISE;
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新账户余额失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN
+            INSERT INTO payments (account_id, amount) VALUES (1, 100)
+            RETURNING payment_id INTO v_payment_id;
+
+            RAISE NOTICE '支付记录创建成功：payment_id=%', v_payment_id;
+        EXCEPTION
+            WHEN foreign_key_violation THEN
+                RAISE WARNING '外键约束违反（account_id不存在）';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '创建支付记录失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '支付处理事务提交成功（CP模式，强一致性）';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '序列化冲突，事务已中止，需要重试';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -143,17 +316,145 @@ COMMIT;
 **PostgreSQL配置**：
 
 ```sql
--- 金融场景：CP模式
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- 金融场景：CP模式配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 转账事务
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-UPDATE accounts SET balance = balance + 100 WHERE id = 2;
-INSERT INTO transactions (from_account, to_account, amount) VALUES (1, 2, 100);
-COMMIT;
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+            RAISE NOTICE '默认事务隔离级别已设置为 serializable（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 转账事务（带完整错误处理）
+DO $$
+DECLARE
+    v_from_account INTEGER := 1;
+    v_to_account INTEGER := 2;
+    v_amount NUMERIC := 100.00;
+    v_updated INTEGER;
+    v_transaction_id INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transactions') THEN
+            RAISE WARNING '表 accounts 或 transactions 不存在，无法执行转账事务';
+            RETURN;
+        END IF;
+
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        RAISE NOTICE '开始转账事务（CP模式，SERIALIZABLE隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+
+        -- 扣减转出账户余额（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = balance - v_amount WHERE id = v_from_account;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '转出账户 % 不存在或余额不足', v_from_account;
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '转出账户余额扣减成功';
+        EXCEPTION
+            WHEN check_violation THEN
+                RAISE WARNING '余额约束违反（余额不能为负）';
+                RAISE;
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新转出账户余额失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 增加转入账户余额（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = balance + v_amount WHERE id = v_to_account;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '转入账户 % 不存在', v_to_account;
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '转入账户余额增加成功';
+        EXCEPTION
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新转入账户余额失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 记录交易（带错误处理）
+        BEGIN
+            INSERT INTO transactions (from_account, to_account, amount)
+            VALUES (v_from_account, v_to_account, v_amount)
+            RETURNING transaction_id INTO v_transaction_id;
+
+            RAISE NOTICE '交易记录创建成功：transaction_id=%', v_transaction_id;
+        EXCEPTION
+            WHEN foreign_key_violation THEN
+                RAISE WARNING '外键约束违反（账户不存在）';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '创建交易记录失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '转账事务提交成功（CP模式，强一致性）';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '序列化冲突，事务已中止，需要重试';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -189,15 +490,88 @@ COMMIT;
 **PostgreSQL配置**：
 
 ```sql
--- 日志场景：AP模式
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- 日志场景：AP模式配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 日志写入
-BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
-INSERT INTO logs (level, message, timestamp) VALUES ('INFO', 'Log message', NOW());
-COMMIT;
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+            RAISE NOTICE '默认事务隔离级别已设置为 read committed（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 日志写入（带完整错误处理）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE WARNING '表 logs 不存在，无法执行日志写入';
+            RETURN;
+        END IF;
+
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '开始日志写入（AP模式，READ COMMITTED隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO logs (level, message, timestamp) VALUES ('INFO', 'Log message', NOW());
+
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+            IF v_inserted > 0 THEN
+                RAISE NOTICE '日志写入成功（AP模式，高可用性）';
+            ELSE
+                RAISE WARNING '日志写入失败';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '日志写入失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '日志写入事务提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -233,15 +607,88 @@ COMMIT;
 **PostgreSQL配置**：
 
 ```sql
--- 时序场景：AP模式
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- 时序场景：AP模式配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 时序数据写入
-BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
-INSERT INTO metrics (metric_name, value, timestamp) VALUES ('cpu_usage', 80.5, NOW());
-COMMIT;
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+            RAISE NOTICE '默认事务隔离级别已设置为 read committed（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 时序数据写入（带完整错误处理）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'metrics') THEN
+            RAISE WARNING '表 metrics 不存在，无法执行时序数据写入';
+            RETURN;
+        END IF;
+
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '开始时序数据写入（AP模式，READ COMMITTED隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO metrics (metric_name, value, timestamp) VALUES ('cpu_usage', 80.5, NOW());
+
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+            IF v_inserted > 0 THEN
+                RAISE NOTICE '时序数据写入成功（AP模式，高可用性）';
+            ELSE
+                RAISE WARNING '时序数据写入失败';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '时序数据写入失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '时序数据写入事务提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

@@ -104,13 +104,59 @@ PostgreSQL逻辑复制是一种基于逻辑解码的表级复制机制，通过�
 **PostgreSQL实现**：
 
 ```sql
--- 主库：创建发布
-CREATE PUBLICATION mypub FOR ALL TABLES;
+-- 主库：创建发布（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'mypub') THEN
+            RAISE NOTICE '发布 mypub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION mypub FOR ALL TABLES;
+                RAISE NOTICE '发布 mypub 创建成功（包含所有表）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 mypub 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 备库：创建订阅
-CREATE SUBSCRIPTION mysub
-CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
-PUBLICATION mypub;
+-- 备库：创建订阅（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'mysub') THEN
+            RAISE NOTICE '订阅 mysub 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION mysub
+                CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
+                PUBLICATION mypub;
+                RAISE NOTICE '订阅 mysub 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 mysub 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 1.3 逻辑复制配置
@@ -118,18 +164,64 @@ PUBLICATION mypub;
 **基本配置**：
 
 ```sql
--- 主库配置（postgresql.conf）
-wal_level = logical
-max_replication_slots = 10
-max_wal_senders = 10
+-- 主库配置（postgresql.conf，这些是配置文件设置，不是SQL语句）
+-- wal_level = logical
+-- max_replication_slots = 10
+-- max_wal_senders = 10
 
--- 主库创建发布
-CREATE PUBLICATION mypub FOR ALL TABLES;
+-- 主库创建发布（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'mypub') THEN
+            RAISE NOTICE '发布 mypub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION mypub FOR ALL TABLES;
+                RAISE NOTICE '发布 mypub 创建成功（包含所有表）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 mypub 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 备库创建订阅
-CREATE SUBSCRIPTION mysub
-CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator password=password'
-PUBLICATION mypub;
+-- 备库创建订阅（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'mysub') THEN
+            RAISE NOTICE '订阅 mysub 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION mysub
+                CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator password=password'
+                PUBLICATION mypub;
+                RAISE NOTICE '订阅 mysub 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 mysub 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -170,11 +262,51 @@ $$
 **PostgreSQL配置**：
 
 ```sql
--- 逻辑复制（最终一致性）
-CREATE PUBLICATION mypub FOR ALL TABLES;
-CREATE SUBSCRIPTION mysub
-CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
-PUBLICATION mypub;
+-- 逻辑复制（最终一致性，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 创建发布
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'mypub') THEN
+            RAISE NOTICE '发布 mypub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION mypub FOR ALL TABLES;
+                RAISE NOTICE '发布 mypub 创建成功（包含所有表，最终一致性）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 mypub 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        -- 创建订阅
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'mysub') THEN
+            RAISE NOTICE '订阅 mysub 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION mysub
+                CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
+                PUBLICATION mypub;
+                RAISE NOTICE '订阅 mysub 创建成功（最终一致性）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 mysub 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 最终一致性收敛时间
@@ -220,14 +352,69 @@ $$
 **PostgreSQL配置**：
 
 ```sql
--- 创建复制槽
-SELECT pg_create_logical_replication_slot('mysub_slot', 'pgoutput');
+-- 创建复制槽（带错误处理）
+DO $$
+DECLARE
+    v_slot_name TEXT := 'mysub_slot';
+    v_plugin_name TEXT := 'pgoutput';
+    v_slot_exists BOOLEAN;
+BEGIN
+    BEGIN
+        -- 检查复制槽是否已存在
+        SELECT EXISTS (
+            SELECT 1 FROM pg_replication_slots WHERE slot_name = v_slot_name
+        ) INTO v_slot_exists;
 
--- 配置复制槽
-CREATE SUBSCRIPTION mysub
-CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
-PUBLICATION mypub
-WITH (slot_name = 'mysub_slot');
+        IF v_slot_exists THEN
+            RAISE NOTICE '复制槽 % 已存在', v_slot_name;
+        ELSE
+            BEGIN
+                PERFORM pg_create_logical_replication_slot(v_slot_name, v_plugin_name);
+                RAISE NOTICE '复制槽 % 创建成功（插件：%）', v_slot_name, v_plugin_name;
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '复制槽 % 已存在', v_slot_name;
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建复制槽失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 配置复制槽（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'mysub') THEN
+            RAISE NOTICE '订阅 mysub 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION mysub
+                CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
+                PUBLICATION mypub
+                WITH (slot_name = 'mysub_slot');
+                RAISE NOTICE '订阅 mysub 创建成功（使用复制槽 mysub_slot）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 mysub 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.2 分区故障处理

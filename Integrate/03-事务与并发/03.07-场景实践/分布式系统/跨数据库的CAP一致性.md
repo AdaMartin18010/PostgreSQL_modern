@@ -86,11 +86,40 @@ PostgreSQL (CP/AP) ←→ MySQL (CP/AP)
 **PostgreSQL-MySQL集成示例**：
 
 ```sql
--- PostgreSQL逻辑复制到MySQL
-CREATE PUBLICATION mysqlpub FOR TABLE users;
+-- PostgreSQL逻辑复制到MySQL（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建发布';
+            RETURN;
+        END IF;
 
--- 使用Debezium将PostgreSQL变更发送到MySQL
--- 配置：Debezium PostgreSQL Connector → MySQL
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'mysqlpub') THEN
+            RAISE NOTICE '发布 mysqlpub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION mysqlpub FOR TABLE users;
+                RAISE NOTICE '发布 mysqlpub 创建成功（PostgreSQL逻辑复制到MySQL）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 mysqlpub 已存在';
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 users 不存在，无法创建发布';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        RAISE NOTICE '使用Debezium将PostgreSQL变更发送到MySQL';
+        RAISE NOTICE '配置：Debezium PostgreSQL Connector → MySQL';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 1.3 CAP一致性保证
@@ -136,11 +165,40 @@ PostgreSQL (CP/AP) ←→ MongoDB (CP/AP)
 **PostgreSQL-MongoDB集成示例**：
 
 ```sql
--- PostgreSQL逻辑复制到MongoDB
-CREATE PUBLICATION mongopub FOR TABLE products;
+-- PostgreSQL逻辑复制到MongoDB（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '表 products 不存在，无法创建发布';
+            RETURN;
+        END IF;
 
--- 使用Debezium将PostgreSQL变更发送到MongoDB
--- 配置：Debezium PostgreSQL Connector → MongoDB
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'mongopub') THEN
+            RAISE NOTICE '发布 mongopub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION mongopub FOR TABLE products;
+                RAISE NOTICE '发布 mongopub 创建成功（PostgreSQL逻辑复制到MongoDB）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 mongopub 已存在';
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 products 不存在，无法创建发布';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        RAISE NOTICE '使用Debezium将PostgreSQL变更发送到MongoDB';
+        RAISE NOTICE '配置：Debezium PostgreSQL Connector → MongoDB';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 CAP一致性保证

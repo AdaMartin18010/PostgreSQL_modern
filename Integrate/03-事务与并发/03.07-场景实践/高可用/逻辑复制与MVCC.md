@@ -22,10 +22,6 @@
   - [🔍 第一部分：逻辑复制机制](#-第一部分逻辑复制机制)
     - [1.1 逻辑复制原理](#11-逻辑复制原理)
       - [逻辑解码](#逻辑解码)
-      - [变更捕获](#变更捕获)
-      - [变更应用](#变更应用)
-    - [1.2 发布订阅模型](#12-发布订阅模型)
-      - [发布端（Publisher）](#发布端publisher)
       - [订阅端（Subscriber）](#订阅端subscriber)
       - [复制流程](#复制流程)
     - [1.3 PostgreSQL 17优化](#13-postgresql-17优化)
@@ -40,12 +36,8 @@
       - [2.2.1 变更捕获](#221-变更捕获)
       - [2.2.2 变更应用](#222-变更应用)
       - [冲突处理](#冲突处理)
-    - [2.3 事务可见性](#23-事务可见性)
-      - [发布端可见性](#发布端可见性)
       - [订阅端可见性](#订阅端可见性)
       - [延迟影响](#延迟影响)
-  - [📊 第三部分：性能优化](#-第三部分性能优化)
-    - [3.1 复制延迟优化](#31-复制延迟优化)
     - [3.2 批量处理优化](#32-批量处理优化)
     - [3.3 冲突处理优化](#33-冲突处理优化)
   - [🔧 第四部分：故障处理](#-第四部分故障处理)
@@ -73,64 +65,164 @@
 #### 逻辑解码
 
 ```sql
--- 逻辑解码配置
+-- 逻辑解码配置（带说明）
+-- 注意：以下配置需要在postgresql.conf文件中设置，然后重启PostgreSQL
 -- 发布端配置（postgresql.conf）
-wal_level = logical;
-max_replication_slots = 10;
-max_wal_senders = 10;
+-- wal_level = logical;
+-- max_replication_slots = 10;
+-- max_wal_senders = 10;
 
--- 逻辑解码原理：
--- 1. 从WAL中解码逻辑变更
--- 2. 转换为逻辑变更记录
--- 3. 传输到订阅端
--- 4. 应用到订阅端
-
--- MVCC影响：
--- 逻辑解码基于WAL，不影响MVCC机制
--- 但影响WAL保留和空间使用
-```
+-- 逻辑解码原理说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '逻辑解码原理：';
+        RAISE NOTICE '1. 从WAL中解码逻辑变更';
+        RAISE NOTICE '2. 转换为逻辑变更记录';
+        RAISE NOTICE '3. 传输到订阅端';
+        RAISE NOTICE '4. 应用到订阅端';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 逻辑解码基于WAL，不影响MVCC机制';
+        RAISE NOTICE '- 但影响WAL保留和空间使用';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 #### 变更捕获
 
 ```sql
--- 创建发布
-CREATE PUBLICATION my_publication FOR TABLE accounts, orders;
+-- 创建发布（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 accounts 或 orders 不存在，无法创建发布';
+            RETURN;
+        END IF;
 
--- 发布配置
-ALTER PUBLICATION my_publication SET (
-    publish = 'insert,update,delete'  -- 发布的操作类型
-);
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'my_publication') THEN
+            RAISE NOTICE '发布 my_publication 已存在';
+        ELSE
+            CREATE PUBLICATION my_publication FOR TABLE accounts, orders;
+            RAISE NOTICE '发布 my_publication 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE WARNING '发布 my_publication 已存在';
+        WHEN undefined_table THEN
+            RAISE WARNING '表不存在，无法创建发布';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建发布失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 变更捕获：
--- 1. 捕获INSERT操作
--- 2. 捕获UPDATE操作
--- 3. 捕获DELETE操作
--- 4. 不捕获SELECT操作
+-- 发布配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'my_publication') THEN
+            RAISE WARNING '发布 my_publication 不存在，无法配置';
+            RETURN;
+        END IF;
 
--- MVCC影响：
--- 变更捕获不影响MVCC可见性判断
--- 但影响WAL生成和保留
-```
+        ALTER PUBLICATION my_publication SET (
+            publish = 'insert,update,delete'  -- 发布的操作类型
+        );
+        RAISE NOTICE '发布 my_publication 配置成功';
+    EXCEPTION
+        WHEN undefined_object THEN
+            RAISE WARNING '发布 my_publication 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '配置发布失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 变更捕获说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '变更捕获：';
+        RAISE NOTICE '1. 捕获INSERT操作';
+        RAISE NOTICE '2. 捕获UPDATE操作';
+        RAISE NOTICE '3. 捕获DELETE操作';
+        RAISE NOTICE '4. 不捕获SELECT操作';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 变更捕获不影响MVCC可见性判断';
+        RAISE NOTICE '- 但影响WAL生成和保留';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 #### 变更应用
 
 ```sql
--- 创建订阅
-CREATE SUBSCRIPTION my_subscription
-CONNECTION 'host=primary dbname=postgres'
-PUBLICATION my_publication;
+-- 创建订阅（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'my_publication') THEN
+            RAISE WARNING '发布 my_publication 不存在，无法创建订阅';
+            RETURN;
+        END IF;
 
--- 变更应用：
--- 1. 接收逻辑变更
--- 2. 应用变更到订阅端
--- 3. 保证事务一致性
--- 4. 处理冲突
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'my_subscription') THEN
+            RAISE NOTICE '订阅 my_subscription 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION my_subscription
+                CONNECTION 'host=primary dbname=postgres'
+                PUBLICATION my_publication;
+                RAISE NOTICE '订阅 my_subscription 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 my_subscription 已存在';
+                WHEN connection_exception THEN
+                    RAISE WARNING '无法连接到主节点，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN undefined_object THEN
+            RAISE WARNING '发布 my_publication 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- MVCC影响：
--- 变更应用创建新版本
--- 版本链在订阅端独立管理
--- 不影响发布端MVCC
-```
+-- 变更应用说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '变更应用：';
+        RAISE NOTICE '1. 接收逻辑变更';
+        RAISE NOTICE '2. 应用变更到订阅端';
+        RAISE NOTICE '3. 保证事务一致性';
+        RAISE NOTICE '4. 处理冲突';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 变更应用创建新版本';
+        RAISE NOTICE '- 版本链在订阅端独立管理';
+        RAISE NOTICE '- 不影响发布端MVCC';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 ### 1.2 发布订阅模型
 
@@ -361,25 +453,57 @@ PostgreSQL 17性能优化：
 #### 冲突处理
 
 ```sql
--- 冲突处理配置
-ALTER SUBSCRIPTION my_subscription SET (
-    conflict_resolution = 'error'  -- 冲突处理策略
-);
+-- 冲突处理配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'my_subscription') THEN
+            RAISE WARNING '订阅 my_subscription 不存在，无法配置冲突处理';
+            RETURN;
+        END IF;
 
--- 冲突处理策略：
--- 1. error：报错（默认）
--- 2. apply_remote：应用远程变更
--- 3. keep_local：保留本地变更
+        BEGIN
+            ALTER SUBSCRIPTION my_subscription SET (
+                conflict_resolution = 'error'  -- 冲突处理策略
+            );
+            RAISE NOTICE '订阅 my_subscription 的冲突处理配置完成';
+        EXCEPTION
+            WHEN undefined_object THEN
+                RAISE WARNING '订阅 my_subscription 不存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '配置冲突处理失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 冲突类型：
--- 1. 唯一约束冲突
--- 2. 外键约束冲突
--- 3. 检查约束冲突
-
--- MVCC影响：
--- 冲突处理不影响MVCC机制
--- 但影响数据一致性
-```
+-- 冲突处理策略说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '冲突处理策略：';
+        RAISE NOTICE '1. error：报错（默认）';
+        RAISE NOTICE '2. apply_remote：应用远程变更';
+        RAISE NOTICE '3. keep_local：保留本地变更';
+        RAISE NOTICE '';
+        RAISE NOTICE '冲突类型：';
+        RAISE NOTICE '1. 唯一约束冲突';
+        RAISE NOTICE '2. 外键约束冲突';
+        RAISE NOTICE '3. 检查约束冲突';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 冲突处理不影响MVCC机制';
+        RAISE NOTICE '- 但影响数据一致性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 ### 2.3 事务可见性
 
@@ -428,7 +552,19 @@ ALTER SUBSCRIPTION my_subscription SET (
 #### 延迟影响
 
 ```sql
--- 监控逻辑复制延迟
+-- 监控逻辑复制延迟（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控逻辑复制延迟';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     subname,
     pid,
@@ -438,11 +574,20 @@ SELECT
     pg_wal_lsn_diff(pg_current_wal_lsn(), received_lsn) AS lag_bytes
 FROM pg_stat_subscription;
 
--- 延迟影响：
--- 1. 读延迟：订阅端可能读到旧数据
--- 2. 故障恢复：延迟影响恢复时间
--- 3. MVCC：延迟影响快照一致性
-```
+-- 延迟影响说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '延迟影响：';
+        RAISE NOTICE '1. 读延迟：订阅端可能读到旧数据';
+        RAISE NOTICE '2. 故障恢复：延迟影响恢复时间';
+        RAISE NOTICE '3. MVCC：延迟影响快照一致性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 ---
 
@@ -472,21 +617,53 @@ FROM pg_stat_subscription;
 ### 3.2 批量处理优化
 
 ```sql
--- 批量处理配置
-ALTER SUBSCRIPTION my_subscription SET (
-    batch_size = 1000,  -- 批量大小
-    batch_interval = '1s'  -- 批量间隔
-);
+-- 批量处理配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'my_subscription') THEN
+            RAISE WARNING '订阅 my_subscription 不存在，无法配置批量处理';
+            RETURN;
+        END IF;
 
--- 批量处理效果：
--- 1. 减少网络往返
--- 2. 提高吞吐量
--- 3. 降低延迟
+        BEGIN
+            ALTER SUBSCRIPTION my_subscription SET (
+                batch_size = 1000,  -- 批量大小
+                batch_interval = '1s'  -- 批量间隔
+            );
+            RAISE NOTICE '订阅 my_subscription 的批量处理配置完成';
+        EXCEPTION
+            WHEN undefined_object THEN
+                RAISE WARNING '订阅 my_subscription 不存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '配置批量处理失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- MVCC影响：
--- 批量处理不影响MVCC机制
--- 但影响复制延迟
-```
+-- 批量处理效果说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '批量处理效果：';
+        RAISE NOTICE '1. 减少网络往返';
+        RAISE NOTICE '2. 提高吞吐量';
+        RAISE NOTICE '3. 降低延迟';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 批量处理不影响MVCC机制';
+        RAISE NOTICE '- 但影响复制延迟';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 ### 3.3 冲突处理优化
 

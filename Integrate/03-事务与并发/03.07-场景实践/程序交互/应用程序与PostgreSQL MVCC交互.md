@@ -260,13 +260,61 @@ for row in cur:
 **游标使用**：
 
 ```sql
-BEGIN;
-DECLARE account_cursor CURSOR FOR SELECT * FROM accounts;
-FETCH account_cursor;  -- 看到快照时的数据
--- 其他事务可能已更新数据
-FETCH account_cursor;  -- 仍然看到快照时的数据
-CLOSE account_cursor;
-COMMIT;
+-- 游标与MVCC（带错误处理）
+DO $$
+DECLARE
+    account_cursor CURSOR FOR SELECT * FROM accounts;
+    account_record RECORD;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法使用游标';
+            RETURN;
+        END IF;
+
+        BEGIN
+            -- 打开游标
+            OPEN account_cursor;
+            RAISE NOTICE '游标已打开，开始获取数据';
+
+            -- 第一次获取（看到快照时的数据）
+            FETCH account_cursor INTO account_record;
+            IF FOUND THEN
+                RAISE NOTICE '第一次获取：看到快照时的数据';
+            ELSE
+                RAISE NOTICE '第一次获取：未找到数据';
+            END IF;
+
+            -- 其他事务可能已更新数据，但游标仍然看到快照时的数据
+            -- 第二次获取（仍然看到快照时的数据）
+            FETCH account_cursor INTO account_record;
+            IF FOUND THEN
+                RAISE NOTICE '第二次获取：仍然看到快照时的数据（MVCC快照隔离）';
+            ELSE
+                RAISE NOTICE '第二次获取：未找到更多数据';
+            END IF;
+
+            -- 关闭游标
+            CLOSE account_cursor;
+            RAISE NOTICE '游标已关闭';
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- 确保游标被关闭
+                BEGIN
+                    CLOSE account_cursor;
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        NULL;
+                END;
+                RAISE WARNING '游标操作失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

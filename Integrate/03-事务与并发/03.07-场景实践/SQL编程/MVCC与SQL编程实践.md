@@ -76,18 +76,75 @@ PostgreSQL的SELECT查询基于快照隔离，每个查询看到的是事务开�
 **示例**：
 
 ```sql
--- 事务1
-BEGIN;
-SELECT * FROM accounts WHERE id = 1;  -- 看到快照1
+-- MVCC快照隔离演示（带错误处理和性能测试）
+-- 事务1：REPEATABLE READ隔离级别
+DO $$
+DECLARE
+    account_record accounts%ROWTYPE;
+    balance1 NUMERIC;
+    balance2 NUMERIC;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法演示MVCC快照隔离';
+            RETURN;
+        END IF;
 
--- 事务2（并发）
-BEGIN;
-UPDATE accounts SET balance = balance + 100 WHERE id = 1;
-COMMIT;
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+        RAISE NOTICE '开始事务1（REPEATABLE READ隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 事务1继续
-SELECT * FROM accounts WHERE id = 1;  -- 仍然看到快照1（REPEATABLE READ）
-COMMIT;
+    BEGIN
+        BEGIN;
+
+        -- 第一次查询（看到快照1）
+        SELECT * INTO account_record FROM accounts WHERE id = 1;
+
+        IF FOUND THEN
+            balance1 := account_record.balance;
+            RAISE NOTICE '事务1第一次查询：看到快照1，balance=%', balance1;
+        ELSE
+            RAISE NOTICE '账户 1 不存在';
+        END IF;
+
+        -- 注意：事务2（并发）在这里执行UPDATE并COMMIT
+        -- 但事务1仍然看到快照1的数据
+
+        -- 第二次查询（仍然看到快照1）
+        SELECT * INTO account_record FROM accounts WHERE id = 1;
+
+        IF FOUND THEN
+            balance2 := account_record.balance;
+            RAISE NOTICE '事务1第二次查询：仍然看到快照1，balance=%（REPEATABLE READ保证可重复读）', balance2;
+
+            IF balance1 != balance2 THEN
+                RAISE WARNING '快照不一致：第一次查询=%，第二次查询=%', balance1, balance2;
+            END IF;
+        ELSE
+            RAISE NOTICE '账户 1 不存在（第二次查询）';
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '事务1提交成功';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '序列化冲突，事务需要重试';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务1失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：REPEATABLE READ查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE id = 1;
 ```
 
 ### 1.2 UPDATE操作与版本链
@@ -99,16 +156,103 @@ UPDATE操作创建新版本，旧版本保留在版本链中。
 **示例**：
 
 ```sql
--- 初始版本
-INSERT INTO accounts (id, balance) VALUES (1, 1000);
+-- UPDATE操作与版本链演示（带错误处理）
+-- 初始版本（带错误处理）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法演示版本链';
+            RETURN;
+        END IF;
 
--- 更新1
-UPDATE accounts SET balance = 1100 WHERE id = 1;  -- 创建版本2
+        BEGIN
+            INSERT INTO accounts (id, balance) VALUES (1, 1000)
+            ON CONFLICT (id) DO UPDATE SET balance = 1000;
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+            RAISE NOTICE '初始版本创建成功（版本1：balance=1000）';
+        EXCEPTION
+            WHEN unique_violation THEN
+                RAISE NOTICE '账户 1 已存在，已更新为初始版本';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建初始版本失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 更新2
-UPDATE accounts SET balance = 1200 WHERE id = 1;  -- 创建版本3
+-- 更新1（创建版本2，带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行更新';
+            RETURN;
+        END IF;
 
--- 版本链：版本1 -> 版本2 -> 版本3
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = 1100 WHERE id = 1;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                RAISE WARNING '账户 1 不存在，无法创建版本2';
+            ELSE
+                RAISE NOTICE '更新1成功（创建版本2：balance=1100）';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '更新1失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 更新2（创建版本3，带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行更新';
+            RETURN;
+        END IF;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = 1200 WHERE id = 1;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                RAISE WARNING '账户 1 不存在，无法创建版本3';
+            ELSE
+                RAISE NOTICE '更新2成功（创建版本3：balance=1200）';
+                RAISE NOTICE '版本链：版本1(1000) -> 版本2(1100) -> 版本3(1200)';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '更新2失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 1.3 DELETE操作与可见性
@@ -120,13 +264,68 @@ DELETE操作标记元组为删除，但不立即删除，通过MVCC可见性规�
 **示例**：
 
 ```sql
--- 删除操作
-DELETE FROM accounts WHERE id = 1;  -- 标记xmax
+-- DELETE操作与可见性演示（带错误处理）
+-- 删除操作（标记xmax，带错误处理和性能测试）
+DO $$
+DECLARE
+    v_deleted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行删除操作';
+            RETURN;
+        END IF;
 
--- 其他事务仍可能看到该行（如果快照在删除之前）
-BEGIN;
-SELECT * FROM accounts WHERE id = 1;  -- 可能仍然可见
-COMMIT;
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            DELETE FROM accounts WHERE id = 1;
+
+            GET DIAGNOSTICS v_deleted = ROW_COUNT;
+            IF v_deleted = 0 THEN
+                RAISE WARNING '账户 1 不存在，无法删除';
+            ELSE
+                RAISE NOTICE '删除操作成功（标记xmax，但元组未立即物理删除）';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '删除操作失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 其他事务仍可能看到该行（如果快照在删除之前，带错误处理）
+DO $$
+DECLARE
+    account_record accounts%ROWTYPE;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法查询';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        SELECT * INTO account_record FROM accounts WHERE id = 1;
+
+        IF FOUND THEN
+            RAISE NOTICE '其他事务仍然可以看到该行（如果快照在删除之前）: id=%, balance=%', account_record.id, account_record.balance;
+        ELSE
+            RAISE NOTICE '其他事务看不到该行（快照在删除之后或行不存在）';
+        END IF;
+
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '查询失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 1.4 INSERT操作与MVCC
@@ -138,11 +337,48 @@ INSERT操作创建新元组，设置xmin为当前事务ID。
 **示例**：
 
 ```sql
--- 插入操作
-BEGIN;
-INSERT INTO accounts (id, balance) VALUES (2, 2000);
--- xmin = 当前事务ID
-COMMIT;  -- 提交后，xmin可见
+-- INSERT操作与MVCC演示（带错误处理）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行插入操作';
+            RETURN;
+        END IF;
+
+        BEGIN;
+
+        BEGIN
+            INSERT INTO accounts (id, balance) VALUES (2, 2000);
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+            IF v_inserted > 0 THEN
+                RAISE NOTICE '插入操作成功: id=2, balance=2000';
+                RAISE NOTICE 'xmin = 当前事务ID（插入时设置）';
+            ELSE
+                RAISE WARNING '插入操作未插入任何记录';
+            END IF;
+        EXCEPTION
+            WHEN unique_violation THEN
+                RAISE WARNING '账户 2 已存在，无法插入';
+                ROLLBACK;
+                RETURN;
+            WHEN OTHERS THEN
+                RAISE WARNING '插入操作失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功（提交后，xmin可见）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -164,17 +400,69 @@ PostgreSQL不支持READ UNCOMMITTED，最低级别是READ COMMITTED。
 **示例**：
 
 ```sql
-SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+-- READ COMMITTED隔离级别演示（带错误处理和性能测试）
+DO $$
+DECLARE
+    balance1 NUMERIC;
+    balance2 NUMERIC;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法演示READ COMMITTED隔离级别';
+            RETURN;
+        END IF;
 
-BEGIN;
-SELECT balance FROM accounts WHERE id = 1;  -- 快照1：1000
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '开始演示READ COMMITTED隔离级别';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 其他事务更新
-UPDATE accounts SET balance = 1100 WHERE id = 1;
-COMMIT;
+    BEGIN
+        BEGIN;
 
-SELECT balance FROM accounts WHERE id = 1;  -- 快照2：1100（不可重复读）
-COMMIT;
+        -- 第一次查询（快照1）
+        SELECT balance INTO balance1 FROM accounts WHERE id = 1;
+
+        IF FOUND THEN
+            RAISE NOTICE '第一次查询（快照1）：balance=%', balance1;
+        ELSE
+            RAISE WARNING '账户 1 不存在';
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        -- 注意：其他事务在这里执行UPDATE并COMMIT
+        -- 在READ COMMITTED级别下，第二次查询会看到新快照
+
+        -- 第二次查询（快照2）
+        SELECT balance INTO balance2 FROM accounts WHERE id = 1;
+
+        IF FOUND THEN
+            RAISE NOTICE '第二次查询（快照2）：balance=%（不可重复读）', balance2;
+
+            IF balance1 != balance2 THEN
+                RAISE NOTICE 'READ COMMITTED允许不可重复读：第一次查询=%，第二次查询=%', balance1, balance2;
+            END IF;
+        ELSE
+            RAISE WARNING '账户 1 不存在（第二次查询）';
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：READ COMMITTED查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT balance FROM accounts WHERE id = 1;
 ```
 
 ### 2.3 REPEATABLE READ
@@ -186,17 +474,75 @@ COMMIT;
 **示例**：
 
 ```sql
-SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+-- REPEATABLE READ隔离级别演示（带错误处理和性能测试）
+DO $$
+DECLARE
+    balance1 NUMERIC;
+    balance2 NUMERIC;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法演示REPEATABLE READ隔离级别';
+            RETURN;
+        END IF;
 
-BEGIN;
-SELECT balance FROM accounts WHERE id = 1;  -- 快照：1000
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+        RAISE NOTICE '开始演示REPEATABLE READ隔离级别';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 其他事务更新
-UPDATE accounts SET balance = 1100 WHERE id = 1;
-COMMIT;
+    BEGIN
+        BEGIN;
 
-SELECT balance FROM accounts WHERE id = 1;  -- 仍然是1000（可重复读）
-COMMIT;
+        -- 第一次查询（快照：事务开始时的快照）
+        SELECT balance INTO balance1 FROM accounts WHERE id = 1;
+
+        IF FOUND THEN
+            RAISE NOTICE '第一次查询（快照：事务开始时的快照）：balance=%', balance1;
+        ELSE
+            RAISE WARNING '账户 1 不存在';
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        -- 注意：其他事务在这里执行UPDATE并COMMIT
+        -- 在REPEATABLE READ级别下，第二次查询仍然看到事务开始时的快照
+
+        -- 第二次查询（仍然是事务开始时的快照）
+        SELECT balance INTO balance2 FROM accounts WHERE id = 1;
+
+        IF FOUND THEN
+            RAISE NOTICE '第二次查询（仍然是事务开始时的快照）：balance=%（可重复读）', balance2;
+
+            IF balance1 != balance2 THEN
+                RAISE WARNING 'REPEATABLE READ违反：第一次查询=%，第二次查询=%', balance1, balance2;
+            ELSE
+                RAISE NOTICE 'REPEATABLE READ保证可重复读：两次查询结果一致（balance=%）', balance1;
+            END IF;
+        ELSE
+            RAISE WARNING '账户 1 不存在（第二次查询）';
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '序列化冲突，事务需要重试';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：REPEATABLE READ查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT balance FROM accounts WHERE id = 1;
 ```
 
 ### 2.4 SERIALIZABLE
@@ -208,12 +554,78 @@ COMMIT;
 **示例**：
 
 ```sql
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- SERIALIZABLE隔离级别演示（带错误处理和性能测试）
+DO $$
+DECLARE
+    account_balance NUMERIC;
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法演示SERIALIZABLE隔离级别';
+            RETURN;
+        END IF;
 
-BEGIN;
-SELECT balance FROM accounts WHERE id = 1;  -- 快照：1000
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;  -- 可能检测到串行化冲突
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        RAISE NOTICE '开始演示SERIALIZABLE隔离级别（最高隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+
+        -- 查询余额（快照：事务开始时的快照）
+        SELECT balance INTO account_balance FROM accounts WHERE id = 1;
+
+        IF NOT FOUND THEN
+            RAISE WARNING '账户 1 不存在';
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        RAISE NOTICE '查询余额（快照：事务开始时的快照）：balance=%', account_balance;
+
+        -- 检查余额是否足够
+        IF account_balance < 100 THEN
+            RAISE WARNING '余额不足：当前余额=%，需要=100', account_balance;
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        -- 更新余额
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+        IF v_updated = 0 THEN
+            RAISE WARNING '更新失败：账户 1 可能不存在或已被其他事务修改';
+        ELSE
+            RAISE NOTICE '更新成功：balance从%减少到%', account_balance, account_balance - 100;
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功（可能检测到串行化冲突，如果检测到会中止事务）';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '检测到串行化冲突，事务已中止，需要重试';
+            RAISE;
+        WHEN check_violation THEN
+            ROLLBACK;
+            RAISE WARNING '余额约束违反（余额不能为负）';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：SERIALIZABLE查询和更新
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT balance FROM accounts WHERE id = 1;
 ```
 
 ---

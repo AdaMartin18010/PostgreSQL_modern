@@ -181,11 +181,40 @@ PostgreSQL (CP/AP) → Elasticsearch (AP)
 **PostgreSQL-Elasticsearch集成示例**：
 
 ```sql
--- PostgreSQL逻辑复制到Elasticsearch
-CREATE PUBLICATION espub FOR TABLE products;
+-- PostgreSQL逻辑复制到Elasticsearch（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '表 products 不存在，无法创建发布';
+            RETURN;
+        END IF;
 
--- 使用Logstash将PostgreSQL数据同步到Elasticsearch
--- 配置：PostgreSQL → Logstash → Elasticsearch
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'espub') THEN
+            RAISE NOTICE '发布 espub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION espub FOR TABLE products;
+                RAISE NOTICE '发布 espub 创建成功（PostgreSQL逻辑复制到Elasticsearch）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 espub 已存在';
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 products 不存在，无法创建发布';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        RAISE NOTICE '使用Logstash将PostgreSQL数据同步到Elasticsearch';
+        RAISE NOTICE '配置：PostgreSQL → Logstash → Elasticsearch';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 搜索CAP优化
@@ -221,16 +250,61 @@ CREATE PUBLICATION espub FOR TABLE products;
 **PostgreSQL索引更新**：
 
 ```sql
--- 使用NOTIFY更新索引
+-- 使用NOTIFY更新索引（带完整错误处理）
 CREATE OR REPLACE FUNCTION index_update()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_notify_payload TEXT;
+    v_json_data JSONB;
 BEGIN
-    PERFORM pg_notify('index_update', json_build_object(
-        'table', TG_TABLE_NAME,
-        'action', TG_OP,
-        'data', row_to_json(NEW)
-    )::text);
-    RETURN NEW;
+    BEGIN
+        -- 构建JSON数据
+        BEGIN
+            IF TG_OP = 'DELETE' THEN
+                v_json_data := json_build_object(
+                    'table', TG_TABLE_NAME,
+                    'action', TG_OP,
+                    'data', row_to_json(OLD)
+                );
+            ELSE
+                v_json_data := json_build_object(
+                    'table', TG_TABLE_NAME,
+                    'action', TG_OP,
+                    'data', row_to_json(NEW)
+                );
+            END IF;
+
+            v_notify_payload := v_json_data::text;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '构建JSON数据失败: %', SQLERRM;
+                v_notify_payload := json_build_object(
+                    'table', TG_TABLE_NAME,
+                    'action', TG_OP,
+                    'error', 'Failed to serialize data'
+                )::text;
+        END;
+
+        -- 发送通知
+        BEGIN
+            PERFORM pg_notify('index_update', v_notify_payload);
+            RAISE NOTICE '索引更新通知已发送: table=%, action=%', TG_TABLE_NAME, TG_OP;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '发送索引更新通知失败: %', SQLERRM;
+                -- 不抛出异常，避免影响主事务
+        END;
+
+        -- 返回适当的行
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION 'index_update函数执行失败: %', SQLERRM;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 ```

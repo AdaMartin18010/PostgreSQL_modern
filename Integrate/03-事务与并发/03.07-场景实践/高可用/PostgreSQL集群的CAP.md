@@ -88,9 +88,27 @@ PostgreSQL集群是高可用架构的核心，理解集群的CAP选择，有助�
 **配置示例**：
 
 ```sql
--- 主库配置
-synchronous_standby_names = 'standby1'  -- 同步一个
-max_wal_senders = 10
+-- 主库配置（postgresql.conf，这些是配置文件设置，不是SQL语句）
+-- synchronous_standby_names = 'standby1'  -- 同步一个
+-- max_wal_senders = 10
+
+-- 或者使用ALTER SYSTEM设置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1';
+            RAISE NOTICE '同步备库名称已设置为 standby1';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 1.3 主主复制集群
@@ -106,13 +124,59 @@ max_wal_senders = 10
 **配置示例**：
 
 ```sql
--- 主库1创建发布
-CREATE PUBLICATION pub1 FOR ALL TABLES;
+-- 主库1创建发布（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub1') THEN
+            RAISE NOTICE '发布 pub1 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION pub1 FOR ALL TABLES;
+                RAISE NOTICE '发布 pub1 创建成功（主库1，包含所有表）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 pub1 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 主库2创建订阅
-CREATE SUBSCRIPTION sub1
-CONNECTION 'host=primary1 port=5432 dbname=mydb'
-PUBLICATION pub1;
+-- 主库2创建订阅（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub1') THEN
+            RAISE NOTICE '订阅 sub1 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION sub1
+                CONNECTION 'host=primary1 port=5432 dbname=mydb'
+                PUBLICATION pub1;
+                RAISE NOTICE '订阅 sub1 创建成功（主库2订阅主库1）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 sub1 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库1，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -132,13 +196,57 @@ PUBLICATION pub1;
 **PostgreSQL配置**：
 
 ```sql
--- CP模式：同步复制
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+-- CP模式：同步复制（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- AP模式：异步复制
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- AP模式：异步复制（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.2 主主复制CAP
@@ -188,7 +296,48 @@ ALTER SYSTEM SET synchronous_commit = 'local';
 **PostgreSQL实现**：
 
 ```sql
--- 监控集群状态
+-- 监控集群状态（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_application_name TEXT;
+    v_state TEXT;
+    v_sync_state TEXT;
+    v_lag_bytes BIGINT;
+BEGIN
+    BEGIN
+        BEGIN
+            SELECT
+                application_name,
+                state,
+                sync_state,
+                pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes
+            INTO v_application_name, v_state, v_sync_state, v_lag_bytes
+            FROM pg_stat_replication
+            LIMIT 1;
+
+            IF FOUND THEN
+                RAISE NOTICE '集群状态监控：';
+                RAISE NOTICE '  application_name: %', v_application_name;
+                RAISE NOTICE '  state: %', v_state;
+                RAISE NOTICE '  sync_state: %', v_sync_state;
+                RAISE NOTICE '  lag_bytes: %', v_lag_bytes;
+            ELSE
+                RAISE NOTICE '未找到复制连接';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '监控集群状态失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：监控集群状态
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     application_name,
     state,

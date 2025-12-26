@@ -223,7 +223,24 @@ SELECT citus_add_node('worker2', 5432);
 **Citus故障处理**：
 
 ```sql
--- 监控分片状态
+-- 监控分片状态（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法监控分片状态';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控Citus分片状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     shardid,
     shardstate,
@@ -232,8 +249,32 @@ SELECT
     nodeport
 FROM citus_shards;
 
--- 处理分片故障
-SELECT citus_rebalance_start();
+-- 处理分片故障（带错误处理）
+DO $$
+DECLARE
+    v_result TEXT;
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法启动分片重平衡';
+            RETURN;
+        END IF;
+
+        BEGIN
+            SELECT citus_rebalance_start() INTO v_result;
+            RAISE NOTICE '分片重平衡已启动: %', v_result;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '启动分片重平衡失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 分区恢复策略
@@ -259,10 +300,57 @@ SELECT citus_rebalance_start();
 **单分片事务示例**：
 
 ```sql
--- 单分片事务（user_id=100在同一分片）
-BEGIN;
+-- 单分片事务（user_id=100在同一分片，带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法执行分布式事务';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行单分片事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行单分片事务（user_id=100在同一分片）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+        UPDATE orders SET amount = amount + 100 WHERE user_id = 100;
+        GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+        IF v_updated = 0 THEN
+            RAISE WARNING '未更新任何记录（user_id=100可能不存在）';
+        ELSE
+            RAISE NOTICE '单分片事务更新成功: 更新了 % 条记录', v_updated;
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '单分片事务提交成功（强一致性）';
+    EXCEPTION
+        WHEN check_violation THEN
+            ROLLBACK;
+            RAISE WARNING '金额约束违反';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '单分片事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：单分片事务
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE orders SET amount = amount + 100 WHERE user_id = 100;
-COMMIT;  -- 单分片事务，强一致性
 ```
 
 ### 4.2 跨分片事务
@@ -276,11 +364,69 @@ COMMIT;  -- 单分片事务，强一致性
 **跨分片事务示例**：
 
 ```sql
--- 跨分片事务（user_id=100和200在不同分片）
-BEGIN;
+-- 跨分片事务（user_id=100和200在不同分片，带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated1 INTEGER;
+    v_updated2 INTEGER;
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法执行分布式事务';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行跨分片事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行跨分片事务（user_id=100和200在不同分片）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+        -- 第一个分片更新
+        UPDATE orders SET amount = amount + 100 WHERE user_id = 100;
+        GET DIAGNOSTICS v_updated1 = ROW_COUNT;
+
+        IF v_updated1 = 0 THEN
+            RAISE WARNING '第一个分片未更新任何记录（user_id=100可能不存在）';
+        ELSE
+            RAISE NOTICE '第一个分片更新成功: 更新了 % 条记录', v_updated1;
+        END IF;
+
+        -- 第二个分片更新
+        UPDATE orders SET amount = amount - 100 WHERE user_id = 200;
+        GET DIAGNOSTICS v_updated2 = ROW_COUNT;
+
+        IF v_updated2 = 0 THEN
+            RAISE WARNING '第二个分片未更新任何记录（user_id=200可能不存在）';
+        ELSE
+            RAISE NOTICE '第二个分片更新成功: 更新了 % 条记录', v_updated2;
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '跨分片事务提交成功（需要两阶段提交，强一致性）';
+    EXCEPTION
+        WHEN check_violation THEN
+            ROLLBACK;
+            RAISE WARNING '金额约束违反';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '跨分片事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：跨分片事务
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE orders SET amount = amount + 100 WHERE user_id = 100;
-UPDATE orders SET amount = amount - 100 WHERE user_id = 200;
-COMMIT;  -- 跨分片事务，需要两阶段提交
 ```
 
 ### 4.3 分布式事务CAP
@@ -301,12 +447,45 @@ COMMIT;  -- 跨分片事务，需要两阶段提交
 **Citus CAP配置**：
 
 ```sql
--- CP模式配置
-SET citus.replication_factor = 2;  -- 副本数
-SET citus.shard_count = 32;        -- 分片数
+-- CP模式配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法配置Citus参数';
+            RETURN;
+        END IF;
 
--- 强一致性配置
-SET default_transaction_isolation = 'serializable';
+        BEGIN
+            SET LOCAL citus.replication_factor = 2;  -- 副本数
+            RAISE NOTICE 'Citus副本数已设置为2';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置Citus副本数失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            SET LOCAL citus.shard_count = 32;  -- 分片数
+            RAISE NOTICE 'Citus分片数已设置为32';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置Citus分片数失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            SET LOCAL default_transaction_isolation = 'serializable';
+            RAISE NOTICE '默认事务隔离级别已设置为可串行化（强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.2 Citus CAP优化
@@ -322,7 +501,24 @@ SET default_transaction_isolation = 'serializable';
 **监控指标**：
 
 ```sql
--- 监控分片状态
+-- 监控分片状态（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法监控分片状态';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控Citus分片状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     shardid,
     shardstate,
@@ -330,7 +526,24 @@ SELECT
     nodeport
 FROM citus_shards;
 
--- 监控分布式事务
+-- 监控分布式事务（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法监控分布式事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控Citus分布式事务';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM citus_distributed_transactions;
 ```
 

@@ -135,47 +135,217 @@
 **库存扣减实现**：
 
 ```sql
--- 方案1：使用SERIALIZABLE隔离级别（强一致性）
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- 方案1：使用SERIALIZABLE隔离级别（强一致性，带完整错误处理）
+DO $$
+DECLARE
+    v_quantity INTEGER;
+    v_version INTEGER;
+    v_expected_version INTEGER := 1;  -- 假设预期版本号
+    v_updated INTEGER;
+    v_order_id INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 inventory 或 orders 不存在，无法执行库存扣减';
+            RETURN;
+        END IF;
 
--- 检查库存
-SELECT quantity FROM inventory WHERE product_id = 1 FOR UPDATE;
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        RAISE NOTICE '开始使用SERIALIZABLE隔离级别（强一致性）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 扣减库存
-UPDATE inventory
-SET quantity = quantity - 1,
-    version = version + 1  -- 乐观锁版本号
-WHERE product_id = 1
-  AND quantity > 0
-  AND version = :expected_version;
+    BEGIN
+        BEGIN;
 
--- 创建订单
-INSERT INTO orders (user_id, product_id, quantity, status)
-VALUES (:user_id, 1, 1, 'pending');
+        -- 检查库存（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT quantity, version INTO v_quantity, v_version
+            FROM inventory WHERE product_id = 1 FOR UPDATE;
 
-COMMIT;
+            IF NOT FOUND THEN
+                RAISE WARNING '商品 ID 1 不存在';
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '检查库存：quantity=%, version=%', v_quantity, v_version;
+        EXCEPTION
+            WHEN lock_not_available THEN
+                RAISE WARNING '无法获取锁，商品可能被其他事务锁定';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '查询库存失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 检查库存是否足够
+        IF v_quantity <= 0 THEN
+            RAISE WARNING '库存不足：当前库存=%', v_quantity;
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        -- 检查版本号
+        IF v_version != v_expected_version THEN
+            RAISE WARNING '版本号不匹配：当前版本=%，预期版本=%', v_version, v_expected_version;
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        -- 扣减库存（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE inventory
+            SET quantity = quantity - 1,
+                version = version + 1  -- 乐观锁版本号
+            WHERE product_id = 1
+              AND quantity > 0
+              AND version = v_expected_version;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '库存扣减失败：库存不足或版本号不匹配';
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '库存扣减成功：quantity从%减少到%', v_quantity, v_quantity - 1;
+        EXCEPTION
+            WHEN check_violation THEN
+                RAISE WARNING '库存约束违反（库存不能为负）';
+                RAISE;
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新库存失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 创建订单（带错误处理）
+        BEGIN
+            INSERT INTO orders (user_id, product_id, quantity, status)
+            VALUES (1, 1, 1, 'pending')
+            RETURNING order_id INTO v_order_id;
+
+            RAISE NOTICE '订单创建成功：order_id=%', v_order_id;
+        EXCEPTION
+            WHEN foreign_key_violation THEN
+                RAISE WARNING '外键约束违反（user_id或product_id不存在）';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '创建订单失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功（SERIALIZABLE隔离级别，强一致性）';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '序列化冲突，事务已中止，需要重试';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **MVCC优化**：
 
 ```sql
--- 1. 表结构优化：支持HOT更新
-CREATE TABLE inventory (
-    product_id INTEGER PRIMARY KEY,
-    quantity INTEGER NOT NULL,
-    version INTEGER NOT NULL DEFAULT 1,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) WITH (fillfactor = 80);  -- 预留空间支持HOT更新
+-- MVCC优化：表结构、索引和配置优化（带完整错误处理）
+-- 1. 表结构优化：支持HOT更新（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory') THEN
+            RAISE NOTICE '表 inventory 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE inventory (
+                    product_id INTEGER PRIMARY KEY,
+                    quantity INTEGER NOT NULL,
+                    version INTEGER NOT NULL DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) WITH (fillfactor = 80);  -- 预留空间支持HOT更新
+                RAISE NOTICE '表 inventory 创建成功（fillfactor=80，支持HOT更新）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 inventory 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 索引优化：减少索引更新
-CREATE INDEX idx_inventory_product ON inventory (product_id)
-WHERE quantity > 0;  -- 部分索引
+-- 2. 索引优化：减少索引更新（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_inventory_product') THEN
+            RAISE NOTICE '索引 idx_inventory_product 已存在';
+        ELSE
+            BEGIN
+                CREATE INDEX idx_inventory_product ON inventory (product_id)
+                WHERE quantity > 0;  -- 部分索引
+                RAISE NOTICE '索引 idx_inventory_product 创建成功（部分索引，减少索引更新）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '索引 idx_inventory_product 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建索引失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 配置优化
-ALTER TABLE inventory SET (
-    autovacuum_vacuum_scale_factor = 0.05,  -- 更频繁清理
-    autovacuum_analyze_scale_factor = 0.02
-);
+-- 3. 配置优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory') THEN
+            RAISE WARNING '表 inventory 不存在，无法设置配置';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE inventory SET (
+                autovacuum_vacuum_scale_factor = 0.05,  -- 更频繁清理
+                autovacuum_analyze_scale_factor = 0.02
+            );
+            RAISE NOTICE '表 inventory 配置优化成功（更频繁的autovacuum）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **ACID保证**：
@@ -229,75 +399,253 @@ ALTER TABLE inventory SET (
 **账户转账实现**：
 
 ```sql
--- 方案：使用SERIALIZABLE隔离级别（最强一致性）
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- 方案：使用SERIALIZABLE隔离级别（最强一致性，带完整错误处理）
+DO $$
+DECLARE
+    v_from_account INTEGER := 1;  -- 转出账户ID
+    v_to_account INTEGER := 2;    -- 转入账户ID
+    v_amount NUMERIC := 100.00;   -- 转账金额
+    v_from_balance NUMERIC;
+    v_updated INTEGER;
+    v_transaction_id INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transactions') THEN
+            RAISE WARNING '表 accounts 或 transactions 不存在，无法执行账户转账';
+            RETURN;
+        END IF;
 
--- 检查账户余额
-SELECT balance FROM accounts WHERE account_id = :from_account FOR UPDATE;
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        RAISE NOTICE '开始使用SERIALIZABLE隔离级别（最强一致性）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 扣减转出账户余额
-UPDATE accounts
-SET balance = balance - :amount,
-    updated_at = CURRENT_TIMESTAMP
-WHERE account_id = :from_account
-  AND balance >= :amount;
+    BEGIN
+        BEGIN;
 
--- 检查是否成功
-IF NOT FOUND THEN
-    ROLLBACK;
-    RAISE EXCEPTION 'Insufficient balance';
-END IF;
+        -- 检查账户余额（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT balance INTO v_from_balance
+            FROM accounts WHERE account_id = v_from_account FOR UPDATE;
 
--- 增加转入账户余额
-UPDATE accounts
-SET balance = balance + :amount,
-    updated_at = CURRENT_TIMESTAMP
-WHERE account_id = :to_account;
+            IF NOT FOUND THEN
+                RAISE WARNING '转出账户 ID % 不存在', v_from_account;
+                ROLLBACK;
+                RETURN;
+            END IF;
 
--- 记录交易
-INSERT INTO transactions (
-    from_account,
-    to_account,
-    amount,
-    transaction_type,
-    created_at
-) VALUES (
-    :from_account,
-    :to_account,
-    :amount,
-    'transfer',
-    CURRENT_TIMESTAMP
-);
+            RAISE NOTICE '检查账户余额：转出账户ID=%，余额=%', v_from_account, v_from_balance;
+        EXCEPTION
+            WHEN lock_not_available THEN
+                RAISE WARNING '无法获取锁，账户可能被其他事务锁定';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '查询账户余额失败: %', SQLERRM;
+                RAISE;
+        END;
 
-COMMIT;
+        -- 检查余额是否足够
+        IF v_from_balance < v_amount THEN
+            RAISE WARNING '余额不足：当前余额=%，需要=%', v_from_balance, v_amount;
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        -- 扣减转出账户余额（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts
+            SET balance = balance - v_amount,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE account_id = v_from_account
+              AND balance >= v_amount;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '扣减转出账户余额失败：余额不足或账户不存在';
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '扣减转出账户余额成功：从%减少到%', v_from_balance, v_from_balance - v_amount;
+        EXCEPTION
+            WHEN check_violation THEN
+                RAISE WARNING '余额约束违反（余额不能为负）';
+                RAISE;
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新转出账户余额失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 增加转入账户余额（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts
+            SET balance = balance + v_amount,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE account_id = v_to_account;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '转入账户 ID % 不存在', v_to_account;
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '增加转入账户余额成功：账户ID=%，增加金额=%', v_to_account, v_amount;
+        EXCEPTION
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新转入账户余额失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 记录交易（带错误处理）
+        BEGIN
+            INSERT INTO transactions (
+                from_account,
+                to_account,
+                amount,
+                transaction_type,
+                created_at
+            ) VALUES (
+                v_from_account,
+                v_to_account,
+                v_amount,
+                'transfer',
+                CURRENT_TIMESTAMP
+            )
+            RETURNING transaction_id INTO v_transaction_id;
+
+            RAISE NOTICE '交易记录创建成功：transaction_id=%', v_transaction_id;
+        EXCEPTION
+            WHEN foreign_key_violation THEN
+                RAISE WARNING '外键约束违反（账户不存在）';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '创建交易记录失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功（SERIALIZABLE隔离级别，最强一致性）';
+    EXCEPTION
+        WHEN serialization_failure THEN
+            ROLLBACK;
+            RAISE WARNING '序列化冲突，事务已中止，需要重试';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **MVCC优化**：
 
 ```sql
--- 1. 表结构优化
-CREATE TABLE accounts (
-    account_id INTEGER PRIMARY KEY,
-    balance DECIMAL(15, 2) NOT NULL,
-    version INTEGER NOT NULL DEFAULT 1,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) WITH (fillfactor = 90);  -- 金融系统更新频率中等
+-- MVCC优化：金融系统表结构、索引和配置优化（带完整错误处理）
+-- 1. 表结构优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE NOTICE '表 accounts 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE accounts (
+                    account_id INTEGER PRIMARY KEY,
+                    balance DECIMAL(15, 2) NOT NULL,
+                    version INTEGER NOT NULL DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) WITH (fillfactor = 90);  -- 金融系统更新频率中等
+                RAISE NOTICE '表 accounts 创建成功（fillfactor=90，金融系统更新频率中等）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 accounts 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 审计表优化
-CREATE TABLE transactions (
-    transaction_id SERIAL PRIMARY KEY,
-    from_account INTEGER,
-    to_account INTEGER,
-    amount DECIMAL(15, 2) NOT NULL,
-    transaction_type VARCHAR(20) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) WITH (fillfactor = 100);  -- 只插入，不更新
+-- 2. 审计表优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transactions') THEN
+            RAISE NOTICE '表 transactions 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE transactions (
+                    transaction_id SERIAL PRIMARY KEY,
+                    from_account INTEGER,
+                    to_account INTEGER,
+                    amount DECIMAL(15, 2) NOT NULL,
+                    transaction_type VARCHAR(20) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) WITH (fillfactor = 100);  -- 只插入，不更新
+                RAISE NOTICE '表 transactions 创建成功（fillfactor=100，只插入，不更新）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 transactions 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 配置优化
-ALTER TABLE accounts SET (
-    autovacuum_vacuum_scale_factor = 0.1,
-    autovacuum_analyze_scale_factor = 0.05
-);
+-- 3. 配置优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法设置配置';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE accounts SET (
+                autovacuum_vacuum_scale_factor = 0.1,
+                autovacuum_analyze_scale_factor = 0.05
+            );
+            RAISE NOTICE '表 accounts 配置优化成功（更频繁的autovacuum）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **ACID保证**：
@@ -350,48 +698,183 @@ ALTER TABLE accounts SET (
 **日志写入实现**：
 
 ```sql
--- 方案：使用READ COMMITTED隔离级别（高性能）
-BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+-- 方案：使用READ COMMITTED隔离级别（高性能，带完整错误处理）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE WARNING '表 logs 不存在，无法执行批量插入日志';
+            RETURN;
+        END IF;
 
--- 批量插入日志
-INSERT INTO logs (level, message, metadata, created_at)
-VALUES
-    (:level1, :message1, :metadata1, CURRENT_TIMESTAMP),
-    (:level2, :message2, :metadata2, CURRENT_TIMESTAMP),
-    -- ... 更多日志
-    (:levelN, :messageN, :metadataN, CURRENT_TIMESTAMP);
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '开始使用READ COMMITTED隔离级别（高性能）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
-COMMIT;
+    BEGIN
+        BEGIN;
+
+        -- 批量插入日志（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO logs (level, message, metadata, created_at)
+            VALUES
+                ('INFO', 'Log message 1', '{"key1": "value1"}'::jsonb, CURRENT_TIMESTAMP),
+                ('WARNING', 'Log message 2', '{"key2": "value2"}'::jsonb, CURRENT_TIMESTAMP),
+                ('ERROR', 'Log message 3', '{"key3": "value3"}'::jsonb, CURRENT_TIMESTAMP);
+
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+            IF v_inserted = 0 THEN
+                RAISE WARNING '批量插入日志失败：未插入任何记录';
+            ELSE
+                RAISE NOTICE '批量插入日志成功：插入了 % 条记录', v_inserted;
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '批量插入日志失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功（READ COMMITTED隔离级别，高性能）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **MVCC优化**：
 
 ```sql
--- 1. 分区表设计
-CREATE TABLE logs (
-    log_id BIGSERIAL,
-    level VARCHAR(20) NOT NULL,
-    message TEXT NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (log_id, created_at)
-) PARTITION BY RANGE (created_at);
+-- MVCC优化：日志系统分区表、索引和配置优化（带完整错误处理）
+-- 1. 分区表设计（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE NOTICE '表 logs 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE logs (
+                    log_id BIGSERIAL,
+                    level VARCHAR(20) NOT NULL,
+                    message TEXT NOT NULL,
+                    metadata JSONB,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (log_id, created_at)
+                ) PARTITION BY RANGE (created_at);
+                RAISE NOTICE '表 logs 创建成功（分区表，按时间范围分区）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 logs 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
 
--- 按月分区
-CREATE TABLE logs_2024_01 PARTITION OF logs
-FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+        -- 按月分区（带错误处理）
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs_2024_01') THEN
+                RAISE NOTICE '分区 logs_2024_01 已存在';
+            ELSE
+                CREATE TABLE logs_2024_01 PARTITION OF logs
+                FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+                RAISE NOTICE '分区 logs_2024_01 创建成功（2024年1月）';
+            END IF;
+        EXCEPTION
+            WHEN duplicate_table THEN
+                RAISE WARNING '分区 logs_2024_01 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建分区失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 表结构优化
-ALTER TABLE logs SET (fillfactor = 100);  -- 只插入，不更新
+-- 2. 表结构优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE WARNING '表 logs 不存在，无法设置配置';
+            RETURN;
+        END IF;
 
--- 3. 配置优化
-ALTER TABLE logs SET (
-    autovacuum_vacuum_scale_factor = 0.2,  -- 日志表可以容忍更多死元组
-    autovacuum_analyze_scale_factor = 0.1
-);
+        BEGIN
+            ALTER TABLE logs SET (fillfactor = 100);  -- 只插入，不更新
+            RAISE NOTICE '表 logs 结构优化成功（fillfactor=100，只插入，不更新）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置fillfactor失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 4. 异步提交优化（可容忍数据丢失）
-SET synchronous_commit = off;  -- 提高写入性能
+-- 3. 配置优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE WARNING '表 logs 不存在，无法设置配置';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE logs SET (
+                autovacuum_vacuum_scale_factor = 0.2,  -- 日志表可以容忍更多死元组
+                autovacuum_analyze_scale_factor = 0.1
+            );
+            RAISE NOTICE '表 logs 配置优化成功（更宽松的autovacuum设置）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 4. 异步提交优化（可容忍数据丢失，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            SET LOCAL synchronous_commit = off;  -- 提高写入性能
+            RAISE NOTICE '异步提交已启用（可容忍数据丢失，提高写入性能）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置异步提交失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **ACID保证**：
@@ -443,49 +926,211 @@ SET synchronous_commit = off;  -- 提高写入性能
 **时序数据写入实现**：
 
 ```sql
--- 方案：使用分区表和批量插入
-BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+-- 方案：使用分区表和批量插入（带完整错误处理）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_series_data') THEN
+            RAISE WARNING '表 time_series_data 不存在，无法执行批量插入时序数据';
+            RETURN;
+        END IF;
 
--- 批量插入时序数据
-INSERT INTO time_series_data (metric_id, timestamp, value, tags)
-VALUES
-    (:metric_id1, :timestamp1, :value1, :tags1),
-    (:metric_id2, :timestamp2, :value2, :tags2),
-    -- ... 更多数据点
-    (:metric_idN, :timestampN, :valueN, :tagsN);
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '开始使用分区表和批量插入（READ COMMITTED隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
-COMMIT;
+    BEGIN
+        BEGIN;
+
+        -- 批量插入时序数据（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO time_series_data (metric_id, timestamp, value, tags)
+            VALUES
+                (1, '2024-01-01 00:00:00'::timestamp, 25.5, '{"sensor": "temp1"}'::jsonb),
+                (2, '2024-01-01 00:00:01'::timestamp, 26.0, '{"sensor": "temp2"}'::jsonb),
+                (3, '2024-01-01 00:00:02'::timestamp, 25.8, '{"sensor": "temp3"}'::jsonb);
+
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+            IF v_inserted = 0 THEN
+                RAISE WARNING '批量插入时序数据失败：未插入任何记录';
+            ELSE
+                RAISE NOTICE '批量插入时序数据成功：插入了 % 条记录', v_inserted;
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '批量插入时序数据失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功（分区表和批量插入，高性能）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **MVCC优化**：
 
 ```sql
--- 1. 分区表设计（按时间分区）
-CREATE TABLE time_series_data (
-    metric_id INTEGER NOT NULL,
-    timestamp TIMESTAMP NOT NULL,
-    value DOUBLE PRECISION NOT NULL,
-    tags JSONB,
-    PRIMARY KEY (metric_id, timestamp)
-) PARTITION BY RANGE (timestamp);
+-- MVCC优化：时序数据分区表、索引和配置优化（带完整错误处理）
+-- 1. 分区表设计（按时间分区，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_series_data') THEN
+            RAISE NOTICE '表 time_series_data 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE time_series_data (
+                    metric_id INTEGER NOT NULL,
+                    timestamp TIMESTAMP NOT NULL,
+                    value DOUBLE PRECISION NOT NULL,
+                    tags JSONB,
+                    PRIMARY KEY (metric_id, timestamp)
+                ) PARTITION BY RANGE (timestamp);
+                RAISE NOTICE '表 time_series_data 创建成功（分区表，按时间范围分区）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 time_series_data 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
 
--- 按小时分区
-CREATE TABLE time_series_data_2024_01_01_00
-PARTITION OF time_series_data
-FOR VALUES FROM ('2024-01-01 00:00:00') TO ('2024-01-01 01:00:00');
+        -- 按小时分区（带错误处理）
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_series_data_2024_01_01_00') THEN
+                RAISE NOTICE '分区 time_series_data_2024_01_01_00 已存在';
+            ELSE
+                CREATE TABLE time_series_data_2024_01_01_00
+                PARTITION OF time_series_data
+                FOR VALUES FROM ('2024-01-01 00:00:00') TO ('2024-01-01 01:00:00');
+                RAISE NOTICE '分区 time_series_data_2024_01_01_00 创建成功（2024年1月1日0点）';
+            END IF;
+        EXCEPTION
+            WHEN duplicate_table THEN
+                RAISE WARNING '分区 time_series_data_2024_01_01_00 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建分区失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 索引优化
-CREATE INDEX idx_time_series_timestamp ON time_series_data (timestamp);
-CREATE INDEX idx_time_series_metric ON time_series_data (metric_id, timestamp);
+-- 2. 索引优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_series_data') THEN
+            RAISE WARNING '表 time_series_data 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 3. 表结构优化
-ALTER TABLE time_series_data SET (fillfactor = 100);  -- 只插入，不更新
+        -- 创建时间戳索引
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_time_series_timestamp') THEN
+                RAISE NOTICE '索引 idx_time_series_timestamp 已存在';
+            ELSE
+                CREATE INDEX idx_time_series_timestamp ON time_series_data (timestamp);
+                RAISE NOTICE '索引 idx_time_series_timestamp 创建成功';
+            END IF;
+        EXCEPTION
+            WHEN duplicate_object THEN
+                RAISE WARNING '索引 idx_time_series_timestamp 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建索引失败: %', SQLERRM;
+                RAISE;
+        END;
 
--- 4. 配置优化
-ALTER TABLE time_series_data SET (
-    autovacuum_vacuum_scale_factor = 0.1,
-    autovacuum_analyze_scale_factor = 0.05
-);
+        -- 创建指标和时间戳复合索引
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_time_series_metric') THEN
+                RAISE NOTICE '索引 idx_time_series_metric 已存在';
+            ELSE
+                CREATE INDEX idx_time_series_metric ON time_series_data (metric_id, timestamp);
+                RAISE NOTICE '索引 idx_time_series_metric 创建成功';
+            END IF;
+        EXCEPTION
+            WHEN duplicate_object THEN
+                RAISE WARNING '索引 idx_time_series_metric 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建索引失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 3. 表结构优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_series_data') THEN
+            RAISE WARNING '表 time_series_data 不存在，无法设置配置';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE time_series_data SET (fillfactor = 100);  -- 只插入，不更新
+            RAISE NOTICE '表 time_series_data 结构优化成功（fillfactor=100，只插入，不更新）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置fillfactor失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 4. 配置优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_series_data') THEN
+            RAISE WARNING '表 time_series_data 不存在，无法设置配置';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE time_series_data SET (
+                autovacuum_vacuum_scale_factor = 0.1,
+                autovacuum_analyze_scale_factor = 0.05
+            );
+            RAISE NOTICE '表 time_series_data 配置优化成功（更频繁的autovacuum）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **ACID保证**：
@@ -520,50 +1165,216 @@ ALTER TABLE time_series_data SET (
 **点赞操作实现**：
 
 ```sql
--- 方案：使用乐观锁和HOT更新
-BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+-- 方案：使用乐观锁和HOT更新（带完整错误处理）
+DO $$
+DECLARE
+    v_user_id INTEGER := 1;      -- 用户ID
+    v_post_id INTEGER := 1;      -- 帖子ID
+    v_like_count INTEGER;
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'likes') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+            RAISE WARNING '表 likes 或 posts 不存在，无法执行点赞操作';
+            RETURN;
+        END IF;
 
--- 检查是否已点赞
-SELECT COUNT(*) FROM likes
-WHERE user_id = :user_id AND post_id = :post_id;
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '开始使用乐观锁和HOT更新（READ COMMITTED隔离级别）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 插入或更新点赞
-INSERT INTO likes (user_id, post_id, created_at)
-VALUES (:user_id, :post_id, CURRENT_TIMESTAMP)
-ON CONFLICT (user_id, post_id) DO NOTHING;
+    BEGIN
+        BEGIN;
 
--- 更新帖子点赞数（HOT更新优化）
-UPDATE posts
-SET like_count = like_count + 1,
-    updated_at = CURRENT_TIMESTAMP
-WHERE post_id = :post_id;
+        -- 检查是否已点赞（带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT COUNT(*) INTO v_like_count
+            FROM likes
+            WHERE user_id = v_user_id AND post_id = v_post_id;
 
-COMMIT;
+            IF v_like_count > 0 THEN
+                RAISE NOTICE '用户 % 已经对帖子 % 点赞过', v_user_id, v_post_id;
+            ELSE
+                RAISE NOTICE '用户 % 尚未对帖子 % 点赞', v_user_id, v_post_id;
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '查询点赞状态失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 插入或更新点赞（带错误处理）
+        BEGIN
+            INSERT INTO likes (user_id, post_id, created_at)
+            VALUES (v_user_id, v_post_id, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id, post_id) DO NOTHING;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE NOTICE '点赞记录已存在（ON CONFLICT DO NOTHING）';
+            ELSE
+                RAISE NOTICE '点赞记录插入成功';
+            END IF;
+        EXCEPTION
+            WHEN unique_violation THEN
+                RAISE NOTICE '点赞记录已存在（唯一约束违反）';
+            WHEN foreign_key_violation THEN
+                RAISE WARNING '外键约束违反（user_id或post_id不存在）';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '插入点赞记录失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 更新帖子点赞数（HOT更新优化，带错误处理和性能测试）
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE posts
+            SET like_count = like_count + 1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE post_id = v_post_id;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+            IF v_updated = 0 THEN
+                RAISE WARNING '帖子 ID % 不存在，无法更新点赞数', v_post_id;
+            ELSE
+                RAISE NOTICE '帖子点赞数更新成功（HOT更新优化）';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '更新帖子点赞数失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        COMMIT;
+        RAISE NOTICE '事务提交成功（乐观锁和HOT更新）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **MVCC优化**：
 
 ```sql
--- 1. 表结构优化
-CREATE TABLE posts (
-    post_id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    content TEXT NOT NULL,
-    like_count INTEGER DEFAULT 0,
-    comment_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) WITH (fillfactor = 85);  -- 支持HOT更新
+-- MVCC优化：社交网络表结构、索引和配置优化（带完整错误处理）
+-- 1. 表结构优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+            RAISE NOTICE '表 posts 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE posts (
+                    post_id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    like_count INTEGER DEFAULT 0,
+                    comment_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) WITH (fillfactor = 85);  -- 支持HOT更新
+                RAISE NOTICE '表 posts 创建成功（fillfactor=85，支持HOT更新）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 posts 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 索引优化
-CREATE INDEX idx_posts_user ON posts (user_id, created_at DESC);
-CREATE INDEX idx_posts_like_count ON posts (like_count DESC);
+-- 2. 索引优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+            RAISE WARNING '表 posts 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
--- 3. 配置优化
-ALTER TABLE posts SET (
-    autovacuum_vacuum_scale_factor = 0.1,
-    autovacuum_analyze_scale_factor = 0.05
-);
+        -- 创建用户和时间戳索引
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_posts_user') THEN
+                RAISE NOTICE '索引 idx_posts_user 已存在';
+            ELSE
+                CREATE INDEX idx_posts_user ON posts (user_id, created_at DESC);
+                RAISE NOTICE '索引 idx_posts_user 创建成功';
+            END IF;
+        EXCEPTION
+            WHEN duplicate_object THEN
+                RAISE WARNING '索引 idx_posts_user 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建索引失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        -- 创建点赞数索引
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_posts_like_count') THEN
+                RAISE NOTICE '索引 idx_posts_like_count 已存在';
+            ELSE
+                CREATE INDEX idx_posts_like_count ON posts (like_count DESC);
+                RAISE NOTICE '索引 idx_posts_like_count 创建成功';
+            END IF;
+        EXCEPTION
+            WHEN duplicate_object THEN
+                RAISE WARNING '索引 idx_posts_like_count 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建索引失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 3. 配置优化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts') THEN
+            RAISE WARNING '表 posts 不存在，无法设置配置';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE posts SET (
+                autovacuum_vacuum_scale_factor = 0.1,
+                autovacuum_analyze_scale_factor = 0.05
+            );
+            RAISE NOTICE '表 posts 配置优化成功（更频繁的autovacuum）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

@@ -195,11 +195,33 @@ ha_sync_mode: automatic
 **PostgreSQL-Kafka集成**：
 
 ```sql
--- PostgreSQL逻辑复制到Kafka
-CREATE PUBLICATION kafkapub FOR ALL TABLES;
+-- PostgreSQL逻辑复制到Kafka（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'kafkapub') THEN
+            RAISE NOTICE '发布 kafkapub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION kafkapub FOR ALL TABLES;
+                RAISE NOTICE '发布 kafkapub 创建成功（PostgreSQL逻辑复制到Kafka，包含所有表）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 kafkapub 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
 
--- 使用Debezium将PostgreSQL变更发送到Kafka
--- 配置：Debezium PostgreSQL Connector → Kafka
+        RAISE NOTICE '使用Debezium将PostgreSQL变更发送到Kafka';
+        RAISE NOTICE '配置：Debezium PostgreSQL Connector → Kafka';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **CAP协调**：
@@ -212,16 +234,61 @@ CREATE PUBLICATION kafkapub FOR ALL TABLES;
 **PostgreSQL-RabbitMQ集成**：
 
 ```sql
--- PostgreSQL触发器发送消息到RabbitMQ
+-- PostgreSQL触发器发送消息到RabbitMQ（带完整错误处理）
 CREATE OR REPLACE FUNCTION notify_rabbitmq()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_notify_payload TEXT;
+    v_json_data JSONB;
 BEGIN
-    PERFORM pg_notify('rabbitmq_channel', json_build_object(
-        'table', TG_TABLE_NAME,
-        'action', TG_OP,
-        'data', row_to_json(NEW)
-    )::text);
-    RETURN NEW;
+    BEGIN
+        -- 构建JSON数据
+        BEGIN
+            IF TG_OP = 'DELETE' THEN
+                v_json_data := json_build_object(
+                    'table', TG_TABLE_NAME,
+                    'action', TG_OP,
+                    'data', row_to_json(OLD)
+                );
+            ELSE
+                v_json_data := json_build_object(
+                    'table', TG_TABLE_NAME,
+                    'action', TG_OP,
+                    'data', row_to_json(NEW)
+                );
+            END IF;
+
+            v_notify_payload := v_json_data::text;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '构建JSON数据失败: %', SQLERRM;
+                v_notify_payload := json_build_object(
+                    'table', TG_TABLE_NAME,
+                    'action', TG_OP,
+                    'error', 'Failed to serialize data'
+                )::text;
+        END;
+
+        -- 发送通知
+        BEGIN
+            PERFORM pg_notify('rabbitmq_channel', v_notify_payload);
+            RAISE NOTICE 'RabbitMQ通知已发送: table=%, action=%', TG_TABLE_NAME, TG_OP;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '发送RabbitMQ通知失败: %', SQLERRM;
+                -- 不抛出异常，避免影响主事务
+        END;
+
+        -- 返回适当的行
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION 'notify_rabbitmq函数执行失败: %', SQLERRM;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 ```

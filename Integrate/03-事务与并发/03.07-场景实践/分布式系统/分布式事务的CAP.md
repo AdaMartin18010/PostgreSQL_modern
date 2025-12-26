@@ -123,15 +123,103 @@
 **PostgreSQL 2PC性能**：
 
 ```sql
--- 单机事务：低延迟
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;  -- 延迟：1-5ms
+-- 单机事务：低延迟（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行单机事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行单机事务（低延迟）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 2PC事务：高延迟
-BEGIN;
-PREPARE TRANSACTION 'tx1';
-COMMIT PREPARED 'tx1';  -- 延迟：100-500ms
+    BEGIN
+        BEGIN;
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+        IF v_updated = 0 THEN
+            RAISE WARNING '账户 1 不存在或更新失败';
+            ROLLBACK;
+        ELSE
+            COMMIT;
+            RAISE NOTICE '单机事务提交成功（延迟：1-5ms）';
+        END IF;
+    EXCEPTION
+        WHEN check_violation THEN
+            ROLLBACK;
+            RAISE WARNING '余额约束违反（余额不能为负）';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '单机事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：单机事务
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+
+-- 2PC事务：高延迟（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_transaction_id TEXT := 'tx_' || extract(epoch from now())::text;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行2PC事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行2PC事务（高延迟）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+
+        BEGIN
+            PREPARE TRANSACTION v_transaction_id;
+            RAISE NOTICE '2PC事务准备成功: %', v_transaction_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '准备2PC事务失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN
+            COMMIT PREPARED v_transaction_id;
+            RAISE NOTICE '2PC事务提交成功（延迟：100-500ms）';
+        EXCEPTION
+            WHEN invalid_transaction_state THEN
+                RAISE WARNING '2PC事务状态无效，可能已提交或回滚';
+            WHEN OTHERS THEN
+                RAISE WARNING '提交2PC事务失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN check_violation THEN
+            ROLLBACK;
+            RAISE WARNING '余额约束违反（余额不能为负）';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '2PC事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 2PC可用性代价

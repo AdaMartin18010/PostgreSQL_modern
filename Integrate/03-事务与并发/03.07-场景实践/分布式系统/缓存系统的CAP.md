@@ -174,11 +174,40 @@ PostgreSQL (CP/AP) → Redis (AP)
 **PostgreSQL-Redis集成示例**：
 
 ```sql
--- PostgreSQL逻辑复制到Redis
-CREATE PUBLICATION redispub FOR TABLE users;
+-- PostgreSQL逻辑复制到Redis（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建发布';
+            RETURN;
+        END IF;
 
--- 使用Debezium将PostgreSQL变更发送到Redis
--- 配置：Debezium PostgreSQL Connector → Redis
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'redispub') THEN
+            RAISE NOTICE '发布 redispub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION redispub FOR TABLE users;
+                RAISE NOTICE '发布 redispub 创建成功（PostgreSQL逻辑复制到Redis）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 redispub 已存在';
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 users 不存在，无法创建发布';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        RAISE NOTICE '使用Debezium将PostgreSQL变更发送到Redis';
+        RAISE NOTICE '配置：Debezium PostgreSQL Connector → Redis';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 缓存CAP优化
@@ -214,12 +243,40 @@ CREATE PUBLICATION redispub FOR TABLE users;
 **PostgreSQL缓存失效**：
 
 ```sql
--- 使用NOTIFY失效缓存
+-- 使用NOTIFY失效缓存（带完整错误处理）
 CREATE OR REPLACE FUNCTION cache_invalidate()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_notify_payload TEXT;
 BEGIN
-    PERFORM pg_notify('cache_invalidate', TG_TABLE_NAME || ':' || NEW.id::text);
-    RETURN NEW;
+    BEGIN
+        -- 构建通知负载
+        IF TG_OP = 'DELETE' THEN
+            v_notify_payload := TG_TABLE_NAME || ':' || COALESCE(OLD.id::text, 'unknown');
+        ELSE
+            v_notify_payload := TG_TABLE_NAME || ':' || COALESCE(NEW.id::text, 'unknown');
+        END IF;
+
+        -- 发送通知
+        BEGIN
+            PERFORM pg_notify('cache_invalidate', v_notify_payload);
+            RAISE NOTICE '缓存失效通知已发送: %', v_notify_payload;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '发送缓存失效通知失败: %', SQLERRM;
+                -- 不抛出异常，避免影响主事务
+        END;
+
+        -- 返回适当的行
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION 'cache_invalidate函数执行失败: %', SQLERRM;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 ```

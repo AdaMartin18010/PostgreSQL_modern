@@ -90,11 +90,40 @@ PostgreSQL (CP/AP) → Redis (AP)
 **PostgreSQL-Redis集成示例**：
 
 ```sql
--- PostgreSQL逻辑复制到Redis
-CREATE PUBLICATION redispub FOR TABLE users;
+-- PostgreSQL逻辑复制到Redis（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建发布';
+            RETURN;
+        END IF;
 
--- 使用Debezium将PostgreSQL变更发送到Redis
--- 配置：Debezium PostgreSQL Connector → Redis
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'redispub') THEN
+            RAISE NOTICE '发布 redispub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION redispub FOR TABLE users;
+                RAISE NOTICE '发布 redispub 创建成功（PostgreSQL逻辑复制到Redis）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 redispub 已存在';
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 users 不存在，无法创建发布';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        RAISE NOTICE '使用Debezium将PostgreSQL变更发送到Redis';
+        RAISE NOTICE '配置：Debezium PostgreSQL Connector → Redis';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 1.3 CAP协调策略
@@ -140,11 +169,33 @@ PostgreSQL (CP/AP) → Kafka (AP) → 下游服务 (AP)
 **PostgreSQL-Kafka集成示例**：
 
 ```sql
--- PostgreSQL逻辑复制到Kafka
-CREATE PUBLICATION kafkapub FOR ALL TABLES;
+-- PostgreSQL逻辑复制到Kafka（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'kafkapub') THEN
+            RAISE NOTICE '发布 kafkapub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION kafkapub FOR ALL TABLES;
+                RAISE NOTICE '发布 kafkapub 创建成功（PostgreSQL逻辑复制到Kafka，包含所有表）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 kafkapub 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
 
--- 使用Debezium将PostgreSQL变更发送到Kafka
--- 配置：Debezium PostgreSQL Connector → Kafka
+        RAISE NOTICE '使用Debezium将PostgreSQL变更发送到Kafka';
+        RAISE NOTICE '配置：Debezium PostgreSQL Connector → Kafka';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 CAP协调策略
@@ -190,11 +241,40 @@ PostgreSQL (CP/AP) → Elasticsearch (AP)
 **PostgreSQL-Elasticsearch集成示例**：
 
 ```sql
--- PostgreSQL逻辑复制到Elasticsearch
-CREATE PUBLICATION espub FOR TABLE products;
+-- PostgreSQL逻辑复制到Elasticsearch（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '表 products 不存在，无法创建发布';
+            RETURN;
+        END IF;
 
--- 使用Logstash将PostgreSQL数据同步到Elasticsearch
--- 配置：PostgreSQL → Logstash → Elasticsearch
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'espub') THEN
+            RAISE NOTICE '发布 espub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION espub FOR TABLE products;
+                RAISE NOTICE '发布 espub 创建成功（PostgreSQL逻辑复制到Elasticsearch）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 espub 已存在';
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 products 不存在，无法创建发布';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        RAISE NOTICE '使用Logstash将PostgreSQL数据同步到Elasticsearch';
+        RAISE NOTICE '配置：PostgreSQL → Logstash → Elasticsearch';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 CAP协调策略

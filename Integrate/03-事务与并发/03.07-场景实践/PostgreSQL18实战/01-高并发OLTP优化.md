@@ -337,16 +337,53 @@ commit_siblings = 5          # 至少5个事务
 ### 4.1 优化一致性（C）
 
 ```sql
--- ⭐ PostgreSQL 18：多变量统计
-CREATE STATISTICS hot_table_stats (dependencies, ndistinct, mcv)
-ON customer_id, product_id, order_date FROM hot_table;
+-- ⭐ PostgreSQL 18：多变量统计（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'hot_table') THEN
+            RAISE WARNING '表 hot_table 不存在，无法创建多变量统计';
+            RETURN;
+        END IF;
 
-ANALYZE hot_table;
+        IF EXISTS (SELECT 1 FROM pg_statistic_ext WHERE stxname = 'hot_table_stats') THEN
+            RAISE NOTICE '多变量统计 hot_table_stats 已存在';
+        ELSE
+            BEGIN
+                CREATE STATISTICS hot_table_stats (dependencies, ndistinct, mcv)
+                ON customer_id, product_id, order_date FROM hot_table;
+                RAISE NOTICE '多变量统计 hot_table_stats 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '多变量统计 hot_table_stats 已存在';
+                WHEN undefined_column THEN
+                    RAISE WARNING '表 hot_table 中不存在指定的列（customer_id, product_id, order_date）';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建多变量统计失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
 
--- 效果：
--- JOIN基数估计准确率：60% → 95%
--- 查询计划质量：+40%
--- 查询一致性：结果更可预测
+        -- 分析表以更新统计信息
+        BEGIN
+            ANALYZE hot_table;
+            RAISE NOTICE '表 hot_table 分析完成';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '分析表失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        RAISE NOTICE '多变量统计效果：';
+        RAISE NOTICE '- JOIN基数估计准确率：60%% → 95%%';
+        RAISE NOTICE '- 查询计划质量：+40%%';
+        RAISE NOTICE '- 查询一致性：结果更可预测';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

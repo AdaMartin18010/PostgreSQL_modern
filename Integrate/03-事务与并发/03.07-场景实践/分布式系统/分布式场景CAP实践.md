@@ -194,20 +194,121 @@ CREATE PUBLICATION kafkapub FOR ALL TABLES;
 **PostgreSQL Saga模式实践**：
 
 ```sql
--- 服务1：本地事务（CP）
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;
+-- Saga模式CAP实践（带完整错误处理）
+-- 服务1：本地事务（CP，带错误处理）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行服务1本地事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行服务1：本地事务（CP模式）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 服务2：本地事务（CP）
-BEGIN;
-UPDATE orders SET status = 'paid' WHERE id = 1;
-COMMIT;
+    BEGIN
+        BEGIN;
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        GET DIAGNOSTICS v_updated = ROW_COUNT;
 
--- 补偿事务（AP）
-BEGIN;
-UPDATE accounts SET balance = balance + 100 WHERE id = 1;  -- 补偿
-COMMIT;
+        IF v_updated = 0 THEN
+            RAISE WARNING '账户 1 不存在或更新失败';
+            ROLLBACK;
+        ELSE
+            COMMIT;
+            RAISE NOTICE '服务1本地事务提交成功（CP模式，强一致性）';
+        END IF;
+    EXCEPTION
+        WHEN check_violation THEN
+            ROLLBACK;
+            RAISE WARNING '余额约束违反（余额不能为负）';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '服务1本地事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 服务2：本地事务（CP，带错误处理）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行服务2本地事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行服务2：本地事务（CP模式）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+        UPDATE orders SET status = 'paid' WHERE id = 1;
+        GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+        IF v_updated = 0 THEN
+            RAISE WARNING '订单 1 不存在或更新失败';
+            ROLLBACK;
+        ELSE
+            COMMIT;
+            RAISE NOTICE '服务2本地事务提交成功（CP模式，强一致性）';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '服务2本地事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 补偿事务（AP，带错误处理）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行补偿事务';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行补偿事务（AP模式，最终一致性）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        BEGIN;
+        UPDATE accounts SET balance = balance + 100 WHERE id = 1;  -- 补偿
+        GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+        IF v_updated = 0 THEN
+            RAISE WARNING '账户 1 不存在，补偿事务无法执行';
+            ROLLBACK;
+        ELSE
+            COMMIT;
+            RAISE NOTICE '补偿事务提交成功（AP模式，最终一致性）';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '补偿事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

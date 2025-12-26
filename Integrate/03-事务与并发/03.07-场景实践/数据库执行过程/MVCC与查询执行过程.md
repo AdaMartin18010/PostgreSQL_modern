@@ -96,11 +96,28 @@ SQL查询
 **示例**：
 
 ```sql
-EXPLAIN SELECT * FROM accounts WHERE id = 1;
+-- 执行计划生成（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法生成执行计划';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始生成执行计划';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 执行计划
-Index Scan using accounts_pkey on accounts
-  Index Cond: (id = 1)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE id = 1;
+
+-- 执行计划说明：
+-- Index Scan using accounts_pkey on accounts
+--   Index Cond: (id = 1)
 ```
 
 ### 1.3 快照获取
@@ -313,6 +330,24 @@ INSERT查询创建新元组，设置xmin。
 **示例**：
 
 ```sql
+-- 连接操作与MVCC（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 accounts 或 orders 不存在，无法执行连接查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行连接操作（JOIN）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT a.*, b.*
 FROM accounts a
 JOIN orders b ON a.id = b.account_id;
@@ -327,6 +362,23 @@ JOIN orders b ON a.id = b.account_id;
 **示例**：
 
 ```sql
+-- 聚合操作与MVCC（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行聚合查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行聚合操作（COUNT, SUM）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*), SUM(balance)
 FROM accounts
 WHERE status = 'active';

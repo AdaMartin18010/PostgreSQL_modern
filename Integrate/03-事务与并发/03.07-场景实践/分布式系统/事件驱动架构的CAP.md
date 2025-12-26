@@ -241,26 +241,70 @@ CQRS是一种架构模式，将命令（写）和查询（读）分离。
 **PostgreSQL CQRS实现**：
 
 ```sql
--- 命令端：写模型（CP）
-CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    user_id INT,
-    amount DECIMAL,
-    status VARCHAR(50)
-);
+-- CQRS实现（带完整错误处理）
+-- 命令端：写模型（CP，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE NOTICE '表 orders 已存在';
+        ELSE
+            CREATE TABLE orders (
+                id SERIAL PRIMARY KEY,
+                user_id INT,
+                amount DECIMAL,
+                status VARCHAR(50)
+            );
+            RAISE NOTICE '表 orders 创建成功（命令端：写模型，CP模式，强一致性）';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 orders 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查询端：读模型（AP）
-CREATE MATERIALIZED VIEW order_summary AS
-SELECT
-    user_id,
-    COUNT(*) AS order_count,
-    SUM(amount) AS total_amount
-FROM orders
-GROUP BY user_id;
+-- 查询端：读模型（AP，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建物化视图';
+            RETURN;
+        END IF;
 
--- CAP特征：
--- 命令端：CP模式（强一致性）
--- 查询端：AP模式（最终一致性）
+        IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'order_summary' AND schemaname = 'public') THEN
+            RAISE NOTICE '物化视图 order_summary 已存在';
+        ELSE
+            BEGIN
+                CREATE MATERIALIZED VIEW order_summary AS
+                SELECT
+                    user_id,
+                    COUNT(*) AS order_count,
+                    SUM(amount) AS total_amount
+                FROM orders
+                GROUP BY user_id;
+                RAISE NOTICE '物化视图 order_summary 创建成功（查询端：读模型，AP模式，最终一致性）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '物化视图 order_summary 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建物化视图失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        RAISE NOTICE 'CAP特征：';
+        RAISE NOTICE '- 命令端：CP模式（强一致性）';
+        RAISE NOTICE '- 查询端：AP模式（最终一致性）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -278,12 +322,66 @@ GROUP BY user_id;
 **PostgreSQL事件顺序**：
 
 ```sql
--- 使用序列保证顺序
-CREATE SEQUENCE event_sequence;
+-- 使用序列保证顺序（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'event_sequence') THEN
+            RAISE NOTICE '序列 event_sequence 已存在';
+        ELSE
+            BEGIN
+                CREATE SEQUENCE event_sequence;
+                RAISE NOTICE '序列 event_sequence 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '序列 event_sequence 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建序列失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 事件有序插入
-INSERT INTO events (id, aggregate_id, event_type, event_data)
-VALUES (nextval('event_sequence'), 'order-1', 'OrderCreated', '{}');
+-- 事件有序插入（带错误处理）
+DO $$
+DECLARE
+    v_event_id BIGINT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'events') THEN
+            RAISE WARNING '表 events 不存在，无法插入事件';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'event_sequence') THEN
+            RAISE WARNING '序列 event_sequence 不存在，无法生成有序事件ID';
+            RETURN;
+        END IF;
+
+        BEGIN
+            INSERT INTO events (id, aggregate_id, event_type, event_data)
+            VALUES (nextval('event_sequence'), 'order-1', 'OrderCreated', '{}')
+            RETURNING id INTO v_event_id;
+
+            RAISE NOTICE '事件有序插入成功: event_id=%, aggregate_id=order-1', v_event_id;
+        EXCEPTION
+            WHEN unique_violation THEN
+                RAISE WARNING '事件ID冲突，可能已存在相同事件';
+            WHEN OTHERS THEN
+                RAISE WARNING '插入事件失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.2 事件幂等性
@@ -297,14 +395,30 @@ VALUES (nextval('event_sequence'), 'order-1', 'OrderCreated', '{}');
 **PostgreSQL事件幂等性**：
 
 ```sql
--- 事件表（带唯一约束）
-CREATE TABLE events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aggregate_id VARCHAR(255),
-    event_type VARCHAR(255),
-    event_data JSONB,
-    UNIQUE (aggregate_id, event_type, event_data)
-);
+-- 事件表（带唯一约束，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'events') THEN
+            RAISE NOTICE '表 events 已存在';
+        ELSE
+            CREATE TABLE events (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                aggregate_id VARCHAR(255),
+                event_type VARCHAR(255),
+                event_data JSONB,
+                UNIQUE (aggregate_id, event_type, event_data)
+            );
+            RAISE NOTICE '表 events 创建成功（事件表，带唯一约束保证幂等性）';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 events 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.3 事件一致性策略

@@ -117,19 +117,41 @@ void WalSenderMain(void)
 **基本配置**：
 
 ```sql
--- 主库配置（postgresql.conf）
-wal_level = replica
-max_wal_senders = 10
-wal_keep_size = 1GB
+-- 主库配置（postgresql.conf，这些是配置文件设置，不是SQL语句）
+-- wal_level = replica
+-- max_wal_senders = 10
+-- wal_keep_size = 1GB
 
--- 主库创建复制用户
-CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'password';
+-- 主库创建复制用户（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'replicator') THEN
+            RAISE NOTICE '角色 replicator 已存在';
+        ELSE
+            BEGIN
+                CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'password';
+                RAISE NOTICE '角色 replicator 创建成功（复制用户）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '角色 replicator 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建角色失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 主库配置pg_hba.conf
-host replication replicator 0.0.0.0/0 md5
+-- 主库配置pg_hba.conf（这是配置文件，不是SQL语句）
+-- host replication replicator 0.0.0.0/0 md5
 
--- 备库配置（postgresql.conf）
-primary_conninfo = 'host=primary_host port=5432 user=replicator password=password'
+-- 备库配置（postgresql.conf，这是配置文件，不是SQL语句）
+-- primary_conninfo = 'host=primary_host port=5432 user=replicator password=password'
 ```
 
 ---
@@ -141,9 +163,35 @@ primary_conninfo = 'host=primary_host port=5432 user=replicator password=passwor
 **同步流复制配置**：
 
 ```sql
--- 主库配置
-synchronous_standby_names = 'standby1,standby2'
-synchronous_commit = 'remote_apply'  -- 或 'remote_write'
+-- 主库配置（postgresql.conf，这些是配置文件设置，不是SQL语句）
+-- synchronous_standby_names = 'standby1,standby2'
+-- synchronous_commit = 'remote_apply'  -- 或 'remote_write'
+
+-- 或者使用ALTER SYSTEM设置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **同步级别**：
@@ -200,9 +248,35 @@ $$
 **异步流复制配置**：
 
 ```sql
--- 主库配置
-synchronous_standby_names = ''  -- 空表示异步
-synchronous_commit = 'local'     -- 本地提交
+-- 主库配置（postgresql.conf，这些是配置文件设置，不是SQL语句）
+-- synchronous_standby_names = ''  -- 空表示异步
+-- synchronous_commit = 'local'     -- 本地提交
+
+-- 或者使用ALTER SYSTEM设置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（异步复制，AP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.2 AP模式特征

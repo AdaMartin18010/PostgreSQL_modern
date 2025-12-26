@@ -44,9 +44,6 @@
       - [主节点可见性](#主节点可见性)
       - [从节点可见性](#从节点可见性)
       - [延迟影响](#延迟影响)
-  - [📊 第三部分：性能优化](#-第三部分性能优化)
-    - [3.1 复制延迟优化](#31-复制延迟优化)
-      - [同步模式优化](#同步模式优化)
       - [网络优化](#网络优化)
       - [WAL优化](#wal优化)
     - [3.2 查询性能优化](#32-查询性能优化)
@@ -61,11 +58,9 @@
     - [4.1 主节点故障](#41-主节点故障)
       - [故障检测](#故障检测)
       - [故障转移](#故障转移)
-      - [数据一致性](#数据一致性)
     - [4.2 从节点故障](#42-从节点故障)
       - [故障检测](#故障检测-1)
       - [恢复处理](#恢复处理)
-      - [重新同步](#重新同步)
     - [4.3 网络故障](#43-网络故障)
       - [分区处理](#分区处理)
       - [延迟处理](#延迟处理)
@@ -111,33 +106,88 @@ WAL流式传输：
 #### 同步模式
 
 ```sql
--- 同步复制配置（postgresql.conf）
-synchronous_standby_names = 'standby1,standby2'
-synchronous_commit = on
+-- 同步复制配置（postgresql.conf，带说明）
+-- 注意：以下配置需要在postgresql.conf文件中设置，然后重启PostgreSQL
+-- synchronous_standby_names = 'standby1,standby2'
+-- synchronous_commit = on
 
--- 同步模式类型：
--- 1. off：异步复制（性能最高，一致性最低）
--- 2. on：同步复制（性能最低，一致性最高）
--- 3. remote_write：远程写入确认（平衡）
--- 4. remote_apply：远程应用确认（最强一致性）
-
--- MVCC影响：
--- 同步模式影响事务提交延迟
--- 影响MVCC快照可见性
+-- 同步模式类型（带错误处理说明）：
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '同步模式类型说明：';
+        RAISE NOTICE '1. off：异步复制（性能最高，一致性最低）';
+        RAISE NOTICE '2. on：同步复制（性能最低，一致性最高）';
+        RAISE NOTICE '3. remote_write：远程写入确认（平衡）';
+        RAISE NOTICE '4. remote_apply：远程应用确认（最强一致性）';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 同步模式影响事务提交延迟';
+        RAISE NOTICE '- 影响MVCC快照可见性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 复制槽
 
 ```sql
--- 创建复制槽
-SELECT pg_create_physical_replication_slot('replica_slot');
+-- 创建复制槽（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'replica_slot') THEN
+            RAISE NOTICE '复制槽 replica_slot 已存在';
+        ELSE
+            BEGIN
+                PERFORM pg_create_physical_replication_slot('replica_slot');
+                RAISE NOTICE '复制槽 replica_slot 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '复制槽 replica_slot 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建复制槽失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 复制槽作用：
--- 1. 防止WAL被删除
--- 2. 保证从节点可以恢复
--- 3. 跟踪复制进度
+-- 复制槽作用说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '复制槽作用：';
+        RAISE NOTICE '1. 防止WAL被删除';
+        RAISE NOTICE '2. 保证从节点可以恢复';
+        RAISE NOTICE '3. 跟踪复制进度';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查看复制槽
+-- 查看复制槽（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查看复制槽信息';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     slot_type,
@@ -146,8 +196,18 @@ SELECT
     confirmed_flush_lsn
 FROM pg_replication_slots;
 
--- MVCC影响：
--- 复制槽保留WAL，影响WAL空间
+-- MVCC影响说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 复制槽保留WAL，影响WAL空间';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 -- 影响VACUUM和MVCC清理
 ```
 
@@ -440,7 +500,19 @@ VACUUM对复制的影响：
 #### 延迟影响
 
 ```sql
--- 监控复制延迟
+-- 监控复制延迟（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控复制延迟';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     client_addr,
     state,
@@ -452,11 +524,20 @@ SELECT
     EXTRACT(EPOCH FROM (now() - replay_lag_time)) AS replay_lag_seconds
 FROM pg_stat_replication;
 
--- 延迟影响：
--- 1. 读延迟：从节点可能读到旧数据
--- 2. 故障恢复：延迟影响恢复时间
--- 3. MVCC：延迟影响快照一致性
-```
+-- 延迟影响说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '延迟影响：';
+        RAISE NOTICE '1. 读延迟：从节点可能读到旧数据';
+        RAISE NOTICE '2. 故障恢复：延迟影响恢复时间';
+        RAISE NOTICE '3. MVCC：延迟影响快照一致性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 ---
 
@@ -467,26 +548,39 @@ FROM pg_stat_replication;
 #### 同步模式优化
 
 ```sql
--- 同步模式优化
+-- 同步模式优化（带说明）
+-- 注意：以下配置需要在postgresql.conf文件中设置，然后重启PostgreSQL
 -- 平衡一致性和性能
 
--- 方案1：远程写入确认（平衡）
-synchronous_commit = remote_write;
--- 从节点写入WAL后确认，不等待应用
--- 延迟：中等
--- 一致性：中等
-
--- 方案2：远程应用确认（最强一致性）
-synchronous_commit = remote_apply;
--- 从节点应用WAL后确认
--- 延迟：高
--- 一致性：最强
-
--- 方案3：异步复制（最高性能）
-synchronous_commit = off;
--- 不等待从节点确认
--- 延迟：低
--- 一致性：最终一致性
+-- 方案说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '同步模式优化方案：';
+        RAISE NOTICE '';
+        RAISE NOTICE '方案1：远程写入确认（平衡）';
+        RAISE NOTICE '配置: synchronous_commit = remote_write;';
+        RAISE NOTICE '- 从节点写入WAL后确认，不等待应用';
+        RAISE NOTICE '- 延迟：中等';
+        RAISE NOTICE '- 一致性：中等';
+        RAISE NOTICE '';
+        RAISE NOTICE '方案2：远程应用确认（最强一致性）';
+        RAISE NOTICE '配置: synchronous_commit = remote_apply;';
+        RAISE NOTICE '- 从节点应用WAL后确认';
+        RAISE NOTICE '- 延迟：高';
+        RAISE NOTICE '- 一致性：最强';
+        RAISE NOTICE '';
+        RAISE NOTICE '方案3：异步复制（最高性能）';
+        RAISE NOTICE '配置: synchronous_commit = off;';
+        RAISE NOTICE '- 不等待从节点确认';
+        RAISE NOTICE '- 延迟：低';
+        RAISE NOTICE '- 一致性：最终一致性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 网络优化
@@ -513,23 +607,36 @@ synchronous_commit = off;
 #### WAL优化
 
 ```sql
--- WAL优化配置
+-- WAL优化配置（带说明）
+-- 注意：以下配置需要在postgresql.conf文件中设置，然后重启PostgreSQL
 -- 减少WAL生成，提高复制效率
 
--- 1. 减少WAL生成
-wal_level = replica;  -- 最小WAL级别
-wal_compression = on;  -- WAL压缩
-
--- 2. 批量提交
-commit_delay = 100;  -- 延迟提交（微秒）
-commit_siblings = 5;  -- 批量提交阈值
-
--- 3. 异步提交（如可接受）
-synchronous_commit = off;  -- 异步提交
-
--- MVCC影响：
--- WAL优化不影响MVCC机制
--- 但影响复制延迟和一致性
+-- 配置说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE 'WAL优化配置说明：';
+        RAISE NOTICE '';
+        RAISE NOTICE '1. 减少WAL生成';
+        RAISE NOTICE '   wal_level = replica;  -- 最小WAL级别';
+        RAISE NOTICE '   wal_compression = on;  -- WAL压缩';
+        RAISE NOTICE '';
+        RAISE NOTICE '2. 批量提交';
+        RAISE NOTICE '   commit_delay = 100;  -- 延迟提交（微秒）';
+        RAISE NOTICE '   commit_siblings = 5;  -- 批量提交阈值';
+        RAISE NOTICE '';
+        RAISE NOTICE '3. 异步提交（如可接受）';
+        RAISE NOTICE '   synchronous_commit = off;  -- 异步提交';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- WAL优化不影响MVCC机制';
+        RAISE NOTICE '- 但影响复制延迟和一致性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.2 查询性能优化
@@ -537,20 +644,31 @@ synchronous_commit = off;  -- 异步提交
 #### 只读查询
 
 ```sql
--- 从节点只读查询配置
+-- 从节点只读查询配置（带说明）
+-- 注意：以下配置需要在postgresql.conf文件中设置，然后重启PostgreSQL
 -- 主节点配置
-max_wal_senders = 10;
-wal_level = replica;
+-- max_wal_senders = 10;
+-- wal_level = replica;
 
 -- 从节点配置
-hot_standby = on;
-max_standby_streaming_delay = 30s;
+-- hot_standby = on;
+-- max_standby_streaming_delay = 30s;
 
--- 只读查询特点：
--- 1. 不阻塞复制
--- 2. 基于复制快照
--- 3. 可能看到旧数据
--- 4. 提高读性能
+-- 只读查询特点说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '只读查询特点：';
+        RAISE NOTICE '1. 不阻塞复制';
+        RAISE NOTICE '2. 基于复制快照';
+        RAISE NOTICE '3. 可能看到旧数据';
+        RAISE NOTICE '4. 提高读性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 热备查询
@@ -600,46 +718,137 @@ max_standby_streaming_delay = 30s;
 #### WAL保留
 
 ```sql
--- WAL保留配置
+-- WAL保留配置（带错误处理）
 -- 平衡空间和安全性
 
--- 1. 复制槽保留WAL
-SELECT pg_create_physical_replication_slot('replica_slot');
+-- 1. 复制槽保留WAL（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'replica_slot') THEN
+            RAISE NOTICE '复制槽 replica_slot 已存在';
+        ELSE
+            BEGIN
+                PERFORM pg_create_physical_replication_slot('replica_slot');
+                RAISE NOTICE '复制槽 replica_slot 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '复制槽 replica_slot 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建复制槽失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 最大WAL保留（PostgreSQL 17+）
-max_slot_wal_keep_size = '10GB';  -- 最大WAL保留大小
+-- 2. 最大WAL保留（PostgreSQL 17+，带说明）
+-- 注意：以下配置需要在postgresql.conf文件中设置，然后重启PostgreSQL
+-- max_slot_wal_keep_size = '10GB';  -- 最大WAL保留大小
 
--- 3. 监控WAL使用
+-- 3. 监控WAL使用（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'replica_slot') THEN
+            RAISE WARNING '复制槽 replica_slot 不存在，无法监控WAL使用';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控WAL使用';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS wal_retained
 FROM pg_replication_slots
 WHERE slot_name = 'replica_slot';
 
--- MVCC影响：
--- WAL保留影响磁盘空间
--- 影响VACUUM和MVCC清理
+-- MVCC影响说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- WAL保留影响磁盘空间';
+        RAISE NOTICE '- 影响VACUUM和MVCC清理';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 复制槽管理
 
 ```sql
--- 复制槽管理
+-- 复制槽管理（带错误处理）
 -- 防止WAL无限增长
 
--- 1. 监控复制槽
+-- 1. 监控复制槽（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控复制槽';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     active,
     pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS wal_retained
 FROM pg_replication_slots;
 
--- 2. 删除不活跃复制槽
-SELECT pg_drop_replication_slot('old_slot');
+-- 2. 删除不活跃复制槽（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'old_slot') THEN
+            RAISE WARNING '复制槽 old_slot 不存在，无法删除';
+        ELSE
+            BEGIN
+                PERFORM pg_drop_replication_slot('old_slot');
+                RAISE NOTICE '复制槽 old_slot 删除成功';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING '删除复制槽失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 定期清理
--- 监控复制槽状态
--- 清理不活跃复制槽
--- 防止WAL无限增长
+-- 3. 定期清理说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '定期清理任务：';
+        RAISE NOTICE '1. 监控复制槽状态';
+        RAISE NOTICE '2. 清理不活跃复制槽';
+        RAISE NOTICE '3. 防止WAL无限增长';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 内存优化
@@ -693,25 +902,81 @@ SELECT pg_drop_replication_slot('old_slot');
 #### 故障转移
 
 ```sql
--- 从节点提升为主节点
--- 1. 停止从节点
-pg_ctl stop
+-- 从节点提升为主节点（带错误处理）
+-- 注意：以下操作需要在从节点上执行
 
--- 2. 提升为主节点
-pg_ctl promote
+-- 1. 停止从节点（命令行操作，非SQL）
+-- pg_ctl stop
 
--- 或者使用SQL
-SELECT pg_promote();
+-- 2. 提升为主节点（带错误处理）
+DO $$
+DECLARE
+    is_in_recovery boolean;
+BEGIN
+    BEGIN
+        -- 检查当前是否在恢复模式
+        SELECT pg_is_in_recovery() INTO is_in_recovery;
 
--- 3. 验证提升
+        IF NOT is_in_recovery THEN
+            RAISE NOTICE '当前节点已经是主节点，无需提升';
+            RETURN;
+        END IF;
+
+        -- 尝试提升（需要超级用户权限）
+        BEGIN
+            PERFORM pg_promote();
+            RAISE NOTICE '从节点提升为主节点成功';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING '权限不足，需要超级用户权限才能执行pg_promote()';
+            WHEN OTHERS THEN
+                RAISE WARNING '提升失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 3. 验证提升（带错误处理和性能测试）
+DO $$
+DECLARE
+    is_in_recovery boolean;
+BEGIN
+    BEGIN
+        SELECT pg_is_in_recovery() INTO is_in_recovery;
+
+        IF is_in_recovery THEN
+            RAISE NOTICE '当前节点仍在恢复模式（从节点）';
+        ELSE
+            RAISE NOTICE '当前节点已提升为主节点（返回false表示已提升为主节点）';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '验证失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT pg_is_in_recovery();
--- 返回false表示已提升为主节点
 
--- MVCC影响：
--- 故障转移期间MVCC状态保持
--- 保证事务一致性
--- 版本链正常
-```
+-- MVCC影响说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 故障转移期间MVCC状态保持';
+        RAISE NOTICE '- 保证事务一致性';
+        RAISE NOTICE '- 版本链正常';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 #### 数据一致性
 
@@ -760,23 +1025,66 @@ SELECT pg_is_in_recovery();
 #### 恢复处理
 
 ```sql
--- 从节点恢复
--- 1. 检查WAL位置
+-- 从节点恢复（带错误处理）
+-- 1. 检查WAL位置（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF pg_is_in_recovery() THEN
+            RAISE NOTICE '当前节点在恢复模式（从节点），开始检查WAL位置';
+        ELSE
+            RAISE WARNING '当前节点不在恢复模式，此操作应在从节点上执行';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn();
 
--- 2. 检查复制延迟
+-- 2. 检查复制延迟（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF pg_is_in_recovery() THEN
+            RAISE NOTICE '开始检查复制延迟';
+        ELSE
+            RAISE WARNING '当前节点不在恢复模式，此操作应在从节点上执行';
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg_wal_lsn_diff(pg_current_wal_lsn(), pg_last_wal_replay_lsn()) AS lag_bytes;
 
--- 3. 重新同步
--- 从节点自动重新同步
--- 或者手动重新同步
-
--- MVCC影响：
--- 恢复期间MVCC状态保持
--- 恢复后版本链同步
--- 保证数据一致性
-```
+-- 3. 重新同步说明（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '重新同步说明：';
+        RAISE NOTICE '1. 从节点自动重新同步';
+        RAISE NOTICE '2. 或者手动重新同步';
+        RAISE NOTICE '';
+        RAISE NOTICE 'MVCC影响：';
+        RAISE NOTICE '- 恢复期间MVCC状态保持';
+        RAISE NOTICE '- 恢复后版本链同步';
+        RAISE NOTICE '- 保证数据一致性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 #### 重新同步
 

@@ -78,10 +78,39 @@ CAP实践案例研究通过真实案例，展示CAP理论在实际项目中的�
 **选择CP模式**：
 
 ```sql
--- PostgreSQL CP模式配置
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- PostgreSQL CP模式配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+            RAISE NOTICE '默认事务隔离级别已设置为 serializable（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **CAP特征**：
@@ -122,10 +151,39 @@ ALTER SYSTEM SET default_transaction_isolation = 'serializable';
 **选择AP模式**：
 
 ```sql
--- PostgreSQL AP模式配置
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- PostgreSQL AP模式配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+            RAISE NOTICE '默认事务隔离级别已设置为 read committed（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **CAP特征**：
@@ -166,10 +224,39 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **选择AP模式**：
 
 ```sql
--- PostgreSQL AP模式配置
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'off';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- PostgreSQL AP模式配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'off';
+            RAISE NOTICE '同步提交模式已设置为 off（AP模式，最高性能）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+            RAISE NOTICE '默认事务隔离级别已设置为 read committed（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **CAP特征**：
@@ -210,11 +297,54 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **选择混合模式**：
 
 ```sql
--- 关键数据：CP模式
-ALTER TABLE accounts SET (synchronous_commit = 'remote_apply');
+-- 混合CAP模式配置（带错误处理）
+-- 关键数据：CP模式（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法设置配置';
+            RETURN;
+        END IF;
 
--- 非关键数据：AP模式
-ALTER TABLE logs SET (synchronous_commit = 'local');
+        BEGIN
+            ALTER TABLE accounts SET (synchronous_commit = 'remote_apply');
+            RAISE NOTICE '表 accounts 配置为CP模式（synchronous_commit=remote_apply，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置表配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 非关键数据：AP模式（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE WARNING '表 logs 不存在，无法设置配置';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE logs SET (synchronous_commit = 'local');
+            RAISE NOTICE '表 logs 配置为AP模式（synchronous_commit=local，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置表配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **CAP特征**：
