@@ -301,9 +301,32 @@ $$
 **配置示例**：
 
 ```sql
--- 配置同步复制
-ALTER SYSTEM SET synchronous_standby_names = 'ANY 2 (standby1, standby2, standby3)';
-SELECT pg_reload_conf();
+-- 配置同步复制（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'ANY 2 (standby1, standby2, standby3)';
+            RAISE NOTICE '同步备库名称已设置为 ANY 2 (standby1, standby2, standby3)（同步复制，CP/EC模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重新加载配置失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **适用场景**：
@@ -331,9 +354,32 @@ SELECT pg_reload_conf();
 **配置示例**：
 
 ```sql
--- 配置异步复制（默认）
-ALTER SYSTEM SET synchronous_standby_names = '';
-SELECT pg_reload_conf();
+-- 配置异步复制（默认，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（异步复制，AP/EL模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重新加载配置失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **适用场景**：
@@ -359,9 +405,32 @@ SELECT pg_reload_conf();
 **配置示例**：
 
 ```sql
--- 配置混合模式
-ALTER SYSTEM SET synchronous_standby_names = 'ANY 1 (standby1, standby2)';
-SELECT pg_reload_conf();
+-- 配置混合模式（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'ANY 1 (standby1, standby2)';
+            RAISE NOTICE '同步备库名称已设置为 ANY 1 (standby1, standby2)（混合模式，动态调整）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN
+            PERFORM pg_reload_conf();
+            RAISE NOTICE '配置已重新加载';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重新加载配置失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **适用场景**：

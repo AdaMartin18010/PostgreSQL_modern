@@ -294,15 +294,44 @@ $$
 **PostgreSQL实现**：
 
 ```sql
--- CP模式配置
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- CP模式配置（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 特征：
--- ✅ 强一致性：同步复制保证数据一致
--- ❌ 低可用性：分区时写入阻塞
--- ✅ 分区容错：系统继续运行（但可能阻塞）
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+            RAISE NOTICE '默认事务隔离级别已设置为 serializable（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ✅ 强一致性：同步复制保证数据一致';
+        RAISE NOTICE '- ❌ 低可用性：分区时写入阻塞';
+        RAISE NOTICE '- ✅ 分区容错：系统继续运行（但可能阻塞）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 2.2.2 支付系统
@@ -316,18 +345,90 @@ ALTER SYSTEM SET default_transaction_isolation = 'serializable';
 **PostgreSQL实现**：
 
 ```sql
--- CP模式配置
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- CP模式配置（带完整错误处理）
+DO $$
+DECLARE
+    v_updated INTEGER;
+    v_payment_id INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'payments') THEN
+            RAISE WARNING '表 accounts 或 payments 不存在，无法执行支付逻辑';
+            RETURN;
+        END IF;
 
--- 支付逻辑
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-INSERT INTO payments (account_id, amount) VALUES (1, 100);
+        BEGIN
+            SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
-COMMIT;
+            BEGIN;
 
--- 特征：
--- ✅ 强一致性：SERIALIZABLE保证无异常
--- ❌ 低可用性：冲突时事务回滚
+            BEGIN
+                EXPLAIN (ANALYZE, BUFFERS, TIMING)
+                UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+
+                GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+                IF v_updated = 0 THEN
+                    RAISE WARNING '账户 % 不存在或余额不足', 1;
+                    ROLLBACK;
+                    RETURN;
+                END IF;
+            EXCEPTION
+                WHEN serialization_failure THEN
+                    RAISE WARNING '序列化冲突，事务需要重试';
+                    ROLLBACK;
+                    RAISE;
+                WHEN check_violation THEN
+                    RAISE WARNING '余额约束违反（余额不能为负）';
+                    ROLLBACK;
+                    RAISE;
+                WHEN OTHERS THEN
+                    RAISE WARNING '更新账户余额失败: %', SQLERRM;
+                    ROLLBACK;
+                    RAISE;
+            END;
+
+            BEGIN
+                INSERT INTO payments (account_id, amount) VALUES (1, 100)
+                RETURNING id INTO v_payment_id;
+
+                RAISE NOTICE '支付记录创建成功：payment_id=%', v_payment_id;
+            EXCEPTION
+                WHEN foreign_key_violation THEN
+                    RAISE WARNING '外键约束违反（account_id不存在）';
+                    ROLLBACK;
+                    RAISE;
+                WHEN serialization_failure THEN
+                    RAISE WARNING '序列化冲突，事务需要重试';
+                    ROLLBACK;
+                    RAISE;
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建支付记录失败: %', SQLERRM;
+                    ROLLBACK;
+                    RAISE;
+            END;
+
+            COMMIT;
+            RAISE NOTICE '支付事务提交成功（CP模式，强一致性）';
+        EXCEPTION
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务已中止，需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '事务失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ✅ 强一致性：SERIALIZABLE保证无异常';
+        RAISE NOTICE '- ❌ 低可用性：冲突时事务回滚';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 2.2.3 库存管理系统
@@ -341,18 +442,71 @@ COMMIT;
 **PostgreSQL实现**：
 
 ```sql
--- CP模式配置
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- CP模式配置（带完整错误处理）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory') THEN
+            RAISE WARNING '表 inventory 不存在，无法执行库存扣减';
+            RETURN;
+        END IF;
 
--- 库存扣减
-UPDATE inventory SET quantity = quantity - 1
-WHERE product_id = 1 AND quantity > 0;
+        BEGIN
+            SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
-COMMIT;
+            BEGIN;
 
--- 特征：
--- ✅ 强一致性：SERIALIZABLE防止超卖
--- ❌ 低可用性：高并发时性能下降
+            BEGIN
+                EXPLAIN (ANALYZE, BUFFERS, TIMING)
+                UPDATE inventory SET quantity = quantity - 1
+                WHERE product_id = 1 AND quantity > 0;
+
+                GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+                IF v_updated = 0 THEN
+                    RAISE WARNING '商品 % 库存不足或不存在', 1;
+                    ROLLBACK;
+                    RETURN;
+                END IF;
+
+                RAISE NOTICE '库存扣减成功（商品 %）', 1;
+            EXCEPTION
+                WHEN serialization_failure THEN
+                    RAISE WARNING '序列化冲突，事务需要重试';
+                    ROLLBACK;
+                    RAISE;
+                WHEN check_violation THEN
+                    RAISE WARNING '库存约束违反（库存不能为负）';
+                    ROLLBACK;
+                    RAISE;
+                WHEN OTHERS THEN
+                    RAISE WARNING '更新库存失败: %', SQLERRM;
+                    ROLLBACK;
+                    RAISE;
+            END;
+
+            COMMIT;
+            RAISE NOTICE '库存扣减事务提交成功（CP模式，强一致性）';
+        EXCEPTION
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务已中止，需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '事务失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ✅ 强一致性：SERIALIZABLE防止超卖';
+        RAISE NOTICE '- ❌ 低可用性：高并发时性能下降';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 CP模式实现策略
@@ -362,9 +516,31 @@ COMMIT;
 **配置**：
 
 ```sql
--- 同步复制（CP模式）
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+-- 同步复制（CP模式，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **特点**：
@@ -378,12 +554,52 @@ ALTER SYSTEM SET synchronous_commit = 'remote_apply';
 **配置**：
 
 ```sql
--- 两阶段提交（CP模式）
-BEGIN;
--- 第一阶段：准备
-PREPARE TRANSACTION 'tx1';
--- 第二阶段：提交
-COMMIT PREPARED 'tx1';
+-- 两阶段提交（CP模式，带完整错误处理）
+DO $$
+DECLARE
+    v_prepared BOOLEAN := FALSE;
+BEGIN
+    BEGIN
+        BEGIN;
+
+        BEGIN
+            -- 第一阶段：准备
+            PREPARE TRANSACTION 'tx1';
+            v_prepared := TRUE;
+            RAISE NOTICE '事务 tx1 准备成功（第一阶段）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '准备事务失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN
+            -- 第二阶段：提交
+            COMMIT PREPARED 'tx1';
+            RAISE NOTICE '事务 tx1 提交成功（第二阶段，CP模式）';
+        EXCEPTION
+            WHEN invalid_sql_statement_name THEN
+                RAISE WARNING '事务 tx1 不存在或已提交';
+            WHEN OTHERS THEN
+                RAISE WARNING '提交事务失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF v_prepared THEN
+                BEGIN
+                    ROLLBACK PREPARED 'tx1';
+                    RAISE NOTICE '已回滚准备的事务 tx1';
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        RAISE WARNING '回滚准备的事务失败: %', SQLERRM;
+                END;
+            END IF;
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **特点**：
@@ -423,15 +639,44 @@ $$
 **PostgreSQL实现**：
 
 ```sql
--- AP模式配置
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- AP模式配置（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 特征：
--- ❌ 弱一致性：异步复制，可能延迟
--- ✅ 高可用性：分区时继续写入
--- ✅ 分区容错：系统继续运行
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+            RAISE NOTICE '默认事务隔离级别已设置为 read committed（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ❌ 弱一致性：异步复制，可能延迟';
+        RAISE NOTICE '- ✅ 高可用性：分区时继续写入';
+        RAISE NOTICE '- ✅ 分区容错：系统继续运行';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 3.2.2 分析系统
@@ -445,16 +690,46 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **PostgreSQL实现**：
 
 ```sql
--- AP模式配置（只读备库）
--- 主库：异步复制
-ALTER SYSTEM SET synchronous_standby_names = '';
+-- AP模式配置（只读备库，带完整错误处理）
+-- 主库：异步复制（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '主库：同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 备库：只读查询
-SET default_transaction_read_only = on;
+-- 备库：只读查询（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            SET default_transaction_read_only = on;
+            RAISE NOTICE '备库：默认事务已设置为只读（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置只读模式失败: %', SQLERRM;
+        END;
 
--- 特征：
--- ❌ 弱一致性：备库可能延迟
--- ✅ 高可用性：备库继续查询
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ❌ 弱一致性：备库可能延迟';
+        RAISE NOTICE '- ✅ 高可用性：备库继续查询';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 3.2.3 内容管理系统
@@ -468,13 +743,35 @@ SET default_transaction_read_only = on;
 **PostgreSQL实现**：
 
 ```sql
--- AP模式配置
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- AP模式配置（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 特征：
--- ❌ 弱一致性：可能读到旧数据
--- ✅ 高可用性：高并发性能好
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ❌ 弱一致性：可能读到旧数据';
+        RAISE NOTICE '- ✅ 高可用性：高并发性能好';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 AP模式实现策略
@@ -484,9 +781,31 @@ ALTER SYSTEM SET synchronous_commit = 'local';
 **配置**：
 
 ```sql
--- 异步复制（AP模式）
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- 异步复制（AP模式，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **特点**：

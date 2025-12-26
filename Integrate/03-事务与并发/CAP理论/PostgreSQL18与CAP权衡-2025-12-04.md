@@ -45,15 +45,39 @@ P (Partition Tolerance): ❌ 不适用
 #### 统计信息改进 → 查询结果更一致
 
 ```sql
--- ⭐ PostgreSQL 18：多变量统计
-CREATE STATISTICS orders_stats (dependencies, ndistinct, mcv)
-ON customer_id, product_id, order_date FROM orders;
+-- ⭐ PostgreSQL 18：多变量统计（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建多变量统计';
+            RETURN;
+        END IF;
 
--- CAP影响：
--- 1. 基数估计准确率+40%
--- 2. 查询计划更稳定
--- 3. 查询结果更可预测
--- 4. 一致性(C)增强
+        BEGIN
+            CREATE STATISTICS orders_stats (dependencies, ndistinct, mcv)
+            ON customer_id, product_id, order_date FROM orders;
+
+            RAISE NOTICE '多变量统计 orders_stats 创建成功（PostgreSQL 18）';
+        EXCEPTION
+            WHEN duplicate_object THEN
+                RAISE WARNING '统计 orders_stats 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建多变量统计失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        RAISE NOTICE 'CAP影响：';
+        RAISE NOTICE '1. 基数估计准确率+40%';
+        RAISE NOTICE '2. 查询计划更稳定';
+        RAISE NOTICE '3. 查询结果更可预测';
+        RAISE NOTICE '4. 一致性(C)增强';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **形式化分析**:
@@ -268,13 +292,68 @@ PostgreSQL 18核心策略:
 **PostgreSQL 18策略**:
 
 ```sql
--- 1. C保证：Serializable隔离
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-UPDATE inventory SET stock = stock - 1 WHERE product_id = $1 AND stock > 0;
-COMMIT;
+-- 1. C保证：Serializable隔离（带完整错误处理）
+DO $$
+DECLARE
+    v_product_id INTEGER := 1;  -- 示例值
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory') THEN
+            RAISE WARNING '表 inventory 不存在，无法执行库存扣减';
+            RETURN;
+        END IF;
 
--- 2. ⭐ A提升：内置连接池
-enable_builtin_connection_pooling = on
+        BEGIN
+            SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+            BEGIN;
+
+            BEGIN
+                EXPLAIN (ANALYZE, BUFFERS, TIMING)
+                UPDATE inventory SET stock = stock - 1 WHERE product_id = v_product_id AND stock > 0;
+
+                GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+                IF v_updated = 0 THEN
+                    RAISE WARNING '商品 % 库存不足或不存在', v_product_id;
+                    ROLLBACK;
+                    RETURN;
+                END IF;
+            EXCEPTION
+                WHEN serialization_failure THEN
+                    RAISE WARNING '序列化冲突，事务需要重试';
+                    ROLLBACK;
+                    RAISE;
+                WHEN check_violation THEN
+                    RAISE WARNING '库存约束违反（库存不能为负）';
+                    ROLLBACK;
+                    RAISE;
+                WHEN OTHERS THEN
+                    RAISE WARNING '更新库存失败: %', SQLERRM;
+                    ROLLBACK;
+                    RAISE;
+            END;
+
+            COMMIT;
+            RAISE NOTICE '库存扣减事务提交成功（Serializable隔离，C保证）';
+        EXCEPTION
+            WHEN serialization_failure THEN
+                RAISE WARNING '序列化冲突，事务已中止，需要重试';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '事务失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 2. ⭐ A提升：内置连接池（这是配置文件设置，不是SQL语句）
+-- enable_builtin_connection_pooling = on
 -- 效果：10万并发请求，99.9%成功
 
 -- 3. ⭐ 性能优化：组提交
@@ -298,16 +377,60 @@ enable_builtin_connection_pooling = on
 **PostgreSQL 18策略**:
 
 ```sql
--- 1. ⭐ C增强：多变量统计
-CREATE STATISTICS fact_sales_stats (dependencies, ndistinct)
-ON date_key, product_key, store_key FROM fact_sales;
+-- 1. ⭐ C增强：多变量统计（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'fact_sales') THEN
+            RAISE WARNING '表 fact_sales 不存在，无法创建多变量统计';
+            RETURN;
+        END IF;
 
--- 效果：JOIN估计准确率+40%
+        BEGIN
+            CREATE STATISTICS fact_sales_stats (dependencies, ndistinct)
+            ON date_key, product_key, store_key FROM fact_sales;
 
--- 2. C保证：REPEATABLE READ
-BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
--- 分析查询...
-COMMIT;
+            RAISE NOTICE '多变量统计 fact_sales_stats 创建成功（C增强）';
+        EXCEPTION
+            WHEN duplicate_object THEN
+                RAISE WARNING '统计 fact_sales_stats 已存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建多变量统计失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        RAISE NOTICE '效果：JOIN估计准确率+40%';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 2. C保证：REPEATABLE READ（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+            RAISE NOTICE '事务隔离级别已设置为 REPEATABLE READ（C保证）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置事务隔离级别失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN;
+        -- 分析查询...
+        COMMIT;
+        RAISE NOTICE '分析查询事务提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 3. ⭐ 性能：并行查询
 -- 查询时间: 95s → 12s（-87%）

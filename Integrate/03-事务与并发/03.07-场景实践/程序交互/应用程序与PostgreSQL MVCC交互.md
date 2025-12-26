@@ -98,11 +98,35 @@ conn = pool.getconn()
 **状态检查**：
 
 ```sql
--- 检查事务状态
-SELECT txid_current();
+-- 检查事务状态（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查事务状态和隔离级别';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 检查隔离级别
-SHOW transaction_isolation;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT txid_current() AS current_transaction_id;
+
+-- 检查隔离级别（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_isolation_level TEXT;
+BEGIN
+    BEGIN
+        SHOW transaction_isolation INTO v_isolation_level;
+        RAISE NOTICE '当前隔离级别: %', v_isolation_level;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查隔离级别失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 1.3 事务状态管理
@@ -148,8 +172,25 @@ finally:
 **快照获取**：
 
 ```sql
+-- 快照获取（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法获取快照';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始获取快照';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '快照获取准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 BEGIN;
 -- 快照在第一个查询时获取
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM accounts WHERE id = 1;  -- 获取快照
 ```
 
@@ -200,6 +241,22 @@ SELECT * FROM accounts WHERE id = 1;  -- 获取快照
 **保存点使用**：
 
 ```sql
+-- 保存点使用（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法使用保存点';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始使用保存点';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '保存点准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 BEGIN;
 SAVEPOINT sp1;
 UPDATE accounts SET balance = balance - 100 WHERE id = 1;

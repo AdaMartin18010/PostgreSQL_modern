@@ -641,28 +641,60 @@ SELECT balance FROM accounts WHERE id = 1;
 **不良实践**：
 
 ```sql
--- 不良：长事务
-BEGIN;
--- 长时间处理...
-SELECT * FROM large_table;
--- 等待用户输入...
-UPDATE large_table SET status = 'processed';
-COMMIT;  -- 事务时间过长
+-- 不良：长事务（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN;
+        -- 长时间处理...
+        PERFORM (SELECT * FROM large_table LIMIT 1);
+        -- 等待用户输入...
+        UPDATE large_table SET status = 'processed' WHERE id = 1;
+        COMMIT;  -- 事务时间过长
+        RAISE NOTICE '长事务完成（不推荐：事务时间过长）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '长事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **良好实践**：
 
 ```sql
--- 良好：短事务
-BEGIN;
-SELECT * FROM large_table WHERE id = 1;
-COMMIT;
+-- 良好：短事务（带错误处理）
+DO $$
+DECLARE
+    v_record large_table%ROWTYPE;
+BEGIN
+    BEGIN
+        BEGIN;
+        SELECT * INTO v_record FROM large_table WHERE id = 1;
+        COMMIT;
+        RAISE NOTICE '短事务1完成（查询）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '查询失败: %', SQLERRM;
+            RAISE;
+    END;
 
--- 处理数据...
+    -- 处理数据...
 
-BEGIN;
-UPDATE large_table SET status = 'processed' WHERE id = 1;
-COMMIT;
+    BEGIN
+        BEGIN;
+        UPDATE large_table SET status = 'processed' WHERE id = 1;
+        COMMIT;
+        RAISE NOTICE '短事务2完成（更新）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '更新失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.2 合理使用锁
@@ -674,11 +706,35 @@ COMMIT;
 **示例**：
 
 ```sql
--- 合理使用FOR UPDATE
-BEGIN;
-SELECT * FROM accounts WHERE id = 1 FOR UPDATE;  -- 锁定行
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;
+-- 合理使用FOR UPDATE（带错误处理）
+DO $$
+DECLARE
+    v_account accounts%ROWTYPE;
+BEGIN
+    BEGIN
+        BEGIN;
+        SELECT * INTO v_account FROM accounts WHERE id = 1 FOR UPDATE;  -- 锁定行
+
+        IF NOT FOUND THEN
+            ROLLBACK;
+            RAISE WARNING '账户 1 不存在';
+            RETURN;
+        END IF;
+
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        COMMIT;
+        RAISE NOTICE '账户更新成功（使用FOR UPDATE锁定）';
+    EXCEPTION
+        WHEN lock_not_available THEN
+            ROLLBACK;
+            RAISE WARNING '无法获取锁，账户可能被其他事务锁定';
+            RAISE;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '更新失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 优化UPDATE模式
@@ -690,11 +746,71 @@ COMMIT;
 **示例**：
 
 ```sql
--- HOT更新（在同一页）
-UPDATE accounts SET balance = balance + 100 WHERE id = 1;
+-- HOT更新（在同一页，带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行HOT更新';
+            RETURN;
+        END IF;
 
--- 非HOT更新（跨页）
-UPDATE accounts SET balance = balance + 100, description = 'updated' WHERE id = 1;
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = balance + 100 WHERE id = 1;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                RAISE WARNING '账户 1 不存在，无法执行HOT更新';
+            ELSE
+                RAISE NOTICE 'HOT更新成功（在同一页，不更新索引）';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING 'HOT更新失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 非HOT更新（跨页，带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行非HOT更新';
+            RETURN;
+        END IF;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = balance + 100, description = 'updated' WHERE id = 1;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                RAISE WARNING '账户 1 不存在，无法执行非HOT更新';
+            ELSE
+                RAISE NOTICE '非HOT更新成功（跨页，需要更新索引）';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '非HOT更新失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.4 批量操作优化
@@ -706,15 +822,70 @@ UPDATE accounts SET balance = balance + 100, description = 'updated' WHERE id = 
 **示例**：
 
 ```sql
--- 批量插入
-INSERT INTO accounts (id, balance) VALUES
-  (1, 1000),
-  (2, 2000),
-  (3, 3000);
+-- 批量插入（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行批量插入';
+            RETURN;
+        END IF;
 
--- 批量更新
-UPDATE accounts SET status = 'active'
-WHERE id IN (1, 2, 3);
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO accounts (id, balance) VALUES
+              (1, 1000),
+              (2, 2000),
+              (3, 3000);
+
+            GET DIAGNOSTICS v_inserted = ROW_COUNT;
+            RAISE NOTICE '批量插入成功，插入 % 条记录', v_inserted;
+        EXCEPTION
+            WHEN unique_violation THEN
+                RAISE WARNING '批量插入失败：存在重复的id';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '批量插入失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 批量更新（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行批量更新';
+            RETURN;
+        END IF;
+
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET status = 'active'
+            WHERE id IN (1, 2, 3);
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            RAISE NOTICE '批量更新成功，更新 % 条记录', v_updated;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '批量更新失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -730,17 +901,73 @@ WHERE id IN (1, 2, 3);
 **示例**：
 
 ```sql
--- 计数器表
-CREATE TABLE counters (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    count INTEGER DEFAULT 0
-);
+-- 计数器表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'counters') THEN
+            RAISE NOTICE '表 counters 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE counters (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100),
+                    count INTEGER DEFAULT 0
+                );
+                RAISE NOTICE '计数器表 counters 创建成功';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 counters 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建计数器表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 并发增加计数
-BEGIN;
-UPDATE counters SET count = count + 1 WHERE name = 'visits';
-COMMIT;
+-- 并发增加计数（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'counters') THEN
+            RAISE WARNING '表 counters 不存在，无法执行计数增加';
+            RETURN;
+        END IF;
+
+        BEGIN
+            BEGIN;
+
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE counters SET count = count + 1 WHERE name = 'visits';
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                RAISE WARNING '计数器 visits 不存在，无法增加计数';
+                ROLLBACK;
+                RETURN;
+            END IF;
+
+            COMMIT;
+            RAISE NOTICE '计数增加成功（并发安全）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '计数增加失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.2 乐观锁模式
@@ -752,21 +979,88 @@ COMMIT;
 **示例**：
 
 ```sql
--- 带版本号的表
-CREATE TABLE products (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    price DECIMAL,
-    version INTEGER DEFAULT 0
-);
+-- 带版本号的表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE NOTICE '表 products 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE products (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100),
+                    price DECIMAL,
+                    version INTEGER DEFAULT 0
+                );
+                RAISE NOTICE '带版本号的表 products 创建成功';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 products 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 乐观锁更新
-BEGIN;
-SELECT version FROM products WHERE id = 1;  -- version = 1
--- 处理...
-UPDATE products SET price = 200, version = version + 1
-WHERE id = 1 AND version = 1;  -- 检查版本
-COMMIT;
+-- 乐观锁更新（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_version INTEGER;
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '表 products 不存在，无法执行乐观锁更新';
+            RETURN;
+        END IF;
+
+        BEGIN
+            BEGIN;
+
+            SELECT version INTO v_version FROM products WHERE id = 1;  -- version = 1
+
+            IF NOT FOUND THEN
+                ROLLBACK;
+                RAISE WARNING '产品 1 不存在，无法执行乐观锁更新';
+                RETURN;
+            END IF;
+
+            RAISE NOTICE '当前版本号: %', v_version;
+
+            -- 处理...
+
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE products SET price = 200, version = version + 1
+            WHERE id = 1 AND version = v_version;  -- 检查版本
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                ROLLBACK;
+                RAISE WARNING '乐观锁更新失败：版本号不匹配（可能已被其他事务更新）';
+                RETURN;
+            END IF;
+
+            COMMIT;
+            RAISE NOTICE '乐观锁更新成功（版本号从 % 增加到 %）', v_version, v_version + 1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '乐观锁更新失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.3 悲观锁模式
@@ -778,11 +1072,48 @@ COMMIT;
 **示例**：
 
 ```sql
--- 悲观锁
-BEGIN;
-SELECT * FROM accounts WHERE id = 1 FOR UPDATE;  -- 锁定
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;
+-- 悲观锁（带错误处理）
+DO $$
+DECLARE
+    v_account accounts%ROWTYPE;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行悲观锁更新';
+            RETURN;
+        END IF;
+
+        BEGIN
+            BEGIN;
+
+            SELECT * INTO v_account FROM accounts WHERE id = 1 FOR UPDATE;  -- 锁定
+
+            IF NOT FOUND THEN
+                ROLLBACK;
+                RAISE WARNING '账户 1 不存在，无法执行悲观锁更新';
+                RETURN;
+            END IF;
+
+            UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+
+            COMMIT;
+            RAISE NOTICE '悲观锁更新成功（使用FOR UPDATE锁定）';
+        EXCEPTION
+            WHEN lock_not_available THEN
+                ROLLBACK;
+                RAISE WARNING '无法获取锁，账户可能被其他事务锁定';
+                RAISE;
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '悲观锁更新失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.4 队列模式
@@ -794,22 +1125,90 @@ COMMIT;
 **示例**：
 
 ```sql
--- 队列表
-CREATE TABLE job_queue (
-    id SERIAL PRIMARY KEY,
-    status VARCHAR(20) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- 队列表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'job_queue') THEN
+            RAISE NOTICE '表 job_queue 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE job_queue (
+                    id SERIAL PRIMARY KEY,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+                RAISE NOTICE '队列表 job_queue 创建成功';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 job_queue 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建队列表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 获取任务
-BEGIN;
-SELECT * FROM job_queue
-WHERE status = 'pending'
-ORDER BY created_at
-LIMIT 1
-FOR UPDATE SKIP LOCKED;  -- 跳过已锁定的行
-UPDATE job_queue SET status = 'processing' WHERE id = ?;
-COMMIT;
+-- 获取任务（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_job job_queue%ROWTYPE;
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'job_queue') THEN
+            RAISE WARNING '表 job_queue 不存在，无法获取任务';
+            RETURN;
+        END IF;
+
+        BEGIN
+            BEGIN;
+
+            SELECT * INTO v_job FROM job_queue
+            WHERE status = 'pending'
+            ORDER BY created_at
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED;  -- 跳过已锁定的行
+
+            IF NOT FOUND THEN
+                ROLLBACK;
+                RAISE NOTICE '没有待处理的任务';
+                RETURN;
+            END IF;
+
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE job_queue SET status = 'processing' WHERE id = v_job.id;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                ROLLBACK;
+                RAISE WARNING '更新任务状态失败';
+                RETURN;
+            END IF;
+
+            COMMIT;
+            RAISE NOTICE '获取任务成功：id=%, status=processing', v_job.id;
+        EXCEPTION
+            WHEN lock_not_available THEN
+                ROLLBACK;
+                RAISE WARNING '无法获取锁，任务可能被其他事务锁定';
+                RAISE;
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '获取任务失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -825,12 +1224,42 @@ COMMIT;
 **示例**：
 
 ```sql
--- 使用索引减少扫描
-CREATE INDEX idx_accounts_status ON accounts(status);
+-- 使用索引减少扫描（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_accounts_status') THEN
+            RAISE NOTICE '索引 idx_accounts_status 已存在';
+        ELSE
+            BEGIN
+                CREATE INDEX idx_accounts_status ON accounts(status);
+                RAISE NOTICE '索引 idx_accounts_status 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '索引 idx_accounts_status 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建索引失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 使用索引查询（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM accounts WHERE status = 'active';  -- 使用索引
 
--- 避免全表扫描
+-- 避免全表扫描（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM accounts WHERE balance > 1000;  -- 可能需要全表扫描
 ```
 
@@ -843,12 +1272,68 @@ SELECT * FROM accounts WHERE balance > 1000;  -- 可能需要全表扫描
 **示例**：
 
 ```sql
--- 复合索引
-CREATE INDEX idx_accounts_user_status ON accounts(user_id, status);
+-- 复合索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法创建复合索引';
+            RETURN;
+        END IF;
 
--- 覆盖索引
-CREATE INDEX idx_accounts_covering ON accounts(user_id) INCLUDE (balance);
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_accounts_user_status') THEN
+            RAISE NOTICE '索引 idx_accounts_user_status 已存在';
+        ELSE
+            BEGIN
+                CREATE INDEX idx_accounts_user_status ON accounts(user_id, status);
+                RAISE NOTICE '复合索引 idx_accounts_user_status 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '索引 idx_accounts_user_status 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建复合索引失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
+-- 覆盖索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法创建覆盖索引';
+            RETURN;
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_accounts_covering') THEN
+            RAISE NOTICE '索引 idx_accounts_covering 已存在';
+        ELSE
+            BEGIN
+                CREATE INDEX idx_accounts_covering ON accounts(user_id) INCLUDE (balance);
+                RAISE NOTICE '覆盖索引 idx_accounts_covering 创建成功';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '索引 idx_accounts_covering 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建覆盖索引失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 使用覆盖索引查询（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT user_id, balance FROM accounts WHERE user_id = 1;  -- 使用覆盖索引
 ```
 
@@ -861,10 +1346,44 @@ SELECT user_id, balance FROM accounts WHERE user_id = 1;  -- 使用覆盖索引
 **示例**：
 
 ```sql
--- 短事务
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;
+-- 短事务（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_updated INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行短事务';
+            RETURN;
+        END IF;
+
+        BEGIN
+            BEGIN;
+
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+
+            GET DIAGNOSTICS v_updated = ROW_COUNT;
+            IF v_updated = 0 THEN
+                ROLLBACK;
+                RAISE WARNING '账户 1 不存在，无法执行更新';
+                RETURN;
+            END IF;
+
+            COMMIT;
+            RAISE NOTICE '短事务完成（推荐：事务时间短）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '短事务失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 避免长事务
 -- 不要在事务中等待用户输入

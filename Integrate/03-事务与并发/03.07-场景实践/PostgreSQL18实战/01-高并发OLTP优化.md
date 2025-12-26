@@ -90,7 +90,7 @@ END $$;
 -- 查询性能：版本扫描时间-70%
 
 -- 性能测试：检查版本链长度
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT n_dead_tup, n_live_tup,
        ROUND(n_dead_tup::numeric / NULLIF(n_live_tup, 0), 4) as dead_ratio
 FROM pg_stat_user_tables
@@ -155,7 +155,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：验证HOT更新
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE orders
 SET status = 'PAID', notes = 'Payment confirmed'
 WHERE order_id = 12345;

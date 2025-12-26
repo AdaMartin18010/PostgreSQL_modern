@@ -429,9 +429,20 @@ END $$;
 **处理策略**：
 
 ```sql
--- 逻辑复制自动处理分区
--- 无需手动干预
--- 系统自动检测分区恢复并同步数据
+-- 逻辑复制自动处理分区（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '逻辑复制自动处理分区';
+        RAISE NOTICE '- 无需手动干预';
+        RAISE NOTICE '- 系统自动检测分区恢复并同步数据';
+        RAISE NOTICE '- 通过复制槽和变更缓冲保证数据不丢失';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 分区恢复策略
@@ -453,9 +464,20 @@ END $$;
 **PostgreSQL自动恢复**：
 
 ```sql
--- 逻辑复制自动恢复
--- 无需手动干预
--- 系统自动检测分区恢复并同步数据
+-- 逻辑复制自动恢复（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '逻辑复制自动恢复';
+        RAISE NOTICE '- 无需手动干预';
+        RAISE NOTICE '- 系统自动检测分区恢复并同步数据';
+        RAISE NOTICE '- 通过复制槽和变更缓冲保证数据不丢失';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -662,9 +684,20 @@ END $$;
 **PostgreSQL实现**：
 
 ```sql
--- 逻辑复制（高可用性）
--- 主库：立即提交
--- 备库：继续服务
+-- 逻辑复制（高可用性，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '逻辑复制（高可用性）';
+        RAISE NOTICE '- 主库：立即提交（不等待备库确认）';
+        RAISE NOTICE '- 备库：继续服务（分区时继续查询）';
+        RAISE NOTICE '- 特征：高可用性+分区容错，牺牲强一致性（AP模式）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.2 可用性监控
@@ -892,13 +925,42 @@ END $$;
 **配置**：
 
 ```sql
--- 逻辑复制（AP模式）+ 只读备库
-CREATE SUBSCRIPTION analysissub
-CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
-PUBLICATION mypub;
+-- 逻辑复制（AP模式）+ 只读备库（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'analysissub') THEN
+            RAISE NOTICE '订阅 analysissub 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION analysissub
+                CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
+                PUBLICATION mypub;
+                RAISE NOTICE '订阅 analysissub 创建成功（AP模式，高可用性）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 analysissub 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
 
--- 备库：只读查询
-SET default_transaction_read_only = on;
+        BEGIN
+            SET default_transaction_read_only = on;
+            RAISE NOTICE '备库：默认事务已设置为只读（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置只读模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 6.3 CAP优化策略

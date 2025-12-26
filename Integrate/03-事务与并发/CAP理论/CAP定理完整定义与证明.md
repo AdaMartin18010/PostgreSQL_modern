@@ -263,7 +263,7 @@ END $$;
 -- 3. 保证强一致性，但牺牲可用性
 
 -- 性能测试：验证同步复制状态
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT application_name, sync_state, sync_priority
 FROM pg_stat_replication
 WHERE sync_state = 'sync';
@@ -316,7 +316,7 @@ END $$;
 -- 3. 保证高可用性，但可能数据不一致
 
 -- 性能测试：验证异步复制状态
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT application_name, sync_state,
        pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes
 FROM pg_stat_replication;

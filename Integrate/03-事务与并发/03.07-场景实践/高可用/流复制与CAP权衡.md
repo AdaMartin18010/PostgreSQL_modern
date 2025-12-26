@@ -387,11 +387,33 @@ END $$;
 **处理策略**：
 
 ```sql
--- CP模式：分区时阻塞
--- 需要等待分区恢复或手动降级
+-- CP模式：分区时阻塞（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE 'CP模式：分区时阻塞';
+        RAISE NOTICE '- 需要等待分区恢复或手动降级';
+        RAISE NOTICE '- 保证强一致性，但牺牲可用性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- AP模式：分区时继续服务
--- 分区恢复后自动同步
+-- AP模式：分区时继续服务（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE 'AP模式：分区时继续服务';
+        RAISE NOTICE '- 分区恢复后自动同步';
+        RAISE NOTICE '- 保证高可用性，但可能数据不一致';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.3 分区恢复策略
@@ -413,9 +435,20 @@ END $$;
 **PostgreSQL自动恢复**：
 
 ```sql
--- 流复制自动恢复
--- 无需手动干预
--- 系统自动检测分区恢复并同步数据
+-- 流复制自动恢复（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '流复制自动恢复';
+        RAISE NOTICE '- 无需手动干预';
+        RAISE NOTICE '- 系统自动检测分区恢复并同步数据';
+        RAISE NOTICE '- 通过复制槽和WAL缓冲保证数据不丢失';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

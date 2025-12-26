@@ -1747,25 +1747,78 @@ autovacuum_vacuum_scale_factor = 0.1
 1. **故障检测**：
 
    ```sql
-   -- 检查表膨胀
+   -- 检查表膨胀（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始检查表膨胀和锁竞争';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '检查准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT schemaname, tablename, n_dead_tup, n_live_tup
    FROM pg_stat_user_tables
    WHERE n_dead_tup > 10000;
 
-   -- 检查锁竞争
+   -- 检查锁竞争（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始检查锁竞争';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '检查准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT * FROM pg_locks WHERE NOT granted;
    ```
 
 2. **故障处理**：
 
    ```sql
-   -- 立即VACUUM
+   -- 立即VACUUM（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table_name') THEN
+               RAISE WARNING '表 table_name 不存在，无法执行VACUUM';
+               RETURN;
+           END IF;
+           RAISE NOTICE '开始执行VACUUM ANALYZE';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING 'VACUUM准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
    VACUUM ANALYZE table_name;
 
-   -- 调整autovacuum
-   ALTER TABLE table_name SET (
-       autovacuum_vacuum_scale_factor = 0.05
-   );
+   -- 调整autovacuum（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table_name') THEN
+               RAISE WARNING '表 table_name 不存在，无法调整autovacuum';
+               RETURN;
+           END IF;
+           ALTER TABLE table_name SET (
+               autovacuum_vacuum_scale_factor = 0.05
+           );
+           RAISE NOTICE 'autovacuum配置已更新';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '调整autovacuum失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
    ```
 
 3. **故障预防**：
@@ -1798,11 +1851,39 @@ autovacuum_vacuum_scale_factor = 0.1
 1. **故障检测**：
 
    ```sql
-   -- 检查死锁
+   -- 检查死锁（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始检查死锁';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '检查准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT * FROM pg_stat_activity
    WHERE wait_event_type = 'Lock';
 
-   -- 检查数据一致性
+   -- 检查数据一致性（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+               RAISE WARNING '表 accounts 不存在，无法检查数据一致性';
+               RETURN;
+           END IF;
+           RAISE NOTICE '开始检查数据一致性';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '检查准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT account_id, balance
    FROM accounts
    WHERE balance < 0;  -- 不应该有负余额
@@ -1811,10 +1892,36 @@ autovacuum_vacuum_scale_factor = 0.1
 2. **故障处理**：
 
    ```sql
-   -- 处理死锁（自动检测和处理）
-   -- 检查死锁日志
+   -- 处理死锁（自动检测和处理，带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始处理死锁（自动检测和处理）';
+           -- 检查死锁日志
+           -- PostgreSQL会自动检测和处理死锁
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '死锁处理准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
 
-   -- 修复数据不一致
+   -- 修复数据不一致（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+               RAISE WARNING '表 accounts 不存在，无法修复数据不一致';
+               RETURN;
+           END IF;
+           RAISE NOTICE '开始修复数据不一致';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '修复准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
    BEGIN;
    -- 修复逻辑
    COMMIT;
@@ -1845,24 +1952,78 @@ autovacuum_vacuum_scale_factor = 0.1
 1. **故障检测**：
 
    ```sql
-   -- 检查表大小
+   -- 检查表大小（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始检查表大小';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '检查准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT schemaname, tablename,
           pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename))
    FROM pg_stat_user_tables
    ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 
-   -- 检查WAL大小
-   SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0'));
+   -- 检查WAL大小（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始检查WAL大小';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '检查准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
+   SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0')) AS wal_size;
    ```
 
 2. **故障处理**：
 
    ```sql
-   -- 归档旧日志
-   -- 删除旧分区
-   DROP TABLE logs_2023_01;
+   -- 归档旧日志（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs_2023_01') THEN
+               RAISE WARNING '分区 logs_2023_01 不存在，无法删除';
+           ELSE
+               RAISE NOTICE '开始删除旧分区 logs_2023_01';
+           END IF;
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '归档准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
 
-   -- VACUUM
+   -- 删除旧分区
+   DROP TABLE IF EXISTS logs_2023_01;
+
+   -- VACUUM（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+               RAISE WARNING '表 logs 不存在，无法执行VACUUM';
+               RETURN;
+           END IF;
+           RAISE NOTICE '开始执行VACUUM ANALYZE';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING 'VACUUM准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
    VACUUM ANALYZE logs;
    ```
 

@@ -138,11 +138,35 @@ BASE是**Basically Available, Soft state, Eventual consistency**的缩写，表�
 **PostgreSQL实现**：
 
 ```sql
--- 功能降级：只读模式
-ALTER DATABASE mydb SET default_transaction_read_only = on;
+-- 功能降级：只读模式（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER DATABASE mydb SET default_transaction_read_only = on;
+            RAISE NOTICE '数据库 mydb 已设置为只读模式（功能降级）';
+        EXCEPTION
+            WHEN invalid_database_name THEN
+                RAISE WARNING '数据库 mydb 不存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置只读模式失败: %', SQLERRM;
+                RAISE;
+        END;
 
--- 性能降级：降低并发
-ALTER SYSTEM SET max_connections = 100;
+        BEGIN
+            ALTER SYSTEM SET max_connections = 100;
+            RAISE NOTICE '最大连接数已设置为100（性能降级）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置最大连接数失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 PostgreSQL实现
@@ -150,14 +174,36 @@ ALTER SYSTEM SET max_connections = 100;
 **PostgreSQL基本可用实现**：
 
 ```sql
--- 异步复制（基本可用）
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- 异步复制（基本可用，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（基本可用，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 特征：
--- ✅ 主库继续服务
--- ✅ 备库可能延迟
--- ✅ 保证基本可用
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（基本可用）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ✅ 主库继续服务';
+        RAISE NOTICE '- ✅ 备库可能延迟';
+        RAISE NOTICE '- ✅ 保证基本可用';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -191,14 +237,36 @@ ALTER SYSTEM SET synchronous_commit = 'local';
 **PostgreSQL软状态实现**：
 
 ```sql
--- 异步复制（软状态）
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- 异步复制（软状态，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（软状态，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 特征：
--- ✅ 主库和备库状态可能不一致
--- ✅ 状态动态变化
--- ✅ 最终会达到一致状态
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（软状态）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ✅ 主库和备库状态可能不一致';
+        RAISE NOTICE '- ✅ 状态动态变化';
+        RAISE NOTICE '- ✅ 最终会达到一致状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -230,14 +298,36 @@ $$
 **PostgreSQL最终一致性实现**：
 
 ```sql
--- 异步复制（最终一致性）
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- 异步复制（最终一致性，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（最终一致性，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 特征：
--- ✅ 主库立即提交
--- ✅ 备库延迟同步
--- ✅ 最终所有节点一致
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（最终一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        RAISE NOTICE '特征：';
+        RAISE NOTICE '- ✅ 主库立即提交';
+        RAISE NOTICE '- ✅ 备库延迟同步';
+        RAISE NOTICE '- ✅ 最终所有节点一致';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -249,10 +339,39 @@ ALTER SYSTEM SET synchronous_commit = 'local';
 **PostgreSQL BASE模式配置**：
 
 ```sql
--- BASE模式配置
-ALTER SYSTEM SET synchronous_standby_names = '';  -- 基本可用
-ALTER SYSTEM SET synchronous_commit = 'local';     -- 软状态
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';  -- 最终一致性
+-- BASE模式配置（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';  -- 基本可用
+            RAISE NOTICE '同步备库名称已设置为空（BASE模式：基本可用）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';     -- 软状态
+            RAISE NOTICE '同步提交模式已设置为 local（BASE模式：软状态）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'read committed';  -- 最终一致性
+            RAISE NOTICE '默认事务隔离级别已设置为 read committed（BASE模式：最终一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.2 BASE场景应用
