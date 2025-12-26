@@ -477,7 +477,47 @@ END $$;
 **PostgreSQL冲突检测**：
 
 ```sql
--- 监控冲突
+-- 监控冲突（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_subid OID;
+    v_subname TEXT;
+    v_subenabled BOOLEAN;
+    v_subslotname TEXT;
+BEGIN
+    BEGIN
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT
+                subid,
+                subname,
+                subenabled,
+                subslotname,
+                subpublications
+            INTO v_subid, v_subname, v_subenabled, v_subslotname
+            FROM pg_subscription
+            LIMIT 1;
+
+            IF FOUND THEN
+                RAISE NOTICE '监控冲突：subid=%, subname=%, subenabled=%, subslotname=%',
+                    v_subid, v_subname, v_subenabled, v_subslotname;
+            ELSE
+                RAISE NOTICE '未找到订阅';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '监控冲突失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：监控冲突
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     subid,
     subname,
@@ -486,7 +526,39 @@ SELECT
     subpublications
 FROM pg_subscription;
 
--- 查看冲突统计
+-- 查看冲突统计（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_subid OID;
+    v_subname TEXT;
+BEGIN
+    BEGIN
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT subid, subname
+            INTO v_subid, v_subname
+            FROM pg_stat_subscription
+            LIMIT 1;
+
+            IF FOUND THEN
+                RAISE NOTICE '冲突统计：subid=%, subname=%', v_subid, v_subname;
+            ELSE
+                RAISE NOTICE '未找到订阅统计信息';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '查看冲突统计失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：查看冲突统计
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_subscription;
 ```
 
@@ -501,10 +573,33 @@ SELECT * FROM pg_stat_subscription;
 **PostgreSQL配置**：
 
 ```sql
--- 配置冲突解决
-ALTER SUBSCRIPTION mysub SET (
-    conflict_resolution = 'last_update_wins'
-);
+-- 配置冲突解决（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'mysub') THEN
+            RAISE WARNING '订阅 mysub 不存在，无法设置冲突解决策略';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER SUBSCRIPTION mysub SET (
+                conflict_resolution = 'last_update_wins'
+            );
+            RAISE NOTICE '订阅 mysub 冲突解决策略已设置为 last_update_wins';
+        EXCEPTION
+            WHEN undefined_object THEN
+                RAISE WARNING '订阅 mysub 不存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置冲突解决策略失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.3 冲突解决配置
@@ -512,14 +607,38 @@ ALTER SUBSCRIPTION mysub SET (
 **冲突解决配置示例**：
 
 ```sql
--- 创建订阅时配置冲突解决
-CREATE SUBSCRIPTION mysub
-CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
-PUBLICATION mypub
-WITH (
-    slot_name = 'mysub_slot',
-    conflict_resolution = 'last_update_wins'
-);
+-- 创建订阅时配置冲突解决（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'mysub') THEN
+            RAISE NOTICE '订阅 mysub 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION mysub
+                CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
+                PUBLICATION mypub
+                WITH (
+                    slot_name = 'mysub_slot',
+                    conflict_resolution = 'last_update_wins'
+                );
+                RAISE NOTICE '订阅 mysub 创建成功（配置冲突解决策略为 last_update_wins）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 mysub 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -553,7 +672,52 @@ WITH (
 **监控指标**：
 
 ```sql
--- 监控逻辑复制延迟
+-- 监控逻辑复制延迟（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_subid OID;
+    v_subname TEXT;
+    v_subenabled BOOLEAN;
+    v_subslotname TEXT;
+    v_lag_bytes BIGINT;
+BEGIN
+    BEGIN
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT
+                subid,
+                subname,
+                subenabled,
+                subslotname,
+                pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_lsn) AS lag_bytes
+            INTO v_subid, v_subname, v_subenabled, v_subslotname, v_lag_bytes
+            FROM pg_subscription
+            LIMIT 1;
+
+            IF FOUND THEN
+                RAISE NOTICE '逻辑复制延迟监控：subid=%, subname=%, subenabled=%, subslotname=%, lag_bytes=%',
+                    v_subid, v_subname, v_subenabled, v_subslotname, v_lag_bytes;
+
+                IF v_lag_bytes IS NOT NULL AND v_lag_bytes > 1073741824 THEN  -- 1GB
+                    RAISE WARNING '逻辑复制延迟较大（lag_bytes=%，超过1GB）', v_lag_bytes;
+                END IF;
+            ELSE
+                RAISE NOTICE '未找到订阅';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '监控逻辑复制延迟失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：监控逻辑复制延迟
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     subid,
     subname,
@@ -562,7 +726,39 @@ SELECT
     pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_lsn) AS lag_bytes
 FROM pg_subscription;
 
--- 监控冲突
+-- 监控冲突（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_subid OID;
+    v_subname TEXT;
+BEGIN
+    BEGIN
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT subid, subname
+            INTO v_subid, v_subname
+            FROM pg_stat_subscription
+            LIMIT 1;
+
+            IF FOUND THEN
+                RAISE NOTICE '冲突监控：subid=%, subname=%', v_subid, v_subname;
+            ELSE
+                RAISE NOTICE '未找到订阅统计信息';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '监控冲突失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：监控冲突
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_subscription;
 ```
 
@@ -622,11 +818,67 @@ $$
 **配置**：
 
 ```sql
--- 逻辑复制（AP模式）
-CREATE PUBLICATION logpub FOR TABLE logs;
-CREATE SUBSCRIPTION logsub
-CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
-PUBLICATION logpub;
+-- 逻辑复制（AP模式，带完整错误处理）
+-- 创建发布（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE WARNING '表 logs 不存在，无法创建发布';
+            RETURN;
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'logpub') THEN
+            RAISE NOTICE '发布 logpub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION logpub FOR TABLE logs;
+                RAISE NOTICE '发布 logpub 创建成功（包含logs表，AP模式）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 logpub 已存在';
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 logs 不存在，无法创建发布';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 创建订阅（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'logsub') THEN
+            RAISE NOTICE '订阅 logsub 已存在';
+        ELSE
+            BEGIN
+                CREATE SUBSCRIPTION logsub
+                CONNECTION 'host=primary_host port=5432 dbname=mydb user=replicator'
+                PUBLICATION logpub;
+                RAISE NOTICE '订阅 logsub 创建成功（AP模式，高可用性）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '订阅 logsub 已存在';
+                WHEN sqlclient_unable_to_establish_sqlconnection THEN
+                    RAISE WARNING '无法连接到主库，请检查连接字符串';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建订阅失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 6.2.2 分析场景（AP模式）

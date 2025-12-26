@@ -338,11 +338,41 @@ $$
 **PostgreSQL配置**：
 
 ```sql
--- 创建复制槽
-SELECT pg_create_physical_replication_slot('standby1_slot');
+-- 创建复制槽（带完整错误处理）
+DO $$
+DECLARE
+    v_slot_name TEXT := 'standby1_slot';
+    v_slot_exists BOOLEAN;
+BEGIN
+    BEGIN
+        -- 检查复制槽是否已存在
+        SELECT EXISTS (
+            SELECT 1 FROM pg_replication_slots WHERE slot_name = v_slot_name
+        ) INTO v_slot_exists;
 
--- 配置复制槽
-primary_slot_name = 'standby1_slot'
+        IF v_slot_exists THEN
+            RAISE NOTICE '复制槽 % 已存在', v_slot_name;
+        ELSE
+            BEGIN
+                PERFORM pg_create_physical_replication_slot(v_slot_name);
+                RAISE NOTICE '复制槽 % 创建成功', v_slot_name;
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '复制槽 % 已存在', v_slot_name;
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建复制槽失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 配置复制槽（这是配置文件设置，不是SQL语句）
+-- primary_slot_name = 'standby1_slot'
 ```
 
 ### 4.2 分区故障处理
@@ -424,9 +454,31 @@ primary_slot_name = 'standby1_slot'
 **配置**：
 
 ```sql
--- 同步流复制（CP模式）
-synchronous_standby_names = 'standby1,standby2'
-synchronous_commit = 'remote_apply'
+-- 同步流复制（CP模式，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 5.2.2 日志场景（AP模式）
@@ -440,9 +492,31 @@ synchronous_commit = 'remote_apply'
 **配置**：
 
 ```sql
--- 异步流复制（AP模式）
-synchronous_standby_names = ''
-synchronous_commit = 'local'
+-- 异步流复制（AP模式，带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.3 CAP动态调整
@@ -456,13 +530,75 @@ synchronous_commit = 'local'
 **PostgreSQL动态调整**：
 
 ```sql
--- 动态切换到AP模式
-ALTER SYSTEM SET synchronous_standby_names = '';
-SELECT pg_reload_conf();
+-- 动态切换到AP模式（带完整错误处理）
+DO $$
+DECLARE
+    v_reloaded BOOLEAN;
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（动态切换到AP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+                RAISE;
+        END;
 
--- 动态切换到CP模式
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-SELECT pg_reload_conf();
+        BEGIN
+            SELECT pg_reload_conf() INTO v_reloaded;
+
+            IF v_reloaded THEN
+                RAISE NOTICE '配置已重新加载（动态切换到AP模式成功）';
+            ELSE
+                RAISE WARNING '配置重新加载失败';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重新加载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 动态切换到CP模式（带完整错误处理）
+DO $$
+DECLARE
+    v_reloaded BOOLEAN;
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（动态切换到CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        BEGIN
+            SELECT pg_reload_conf() INTO v_reloaded;
+
+            IF v_reloaded THEN
+                RAISE NOTICE '配置已重新加载（动态切换到CP模式成功）';
+            ELSE
+                RAISE WARNING '配置重新加载失败';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '重新加载配置失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

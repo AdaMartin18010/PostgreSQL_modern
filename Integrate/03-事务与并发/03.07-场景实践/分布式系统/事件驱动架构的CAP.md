@@ -143,16 +143,41 @@ PostgreSQL可以使用`LISTEN/NOTIFY`实现事件总线。
 **PostgreSQL事件总线CAP**：
 
 ```sql
--- PostgreSQL事件总线
-LISTEN channel_name;
+-- PostgreSQL事件总线（带完整错误处理）
+DO $$
+DECLARE
+    v_channel_name TEXT := 'channel_name';
+    v_event_data TEXT := 'event_data';
+BEGIN
+    BEGIN
+        BEGIN
+            PERFORM pg_listen(v_channel_name);
+            RAISE NOTICE '已监听频道: %', v_channel_name;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '监听频道失败: %', SQLERRM;
+                RAISE;
+        END;
 
--- 发布事件
-NOTIFY channel_name, 'event_data';
+        BEGIN
+            PERFORM pg_notify(v_channel_name, v_event_data);
+            RAISE NOTICE '事件已发布: channel=%, data=%', v_channel_name, v_event_data;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '发布事件失败: %', SQLERRM;
+                RAISE;
+        END;
 
--- CAP特征：
--- ⚠️ 部分一致性：本地一致性
--- ✅ 高可用性：本地高可用
--- ❌ 低分区容错：单节点
+        RAISE NOTICE 'CAP特征：';
+        RAISE NOTICE '- ⚠️ 部分一致性：本地一致性';
+        RAISE NOTICE '- ✅ 高可用性：本地高可用';
+        RAISE NOTICE '- ❌ 低分区容错：单节点';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -189,23 +214,74 @@ NOTIFY channel_name, 'event_data';
 **PostgreSQL事件溯源实现**：
 
 ```sql
--- 事件表
-CREATE TABLE events (
-    id SERIAL PRIMARY KEY,
-    aggregate_id VARCHAR(255),
-    event_type VARCHAR(255),
-    event_data JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- 事件表（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'events') THEN
+            RAISE NOTICE '表 events 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE events (
+                    id SERIAL PRIMARY KEY,
+                    aggregate_id VARCHAR(255),
+                    event_type VARCHAR(255),
+                    event_data JSONB,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+                RAISE NOTICE '表 events 创建成功（事件表）';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 events 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 发布事件
-INSERT INTO events (aggregate_id, event_type, event_data)
-VALUES ('order-1', 'OrderCreated', '{"amount": 100}');
+-- 发布事件（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_event_id INTEGER;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'events') THEN
+            RAISE WARNING '表 events 不存在，无法发布事件';
+            RETURN;
+        END IF;
 
--- CAP特征：
--- ⚠️ 部分一致性：最终一致性
--- ✅ 高可用性：PostgreSQL高可用
--- ✅ 分区容错：PostgreSQL分区容错
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO events (aggregate_id, event_type, event_data)
+            VALUES ('order-1', 'OrderCreated', '{"amount": 100}')
+            RETURNING id INTO v_event_id;
+
+            RAISE NOTICE '事件发布成功: event_id=%, aggregate_id=order-1', v_event_id;
+        EXCEPTION
+            WHEN foreign_key_violation THEN
+                RAISE WARNING '外键约束违反';
+                RAISE;
+            WHEN OTHERS THEN
+                RAISE WARNING '发布事件失败: %', SQLERRM;
+                RAISE;
+        END;
+
+        RAISE NOTICE 'CAP特征：';
+        RAISE NOTICE '- ⚠️ 部分一致性：最终一致性';
+        RAISE NOTICE '- ✅ 高可用性：PostgreSQL高可用';
+        RAISE NOTICE '- ✅ 分区容错：PostgreSQL分区容错';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

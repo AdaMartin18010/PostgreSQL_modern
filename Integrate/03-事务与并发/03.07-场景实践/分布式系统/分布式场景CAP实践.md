@@ -94,13 +94,57 @@
 **PostgreSQL在微服务中的角色**：
 
 ```sql
--- 支付服务：CP模式
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+-- 支付服务：CP模式（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '支付服务：同步备库名称已设置为 standby1,standby2（CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 订单服务：AP模式
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '支付服务：同步提交模式已设置为 remote_apply（CP模式，强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 订单服务：AP模式（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '订单服务：同步备库名称已设置为空（AP模式，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '订单服务：同步提交模式已设置为 local（AP模式，高可用性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -144,11 +188,33 @@ PostgreSQL (CP) → Kafka (AP) → 下游服务 (AP)
 **PostgreSQL事件驱动实践**：
 
 ```sql
--- PostgreSQL逻辑复制到Kafka
-CREATE PUBLICATION kafkapub FOR ALL TABLES;
+-- PostgreSQL逻辑复制到Kafka（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'kafkapub') THEN
+            RAISE NOTICE '发布 kafkapub 已存在';
+        ELSE
+            BEGIN
+                CREATE PUBLICATION kafkapub FOR ALL TABLES;
+                RAISE NOTICE '发布 kafkapub 创建成功（PostgreSQL逻辑复制到Kafka，包含所有表）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '发布 kafkapub 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建发布失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
 
--- 使用Debezium将PostgreSQL变更发送到Kafka
--- 配置：Debezium PostgreSQL Connector → Kafka
+        RAISE NOTICE '使用Debezium将PostgreSQL变更发送到Kafka';
+        RAISE NOTICE '配置：Debezium PostgreSQL Connector → Kafka';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

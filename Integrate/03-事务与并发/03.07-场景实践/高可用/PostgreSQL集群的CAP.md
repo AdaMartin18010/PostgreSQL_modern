@@ -392,13 +392,57 @@ FROM pg_stat_replication;
 **PostgreSQL配置**：
 
 ```sql
--- 强一致性：同步复制
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+-- 强一致性：同步复制（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 最终一致性：异步复制
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（强一致性）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 最终一致性：异步复制（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（最终一致性，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（最终一致性，异步复制）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.2 主主复制一致性
@@ -412,10 +456,33 @@ ALTER SYSTEM SET synchronous_commit = 'local';
 **冲突解决策略**：
 
 ```sql
--- 逻辑复制冲突解决
-ALTER SUBSCRIPTION sub1 SET (
-    conflict_resolution = 'last_update_wins'
-);
+-- 逻辑复制冲突解决（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub1') THEN
+            RAISE WARNING '订阅 sub1 不存在，无法设置冲突解决策略';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER SUBSCRIPTION sub1 SET (
+                conflict_resolution = 'last_update_wins'
+            );
+            RAISE NOTICE '订阅 sub1 冲突解决策略已设置为 last_update_wins';
+        EXCEPTION
+            WHEN undefined_object THEN
+                RAISE WARNING '订阅 sub1 不存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置冲突解决策略失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.3 集群一致性配置
@@ -423,11 +490,55 @@ ALTER SUBSCRIPTION sub1 SET (
 **集群一致性配置**：
 
 ```sql
--- 关键数据：强一致性
-ALTER TABLE accounts SET (synchronous_commit = 'remote_apply');
+-- 关键数据：强一致性（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法设置同步提交模式';
+        ELSE
+            BEGIN
+                ALTER TABLE accounts SET (synchronous_commit = 'remote_apply');
+                RAISE NOTICE '表 accounts 同步提交模式已设置为 remote_apply（强一致性）';
+            EXCEPTION
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 accounts 不存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '设置表同步提交模式失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 非关键数据：最终一致性
-ALTER TABLE logs SET (synchronous_commit = 'local');
+-- 非关键数据：最终一致性（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            RAISE WARNING '表 logs 不存在，无法设置同步提交模式';
+        ELSE
+            BEGIN
+                ALTER TABLE logs SET (synchronous_commit = 'local');
+                RAISE NOTICE '表 logs 同步提交模式已设置为 local（最终一致性）';
+            EXCEPTION
+                WHEN undefined_table THEN
+                    RAISE WARNING '表 logs 不存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '设置表同步提交模式失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -449,15 +560,73 @@ ALTER TABLE logs SET (synchronous_commit = 'local');
 **集群CAP配置示例**：
 
 ```sql
--- 金融场景：CP模式
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- 金融场景：CP模式（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+            RAISE NOTICE '同步备库名称已设置为 standby1,standby2（金融场景CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
 
--- 日志场景：AP模式
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+            RAISE NOTICE '同步提交模式已设置为 remote_apply（金融场景CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+            RAISE NOTICE '默认事务隔离级别已设置为 serializable（金融场景CP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 日志场景：AP模式（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            ALTER SYSTEM SET synchronous_standby_names = '';
+            RAISE NOTICE '同步备库名称已设置为空（日志场景AP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步备库名称失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET synchronous_commit = 'local';
+            RAISE NOTICE '同步提交模式已设置为 local（日志场景AP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置同步提交模式失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+            RAISE NOTICE '默认事务隔离级别已设置为 read committed（日志场景AP模式）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置默认事务隔离级别失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.3 集群CAP监控
@@ -465,7 +634,46 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **监控指标**：
 
 ```sql
--- 监控集群状态
+-- 监控集群状态（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_application_name TEXT;
+    v_state TEXT;
+    v_sync_state TEXT;
+    v_lag_bytes BIGINT;
+BEGIN
+    BEGIN
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT
+                application_name,
+                state,
+                sync_state,
+                pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes
+            INTO v_application_name, v_state, v_sync_state, v_lag_bytes
+            FROM pg_stat_replication
+            LIMIT 1;
+
+            IF FOUND THEN
+                RAISE NOTICE '集群状态监控：application_name=%, state=%, sync_state=%, lag_bytes=%',
+                    v_application_name, v_state, v_sync_state, v_lag_bytes;
+            ELSE
+                RAISE NOTICE '未找到复制连接';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '监控集群状态失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：监控集群状态
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     application_name,
     state,
@@ -473,7 +681,46 @@ SELECT
     pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes
 FROM pg_stat_replication;
 
--- 监控集群可用性
+-- 监控集群可用性（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_active_nodes BIGINT;
+    v_total_nodes BIGINT;
+BEGIN
+    BEGIN
+        BEGIN
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            SELECT
+                COUNT(*) FILTER (WHERE state = 'active') AS active_nodes,
+                COUNT(*) AS total_nodes
+            INTO v_active_nodes, v_total_nodes
+            FROM pg_stat_replication;
+
+            IF v_total_nodes > 0 THEN
+                RAISE NOTICE '集群可用性监控：active_nodes=%, total_nodes=%', v_active_nodes, v_total_nodes;
+
+                IF v_active_nodes = v_total_nodes THEN
+                    RAISE NOTICE '所有节点都处于活跃状态';
+                ELSE
+                    RAISE WARNING '部分节点不活跃（active_nodes=% < total_nodes=%）', v_active_nodes, v_total_nodes;
+                END IF;
+            ELSE
+                RAISE NOTICE '未找到复制连接';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '监控集群可用性失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：监控集群可用性
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*) FILTER (WHERE state = 'active') AS active_nodes,
     COUNT(*) AS total_nodes

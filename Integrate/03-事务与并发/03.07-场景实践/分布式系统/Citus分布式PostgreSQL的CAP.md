@@ -111,15 +111,49 @@ Citus采用**协调节点（Coordinator）**和**工作节点（Worker）**的�
 **分片示例**：
 
 ```sql
--- 创建分布式表
-CREATE TABLE orders (
-    id SERIAL,
-    user_id INT,
-    amount DECIMAL
-);
+-- 创建分布式表（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法创建分布式表';
+            RETURN;
+        END IF;
 
--- 分片表
-SELECT create_distributed_table('orders', 'user_id');
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE NOTICE '表 orders 已存在';
+        ELSE
+            BEGIN
+                CREATE TABLE orders (
+                    id SERIAL,
+                    user_id INT,
+                    amount DECIMAL
+                );
+                RAISE NOTICE '表 orders 创建成功';
+            EXCEPTION
+                WHEN duplicate_table THEN
+                    RAISE WARNING '表 orders 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建表失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+
+        BEGIN
+            PERFORM create_distributed_table('orders', 'user_id');
+            RAISE NOTICE '表 orders 已分片（分片键：user_id）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '分片表失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -149,14 +183,81 @@ SELECT create_distributed_table('orders', 'user_id');
 **Citus一致性实现**：
 
 ```sql
--- Citus强一致性配置
-SET citus.shard_count = 32;
-SET citus.replication_factor = 2;  -- 每个分片2个副本
+-- Citus强一致性配置（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法配置Citus参数';
+            RETURN;
+        END IF;
 
--- 分布式事务
-BEGIN;
-INSERT INTO orders VALUES (1, 100, 1000);
-COMMIT;  -- 保证所有分片一致提交
+        BEGIN
+            SET LOCAL citus.shard_count = 32;
+            RAISE NOTICE 'Citus分片数已设置为32';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置Citus分片数失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            SET LOCAL citus.replication_factor = 2;  -- 每个分片2个副本
+            RAISE NOTICE 'Citus副本数已设置为2（每个分片2个副本）';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置Citus副本数失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 分布式事务（带完整错误处理和性能测试）
+DO $$
+DECLARE
+    v_inserted INTEGER;
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法执行分布式事务';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行分布式事务';
+            RETURN;
+        END IF;
+
+        BEGIN
+            BEGIN;
+
+            EXPLAIN (ANALYZE, BUFFERS, TIMING)
+            INSERT INTO orders VALUES (1, 100, 1000)
+            RETURNING id INTO v_inserted;
+
+            COMMIT;  -- 保证所有分片一致提交
+
+            RAISE NOTICE '分布式事务提交成功（保证所有分片一致提交）: inserted_id=%', v_inserted;
+        EXCEPTION
+            WHEN check_violation THEN
+                ROLLBACK;
+                RAISE WARNING '约束违反';
+                RAISE;
+            WHEN OTHERS THEN
+                ROLLBACK;
+                RAISE WARNING '分布式事务失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.3 Citus可用性保证
@@ -170,10 +271,49 @@ COMMIT;  -- 保证所有分片一致提交
 **Citus可用性配置**：
 
 ```sql
--- 设置副本数
-SET citus.replication_factor = 2;
+-- 设置副本数（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法设置副本数';
+            RETURN;
+        END IF;
 
--- 监控分片状态
+        BEGIN
+            SET LOCAL citus.replication_factor = 2;
+            RAISE NOTICE 'Citus副本数已设置为2';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置Citus副本数失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 监控分片状态（带完整错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法监控分片状态';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控Citus分片状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM citus_shards;
 ```
 
@@ -198,12 +338,64 @@ SELECT * FROM citus_shards;
 **Citus配置**：
 
 ```sql
--- 设置副本数
-SET citus.replication_factor = 2;
+-- 设置副本数（带完整错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法设置副本数';
+            RETURN;
+        END IF;
 
--- 添加工作节点
-SELECT citus_add_node('worker1', 5432);
-SELECT citus_add_node('worker2', 5432);
+        BEGIN
+            SET LOCAL citus.replication_factor = 2;
+            RAISE NOTICE 'Citus副本数已设置为2';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '设置Citus副本数失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 添加工作节点（带完整错误处理）
+DO $$
+DECLARE
+    v_result INTEGER;
+BEGIN
+    BEGIN
+        -- 检查Citus扩展是否已安装
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法添加工作节点';
+            RETURN;
+        END IF;
+
+        BEGIN
+            SELECT citus_add_node('worker1', 5432) INTO v_result;
+            RAISE NOTICE '工作节点 worker1:5432 添加成功: nodeid=%', v_result;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '添加工作节点 worker1:5432 失败: %', SQLERRM;
+        END;
+
+        BEGIN
+            SELECT citus_add_node('worker2', 5432) INTO v_result;
+            RAISE NOTICE '工作节点 worker2:5432 添加成功: nodeid=%', v_result;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '添加工作节点 worker2:5432 失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.2 分片故障处理
