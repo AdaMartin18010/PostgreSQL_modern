@@ -116,14 +116,49 @@ sudo systemctl restart postgresql-17
 **验证归档**：
 
 ```sql
--- 检查归档状态
+-- 检查归档状态（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查归档状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查归档状态准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_archiver;
 
--- 强制归档当前WAL
-SELECT pg_switch_wal();
+-- 强制归档当前WAL（带错误处理）
+DO $$
+DECLARE
+    wal_lsn TEXT;
+BEGIN
+    BEGIN
+        SELECT pg_switch_wal()::TEXT INTO wal_lsn;
+        RAISE NOTICE 'WAL已切换: %', wal_lsn;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '切换WAL失败: %', SQLERRM;
+    END;
+END $$;
 
--- 检查归档目录
-SELECT pg_ls_waldir();
+-- 检查归档目录（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查归档目录';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查归档目录准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM pg_ls_waldir();
 ```
 
 #### 步骤2：创建基础备份

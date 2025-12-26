@@ -432,7 +432,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -463,7 +463,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     datname,
@@ -516,7 +516,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -645,7 +645,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     relname,
@@ -675,7 +675,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_progress_vacuum;
 ```
 
@@ -782,7 +782,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     relname,
@@ -904,27 +904,115 @@ ORDER BY last_autovacuum DESC;
 **解决方案**：
 
 ```sql
--- 1. 调整自动VACUUM触发阈值
-ALTER TABLE large_table SET (
-    autovacuum_vacuum_threshold = 10000,
-    autovacuum_vacuum_scale_factor = 0.1
-);
--- 大表：提高阈值，降低比例因子
+-- 1. 调整自动VACUUM触发阈值（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table') THEN
+            RAISE WARNING '表 large_table 不存在，无法调整自动VACUUM触发阈值';
+            RETURN;
+        END IF;
 
--- 2. 调整自动VACUUM工作进程数
-ALTER SYSTEM SET autovacuum_max_workers = 6;
--- 增加工作进程数，加快VACUUM速度
+        BEGIN
+            ALTER TABLE large_table SET (
+                autovacuum_vacuum_threshold = 10000,
+                autovacuum_vacuum_scale_factor = 0.1
+            );
+            RAISE NOTICE '表 large_table 的自动VACUUM触发阈值已调整（大表：提高阈值，降低比例因子）';
+        EXCEPTION
+            WHEN undefined_table THEN
+                RAISE WARNING '表 large_table 不存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '调整自动VACUUM触发阈值失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 调整自动VACUUM延迟
-ALTER SYSTEM SET autovacuum_naptime = '30s';
--- 减少检查间隔，更快响应
+-- 2. 调整自动VACUUM工作进程数（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限来配置系统参数';
+            RETURN;
+        END IF;
 
--- 4. 表级配置（针对特定表）
-ALTER TABLE high_churn_table SET (
-    autovacuum_vacuum_cost_delay = 10,
-    autovacuum_vacuum_cost_limit = 200
-);
--- 降低延迟，提高限制，加快VACUUM
+        BEGIN
+            ALTER SYSTEM SET autovacuum_max_workers = 6;
+            RAISE NOTICE '自动VACUUM工作进程数已设置为6（增加工作进程数，加快VACUUM速度）';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING '权限不足，无法设置系统参数';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置自动VACUUM工作进程数失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 3. 调整自动VACUUM延迟（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE WARNING '需要超级用户权限来配置系统参数';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER SYSTEM SET autovacuum_naptime = '30s';
+            RAISE NOTICE '自动VACUUM检查间隔已设置为30秒（减少检查间隔，更快响应）';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING '权限不足，无法设置系统参数';
+            WHEN OTHERS THEN
+                RAISE WARNING '设置自动VACUUM延迟失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 4. 表级配置（针对特定表，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'high_churn_table') THEN
+            RAISE WARNING '表 high_churn_table 不存在，无法配置表级自动VACUUM参数';
+            RETURN;
+        END IF;
+
+        BEGIN
+            ALTER TABLE high_churn_table SET (
+                autovacuum_vacuum_cost_delay = 10,
+                autovacuum_vacuum_cost_limit = 200
+            );
+            RAISE NOTICE '表 high_churn_table 的表级自动VACUUM参数已配置（降低延迟，提高限制，加快VACUUM）';
+        EXCEPTION
+            WHEN undefined_table THEN
+                RAISE WARNING '表 high_churn_table 不存在';
+            WHEN OTHERS THEN
+                RAISE WARNING '配置表级自动VACUUM参数失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **性能对比**：

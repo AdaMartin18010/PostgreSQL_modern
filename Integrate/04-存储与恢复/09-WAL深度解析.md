@@ -557,24 +557,61 @@ END $$;
 BEGIN;
 SET LOCAL synchronous_commit = off;
 
--- 创建测试表
-CREATE TABLE IF NOT EXISTS wal_perf_test (
-    id SERIAL PRIMARY KEY,
-    data TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 创建测试表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'wal_perf_test') THEN
+        CREATE TABLE wal_perf_test (
+            id SERIAL PRIMARY KEY,
+            data TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '测试表 wal_perf_test 创建成功';
+    ELSE
+        RAISE NOTICE '测试表 wal_perf_test 已存在';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建测试表失败: %', SQLERRM;
+END $$;
 
 -- 性能测试：同步提交 vs 异步提交
-\timing on
+-- 同步提交测试（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'wal_perf_test') THEN
+            RAISE EXCEPTION '测试表 wal_perf_test 不存在';
+        END IF;
+        SET LOCAL synchronous_commit = on;
+        RAISE NOTICE '开始同步提交测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '同步提交测试准备失败: %', SQLERRM;
+    END;
+END $$;
 
--- 同步提交测试
-SET LOCAL synchronous_commit = on;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO wal_perf_test (data)
 SELECT md5(random()::text) FROM generate_series(1, 10000);
 -- 执行时间: ~500ms
 
--- 异步提交测试
-SET LOCAL synchronous_commit = off;
+-- 异步提交测试（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'wal_perf_test') THEN
+            RAISE EXCEPTION '测试表 wal_perf_test 不存在';
+        END IF;
+        SET LOCAL synchronous_commit = off;
+        RAISE NOTICE '开始异步提交测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '异步提交测试准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO wal_perf_test (data)
 SELECT md5(random()::text) FROM generate_series(1, 10000);
 -- 执行时间: ~200ms (性能提升60%)

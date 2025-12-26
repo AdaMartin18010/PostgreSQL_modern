@@ -754,17 +754,45 @@ END $$;
 
 REFRESH MATERIALIZED VIEW CONCURRENTLY user_accessible_documents;
 
--- 使用缓存的策略
-CREATE POLICY cached_policy
-    ON documents
-    FOR SELECT
-    USING (
-        id IN (
-            SELECT document_id
-            FROM user_accessible_documents
-            WHERE user_id = current_user_id()
-        )
-    );
+-- 使用缓存的策略（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+            RAISE WARNING '表 documents 不存在，无法创建策略';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'user_accessible_documents') THEN
+            RAISE WARNING '物化视图 user_accessible_documents 不存在，无法创建策略';
+            RETURN;
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'documents' AND policyname = 'cached_policy') THEN
+            RAISE NOTICE '策略 cached_policy 已存在';
+        ELSE
+            CREATE POLICY cached_policy
+                ON documents
+                FOR SELECT
+                USING (
+                    id IN (
+                        SELECT document_id
+                        FROM user_accessible_documents
+                        WHERE user_id = current_user_id()
+                    )
+                );
+            RAISE NOTICE '策略 cached_policy 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表或物化视图不存在';
+        WHEN duplicate_object THEN
+            RAISE WARNING '策略 cached_policy 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建策略失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **方案3：使用Security Barrier Views**:
@@ -3437,70 +3465,165 @@ ORDER BY duration DESC;
 ### 6.1 GDPR合规
 
 ```sql
--- 创建数据主体权限管理表
-CREATE TABLE data_subject_requests (
-    request_id serial PRIMARY KEY,
-    user_id int NOT NULL,
-    request_type text CHECK (request_type IN ('access', 'rectification', 'erasure', 'portability', 'restriction')),
-    request_status text CHECK (request_status IN ('pending', 'processing', 'completed', 'rejected')),
-    requested_at timestamptz DEFAULT now(),
-    completed_at timestamptz,
-    notes text
-);
+-- 创建数据主体权限管理表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_subject_requests') THEN
+            RAISE NOTICE '表 data_subject_requests 已存在';
+        ELSE
+            CREATE TABLE data_subject_requests (
+                request_id serial PRIMARY KEY,
+                user_id int NOT NULL,
+                request_type text CHECK (request_type IN ('access', 'rectification', 'erasure', 'portability', 'restriction')),
+                request_status text CHECK (request_status IN ('pending', 'processing', 'completed', 'rejected')),
+                requested_at timestamptz DEFAULT now(),
+                completed_at timestamptz,
+                notes text
+            );
+            RAISE NOTICE '表 data_subject_requests 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 data_subject_requests 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 数据导出（Right to Access）
+-- 数据导出（Right to Access，带完整错误处理）
 CREATE OR REPLACE FUNCTION export_user_data(p_user_id int)
 RETURNS jsonb AS $$
 DECLARE
     result jsonb;
 BEGIN
-    SELECT jsonb_build_object(
-        'user_info', (SELECT row_to_json(u) FROM users u WHERE id = p_user_id),
-        'orders', (SELECT jsonb_agg(row_to_json(o)) FROM orders o WHERE user_id = p_user_id),
-        'payments', (SELECT jsonb_agg(row_to_json(p)) FROM payments p WHERE user_id = p_user_id),
-        'audit_log', (SELECT jsonb_agg(row_to_json(a)) FROM audit_log a WHERE user_name = (SELECT username FROM users WHERE id = p_user_id))
-    ) INTO result;
+    BEGIN
+        -- 参数验证
+        IF p_user_id IS NULL OR p_user_id <= 0 THEN
+            RAISE EXCEPTION 'user_id必须为正整数，当前值: %', p_user_id;
+        END IF;
 
-    RETURN result;
+        -- 检查用户是否存在
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE EXCEPTION '表 users 不存在';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_user_id) THEN
+            RAISE EXCEPTION '用户 ID % 不存在', p_user_id;
+        END IF;
+
+        -- 构建导出数据
+        BEGIN
+            SELECT jsonb_build_object(
+                'user_info', (SELECT row_to_json(u) FROM users u WHERE id = p_user_id),
+                'orders', COALESCE((SELECT jsonb_agg(row_to_json(o)) FROM orders o WHERE user_id = p_user_id), '[]'::jsonb),
+                'payments', COALESCE((SELECT jsonb_agg(row_to_json(p)) FROM payments p WHERE user_id = p_user_id), '[]'::jsonb),
+                'audit_log', COALESCE((SELECT jsonb_agg(row_to_json(a)) FROM audit_log a WHERE user_name = (SELECT username FROM users WHERE id = p_user_id)), '[]'::jsonb)
+            ) INTO result;
+
+            IF result IS NULL THEN
+                RAISE EXCEPTION '导出数据失败：结果为空';
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE EXCEPTION '构建导出数据失败: %', SQLERRM;
+        END;
+
+        RETURN result;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION 'export_user_data执行失败: %', SQLERRM;
+    END;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 数据删除（Right to Erasure）
+-- 数据删除（Right to Erasure，带完整错误处理）
 CREATE OR REPLACE FUNCTION erase_user_data(p_user_id int)
 RETURNS void AS $$
+DECLARE
+    affected_rows INTEGER;
 BEGIN
-    -- 记录删除请求
-    INSERT INTO data_subject_requests (user_id, request_type, request_status)
-    VALUES (p_user_id, 'erasure', 'processing');
-
-    -- 删除或匿名化数据
     BEGIN
-        -- 删除可删除的数据
-        DELETE FROM user_sessions WHERE user_id = p_user_id;
-        DELETE FROM user_preferences WHERE user_id = p_user_id;
+        -- 参数验证
+        IF p_user_id IS NULL OR p_user_id <= 0 THEN
+            RAISE EXCEPTION 'user_id必须为正整数，当前值: %', p_user_id;
+        END IF;
 
-        -- 匿名化必须保留的数据（如订单记录）
-        UPDATE orders
-        SET
-            user_email = 'deleted@example.com',
-            user_phone = NULL,
-            billing_address = 'DELETED'
-        WHERE user_id = p_user_id;
+        -- 检查表是否存在
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_subject_requests') THEN
+            RAISE EXCEPTION '表 data_subject_requests 不存在';
+        END IF;
 
-        -- 删除用户主记录
-        DELETE FROM users WHERE id = p_user_id;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE EXCEPTION '表 users 不存在';
+        END IF;
 
-        -- 更新请求状态
-        UPDATE data_subject_requests
-        SET request_status = 'completed', completed_at = now()
-        WHERE user_id = p_user_id AND request_type = 'erasure';
+        -- 检查用户是否存在
+        IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_user_id) THEN
+            RAISE EXCEPTION '用户 ID % 不存在', p_user_id;
+        END IF;
 
-    EXCEPTION WHEN OTHERS THEN
-        UPDATE data_subject_requests
-        SET request_status = 'rejected', notes = SQLERRM
-        WHERE user_id = p_user_id AND request_type = 'erasure';
+        -- 记录删除请求
+        BEGIN
+            INSERT INTO data_subject_requests (user_id, request_type, request_status)
+            VALUES (p_user_id, 'erasure', 'processing');
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '记录删除请求失败: %', SQLERRM;
+                -- 继续执行，不中断
+        END;
 
-        RAISE;
+        -- 删除或匿名化数据
+        BEGIN
+            -- 删除可删除的数据
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_sessions') THEN
+                DELETE FROM user_sessions WHERE user_id = p_user_id;
+                GET DIAGNOSTICS affected_rows = ROW_COUNT;
+                RAISE NOTICE '删除了 % 条 user_sessions 记录', affected_rows;
+            END IF;
+
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_preferences') THEN
+                DELETE FROM user_preferences WHERE user_id = p_user_id;
+                GET DIAGNOSTICS affected_rows = ROW_COUNT;
+                RAISE NOTICE '删除了 % 条 user_preferences 记录', affected_rows;
+            END IF;
+
+            -- 匿名化必须保留的数据（如订单记录）
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+                UPDATE orders
+                SET
+                    user_email = 'deleted@example.com',
+                    user_phone = NULL,
+                    billing_address = 'DELETED'
+                WHERE user_id = p_user_id;
+                GET DIAGNOSTICS affected_rows = ROW_COUNT;
+                RAISE NOTICE '匿名化了 % 条 orders 记录', affected_rows;
+            END IF;
+
+            -- 删除用户主记录
+            DELETE FROM users WHERE id = p_user_id;
+            GET DIAGNOSTICS affected_rows = ROW_COUNT;
+            IF affected_rows = 0 THEN
+                RAISE WARNING '未删除任何用户记录';
+            ELSE
+                RAISE NOTICE '删除了 % 条用户记录', affected_rows;
+            END IF;
+
+            -- 更新请求状态
+            UPDATE data_subject_requests
+            SET request_status = 'completed', completed_at = now()
+            WHERE user_id = p_user_id AND request_type = 'erasure';
+        EXCEPTION
+            WHEN OTHERS THEN
+                UPDATE data_subject_requests
+                SET request_status = 'rejected', notes = SQLERRM
+                WHERE user_id = p_user_id AND request_type = 'erasure';
+                RAISE EXCEPTION '删除或匿名化数据失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION 'erase_user_data执行失败: %', SQLERRM;
     END;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -3509,23 +3632,61 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ### 6.2 数据保留策略
 
 ```sql
--- 数据保留策略表
-CREATE TABLE retention_policies (
-    policy_id serial PRIMARY KEY,
-    table_name text NOT NULL,
-    retention_period interval NOT NULL,
-    action text CHECK (action IN ('delete', 'archive', 'anonymize')),
-    is_active boolean DEFAULT true
-);
+-- 数据保留策略表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'retention_policies') THEN
+            RAISE NOTICE '表 retention_policies 已存在';
+        ELSE
+            CREATE TABLE retention_policies (
+                policy_id serial PRIMARY KEY,
+                table_name text NOT NULL,
+                retention_period interval NOT NULL,
+                action text CHECK (action IN ('delete', 'archive', 'anonymize')),
+                is_active boolean DEFAULT true
+            );
+            RAISE NOTICE '表 retention_policies 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 retention_policies 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 插入策略
-INSERT INTO retention_policies (table_name, retention_period, action) VALUES
-    ('audit_log', '7 years', 'archive'),
-    ('user_sessions', '90 days', 'delete'),
-    ('temp_data', '7 days', 'delete'),
-    ('orders', '10 years', 'anonymize');
+-- 插入策略（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'retention_policies') THEN
+            RAISE EXCEPTION '表 retention_policies 不存在';
+        END IF;
 
--- 执行保留策略函数
+        BEGIN
+            INSERT INTO retention_policies (table_name, retention_period, action) VALUES
+                ('audit_log', '7 years', 'archive'),
+                ('user_sessions', '90 days', 'delete'),
+                ('temp_data', '7 days', 'delete'),
+                ('orders', '10 years', 'anonymize')
+            ON CONFLICT DO NOTHING;
+            RAISE NOTICE '保留策略插入成功';
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '插入策略失败: %', SQLERRM;
+                RAISE;
+        END;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表 retention_policies 不存在';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '操作失败: %', SQLERRM;
+    END;
+END $$;
+
+-- 执行保留策略函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION apply_retention_policy()
 RETURNS TABLE(table_name text, action text, rows_affected bigint) AS $$
 DECLARE
@@ -3533,46 +3694,118 @@ DECLARE
     cutoff_date timestamptz;
     rows_count bigint;
 BEGIN
-    FOR policy IN
-        SELECT * FROM retention_policies WHERE is_active = true
-    LOOP
-        cutoff_date := now() - policy.retention_period;
-
-        IF policy.action = 'delete' THEN
-            EXECUTE format(
-                'DELETE FROM %I WHERE created_at < $1',
-                policy.table_name
-            ) USING cutoff_date;
-
-        ELSIF policy.action = 'archive' THEN
-            -- 移动到归档表
-            EXECUTE format(
-                'INSERT INTO %I_archive SELECT * FROM %I WHERE created_at < $1',
-                policy.table_name, policy.table_name
-            ) USING cutoff_date;
-
-            EXECUTE format(
-                'DELETE FROM %I WHERE created_at < $1',
-                policy.table_name
-            ) USING cutoff_date;
-
-        ELSIF policy.action = 'anonymize' THEN
-            -- 匿名化旧数据
-            EXECUTE format(
-                'UPDATE %I SET email = ''deleted@example.com'', phone = NULL WHERE created_at < $1',
-                policy.table_name
-            ) USING cutoff_date;
+    BEGIN
+        -- 检查表是否存在
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'retention_policies') THEN
+            RAISE EXCEPTION '表 retention_policies 不存在';
         END IF;
 
-        GET DIAGNOSTICS rows_count = ROW_COUNT;
+        FOR policy IN
+            SELECT * FROM retention_policies WHERE is_active = true
+        LOOP
+            BEGIN
+                cutoff_date := now() - policy.retention_period;
 
-        RETURN QUERY SELECT policy.table_name, policy.action, rows_count;
-    END LOOP;
+                -- 检查目标表是否存在
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = policy.table_name) THEN
+                    RAISE WARNING '表 % 不存在，跳过策略', policy.table_name;
+                    CONTINUE;
+                END IF;
+
+                IF policy.action = 'delete' THEN
+                    BEGIN
+                        EXECUTE format(
+                            'DELETE FROM %I WHERE created_at < $1',
+                            policy.table_name
+                        ) USING cutoff_date;
+                        GET DIAGNOSTICS rows_count = ROW_COUNT;
+                        RAISE NOTICE '表 %: 删除了 % 行', policy.table_name, rows_count;
+                    EXCEPTION
+                        WHEN OTHERS THEN
+                            RAISE WARNING '删除表 % 的数据失败: %', policy.table_name, SQLERRM;
+                            rows_count := 0;
+                    END;
+
+                ELSIF policy.action = 'archive' THEN
+                    BEGIN
+                        -- 检查归档表是否存在
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = policy.table_name || '_archive') THEN
+                            RAISE WARNING '归档表 %_archive 不存在，跳过归档', policy.table_name;
+                            CONTINUE;
+                        END IF;
+
+                        -- 移动到归档表
+                        EXECUTE format(
+                            'INSERT INTO %I_archive SELECT * FROM %I WHERE created_at < $1',
+                            policy.table_name, policy.table_name
+                        ) USING cutoff_date;
+
+                        EXECUTE format(
+                            'DELETE FROM %I WHERE created_at < $1',
+                            policy.table_name
+                        ) USING cutoff_date;
+                        GET DIAGNOSTICS rows_count = ROW_COUNT;
+                        RAISE NOTICE '表 %: 归档了 % 行', policy.table_name, rows_count;
+                    EXCEPTION
+                        WHEN OTHERS THEN
+                            RAISE WARNING '归档表 % 的数据失败: %', policy.table_name, SQLERRM;
+                            rows_count := 0;
+                    END;
+
+                ELSIF policy.action = 'anonymize' THEN
+                    BEGIN
+                        EXECUTE format(
+                            'UPDATE %I SET email = ''deleted@example.com'', phone = NULL WHERE created_at < $1',
+                            policy.table_name
+                        ) USING cutoff_date;
+                        GET DIAGNOSTICS rows_count = ROW_COUNT;
+                        RAISE NOTICE '表 %: 匿名化了 % 行', policy.table_name, rows_count;
+                    EXCEPTION
+                        WHEN OTHERS THEN
+                            RAISE WARNING '匿名化表 % 的数据失败: %', policy.table_name, SQLERRM;
+                            rows_count := 0;
+                    END;
+                END IF;
+
+                RETURN QUERY SELECT policy.table_name, policy.action, rows_count;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING '处理策略 % 失败: %', policy.table_name, SQLERRM;
+                    RETURN QUERY SELECT policy.table_name, policy.action, 0::bigint;
+            END;
+        END LOOP;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION 'apply_retention_policy执行失败: %', SQLERRM;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 
--- 定期执行（每天凌晨3点）
-SELECT cron.schedule('apply_retention', '0 3 * * *', 'SELECT apply_retention_policy()');
+-- 定期执行（每天凌晨3点，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+            RAISE WARNING '扩展 pg_cron 未安装，无法创建定期任务';
+            RAISE NOTICE '需要先安装扩展: CREATE EXTENSION pg_cron;';
+        ELSE
+            BEGIN
+                PERFORM cron.schedule('apply_retention', '0 3 * * *', 'SELECT apply_retention_policy()');
+                RAISE NOTICE '定期任务 apply_retention 创建成功（每天凌晨3点执行）';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE WARNING '定期任务 apply_retention 已存在';
+                WHEN OTHERS THEN
+                    RAISE WARNING '创建定期任务失败: %', SQLERRM;
+                    RAISE;
+            END;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -3591,112 +3824,397 @@ SELECT cron.schedule('apply_retention', '0 3 * * *', 'SELECT apply_retention_pol
 **完整实现**：
 
 ```sql
--- 1. 租户和用户表
-CREATE TABLE tenants (
-    tenant_id serial PRIMARY KEY,
-    tenant_name text UNIQUE NOT NULL,
-    is_active boolean DEFAULT true,
-    created_at timestamptz DEFAULT now()
-);
+-- 1. 租户和用户表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tenants') THEN
+            RAISE NOTICE '表 tenants 已存在';
+        ELSE
+            CREATE TABLE tenants (
+                tenant_id serial PRIMARY KEY,
+                tenant_name text UNIQUE NOT NULL,
+                is_active boolean DEFAULT true,
+                created_at timestamptz DEFAULT now()
+            );
+            RAISE NOTICE '表 tenants 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 tenants 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
-CREATE TABLE users (
-    user_id serial PRIMARY KEY,
-    tenant_id int NOT NULL REFERENCES tenants(tenant_id),
-    username text NOT NULL,
-    email text NOT NULL,
-    role text CHECK (role IN ('admin', 'user', 'readonly')),
-    is_active boolean DEFAULT true,
-    created_at timestamptz DEFAULT now(),
-    UNIQUE(tenant_id, username)
-);
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE NOTICE '表 users 已存在';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tenants') THEN
+                RAISE EXCEPTION '表 tenants 不存在，无法创建外键约束';
+            END IF;
 
--- 2. 业务表（所有表都有tenant_id）
-CREATE TABLE projects (
-    project_id serial PRIMARY KEY,
-    tenant_id int NOT NULL REFERENCES tenants(tenant_id),
-    project_name text NOT NULL,
-    owner_id int NOT NULL REFERENCES users(user_id),
-    created_at timestamptz DEFAULT now()
-);
+            CREATE TABLE users (
+                user_id serial PRIMARY KEY,
+                tenant_id int NOT NULL REFERENCES tenants(tenant_id),
+                username text NOT NULL,
+                email text NOT NULL,
+                role text CHECK (role IN ('admin', 'user', 'readonly')),
+                is_active boolean DEFAULT true,
+                created_at timestamptz DEFAULT now(),
+                UNIQUE(tenant_id, username)
+            );
+            RAISE NOTICE '表 users 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 users 已存在';
+        WHEN foreign_key_violation THEN
+            RAISE WARNING '外键约束失败，请确保表 tenants 存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
-CREATE TABLE tasks (
-    task_id serial PRIMARY KEY,
-    tenant_id int NOT NULL REFERENCES tenants(tenant_id),
-    project_id int NOT NULL REFERENCES projects(project_id),
-    assignee_id int REFERENCES users(user_id),
-    task_title text NOT NULL,
-    task_status text,
-    created_at timestamptz DEFAULT now()
-);
+-- 2. 业务表（所有表都有tenant_id，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+            RAISE NOTICE '表 projects 已存在';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tenants') OR
+               NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+                RAISE EXCEPTION '表 tenants 或 users 不存在，无法创建外键约束';
+            END IF;
 
--- 3. 启用RLS
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+            CREATE TABLE projects (
+                project_id serial PRIMARY KEY,
+                tenant_id int NOT NULL REFERENCES tenants(tenant_id),
+                project_name text NOT NULL,
+                owner_id int NOT NULL REFERENCES users(user_id),
+                created_at timestamptz DEFAULT now()
+            );
+            RAISE NOTICE '表 projects 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 projects 已存在';
+        WHEN foreign_key_violation THEN
+            RAISE WARNING '外键约束失败，请确保表 tenants 和 users 存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 4. RLS策略：租户隔离
-CREATE POLICY tenant_isolation_projects
-    ON projects
-    FOR ALL
-    USING (tenant_id = current_setting('app.tenant_id')::int);
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+            RAISE NOTICE '表 tasks 已存在';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+                RAISE EXCEPTION '表 projects 不存在，无法创建外键约束';
+            END IF;
 
-CREATE POLICY tenant_isolation_tasks
-    ON tasks
-    FOR ALL
-    USING (tenant_id = current_setting('app.tenant_id')::int);
+            CREATE TABLE tasks (
+                task_id serial PRIMARY KEY,
+                tenant_id int NOT NULL REFERENCES tenants(tenant_id),
+                project_id int NOT NULL REFERENCES projects(project_id),
+                assignee_id int REFERENCES users(user_id),
+                task_title text NOT NULL,
+                task_status text,
+                created_at timestamptz DEFAULT now()
+            );
+            RAISE NOTICE '表 tasks 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 tasks 已存在';
+        WHEN foreign_key_violation THEN
+            RAISE WARNING '外键约束失败，请确保表 projects 存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 5. RLS策略：角色权限
-CREATE POLICY project_owner_access
-    ON projects
-    FOR UPDATE
-    USING (
-        owner_id = current_setting('app.user_id')::int
-        OR current_setting('app.user_role') = 'admin'
-    );
+-- 3. 启用RLS（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+            RAISE WARNING '表 projects 不存在，无法启用RLS';
+        ELSE
+            ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+            RAISE NOTICE '表 projects 的RLS已启用';
+        END IF;
 
-CREATE POLICY task_assignee_access
-    ON tasks
-    FOR UPDATE
-    USING (
-        assignee_id = current_setting('app.user_id')::int
-        OR current_setting('app.user_role') = 'admin'
-    );
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+            RAISE WARNING '表 tasks 不存在，无法启用RLS';
+        ELSE
+            ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+            RAISE NOTICE '表 tasks 的RLS已启用';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '启用RLS失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 6. 审计所有表
-CREATE TRIGGER audit_projects
-    AFTER INSERT OR UPDATE OR DELETE ON projects
-    FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+-- 4. RLS策略：租户隔离（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+            RAISE WARNING '表 projects 不存在，无法创建策略';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'projects' AND policyname = 'tenant_isolation_projects') THEN
+                CREATE POLICY tenant_isolation_projects
+                    ON projects
+                    FOR ALL
+                    USING (tenant_id = current_setting('app.tenant_id')::int);
+                RAISE NOTICE '策略 tenant_isolation_projects 创建成功';
+            ELSE
+                RAISE NOTICE '策略 tenant_isolation_projects 已存在';
+            END IF;
+        END IF;
 
-CREATE TRIGGER audit_tasks
-    AFTER INSERT OR UPDATE OR DELETE ON tasks
-    FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+            RAISE WARNING '表 tasks 不存在，无法创建策略';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tasks' AND policyname = 'tenant_isolation_tasks') THEN
+                CREATE POLICY tenant_isolation_tasks
+                    ON tasks
+                    FOR ALL
+                    USING (tenant_id = current_setting('app.tenant_id')::int);
+                RAISE NOTICE '策略 tenant_isolation_tasks 创建成功';
+            ELSE
+                RAISE NOTICE '策略 tenant_isolation_tasks 已存在';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表不存在';
+        WHEN duplicate_object THEN
+            RAISE WARNING '策略已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建策略失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 7. 应用层连接管理
+-- 5. RLS策略：角色权限（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+            RAISE WARNING '表 projects 不存在，无法创建策略';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'projects' AND policyname = 'project_owner_access') THEN
+                CREATE POLICY project_owner_access
+                    ON projects
+                    FOR UPDATE
+                    USING (
+                        owner_id = current_setting('app.user_id')::int
+                        OR current_setting('app.user_role') = 'admin'
+                    );
+                RAISE NOTICE '策略 project_owner_access 创建成功';
+            ELSE
+                RAISE NOTICE '策略 project_owner_access 已存在';
+            END IF;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+            RAISE WARNING '表 tasks 不存在，无法创建策略';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tasks' AND policyname = 'task_assignee_access') THEN
+                CREATE POLICY task_assignee_access
+                    ON tasks
+                    FOR UPDATE
+                    USING (
+                        assignee_id = current_setting('app.user_id')::int
+                        OR current_setting('app.user_role') = 'admin'
+                    );
+                RAISE NOTICE '策略 task_assignee_access 创建成功';
+            ELSE
+                RAISE NOTICE '策略 task_assignee_access 已存在';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表不存在';
+        WHEN duplicate_object THEN
+            RAISE WARNING '策略已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建策略失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 6. 审计所有表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+            RAISE WARNING '表 projects 不存在，无法创建审计触发器';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'audit_trigger_function' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')) THEN
+                RAISE WARNING '函数 audit_trigger_function 不存在，无法创建审计触发器';
+            ELSE
+                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'audit_projects') THEN
+                    CREATE TRIGGER audit_projects
+                        AFTER INSERT OR UPDATE OR DELETE ON projects
+                        FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+                    RAISE NOTICE '审计触发器 audit_projects 创建成功';
+                ELSE
+                    RAISE NOTICE '审计触发器 audit_projects 已存在';
+                END IF;
+            END IF;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+            RAISE WARNING '表 tasks 不存在，无法创建审计触发器';
+        ELSE
+            IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'audit_trigger_function' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')) THEN
+                RAISE WARNING '函数 audit_trigger_function 不存在，无法创建审计触发器';
+            ELSE
+                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'audit_tasks') THEN
+                    CREATE TRIGGER audit_tasks
+                        AFTER INSERT OR UPDATE OR DELETE ON tasks
+                        FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+                    RAISE NOTICE '审计触发器 audit_tasks 创建成功';
+                ELSE
+                    RAISE NOTICE '审计触发器 audit_tasks 已存在';
+                END IF;
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表不存在';
+        WHEN undefined_function THEN
+            RAISE WARNING '函数 audit_trigger_function 不存在';
+        WHEN duplicate_object THEN
+            RAISE WARNING '触发器已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建触发器失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 7. 应用层连接管理（带完整错误处理）
 CREATE OR REPLACE FUNCTION set_tenant_context(p_tenant_id int, p_user_id int, p_role text)
 RETURNS void AS $$
 BEGIN
-    -- 验证租户和用户关系
-    IF NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = p_user_id
-          AND tenant_id = p_tenant_id
-          AND is_active = true
-    ) THEN
-        RAISE EXCEPTION 'Invalid user or tenant';
-    END IF;
+    BEGIN
+        -- 参数验证
+        IF p_tenant_id IS NULL OR p_tenant_id <= 0 THEN
+            RAISE EXCEPTION 'tenant_id必须为正整数，当前值: %', p_tenant_id;
+        END IF;
 
-    -- 设置会话变量
-    PERFORM set_config('app.tenant_id', p_tenant_id::text, false);
-    PERFORM set_config('app.user_id', p_user_id::text, false);
-    PERFORM set_config('app.user_role', p_role, false);
+        IF p_user_id IS NULL OR p_user_id <= 0 THEN
+            RAISE EXCEPTION 'user_id必须为正整数，当前值: %', p_user_id;
+        END IF;
+
+        IF p_role IS NULL OR p_role NOT IN ('admin', 'user', 'readonly') THEN
+            RAISE EXCEPTION 'role必须是admin、user或readonly之一，当前值: %', p_role;
+        END IF;
+
+        -- 检查表是否存在
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE EXCEPTION '表 users 不存在';
+        END IF;
+
+        -- 验证租户和用户关系
+        IF NOT EXISTS (
+            SELECT 1 FROM users
+            WHERE user_id = p_user_id
+              AND tenant_id = p_tenant_id
+              AND is_active = true
+        ) THEN
+            RAISE EXCEPTION 'Invalid user or tenant: user_id=%, tenant_id=%', p_user_id, p_tenant_id;
+        END IF;
+
+        -- 设置会话变量
+        BEGIN
+            PERFORM set_config('app.tenant_id', p_tenant_id::text, false);
+            PERFORM set_config('app.user_id', p_user_id::text, false);
+            PERFORM set_config('app.user_role', p_role, false);
+            RAISE NOTICE '租户上下文设置成功: tenant_id=%, user_id=%, role=%', p_tenant_id, p_user_id, p_role;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE EXCEPTION '设置会话变量失败: %', SQLERRM;
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION 'set_tenant_context执行失败: %', SQLERRM;
+    END;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 8. 使用示例（应用层）
+-- 8. 使用示例（应用层，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'set_tenant_context' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')) THEN
+            RAISE WARNING '函数 set_tenant_context 不存在，无法执行';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始设置租户上下文';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 -- 每个请求开始时调用
 SELECT set_tenant_context(123, 456, 'user');
 
--- 现在所有查询都自动应用RLS
+-- 现在所有查询都自动应用RLS（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+            RAISE WARNING '表 projects 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询projects表（自动应用RLS）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM projects;  -- 只返回tenant_id=123的数据
+
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+            RAISE WARNING '表 tasks 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询tasks表（自动应用RLS）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM tasks;     -- 只返回tenant_id=123的数据
 ```
 
