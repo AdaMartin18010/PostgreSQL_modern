@@ -252,25 +252,85 @@ END $$;
 **SQL优化对比（带性能测试）**:
 
 ```sql
--- ✅ 推荐：使用索引（带性能测试）
+-- ✅ 推荐：使用索引（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法演示索引查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始演示使用索引查询';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '索引查询演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 123;
 -- 执行时间: 快（使用索引）
 -- 计划: Index Scan
 
--- ❌ 避免：全表扫描（带性能测试）
+-- ❌ 避免：全表扫描（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法演示全表扫描';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始演示全表扫描（不推荐）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '全表扫描演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE name LIKE '%test%';
 -- 执行时间: 慢（全表扫描）
 -- 计划: Seq Scan
 
--- ✅ 推荐：使用LIMIT（带性能测试）
+-- ✅ 推荐：使用LIMIT（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法演示LIMIT查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始演示使用LIMIT查询';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'LIMIT查询演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders ORDER BY created_at DESC LIMIT 20;
 -- 执行时间: 快（只返回20条）
 -- 计划: Limit -> Sort -> Index Scan
 
--- ❌ 避免：返回大量数据（带性能测试）
+-- ❌ 避免：返回大量数据（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法演示返回大量数据查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始演示返回大量数据查询（不推荐）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '返回大量数据查询演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders ORDER BY created_at DESC;
 -- 执行时间: 慢（返回所有数据）
@@ -334,17 +394,50 @@ WHERE customer_id = 123
 
 ```sql
 -- 使用EXISTS代替IN（对于大表）
--- ❌ 不推荐：使用IN（带性能测试）
+-- ❌ 不推荐：使用IN（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '必需的表不存在，无法演示IN查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始演示使用IN查询（不推荐）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'IN查询演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id IN (SELECT user_id FROM orders);
 -- 执行时间: 可能较慢（需要物化子查询结果）
 -- 计划: Hash Join 或 Nested Loop
 
--- ✅ 推荐：使用EXISTS（带性能测试）
+-- ✅ 推荐：使用EXISTS（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '必需的表不存在，无法演示EXISTS查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始演示使用EXISTS查询（推荐）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'EXISTS查询演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id);
 -- 执行时间: 通常更快（不需要物化）
 -- 计划: Hash Semi Join 或 Nested Loop Semi Join
+```
 
 -- 查询重写验证（带错误处理）
 DO $$
