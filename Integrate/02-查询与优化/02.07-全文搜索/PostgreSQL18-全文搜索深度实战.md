@@ -57,77 +57,110 @@ PostgreSQL内置强大的全文搜索功能，无需Elasticsearch即可实现高
 
 ```sql
 -- 性能测试：tsvector: 文档向量（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'english') THEN
+            RAISE WARNING '文本搜索配置不存在: english';
+        END IF;
+        RAISE NOTICE '开始测试tsvector生成';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT to_tsvector('english', 'The quick brown fox jumps over the lazy dog');
 -- 结果: 'brown':3 'dog':9 'fox':4 'jump':5 'lazi':8 'quick':2
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '生成tsvector失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
 
 -- 性能测试：tsquery: 查询表达式（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'english') THEN
+            RAISE WARNING '文本搜索配置不存在: english';
+        END IF;
+        RAISE NOTICE '开始测试tsquery生成';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT to_tsquery('english', 'quick & fox');
 -- 结果: 'quick' & 'fox'
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '生成tsquery失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
 
 -- 性能测试：匹配（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'english') THEN
+            RAISE WARNING '文本搜索配置不存在: english';
+        END IF;
+        RAISE NOTICE '开始测试全文搜索匹配';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT to_tsvector('english', 'The quick brown fox') @@
        to_tsquery('english', 'quick & fox');
 -- 结果: true
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '全文搜索匹配失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
 ```
 
 ### 基础搜索
 
 ```sql
 -- 性能测试：创建文章表（带错误处理）
-BEGIN;
-CREATE TABLE IF NOT EXISTS articles (
-    id BIGSERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-COMMIT;
-EXCEPTION
-    WHEN duplicate_table THEN
-        RAISE NOTICE '表articles已存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '创建表失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'articles') THEN
+            RAISE NOTICE '表articles已存在';
+        ELSE
+            CREATE TABLE articles (
+                id BIGSERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT now()
+            );
+            RAISE NOTICE '表articles创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表articles已存在';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '创建表失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 性能测试：简单搜索（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'articles') THEN
+            RAISE EXCEPTION '表articles不存在';
+        END IF;
+        RAISE NOTICE '开始执行简单搜索测试';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表articles不存在';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '测试准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM articles
 WHERE to_tsvector('english', title || ' ' || content) @@
       to_tsquery('english', 'postgresql & performance');
-COMMIT;
-EXCEPTION
-    WHEN undefined_table THEN
-        RAISE NOTICE '表articles不存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '全文搜索失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
 ```
 
 ---
@@ -138,53 +171,100 @@ EXCEPTION
 
 ```sql
 -- 性能测试：添加tsvector列（带错误处理）
-BEGIN;
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS tsv tsvector;
-COMMIT;
-EXCEPTION
-    WHEN duplicate_column THEN
-        RAISE NOTICE '列tsv已存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '添加tsvector列失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'articles') THEN
+            RAISE EXCEPTION '表articles不存在';
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'articles' AND column_name = 'tsv'
+        ) THEN
+            RAISE NOTICE '列tsv已存在';
+        ELSE
+            ALTER TABLE articles ADD COLUMN tsv tsvector;
+            RAISE NOTICE 'tsvector列添加成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_column THEN
+            RAISE WARNING '列tsv已存在';
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表articles不存在';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '添加tsvector列失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 性能测试：生成tsvector（带错误处理和性能分析）
-BEGIN;
+DO $$
+DECLARE
+    updated_count BIGINT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'articles') THEN
+            RAISE EXCEPTION '表articles不存在';
+        END IF;
+        RAISE NOTICE '开始生成tsvector';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表articles不存在';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '测试准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE articles SET tsv =
     to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))
 WHERE tsv IS NULL;
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '生成tsvector失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
 
 -- 性能测试：创建GIN索引（带错误处理）
-BEGIN;
-CREATE INDEX IF NOT EXISTS idx_articles_tsv ON articles USING GIN(tsv);
-COMMIT;
-EXCEPTION
-    WHEN duplicate_table THEN
-        RAISE NOTICE '索引idx_articles_tsv已存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '创建GIN索引失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'articles') THEN
+            RAISE EXCEPTION '表articles不存在';
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM pg_indexes WHERE tablename = 'articles' AND indexname = 'idx_articles_tsv'
+        ) THEN
+            RAISE NOTICE '索引idx_articles_tsv已存在';
+        ELSE
+            CREATE INDEX idx_articles_tsv ON articles USING GIN(tsv);
+            RAISE NOTICE 'GIN索引创建成功: idx_articles_tsv';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表articles不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引idx_articles_tsv已存在';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '创建GIN索引失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 性能测试：查询（快速）（带错误处理和性能分析）
-BEGIN;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'articles') THEN
+            RAISE EXCEPTION '表articles不存在';
+        END IF;
+        RAISE NOTICE '开始执行全文搜索查询（使用预计算tsvector和GIN索引）';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表articles不存在';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '测试准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM articles
 WHERE tsv @@ to_tsquery('english', 'postgresql & performance');
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '全文搜索查询失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
 ```
 
 ### 2. 自动更新tsvector

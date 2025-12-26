@@ -225,7 +225,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users
 WHERE age BETWEEN 25 AND 35
   AND city = 'Beijing'
@@ -1679,7 +1679,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE SELECT * FROM large_table WHERE condition;
+EXPLAIN (ANALYZE, BUFFERS, TIMING) SELECT * FROM large_table WHERE condition;
 -- 应该看到AI优化器的影响
 ```
 

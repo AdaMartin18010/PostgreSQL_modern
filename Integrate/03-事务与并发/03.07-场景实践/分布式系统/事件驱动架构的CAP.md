@@ -32,13 +32,6 @@
     - [3.1 事件溯源定义](#31-事件溯源定义)
     - [3.2 事件溯源CAP分析](#32-事件溯源cap分析)
     - [3.3 PostgreSQL事件溯源CAP](#33-postgresql事件溯源cap)
-  - [📊 第四部分：CQRS与CAP](#-第四部分cqrs与cap)
-    - [4.1 CQRS定义](#41-cqrs定义)
-    - [4.2 CQRS CAP分析](#42-cqrs-cap分析)
-    - [4.3 PostgreSQL CQRS CAP](#43-postgresql-cqrs-cap)
-  - [📊 第五部分：事件驱动的CAP一致性](#-第五部分事件驱动的cap一致性)
-    - [5.1 事件顺序保证](#51-事件顺序保证)
-    - [5.2 事件幂等性](#52-事件幂等性)
     - [5.3 事件一致性策略](#53-事件一致性策略)
   - [📝 总结](#-总结)
     - [核心结论](#核心结论)
@@ -257,7 +250,6 @@ BEGIN
         END IF;
 
         BEGIN
-            EXPLAIN (ANALYZE, BUFFERS, TIMING)
             INSERT INTO events (aggregate_id, event_type, event_data)
             VALUES ('order-1', 'OrderCreated', '{"amount": 100}')
             RETURNING id INTO v_event_id;
@@ -282,7 +274,11 @@ BEGIN
             RAISE;
     END;
 END $$;
-```
+
+-- 性能测试：发布事件
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+INSERT INTO events (aggregate_id, event_type, event_data)
+VALUES ('order-1', 'OrderCreated', '{"amount": 100}');
 
 ---
 
@@ -381,7 +377,10 @@ BEGIN
             RAISE;
     END;
 END $$;
-```
+
+-- 性能测试：查询物化视图
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM order_summary WHERE user_id = 1;
 
 ---
 
@@ -458,7 +457,11 @@ BEGIN
             RAISE;
     END;
 END $$;
-```
+
+-- 性能测试：事件有序插入
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+INSERT INTO events (id, aggregate_id, event_type, event_data)
+VALUES (nextval('event_sequence'), 'order-1', 'OrderCreated', '{}');
 
 ### 5.2 事件幂等性
 

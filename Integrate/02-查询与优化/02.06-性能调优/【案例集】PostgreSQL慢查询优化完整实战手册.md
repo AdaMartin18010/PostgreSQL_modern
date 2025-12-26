@@ -211,7 +211,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     queryid,
     LEFT(query, 100) AS query_snippet,
@@ -222,7 +222,6 @@ SELECT
     rows
 FROM pg_stat_statements
 ORDER BY mean_exec_time DESC
-LIMIT 10;
 LIMIT 10;
 
 -- 4. 按总执行时间排序（找出累积影响最大的）
@@ -259,7 +258,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE email = 'test@example.com';
 
 -- 详细输出（带错误处理）
@@ -331,7 +330,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     now() - query_start AS duration,
