@@ -981,18 +981,47 @@ BEGIN
         RAISE NOTICE '已删除现有函数: lww_conflict_resolution';
     END IF;
 
+    -- LWW冲突解决触发器函数（带完整错误处理）
     CREATE OR REPLACE FUNCTION lww_conflict_resolution()
-    RETURNS trigger AS $$
+    RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
     BEGIN
-        -- 如果新数据更新时间更晚，则更新
+        -- 检查NEW和OLD记录
+        IF NEW IS NULL THEN
+            RAISE WARNING 'NEW记录为空，无法进行冲突解决';
+            RETURN NULL;
+        END IF;
+
+        IF OLD IS NULL THEN
+            RAISE WARNING 'OLD记录为空，返回NEW记录';
+            RETURN NEW;
+        END IF;
+
+        -- 验证时间戳字段存在
+        IF NEW.updated_at IS NULL THEN
+            RAISE WARNING 'NEW.updated_at为空，设置当前时间';
+            NEW.updated_at := NOW();
+        END IF;
+
+        IF OLD.updated_at IS NULL THEN
+            RAISE WARNING 'OLD.updated_at为空，使用NEW记录';
+            RETURN NEW;
+        END IF;
+
+        -- LWW冲突解决：如果新数据更新时间更晚，则更新
         IF NEW.updated_at > OLD.updated_at THEN
             RETURN NEW;
         ELSE
             -- 保留旧数据
             RETURN OLD;
         END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'lww_conflict_resolution触发器函数执行失败: %', SQLERRM;
+            RETURN OLD;  -- 出错时保留旧数据
     END;
-    $$ LANGUAGE plpgsql;
+    $$;
 
     RAISE NOTICE '函数lww_conflict_resolution创建成功';
 EXCEPTION
@@ -1825,21 +1854,80 @@ CREATE SUBSCRIPTION vip_orders_sub
 -- 当前版本可以使用触发器实现
 
 -- 订阅端：数据转换触发器
+-- 转换订单数据触发器函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION transform_orders()
-RETURNS trigger AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_exchange_rate NUMERIC := 6.8;  -- USD to CNY汇率
 BEGIN
+    -- 检查NEW记录
+    IF NEW IS NULL THEN
+        RAISE WARNING 'NEW记录为空，无法转换订单数据';
+        RETURN NULL;
+    END IF;
+
     -- 转换货币
-    NEW.amount := NEW.amount * 6.8;  -- USD to CNY
+    BEGIN
+        IF NEW.amount IS NOT NULL THEN
+            IF NEW.amount < 0 THEN
+                RAISE WARNING '订单金额为负数: %, 跳过转换', NEW.amount;
+            ELSE
+                NEW.amount := NEW.amount * v_exchange_rate;
 
-    -- 脱敏
-    NEW.customer_email := regexp_replace(NEW.customer_email, '(.{2})(.*)(@.*)', '\1***\3');
+                -- 检查数值溢出
+                IF NEW.amount > 999999999.99 THEN
+                    RAISE EXCEPTION '转换后金额超出范围: %', NEW.amount;
+                END IF;
+            END IF;
+        ELSE
+            RAISE WARNING '订单金额为空，跳过货币转换';
+        END IF;
+    EXCEPTION
+        WHEN numeric_value_out_of_range THEN
+            RAISE EXCEPTION '货币转换数值溢出';
+        WHEN OTHERS THEN
+            RAISE WARNING '货币转换失败: %', SQLERRM;
+    END;
 
-    -- 添加时间戳
-    NEW.synced_at := now();
+    -- 脱敏客户邮箱
+    BEGIN
+        IF NEW.customer_email IS NOT NULL AND TRIM(NEW.customer_email) != '' THEN
+            NEW.customer_email := regexp_replace(
+                NEW.customer_email,
+                '(.{2})(.*)(@.*)',
+                '\1***\3',
+                'g'
+            );
+
+            -- 验证脱敏结果
+            IF NEW.customer_email IS NULL OR NEW.customer_email = '' THEN
+                RAISE WARNING '邮箱脱敏失败，保留原值';
+            END IF;
+        ELSE
+            RAISE WARNING '客户邮箱为空，跳过脱敏';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '邮箱脱敏失败: %', SQLERRM;
+    END;
+
+    -- 添加同步时间戳
+    BEGIN
+        NEW.synced_at := NOW();
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置同步时间戳失败: %', SQLERRM;
+    END;
 
     RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'transform_orders触发器函数执行失败: %', SQLERRM;
+        RETURN NEW;  -- 即使出错也返回NEW，避免阻塞主操作
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER transform_trigger
     BEFORE INSERT OR UPDATE ON orders

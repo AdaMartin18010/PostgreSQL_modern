@@ -170,31 +170,117 @@ CREATE INDEX ON rdf_triples_optimized (subject_id, predicate_id);
 CREATE INDEX ON rdf_triples_optimized (predicate_id, object_id);
 
 -- 插入函数
-CREATE FUNCTION insert_triple(subj TEXT, pred TEXT, obj TEXT, obj_type TEXT)
-RETURNS VOID AS $$
+-- 插入三元组函数（带完整错误处理）
+CREATE FUNCTION insert_triple(
+    p_subj TEXT,
+    p_pred TEXT,
+    p_obj TEXT,
+    p_obj_type TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
 DECLARE
-    subj_id INT;
-    pred_id INT;
-    obj_id INT;
+    v_subj_id INT;
+    v_pred_id INT;
+    v_obj_id INT;
 BEGIN
-    -- 获取或创建ID
-    INSERT INTO rdf_dictionary (value) VALUES (subj)
-    ON CONFLICT (value) DO NOTHING;
-    SELECT id INTO subj_id FROM rdf_dictionary WHERE value = subj;
+    -- 参数验证
+    IF p_subj IS NULL OR TRIM(p_subj) = '' THEN
+        RAISE EXCEPTION '主语不能为空';
+    END IF;
 
-    INSERT INTO rdf_dictionary (value) VALUES (pred)
-    ON CONFLICT (value) DO NOTHING;
-    SELECT id INTO pred_id FROM rdf_dictionary WHERE value = pred;
+    IF p_pred IS NULL OR TRIM(p_pred) = '' THEN
+        RAISE EXCEPTION '谓词不能为空';
+    END IF;
 
-    INSERT INTO rdf_dictionary (value) VALUES (obj)
-    ON CONFLICT (value) DO NOTHING;
-    SELECT id INTO obj_id FROM rdf_dictionary WHERE value = obj;
+    IF p_obj IS NULL OR TRIM(p_obj) = '' THEN
+        RAISE EXCEPTION '宾语不能为空';
+    END IF;
+
+    IF p_obj_type IS NULL OR TRIM(p_obj_type) = '' THEN
+        RAISE EXCEPTION '宾语类型不能为空';
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'rdf_dictionary') THEN
+        RAISE EXCEPTION 'rdf_dictionary表不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'rdf_triples_optimized') THEN
+        RAISE EXCEPTION 'rdf_triples_optimized表不存在';
+    END IF;
+
+    -- 获取或创建主语ID
+    BEGIN
+        INSERT INTO rdf_dictionary (value) VALUES (p_subj)
+        ON CONFLICT (value) DO NOTHING;
+
+        SELECT id INTO v_subj_id FROM rdf_dictionary WHERE value = p_subj;
+
+        IF v_subj_id IS NULL THEN
+            RAISE EXCEPTION '无法获取或创建主语ID: %', p_subj;
+        END IF;
+    EXCEPTION
+        WHEN unique_violation THEN
+            SELECT id INTO v_subj_id FROM rdf_dictionary WHERE value = p_subj;
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '处理主语失败: %', SQLERRM;
+    END;
+
+    -- 获取或创建谓词ID
+    BEGIN
+        INSERT INTO rdf_dictionary (value) VALUES (p_pred)
+        ON CONFLICT (value) DO NOTHING;
+
+        SELECT id INTO v_pred_id FROM rdf_dictionary WHERE value = p_pred;
+
+        IF v_pred_id IS NULL THEN
+            RAISE EXCEPTION '无法获取或创建谓词ID: %', p_pred;
+        END IF;
+    EXCEPTION
+        WHEN unique_violation THEN
+            SELECT id INTO v_pred_id FROM rdf_dictionary WHERE value = p_pred;
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '处理谓词失败: %', SQLERRM;
+    END;
+
+    -- 获取或创建宾语ID
+    BEGIN
+        INSERT INTO rdf_dictionary (value) VALUES (p_obj)
+        ON CONFLICT (value) DO NOTHING;
+
+        SELECT id INTO v_obj_id FROM rdf_dictionary WHERE value = p_obj;
+
+        IF v_obj_id IS NULL THEN
+            RAISE EXCEPTION '无法获取或创建宾语ID: %', p_obj;
+        END IF;
+    EXCEPTION
+        WHEN unique_violation THEN
+            SELECT id INTO v_obj_id FROM rdf_dictionary WHERE value = p_obj;
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '处理宾语失败: %', SQLERRM;
+    END;
 
     -- 插入三元组
-    INSERT INTO rdf_triples_optimized (subject_id, predicate_id, object_id, object_type)
-    VALUES (subj_id, pred_id, obj_id, obj_type);
+    BEGIN
+        INSERT INTO rdf_triples_optimized (subject_id, predicate_id, object_id, object_type)
+        VALUES (v_subj_id, v_pred_id, v_obj_id, p_obj_type);
+    EXCEPTION
+        WHEN unique_violation THEN
+            RAISE WARNING '三元组已存在: (%, %, %)', v_subj_id, v_pred_id, v_obj_id;
+        WHEN foreign_key_violation THEN
+            RAISE EXCEPTION '违反外键约束，无法插入三元组';
+        WHEN check_violation THEN
+            RAISE EXCEPTION '违反检查约束，无法插入三元组';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '插入三元组失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'insert_triple执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 ```
 
 **空间节省**：
@@ -318,25 +404,68 @@ CREATE TABLE owl_datatype_properties (
 -- 规则：rdfs:subClassOf传递性
 -- 如果 A subClassOf B 且 B subClassOf C，则 A subClassOf C
 
+-- 推理传递性子类函数（带完整错误处理）
 CREATE FUNCTION infer_transitive_subclass()
-RETURNS VOID AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_inserted_count INTEGER;
+    v_iteration_count INTEGER := 0;
+    v_max_iterations INTEGER := 1000;  -- 防止无限循环
 BEGIN
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'owl_class_hierarchy') THEN
+        RAISE EXCEPTION 'owl_class_hierarchy表不存在';
+    END IF;
+
     -- 迭代直到收敛
     LOOP
-        INSERT INTO owl_class_hierarchy (subclass_id, superclass_id)
-        SELECT DISTINCT h1.subclass_id, h2.superclass_id
-        FROM owl_class_hierarchy h1
-        JOIN owl_class_hierarchy h2 ON h1.superclass_id = h2.subclass_id
-        WHERE NOT EXISTS (
-            SELECT 1 FROM owl_class_hierarchy h3
-            WHERE h3.subclass_id = h1.subclass_id
-              AND h3.superclass_id = h2.superclass_id
-        );
+        v_iteration_count := v_iteration_count + 1;
 
-        EXIT WHEN NOT FOUND;
+        -- 防止无限循环
+        IF v_iteration_count > v_max_iterations THEN
+            RAISE WARNING '达到最大迭代次数: %, 停止推理', v_max_iterations;
+            EXIT;
+        END IF;
+
+        BEGIN
+            INSERT INTO owl_class_hierarchy (subclass_id, superclass_id)
+            SELECT DISTINCT h1.subclass_id, h2.superclass_id
+            FROM owl_class_hierarchy h1
+            INNER JOIN owl_class_hierarchy h2 ON h1.superclass_id = h2.subclass_id
+            WHERE h1.subclass_id IS NOT NULL
+              AND h1.superclass_id IS NOT NULL
+              AND h2.subclass_id IS NOT NULL
+              AND h2.superclass_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM owl_class_hierarchy h3
+                  WHERE h3.subclass_id = h1.subclass_id
+                    AND h3.superclass_id = h2.superclass_id
+              );
+
+            GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
+        EXCEPTION
+            WHEN unique_violation THEN
+                -- 忽略唯一约束冲突（已存在的记录）
+                GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
+            WHEN OTHERS THEN
+                RAISE EXCEPTION '推理传递性子类失败（迭代 %）: %', v_iteration_count, SQLERRM;
+        END;
+
+        -- 如果没有插入新记录，说明已收敛
+        IF v_inserted_count = 0 THEN
+            RAISE NOTICE '传递性子类推理完成，迭代次数: %', v_iteration_count;
+            EXIT;
+        END IF;
+
+        RAISE NOTICE '迭代 %: 插入了 % 条新记录', v_iteration_count, v_inserted_count;
     END LOOP;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'infer_transitive_subclass执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 执行推理
 SELECT infer_transitive_subclass();
@@ -350,23 +479,81 @@ SELECT infer_transitive_subclass();
 -- 规则：对称属性
 -- 如果 friendOf 是对称的，且 Alice friendOf Bob，则 Bob friendOf Alice
 
-CREATE FUNCTION infer_symmetric_property(property_uri TEXT)
-RETURNS VOID AS $$
+-- 推理对称属性函数（带完整错误处理）
+CREATE FUNCTION infer_symmetric_property(p_property_uri TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_predicate_id INT;
+    v_inserted_count INTEGER;
 BEGIN
-    INSERT INTO rdf_triples_optimized (subject_id, predicate_id, object_id, object_type)
-    SELECT object_id, predicate_id, subject_id, 'uri'
-    FROM rdf_triples_optimized t
-    JOIN rdf_dictionary d ON t.predicate_id = d.id
-    WHERE d.value = property_uri
-      AND object_type = 'uri'
-      AND NOT EXISTS (
-          SELECT 1 FROM rdf_triples_optimized t2
-          WHERE t2.subject_id = t.object_id
-            AND t2.predicate_id = t.predicate_id
-            AND t2.object_id = t.subject_id
-      );
+    -- 参数验证
+    IF p_property_uri IS NULL OR TRIM(p_property_uri) = '' THEN
+        RAISE EXCEPTION '属性URI不能为空';
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'rdf_triples_optimized') THEN
+        RAISE EXCEPTION 'rdf_triples_optimized表不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'rdf_dictionary') THEN
+        RAISE EXCEPTION 'rdf_dictionary表不存在';
+    END IF;
+
+    -- 查找谓词ID
+    BEGIN
+        SELECT id INTO v_predicate_id
+        FROM rdf_dictionary
+        WHERE value = p_property_uri;
+
+        IF v_predicate_id IS NULL THEN
+            RAISE WARNING '未找到属性URI: %, 跳过推理', p_property_uri;
+            RETURN;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查找谓词ID失败: %', SQLERRM;
+    END;
+
+    -- 插入对称三元组
+    BEGIN
+        INSERT INTO rdf_triples_optimized (subject_id, predicate_id, object_id, object_type)
+        SELECT
+            t.object_id,
+            t.predicate_id,
+            t.subject_id,
+            'uri'::TEXT
+        FROM rdf_triples_optimized t
+        WHERE t.predicate_id = v_predicate_id
+          AND t.object_type = 'uri'
+          AND t.subject_id IS NOT NULL
+          AND t.predicate_id IS NOT NULL
+          AND t.object_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM rdf_triples_optimized t2
+              WHERE t2.subject_id = t.object_id
+                AND t2.predicate_id = t.predicate_id
+                AND t2.object_id = t.subject_id
+          );
+
+        GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
+        RAISE NOTICE '对称属性推理完成: 属性URI=%, 插入了 % 条新三元组',
+            p_property_uri, v_inserted_count;
+    EXCEPTION
+        WHEN unique_violation THEN
+            RAISE WARNING '部分对称三元组已存在，跳过';
+        WHEN foreign_key_violation THEN
+            RAISE EXCEPTION '违反外键约束，无法插入对称三元组';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '推理对称属性失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'infer_symmetric_property执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 应用推理
 SELECT infer_symmetric_property('http://example.org/friendOf');

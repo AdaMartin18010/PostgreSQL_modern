@@ -323,40 +323,96 @@ WHERE parent_table = 'public.events';
 
 ```sql
 -- 创建分区管理函数
+-- 创建月度分区函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION create_monthly_partition(
-    parent_table text,
-    partition_date date
-) RETURNS void AS $$
+    p_parent_table text,
+    p_partition_date date
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
 DECLARE
-    partition_name text;
-    start_date date;
-    end_date date;
+    v_partition_name text;
+    v_start_date date;
+    v_end_date date;
 BEGIN
+    -- 参数验证
+    IF p_parent_table IS NULL OR TRIM(p_parent_table) = '' THEN
+        RAISE EXCEPTION '父表名不能为空';
+    END IF;
+
+    IF p_partition_date IS NULL THEN
+        RAISE EXCEPTION '分区日期不能为空';
+    END IF;
+
+    -- 表名格式验证（防止SQL注入）
+    IF p_parent_table !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '父表名格式无效: %', p_parent_table;
+    END IF;
+
+    -- 检查父表是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = p_parent_table
+    ) THEN
+        RAISE EXCEPTION '父表不存在: %', p_parent_table;
+    END IF;
+
     -- 计算分区名称和范围
-    partition_name := parent_table || '_' || to_char(partition_date, 'YYYY_MM');
-    start_date := date_trunc('month', partition_date);
-    end_date := start_date + interval '1 month';
+    BEGIN
+        v_start_date := DATE_TRUNC('month', p_partition_date)::date;
+        v_end_date := (v_start_date + INTERVAL '1 month')::date;
+        v_partition_name := p_parent_table || '_' || TO_CHAR(v_start_date, 'YYYY_MM');
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '计算分区信息失败: %', SQLERRM;
+    END;
 
     -- 检查分区是否已存在
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_class WHERE relname = partition_name
+    IF EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE n.nspname = 'public'
+          AND c.relname = v_partition_name
+          AND c.relkind = 'r'
     ) THEN
+        RAISE NOTICE '分区已存在: %', v_partition_name;
+        RETURN;
+    END IF;
+
+    BEGIN
         -- 创建分区
         EXECUTE format(
             'CREATE TABLE %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
-            partition_name, parent_table, start_date, end_date
+            v_partition_name, p_parent_table, v_start_date, v_end_date
         );
 
         -- 创建索引
-        EXECUTE format(
-            'CREATE INDEX %I ON %I(event_time)',
-            partition_name || '_idx', partition_name
-        );
+        BEGIN
+            EXECUTE format(
+                'CREATE INDEX %I ON %I(event_time)',
+                v_partition_name || '_idx', v_partition_name
+            );
+        EXCEPTION
+            WHEN duplicate_table THEN
+                RAISE NOTICE '索引已存在: %', v_partition_name || '_idx';
+            WHEN OTHERS THEN
+                RAISE WARNING '创建索引失败: % (错误: %)', v_partition_name || '_idx', SQLERRM;
+        END;
 
-        RAISE NOTICE 'Created partition: %', partition_name;
-    END IF;
+        RAISE NOTICE '成功创建分区: % (日期范围: % 至 %)',
+            v_partition_name, v_start_date, v_end_date;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '分区已存在: %', v_partition_name;
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '创建分区失败: % (错误: %)', v_partition_name, SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'create_monthly_partition执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 自动创建未来3个月的分区
 DO $$
@@ -388,47 +444,106 @@ SELECT cron.schedule(
 
 ```sql
 -- 删除旧分区函数
+-- 删除旧分区函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION drop_old_partitions(
-    parent_table text,
-    retention_months int DEFAULT 12
-) RETURNS void AS $$
+    p_parent_table text,
+    p_retention_months int DEFAULT 12
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
 DECLARE
-    partition_record record;
-    cutoff_date date;
+    v_partition_record RECORD;
+    v_cutoff_date date;
+    v_partition_date date;
+    v_deleted_count INTEGER := 0;
 BEGIN
-    cutoff_date := date_trunc('month', current_date - (retention_months || ' months')::interval);
+    -- 参数验证
+    IF p_parent_table IS NULL OR TRIM(p_parent_table) = '' THEN
+        RAISE EXCEPTION '父表名不能为空';
+    END IF;
 
-    FOR partition_record IN
-        SELECT
-            c.relname,
-            pg_get_expr(c.relpartbound, c.oid) AS partition_bound
-        FROM pg_class c
-        JOIN pg_inherits i ON c.oid = i.inhrelid
-        JOIN pg_class p ON i.inhparent = p.oid
-        WHERE p.relname = parent_table
-          AND c.relkind = 'r'
-    LOOP
-        -- 解析分区边界
-        -- 简化版：使用分区命名约定
-        IF partition_record.relname ~ '\d{4}_\d{2}$' THEN
-            DECLARE
-                partition_date date;
+    IF p_retention_months IS NULL OR p_retention_months < 0 THEN
+        RAISE EXCEPTION '保留月数必须>=0: %', p_retention_months;
+    END IF;
+
+    IF p_retention_months > 120 THEN
+        RAISE WARNING '保留月数过大: %, 建议不超过120个月', p_retention_months;
+    END IF;
+
+    -- 表名格式验证（防止SQL注入）
+    IF p_parent_table !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '父表名格式无效: %', p_parent_table;
+    END IF;
+
+    -- 计算截止日期
+    BEGIN
+        v_cutoff_date := DATE_TRUNC('month', CURRENT_DATE - (p_retention_months || ' months')::INTERVAL)::date;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '计算截止日期失败: %', SQLERRM;
+    END;
+
+    -- 查找并删除旧分区
+    BEGIN
+        FOR v_partition_record IN
+            SELECT
+                c.relname,
+                pg_get_expr(c.relpartbound, c.oid) AS partition_bound
+            FROM pg_class c
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            JOIN pg_inherits i ON c.oid = i.inhrelid
+            JOIN pg_class p ON i.inhparent = p.oid
+            JOIN pg_namespace pn ON p.relnamespace = pn.oid
+            WHERE pn.nspname = 'public'
+              AND p.relname = p_parent_table
+              AND n.nspname = 'public'
+              AND c.relkind = 'r'
+              AND c.relname IS NOT NULL
+        LOOP
             BEGIN
-                partition_date := to_date(
-                    substring(partition_record.relname from '\d{4}_\d{2}$'),
-                    'YYYY_MM'
-                );
+                -- 解析分区边界（使用分区命名约定）
+                IF v_partition_record.relname ~ '^\d{4}_\d{2}$' THEN
+                    BEGIN
+                        v_partition_date := TO_DATE(
+                            SUBSTRING(v_partition_record.relname from '\d{4}_\d{2}$'),
+                            'YYYY_MM'
+                        );
 
-                IF partition_date < cutoff_date THEN
-                    -- 删除分区
-                    EXECUTE format('DROP TABLE %I', partition_record.relname);
-                    RAISE NOTICE 'Dropped old partition: %', partition_record.relname;
+                        IF v_partition_date IS NOT NULL AND v_partition_date < v_cutoff_date THEN
+                            -- 删除分区
+                            EXECUTE format('DROP TABLE %I', v_partition_record.relname);
+                            v_deleted_count := v_deleted_count + 1;
+                            RAISE NOTICE '已删除旧分区: % (日期: %)',
+                                v_partition_record.relname, v_partition_date;
+                        END IF;
+                    EXCEPTION
+                        WHEN invalid_datetime_format THEN
+                            RAISE WARNING '分区名格式无法解析: %', v_partition_record.relname;
+                        WHEN OTHERS THEN
+                            RAISE WARNING '解析分区日期失败: % (错误: %)',
+                                v_partition_record.relname, SQLERRM;
+                    END;
                 END IF;
+            EXCEPTION
+                WHEN insufficient_privilege THEN
+                    RAISE WARNING '权限不足，无法删除分区: %', v_partition_record.relname;
+                WHEN OTHERS THEN
+                    RAISE WARNING '删除分区失败: % (错误: %)',
+                        v_partition_record.relname, SQLERRM;
             END;
-        END IF;
-    END LOOP;
+        END LOOP;
+
+        RAISE NOTICE '分区清理完成: 删除了 % 个分区', v_deleted_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查找或删除分区失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'drop_old_partitions执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 定期删除（每月1日）
 SELECT cron.schedule(
@@ -442,24 +557,107 @@ SELECT cron.schedule(
 
 ```sql
 -- 归档分区函数
+-- 归档旧分区函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION archive_old_partition(
-    parent_table text,
-    partition_name text,
-    archive_schema text DEFAULT 'archive'
-) RETURNS void AS $$
+    p_parent_table text,
+    p_partition_name text,
+    p_archive_schema text DEFAULT 'archive'
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
 BEGIN
-    -- 1. 分离分区
-    EXECUTE format('ALTER TABLE %I DETACH PARTITION %I', parent_table, partition_name);
+    -- 参数验证
+    IF p_parent_table IS NULL OR TRIM(p_parent_table) = '' THEN
+        RAISE EXCEPTION '父表名不能为空';
+    END IF;
 
-    -- 2. 移动到归档schema
-    EXECUTE format('ALTER TABLE %I SET SCHEMA %I', partition_name, archive_schema);
+    IF p_partition_name IS NULL OR TRIM(p_partition_name) = '' THEN
+        RAISE EXCEPTION '分区名不能为空';
+    END IF;
 
-    -- 3. 压缩数据（可选）
-    EXECUTE format('VACUUM FULL %I.%I', archive_schema, partition_name);
+    IF p_archive_schema IS NULL OR TRIM(p_archive_schema) = '' THEN
+        p_archive_schema := 'archive';
+    END IF;
 
-    RAISE NOTICE 'Archived partition % to %', partition_name, archive_schema;
+    -- 表名格式验证（防止SQL注入）
+    IF p_parent_table !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '父表名格式无效: %', p_parent_table;
+    END IF;
+
+    IF p_partition_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '分区名格式无效: %', p_partition_name;
+    END IF;
+
+    IF p_archive_schema !~ '^[a-zA-Z_][a-zA-Z0-9_]*$' THEN
+        RAISE EXCEPTION '归档schema名称格式无效: %', p_archive_schema;
+    END IF;
+
+    -- 检查父表是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = p_parent_table
+    ) THEN
+        RAISE EXCEPTION '父表不存在: %', p_parent_table;
+    END IF;
+
+    -- 检查分区是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE n.nspname = 'public'
+          AND c.relname = p_partition_name
+          AND c.relkind = 'r'
+    ) THEN
+        RAISE EXCEPTION '分区不存在: %', p_partition_name;
+    END IF;
+
+    -- 确保归档schema存在
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = p_archive_schema) THEN
+            EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', p_archive_schema);
+            RAISE NOTICE '创建归档schema: %', p_archive_schema;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '创建归档schema失败: %', SQLERRM;
+    END;
+
+    BEGIN
+        -- 1. 分离分区
+        BEGIN
+            EXECUTE format('ALTER TABLE %I DETACH PARTITION %I', p_parent_table, p_partition_name);
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE EXCEPTION '分离分区失败: %', SQLERRM;
+        END;
+
+        -- 2. 移动到归档schema
+        BEGIN
+            EXECUTE format('ALTER TABLE %I SET SCHEMA %I', p_partition_name, p_archive_schema);
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE EXCEPTION '移动分区到归档schema失败: %', SQLERRM;
+        END;
+
+        -- 3. 压缩数据（可选，使用VACUUM FULL需要谨慎）
+        BEGIN
+            EXECUTE format('VACUUM FULL %I.%I', p_archive_schema, p_partition_name);
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING '压缩数据失败: % (分区已归档，压缩失败不影响归档操作)', SQLERRM;
+        END;
+
+        RAISE NOTICE '成功归档分区: % 到 schema: %', p_partition_name, p_archive_schema;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '归档分区失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'archive_old_partition执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 创建归档schema
 CREATE SCHEMA IF NOT EXISTS archive;
@@ -497,23 +695,60 @@ CREATE INDEX ON orders_2024_01 (customer_id) WHERE amount > 1000;
 CREATE INDEX ON orders_2024_02 (customer_id) WHERE amount > 1000;
 
 -- 方案4：自动创建索引模板
+-- 自动创建分区索引事件触发器函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION auto_create_partition_indexes()
-RETURNS event_trigger AS $$
+RETURNS event_trigger
+LANGUAGE plpgsql
+AS $$
 DECLARE
-    partition_name text;
+    v_partition_name TEXT;
+    v_obj RECORD;
 BEGIN
-    SELECT objid::regclass::text INTO partition_name
-    FROM pg_event_trigger_ddl_commands()
-    WHERE object_type = 'table';
+    -- 获取DDL命令信息
+    BEGIN
+        FOR v_obj IN
+            SELECT objid::regclass::text AS objname
+            FROM pg_event_trigger_ddl_commands()
+            WHERE object_type = 'table'
+        LOOP
+            v_partition_name := v_obj.objname;
 
-    -- 为新分区自动创建索引
-    IF partition_name LIKE 'orders_%' THEN
-        EXECUTE format('CREATE INDEX ON %I (customer_id)', partition_name);
-        EXECUTE format('CREATE INDEX ON %I (order_date)', partition_name);
-        RAISE NOTICE 'Auto-created indexes for %', partition_name;
-    END IF;
+            IF v_partition_name IS NULL OR TRIM(v_partition_name) = '' THEN
+                CONTINUE;
+            END IF;
+
+            -- 为新分区自动创建索引（匹配特定模式）
+            IF v_partition_name LIKE 'orders_%' THEN
+                BEGIN
+                    EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (customer_id)',
+                        v_partition_name || '_customer_id_idx', v_partition_name);
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        RAISE WARNING '创建customer_id索引失败: % (错误: %)',
+                            v_partition_name, SQLERRM;
+                END;
+
+                BEGIN
+                    EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (order_date)',
+                        v_partition_name || '_order_date_idx', v_partition_name);
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        RAISE WARNING '创建order_date索引失败: % (错误: %)',
+                            v_partition_name, SQLERRM;
+                END;
+
+                RAISE NOTICE '自动为新分区创建索引: %', v_partition_name;
+            END IF;
+        END LOOP;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'auto_create_partition_indexes事件触发器执行失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'auto_create_partition_indexes执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE EVENT TRIGGER auto_index_trigger
     ON ddl_command_end
@@ -624,43 +859,111 @@ BEGIN
 END $$;
 
 -- 步骤3：创建迁移函数（批量+限流）
+-- 迁移到分区表函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION migrate_to_partitioned(
-    batch_size int DEFAULT 10000,
-    sleep_ms int DEFAULT 100
-) RETURNS bigint AS $$
+    p_batch_size int DEFAULT 10000,
+    p_sleep_ms int DEFAULT 100
+)
+RETURNS bigint
+LANGUAGE plpgsql
+AS $$
 DECLARE
-    total_migrated bigint := 0;
-    rows_migrated int;
+    v_total_migrated bigint := 0;
+    v_rows_migrated int;
+    v_iteration_count INTEGER := 0;
+    v_max_iterations INTEGER := 1000000;  -- 防止无限循环
 BEGIN
+    -- 参数验证
+    IF p_batch_size IS NULL OR p_batch_size < 1 THEN
+        RAISE EXCEPTION '批次大小必须>=1: %', p_batch_size;
+    END IF;
+
+    IF p_batch_size > 100000 THEN
+        RAISE WARNING '批次大小过大: %, 限制为100000', p_batch_size;
+        p_batch_size := 100000;
+    END IF;
+
+    IF p_sleep_ms IS NULL OR p_sleep_ms < 0 THEN
+        p_sleep_ms := 100;
+    END IF;
+
+    IF p_sleep_ms > 10000 THEN
+        RAISE WARNING '休眠时间过长: % ms, 限制为10000ms', p_sleep_ms;
+        p_sleep_ms := 10000;
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '源表orders不存在';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders_partitioned') THEN
+        RAISE EXCEPTION '目标分区表orders_partitioned不存在';
+    END IF;
+
+    -- 迁移循环
     LOOP
-        -- 复制一批数据
-        WITH batch AS (
-            SELECT * FROM orders
-            WHERE order_id NOT IN (
-                SELECT order_id FROM orders_partitioned
+        v_iteration_count := v_iteration_count + 1;
+
+        -- 防止无限循环
+        IF v_iteration_count > v_max_iterations THEN
+            RAISE WARNING '达到最大迭代次数: %, 停止迁移', v_max_iterations;
+            EXIT;
+        END IF;
+
+        BEGIN
+            -- 复制一批数据
+            WITH batch AS (
+                SELECT * FROM orders
+                WHERE order_id IS NOT NULL
+                  AND order_id NOT IN (
+                      SELECT order_id FROM orders_partitioned WHERE order_id IS NOT NULL
+                  )
+                ORDER BY order_id
+                LIMIT p_batch_size
             )
-            ORDER BY order_id
-            LIMIT batch_size
-        )
-        INSERT INTO orders_partitioned
-        SELECT * FROM batch
-        ON CONFLICT DO NOTHING;
+            INSERT INTO orders_partitioned
+            SELECT * FROM batch
+            ON CONFLICT DO NOTHING;
 
-        GET DIAGNOSTICS rows_migrated = ROW_COUNT;
+            GET DIAGNOSTICS v_rows_migrated = ROW_COUNT;
 
-        EXIT WHEN rows_migrated = 0;
+            -- 如果没有迁移任何行，说明已完成
+            IF v_rows_migrated = 0 THEN
+                RAISE NOTICE '数据迁移完成，总迁移行数: %', v_total_migrated;
+                EXIT;
+            END IF;
 
-        total_migrated := total_migrated + rows_migrated;
+            v_total_migrated := v_total_migrated + v_rows_migrated;
 
-        -- 限流（避免影响业务）
-        PERFORM pg_sleep(sleep_ms / 1000.0);
+            -- 检查数值溢出
+            IF v_total_migrated < 0 THEN
+                RAISE EXCEPTION '迁移行数溢出';
+            END IF;
 
-        RAISE NOTICE 'Migrated % rows, total: %', rows_migrated, total_migrated;
+            -- 限流（避免影响业务）
+            BEGIN
+                PERFORM pg_sleep(p_sleep_ms / 1000.0);
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING '休眠失败: %', SQLERRM;
+            END;
+
+            RAISE NOTICE '已迁移 % 行，总计: %', v_rows_migrated, v_total_migrated;
+        EXCEPTION
+            WHEN undefined_table THEN
+                RAISE EXCEPTION '源表或目标表不存在';
+            WHEN OTHERS THEN
+                RAISE EXCEPTION '迁移数据失败: %', SQLERRM;
+        END;
     END LOOP;
 
-    RETURN total_migrated;
+    RETURN v_total_migrated;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'migrate_to_partitioned执行失败: %', SQLERRM;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 步骤4：后台执行迁移
 -- 在低峰期执行

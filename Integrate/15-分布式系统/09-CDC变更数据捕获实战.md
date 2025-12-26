@@ -271,32 +271,122 @@ CREATE TABLE user_order_summary (
 );
 
 -- CDC触发器增量更新
+-- 更新用户订单汇总触发器函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION update_user_summary()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_user_id BIGINT;
+    v_amount NUMERIC(10,2);
+    v_created_at TIMESTAMPTZ;
+    v_old_amount NUMERIC(10,2);
 BEGIN
-    IF TG_OP = 'INSERT' THEN
-        INSERT INTO user_order_summary (user_id, order_count, total_amount, last_order_at)
-        VALUES (NEW.user_id, 1, NEW.amount, NEW.created_at)
-        ON CONFLICT (user_id) DO UPDATE
-        SET order_count = user_order_summary.order_count + 1,
-            total_amount = user_order_summary.total_amount + NEW.amount,
-            last_order_at = GREATEST(user_order_summary.last_order_at, NEW.created_at);
-
-    ELSIF TG_OP = 'UPDATE' THEN
-        UPDATE user_order_summary
-        SET total_amount = total_amount - OLD.amount + NEW.amount
-        WHERE user_id = NEW.user_id;
-
-    ELSIF TG_OP = 'DELETE' THEN
-        UPDATE user_order_summary
-        SET order_count = order_count - 1,
-            total_amount = total_amount - OLD.amount
-        WHERE user_id = OLD.user_id;
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_order_summary') THEN
+        RAISE WARNING 'user_order_summary表不存在，无法更新用户汇总';
+        RETURN COALESCE(NEW, OLD);
     END IF;
 
-    RETURN NULL;
+    -- 处理INSERT操作
+    IF TG_OP = 'INSERT' THEN
+        BEGIN
+            IF NEW IS NULL THEN
+                RAISE WARNING 'NEW记录为空，无法处理INSERT操作';
+                RETURN NULL;
+            END IF;
+
+            v_user_id := NEW.user_id;
+            v_amount := COALESCE(NEW.amount, 0);
+            v_created_at := COALESCE(NEW.created_at, NOW());
+
+            IF v_user_id IS NULL THEN
+                RAISE WARNING 'user_id为空，无法更新用户汇总';
+                RETURN NEW;
+            END IF;
+
+            INSERT INTO user_order_summary (user_id, order_count, total_amount, last_order_at)
+            VALUES (v_user_id, 1, v_amount, v_created_at)
+            ON CONFLICT (user_id) DO UPDATE
+            SET order_count = user_order_summary.order_count + 1,
+                total_amount = COALESCE(user_order_summary.total_amount, 0) + v_amount,
+                last_order_at = GREATEST(
+                    COALESCE(user_order_summary.last_order_at, '1970-01-01'::TIMESTAMPTZ),
+                    v_created_at
+                );
+        EXCEPTION
+            WHEN numeric_value_out_of_range THEN
+                RAISE WARNING '金额计算溢出: user_id=%', v_user_id;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新用户汇总失败(INSERT): user_id=%, 错误: %', v_user_id, SQLERRM;
+        END;
+
+    -- 处理UPDATE操作
+    ELSIF TG_OP = 'UPDATE' THEN
+        BEGIN
+            IF NEW IS NULL OR OLD IS NULL THEN
+                RAISE WARNING 'NEW或OLD记录为空，无法处理UPDATE操作';
+                RETURN NEW;
+            END IF;
+
+            v_user_id := NEW.user_id;
+            v_amount := COALESCE(NEW.amount, 0);
+            v_old_amount := COALESCE(OLD.amount, 0);
+
+            IF v_user_id IS NULL THEN
+                RAISE WARNING 'user_id为空，无法更新用户汇总';
+                RETURN NEW;
+            END IF;
+
+            UPDATE user_order_summary
+            SET total_amount = COALESCE(total_amount, 0) - v_old_amount + v_amount,
+                last_order_at = GREATEST(
+                    COALESCE(last_order_at, '1970-01-01'::TIMESTAMPTZ),
+                    COALESCE(NEW.created_at, NOW())
+                )
+            WHERE user_id = v_user_id;
+        EXCEPTION
+            WHEN numeric_value_out_of_range THEN
+                RAISE WARNING '金额计算溢出: user_id=%', v_user_id;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新用户汇总失败(UPDATE): user_id=%, 错误: %', v_user_id, SQLERRM;
+        END;
+
+    -- 处理DELETE操作
+    ELSIF TG_OP = 'DELETE' THEN
+        BEGIN
+            IF OLD IS NULL THEN
+                RAISE WARNING 'OLD记录为空，无法处理DELETE操作';
+                RETURN OLD;
+            END IF;
+
+            v_user_id := OLD.user_id;
+            v_old_amount := COALESCE(OLD.amount, 0);
+
+            IF v_user_id IS NULL THEN
+                RAISE WARNING 'user_id为空，无法更新用户汇总';
+                RETURN OLD;
+            END IF;
+
+            UPDATE user_order_summary
+            SET order_count = GREATEST(COALESCE(order_count, 0) - 1, 0),
+                total_amount = GREATEST(COALESCE(total_amount, 0) - v_old_amount, 0)
+            WHERE user_id = v_user_id;
+        EXCEPTION
+            WHEN numeric_value_out_of_range THEN
+                RAISE WARNING '金额计算溢出: user_id=%', v_user_id;
+            WHEN OTHERS THEN
+                RAISE WARNING '更新用户汇总失败(DELETE): user_id=%, 错误: %', v_user_id, SQLERRM;
+        END;
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'update_user_summary触发器函数执行失败: %', SQLERRM;
+        RETURN COALESCE(NEW, OLD);  -- 即使出错也返回记录，避免影响主操作
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER trg_cdc_summary
     AFTER INSERT OR UPDATE OR DELETE ON orders

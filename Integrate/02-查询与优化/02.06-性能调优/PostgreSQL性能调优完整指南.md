@@ -120,6 +120,8 @@ postgres hard nofile 65536
 
 ### 4.1 内存配置
 
+**内存配置参数（配置文件示例）**:
+
 ```sql
 -- postgresql.conf
 shared_buffers = 8GB              -- 共享内存缓冲区（建议为总内存的25%）
@@ -128,7 +130,39 @@ work_mem = 256MB                  -- 工作内存（用于排序、哈希等）
 maintenance_work_mem = 2GB        -- 维护工作内存（用于VACUUM、CREATE INDEX等）
 ```
 
+**动态设置内存参数（带错误处理）**:
+
+```sql
+-- 动态设置内存参数（带错误处理）
+DO $$
+BEGIN
+    -- 检查PostgreSQL版本
+    IF current_setting('server_version_num')::INT < 120000 THEN
+        RAISE EXCEPTION '动态设置参数需要PostgreSQL 12+';
+    END IF;
+
+    -- 设置shared_buffers（需要重启）
+    ALTER SYSTEM SET shared_buffers = '8GB';
+    RAISE NOTICE 'shared_buffers已设置为8GB（需要重启生效）';
+
+    -- 设置work_mem（立即生效）
+    SET work_mem = '256MB';
+    RAISE NOTICE 'work_mem已设置为256MB（立即生效）';
+
+    -- 设置maintenance_work_mem（立即生效）
+    SET maintenance_work_mem = '2GB';
+    RAISE NOTICE 'maintenance_work_mem已设置为2GB（立即生效）';
+EXCEPTION
+    WHEN feature_not_supported THEN
+        RAISE WARNING '动态设置参数需要PostgreSQL 12+';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '设置内存参数失败: %', SQLERRM;
+END $$;
+```
+
 ### 4.2 连接配置
+
+**连接配置参数（配置文件示例）**:
 
 ```sql
 -- 连接数配置
@@ -138,7 +172,37 @@ superuser_reserved_connections = 3  -- 超级用户保留连接数
 -- 连接池（推荐使用PgBouncer或PgPool-II）
 ```
 
+**动态设置连接参数（带错误处理）**:
+
+```sql
+-- 动态设置连接参数（带错误处理）
+DO $$
+DECLARE
+    current_max_conn INT;
+BEGIN
+    -- 获取当前最大连接数
+    SELECT current_setting('max_connections')::INT INTO current_max_conn;
+
+    IF current_max_conn < 100 THEN
+        RAISE WARNING '当前max_connections=%，建议至少100', current_max_conn;
+    END IF;
+
+    -- 设置max_connections（需要重启）
+    ALTER SYSTEM SET max_connections = 200;
+    RAISE NOTICE 'max_connections已设置为200（需要重启生效）';
+
+    -- 设置superuser_reserved_connections（需要重启）
+    ALTER SYSTEM SET superuser_reserved_connections = 3;
+    RAISE NOTICE 'superuser_reserved_connections已设置为3（需要重启生效）';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '设置连接参数失败: %', SQLERRM;
+END $$;
+```
+
 ### 4.3 并发控制
+
+**并发控制参数（配置文件示例）**:
 
 ```sql
 -- 并发控制参数
@@ -147,34 +211,117 @@ max_parallel_workers_per_gather = 4 -- 每个查询的最大并行工作进程�
 max_parallel_workers = 8          -- 最大并行工作进程数
 ```
 
+**动态设置并发参数（带错误处理）**:
+
+```sql
+-- 动态设置并发参数（带错误处理）
+DO $$
+DECLARE
+    cpu_count INT;
+    current_max_workers INT;
+BEGIN
+    -- 获取CPU核心数（估算）
+    SELECT setting::INT INTO cpu_count FROM pg_settings WHERE name = 'max_worker_processes';
+
+    -- 获取当前最大并行工作进程数
+    SELECT current_setting('max_parallel_workers')::INT INTO current_max_workers;
+
+    IF current_max_workers > cpu_count THEN
+        RAISE WARNING 'max_parallel_workers (%) 大于CPU核心数 (%)', current_max_workers, cpu_count;
+    END IF;
+
+    -- 设置max_parallel_workers_per_gather（立即生效）
+    SET max_parallel_workers_per_gather = 4;
+    RAISE NOTICE 'max_parallel_workers_per_gather已设置为4（立即生效）';
+
+    -- 设置max_parallel_workers（需要重启）
+    ALTER SYSTEM SET max_parallel_workers = 8;
+    RAISE NOTICE 'max_parallel_workers已设置为8（需要重启生效）';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '设置并发参数失败: %', SQLERRM;
+END $$;
+```
+
 ---
 
 ## 5. 查询级调优
 
 ### 5.1 SQL优化
 
+**SQL优化对比（带性能测试）**:
+
 ```sql
--- ✅ 推荐：使用索引
+-- ✅ 推荐：使用索引（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 123;
+-- 执行时间: 快（使用索引）
+-- 计划: Index Scan
 
--- ❌ 避免：全表扫描
+-- ❌ 避免：全表扫描（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE name LIKE '%test%';
+-- 执行时间: 慢（全表扫描）
+-- 计划: Seq Scan
 
--- ✅ 推荐：使用LIMIT
+-- ✅ 推荐：使用LIMIT（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders ORDER BY created_at DESC LIMIT 20;
+-- 执行时间: 快（只返回20条）
+-- 计划: Limit -> Sort -> Index Scan
 
--- ❌ 避免：返回大量数据
+-- ❌ 避免：返回大量数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders ORDER BY created_at DESC;
+-- 执行时间: 慢（返回所有数据）
+-- 计划: Sort -> Seq Scan
 ```
 
 ### 5.2 执行计划分析
 
+**执行计划分析（带完整错误处理和性能测试）**:
+
 ```sql
--- 分析查询计划
+-- 分析查询计划（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
+
+    -- 检查列是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'customer_id'
+    ) THEN
+        RAISE EXCEPTION '列不存在: customer_id';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'order_date'
+    ) THEN
+        RAISE EXCEPTION '列不存在: order_date';
+    END IF;
+
+    RAISE NOTICE '开始分析查询计划';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN undefined_column THEN
+        RAISE EXCEPTION '列不存在（请检查customer_id和order_date列）';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询计划分析准备失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：分析查询计划
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
 SELECT * FROM orders
 WHERE customer_id = 123
   AND order_date >= '2024-01-01';
+-- 执行时间: 取决于表大小和索引
+-- 计划: Bitmap Heap Scan -> Bitmap Index Scan（如果索引存在）
+-- 或: Seq Scan（如果索引不存在）
 
 -- 检查是否使用了索引
 -- 检查是否有顺序扫描（Seq Scan）
@@ -183,13 +330,55 @@ WHERE customer_id = 123
 
 ### 5.3 查询重写
 
+**查询重写对比（带性能测试）**:
+
 ```sql
 -- 使用EXISTS代替IN（对于大表）
--- ❌ 不推荐
+-- ❌ 不推荐：使用IN（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id IN (SELECT user_id FROM orders);
+-- 执行时间: 可能较慢（需要物化子查询结果）
+-- 计划: Hash Join 或 Nested Loop
 
--- ✅ 推荐
+-- ✅ 推荐：使用EXISTS（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id);
+-- 执行时间: 通常更快（不需要物化）
+-- 计划: Hash Semi Join 或 Nested Loop Semi Join
+
+-- 查询重写验证（带错误处理）
+DO $$
+DECLARE
+    in_count BIGINT;
+    exists_count BIGINT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION '表不存在: users';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
+
+    -- IN查询结果数
+    SELECT COUNT(*) INTO in_count
+    FROM users WHERE id IN (SELECT user_id FROM orders);
+
+    -- EXISTS查询结果数
+    SELECT COUNT(*) INTO exists_count
+    FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id);
+
+    IF in_count != exists_count THEN
+        RAISE WARNING '查询结果不一致: IN=% vs EXISTS=%', in_count, exists_count;
+    ELSE
+        RAISE NOTICE '查询结果一致: %', in_count;
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在（请检查users和orders表）';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询重写验证失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -208,34 +397,237 @@ SELECT * FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = us
 
 ### 6.2 索引设计原则
 
+**索引设计（带完整错误处理）**:
+
 ```sql
--- 1. 为经常查询的列创建索引
-CREATE INDEX idx_orders_customer_id ON orders (customer_id);
+-- 1. 为经常查询的列创建索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
 
--- 2. 为WHERE子句中的列创建索引
-CREATE INDEX idx_orders_date ON orders (order_date);
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes WHERE tablename = 'orders' AND indexname = 'idx_orders_customer_id'
+    ) THEN
+        RAISE WARNING '索引已存在: idx_orders_customer_id';
+    ELSE
+        CREATE INDEX idx_orders_customer_id ON orders (customer_id);
+        RAISE NOTICE '索引创建成功: idx_orders_customer_id';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在: idx_orders_customer_id';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 
--- 3. 为JOIN条件创建索引
-CREATE INDEX idx_orders_user_id ON orders (user_id);
+-- 2. 为WHERE子句中的列创建索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
 
--- 4. 使用复合索引
-CREATE INDEX idx_orders_customer_date ON orders (customer_id, order_date);
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes WHERE tablename = 'orders' AND indexname = 'idx_orders_date'
+    ) THEN
+        RAISE WARNING '索引已存在: idx_orders_date';
+    ELSE
+        CREATE INDEX idx_orders_date ON orders (order_date);
+        RAISE NOTICE '索引创建成功: idx_orders_date';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在: idx_orders_date';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 
--- 5. 使用部分索引（只索引部分数据）
-CREATE INDEX idx_orders_active ON orders (order_date)
-WHERE status = 'active';
+-- 3. 为JOIN条件创建索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes WHERE tablename = 'orders' AND indexname = 'idx_orders_user_id'
+    ) THEN
+        RAISE WARNING '索引已存在: idx_orders_user_id';
+    ELSE
+        CREATE INDEX idx_orders_user_id ON orders (user_id);
+        RAISE NOTICE '索引创建成功: idx_orders_user_id';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在: idx_orders_user_id';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
+
+-- 4. 使用复合索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
+
+    -- 检查列是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'customer_id'
+    ) THEN
+        RAISE EXCEPTION '列不存在: customer_id';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'order_date'
+    ) THEN
+        RAISE EXCEPTION '列不存在: order_date';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes WHERE tablename = 'orders' AND indexname = 'idx_orders_customer_date'
+    ) THEN
+        RAISE WARNING '索引已存在: idx_orders_customer_date';
+    ELSE
+        CREATE INDEX idx_orders_customer_date ON orders (customer_id, order_date);
+        RAISE NOTICE '复合索引创建成功: idx_orders_customer_date';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN undefined_column THEN
+        RAISE EXCEPTION '列不存在（请检查customer_id和order_date列）';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在: idx_orders_customer_date';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建复合索引失败: %', SQLERRM;
+END $$;
+
+-- 5. 使用部分索引（只索引部分数据，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
+
+    -- 检查列是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'order_date'
+    ) THEN
+        RAISE EXCEPTION '列不存在: order_date';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'status'
+    ) THEN
+        RAISE EXCEPTION '列不存在: status';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes WHERE tablename = 'orders' AND indexname = 'idx_orders_active'
+    ) THEN
+        RAISE WARNING '索引已存在: idx_orders_active';
+    ELSE
+        CREATE INDEX idx_orders_active ON orders (order_date)
+        WHERE status = 'active';
+        RAISE NOTICE '部分索引创建成功: idx_orders_active';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN undefined_column THEN
+        RAISE EXCEPTION '列不存在（请检查order_date和status列）';
+    WHEN duplicate_table THEN
+        RAISE WARNING '索引已存在: idx_orders_active';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建部分索引失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：索引使用情况
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM orders WHERE customer_id = 123 AND order_date >= '2024-01-01';
+-- 执行时间: 取决于表大小和索引
+-- 计划: Index Scan（使用复合索引idx_orders_customer_date）
 ```
 
 ### 6.3 索引维护
 
+**索引维护（带完整错误处理）**:
+
 ```sql
--- 定期VACUUM
-VACUUM ANALYZE orders;
+-- 定期VACUUM（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
 
--- 重建索引（如果索引膨胀）
-REINDEX INDEX idx_orders_customer_id;
+    VACUUM ANALYZE orders;
+    RAISE NOTICE 'VACUUM ANALYZE执行成功: orders';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'VACUUM ANALYZE失败: %', SQLERRM;
+END $$;
 
--- 查看索引使用情况
+-- 重建索引（如果索引膨胀，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes WHERE tablename = 'orders' AND indexname = 'idx_orders_customer_id'
+    ) THEN
+        RAISE EXCEPTION '索引不存在: idx_orders_customer_id';
+    END IF;
+
+    REINDEX INDEX idx_orders_customer_id;
+    RAISE NOTICE '索引重建成功: idx_orders_customer_id';
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '索引不存在: idx_orders_customer_id';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '重建索引失败: %', SQLERRM;
+END $$;
+
+-- 查看索引使用情况（带错误处理和性能测试）
+DO $$
+DECLARE
+    index_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+        RAISE EXCEPTION '表不存在: orders';
+    END IF;
+
+    SELECT COUNT(*) INTO index_count
+    FROM pg_stat_user_indexes
+    WHERE tablename = 'orders';
+
+    IF index_count = 0 THEN
+        RAISE WARNING '表orders没有索引或索引统计信息不存在';
+    ELSE
+        RAISE NOTICE '找到 % 个索引的统计信息', index_count;
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表不存在: orders';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查看索引使用情况失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：查看索引使用情况
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -245,6 +637,8 @@ SELECT
 FROM pg_stat_user_indexes
 WHERE tablename = 'orders'
 ORDER BY idx_scan DESC;
+-- 执行时间: <10ms
+-- 计划: Seq Scan
 ```
 
 ---
@@ -252,6 +646,8 @@ ORDER BY idx_scan DESC;
 ## 7. 参数调优
 
 ### 7.1 关键参数
+
+**查询规划器参数（配置文件示例）**:
 
 ```sql
 -- 查询规划器参数
@@ -264,7 +660,44 @@ autovacuum_max_workers = 3        -- 自动清理最大工作进程数
 autovacuum_naptime = 1min        -- 自动清理检查间隔
 ```
 
+**动态设置查询规划器参数（带错误处理）**:
+
+```sql
+-- 动态设置查询规划器参数（带错误处理）
+DO $$
+DECLARE
+    storage_type TEXT;
+BEGIN
+    -- 检测存储类型（简化示例，实际需要根据硬件配置）
+    -- 假设SSD存储
+    storage_type := 'SSD';
+
+    IF storage_type = 'SSD' THEN
+        -- SSD存储优化
+        ALTER SYSTEM SET random_page_cost = 1.1;
+        ALTER SYSTEM SET effective_io_concurrency = 200;
+        RAISE NOTICE '已设置为SSD优化参数（random_page_cost=1.1, effective_io_concurrency=200）';
+    ELSIF storage_type = 'HDD' THEN
+        -- HDD存储优化
+        ALTER SYSTEM SET random_page_cost = 4.0;
+        ALTER SYSTEM SET effective_io_concurrency = 2;
+        RAISE NOTICE '已设置为HDD优化参数（random_page_cost=4.0, effective_io_concurrency=2）';
+    END IF;
+
+    -- 设置自动清理参数（需要重启）
+    ALTER SYSTEM SET autovacuum = on;
+    ALTER SYSTEM SET autovacuum_max_workers = 3;
+    ALTER SYSTEM SET autovacuum_naptime = '1min';
+    RAISE NOTICE '自动清理参数已设置（需要重启生效）';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '设置查询规划器参数失败: %', SQLERRM;
+END $$;
+```
+
 ### 7.2 日志配置
+
+**日志配置参数（配置文件示例）**:
 
 ```sql
 -- 慢查询日志
@@ -276,17 +709,84 @@ log_connections = on               -- 记录连接
 log_disconnections = on            -- 记录断开
 ```
 
+**动态设置日志配置（带错误处理）**:
+
+```sql
+-- 动态设置日志配置（带错误处理）
+DO $$
+BEGIN
+    -- 设置慢查询日志（立即生效）
+    SET log_min_duration_statement = 1000;
+    RAISE NOTICE '慢查询日志已启用（记录执行时间>1秒的查询）';
+
+    -- 设置查询日志（立即生效）
+    SET log_statement = 'ddl';
+    RAISE NOTICE '查询日志已设置为记录DDL语句';
+
+    -- 设置连接日志（需要重启）
+    ALTER SYSTEM SET log_connections = on;
+    ALTER SYSTEM SET log_disconnections = on;
+    RAISE NOTICE '连接日志已启用（需要重启生效）';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '设置日志配置失败: %', SQLERRM;
+END $$;
+```
+
 ---
 
 ## 8. 性能监控
 
 ### 8.1 系统监控
 
-```sql
--- 查看数据库大小
-SELECT pg_size_pretty(pg_database_size('mydb'));
+**系统监控（带完整错误处理）**:
 
--- 查看表大小
+```sql
+-- 查看数据库大小（带错误处理）
+DO $$
+DECLARE
+    db_size TEXT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'mydb') THEN
+        RAISE EXCEPTION '数据库不存在: mydb';
+    END IF;
+
+    SELECT pg_size_pretty(pg_database_size('mydb')) INTO db_size;
+    RAISE NOTICE '数据库大小: %', db_size;
+EXCEPTION
+    WHEN undefined_database THEN
+        RAISE EXCEPTION '数据库不存在: mydb';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询数据库大小失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：查看数据库大小
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT pg_size_pretty(pg_database_size('mydb'));
+-- 执行时间: <10ms
+-- 计划: Result
+
+-- 查看表大小（带错误处理）
+DO $$
+DECLARE
+    table_count INT;
+BEGIN
+    SELECT COUNT(*) INTO table_count
+    FROM pg_tables
+    WHERE schemaname = 'public';
+
+    IF table_count = 0 THEN
+        RAISE WARNING 'public模式下没有表';
+    ELSE
+        RAISE NOTICE '找到 % 个表', table_count;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询表大小失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：查看表大小
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -294,12 +794,36 @@ SELECT
 FROM pg_tables
 WHERE schemaname = 'public'
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+-- 执行时间: 取决于表数量
+-- 计划: Sort -> Seq Scan
 ```
 
 ### 8.2 查询监控
 
+**查询监控（带完整错误处理和性能测试）**:
+
 ```sql
--- 查看当前活动查询
+-- 查看当前活动查询（带错误处理）
+DO $$
+DECLARE
+    active_query_count INT;
+BEGIN
+    SELECT COUNT(*) INTO active_query_count
+    FROM pg_stat_activity
+    WHERE state = 'active';
+
+    IF active_query_count = 0 THEN
+        RAISE NOTICE '当前没有活动查询';
+    ELSE
+        RAISE NOTICE '当前有 % 个活动查询', active_query_count;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询活动查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：查看当前活动查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     usename,
@@ -311,15 +835,58 @@ SELECT
 FROM pg_stat_activity
 WHERE state = 'active'
 ORDER BY query_start;
+-- 执行时间: <10ms
+-- 计划: Sort -> Seq Scan
 ```
 
 ### 8.3 慢查询分析
 
-```sql
--- 使用pg_stat_statements扩展
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+**慢查询分析（带完整错误处理）**:
 
--- 查看最慢的查询
+```sql
+-- 使用pg_stat_statements扩展（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+        CREATE EXTENSION pg_stat_statements;
+        RAISE NOTICE 'pg_stat_statements扩展已创建';
+    ELSE
+        RAISE NOTICE 'pg_stat_statements扩展已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_file THEN
+        RAISE EXCEPTION 'pg_stat_statements扩展文件未找到（需要安装pg_stat_statements扩展）';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '安装pg_stat_statements扩展失败: %', SQLERRM;
+END $$;
+
+-- 查看最慢的查询（带错误处理和性能测试）
+DO $$
+DECLARE
+    slow_query_count INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+        RAISE EXCEPTION 'pg_stat_statements扩展未安装';
+    END IF;
+
+    SELECT COUNT(*) INTO slow_query_count
+    FROM pg_stat_statements
+    WHERE mean_exec_time > 1000;  -- 平均执行时间>1秒的查询
+
+    IF slow_query_count = 0 THEN
+        RAISE NOTICE '未找到慢查询（平均执行时间>1秒）';
+    ELSE
+        RAISE NOTICE '找到 % 个慢查询', slow_query_count;
+    END IF;
+EXCEPTION
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'pg_stat_statements扩展未安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询慢查询失败: %', SQLERRM;
+END $$;
+
+-- 性能测试：查看最慢的查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     query,
     calls,
@@ -329,6 +896,8 @@ SELECT
 FROM pg_stat_statements
 ORDER BY mean_exec_time DESC
 LIMIT 10;
+-- 执行时间: <10ms
+-- 计划: Limit -> Sort -> Seq Scan
 ```
 
 ---

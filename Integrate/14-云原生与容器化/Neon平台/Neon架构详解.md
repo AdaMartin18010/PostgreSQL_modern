@@ -6402,75 +6402,298 @@ SELECT unnest(tags) FROM users;  -- 展开数组为行
 
 ```sql
 -- 创建函数
-CREATE OR REPLACE FUNCTION calculate_total(price DECIMAL, quantity INTEGER)
-RETURNS DECIMAL AS $$
+-- 计算总价函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION calculate_total(p_price DECIMAL, p_quantity INTEGER)
+RETURNS DECIMAL
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_total DECIMAL;
 BEGIN
-    RETURN price * quantity;
+    -- 参数验证
+    IF p_price IS NULL THEN
+        RAISE EXCEPTION '价格不能为空';
+    END IF;
+
+    IF p_quantity IS NULL THEN
+        RAISE EXCEPTION '数量不能为空';
+    END IF;
+
+    IF p_price < 0 THEN
+        RAISE EXCEPTION '价格不能为负数: %', p_price;
+    END IF;
+
+    IF p_quantity < 0 THEN
+        RAISE EXCEPTION '数量不能为负数: %', p_quantity;
+    END IF;
+
+    -- 计算总价
+    BEGIN
+        v_total := p_price * p_quantity;
+
+        -- 检查数值溢出
+        IF v_total > 999999999999.99 THEN
+            RAISE EXCEPTION '计算结果超出范围';
+        END IF;
+
+        RETURN v_total;
+    EXCEPTION
+        WHEN numeric_value_out_of_range THEN
+            RAISE EXCEPTION '计算结果数值溢出';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '计算总价失败: %', SQLERRM;
+    END;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 使用函数
 SELECT calculate_total(100, 5);
 
--- 带默认参数的函数
-CREATE OR REPLACE FUNCTION greet(name TEXT, greeting TEXT DEFAULT 'Hello')
-RETURNS TEXT AS $$
+-- 问候函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION greet(p_name TEXT, p_greeting TEXT DEFAULT 'Hello')
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_result TEXT;
 BEGIN
-    RETURN greeting || ', ' || name || '!';
+    -- 参数验证
+    IF p_name IS NULL OR TRIM(p_name) = '' THEN
+        RAISE EXCEPTION '姓名不能为空';
+    END IF;
+
+    IF p_greeting IS NULL THEN
+        p_greeting := 'Hello';
+    END IF;
+
+    -- 构建问候语
+    BEGIN
+        v_result := TRIM(p_greeting) || ', ' || TRIM(p_name) || '!';
+
+        -- 检查结果长度
+        IF LENGTH(v_result) > 500 THEN
+            RAISE WARNING '问候语结果过长，已截断';
+            v_result := LEFT(v_result, 500);
+        END IF;
+
+        RETURN v_result;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '构建问候语失败: %', SQLERRM;
+    END;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 SELECT greet('John');  -- Hello, John!
 SELECT greet('John', 'Hi');  -- Hi, John!
 
--- 返回表的函数
-CREATE OR REPLACE FUNCTION get_users_by_age(min_age INTEGER, max_age INTEGER)
-RETURNS TABLE(id INTEGER, name TEXT, age INTEGER) AS $$
+-- 按年龄查询用户函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION get_users_by_age(p_min_age INTEGER, p_max_age INTEGER)
+RETURNS TABLE(id INTEGER, name TEXT, age INTEGER)
+LANGUAGE plpgsql
+AS $$
 BEGIN
-    RETURN QUERY
-    SELECT users.id, users.name, users.age
-    FROM users
-    WHERE users.age BETWEEN min_age AND max_age;
+    -- 参数验证
+    IF p_min_age IS NULL THEN
+        RAISE EXCEPTION '最小年龄不能为空';
+    END IF;
+
+    IF p_max_age IS NULL THEN
+        RAISE EXCEPTION '最大年龄不能为空';
+    END IF;
+
+    IF p_min_age < 0 THEN
+        RAISE EXCEPTION '最小年龄不能为负数: %', p_min_age;
+    END IF;
+
+    IF p_max_age < 0 THEN
+        RAISE EXCEPTION '最大年龄不能为负数: %', p_max_age;
+    END IF;
+
+    IF p_min_age > p_max_age THEN
+        RAISE EXCEPTION '最小年龄不能大于最大年龄: % > %', p_min_age, p_max_age;
+    END IF;
+
+    IF p_max_age > 200 THEN
+        RAISE EXCEPTION '最大年龄超出合理范围: %', p_max_age;
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+        RAISE EXCEPTION 'users表不存在';
+    END IF;
+
+    -- 查询用户
+    BEGIN
+        RETURN QUERY
+        SELECT u.id, u.name, u.age
+        FROM users u
+        WHERE u.age BETWEEN p_min_age AND p_max_age
+          AND u.age IS NOT NULL
+        ORDER BY u.age ASC, u.id ASC;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '查询用户失败: %', SQLERRM;
+    END;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 SELECT * FROM get_users_by_age(25, 35);
 
--- 递归函数（计算阶乘）
-CREATE OR REPLACE FUNCTION factorial(n INTEGER)
-RETURNS INTEGER AS $$
+-- 计算阶乘函数（带完整错误处理）
+CREATE OR REPLACE FUNCTION factorial(p_n INTEGER)
+RETURNS BIGINT
+LANGUAGE plpgsql
+AS $$
 BEGIN
-    IF n <= 1 THEN
+    -- 参数验证
+    IF p_n IS NULL THEN
+        RAISE EXCEPTION '参数不能为空';
+    END IF;
+
+    IF p_n < 0 THEN
+        RAISE EXCEPTION '阶乘参数不能为负数: %', p_n;
+    END IF;
+
+    -- 防止栈溢出（限制最大输入值）
+    IF p_n > 20 THEN
+        RAISE EXCEPTION '阶乘参数过大，可能导致栈溢出: % (最大支持20)', p_n;
+    END IF;
+
+    -- 基础情况
+    IF p_n <= 1 THEN
         RETURN 1;
     ELSE
-        RETURN n * factorial(n - 1);
+        -- 递归计算（使用BIGINT防止整数溢出）
+        BEGIN
+            RETURN p_n * factorial(p_n - 1);
+        EXCEPTION
+            WHEN numeric_value_out_of_range THEN
+                RAISE EXCEPTION '阶乘计算结果溢出: %!', p_n;
+            WHEN OTHERS THEN
+                RAISE EXCEPTION '计算阶乘失败: %', SQLERRM;
+        END;
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 ```
 
 **存储过程**:
 
 ```sql
--- PostgreSQL 11+ 支持存储过程
+-- 转账存储过程（带完整错误处理）
 CREATE OR REPLACE PROCEDURE transfer_money(
-    from_account INTEGER,
-    to_account INTEGER,
-    amount DECIMAL
+    p_from_account INTEGER,
+    p_to_account INTEGER,
+    p_amount DECIMAL
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_from_balance DECIMAL;
+    v_to_balance DECIMAL;
+    v_version INTEGER;
 BEGIN
-    -- 开始事务（存储过程自动在事务中）
-    UPDATE accounts SET balance = balance - amount WHERE id = from_account;
-    UPDATE accounts SET balance = balance + amount WHERE id = to_account;
-
-    -- 检查余额
-    IF (SELECT balance FROM accounts WHERE id = from_account) < 0 THEN
-        RAISE EXCEPTION 'Insufficient funds';
+    -- 参数验证
+    IF p_from_account IS NULL THEN
+        RAISE EXCEPTION '转出账户ID不能为空';
     END IF;
 
-    -- 提交在调用者的事务中
+    IF p_to_account IS NULL THEN
+        RAISE EXCEPTION '转入账户ID不能为空';
+    END IF;
+
+    IF p_amount IS NULL OR p_amount <= 0 THEN
+        RAISE EXCEPTION '转账金额必须大于0: %', p_amount;
+    END IF;
+
+    IF p_from_account = p_to_account THEN
+        RAISE EXCEPTION '转出账户和转入账户不能相同';
+    END IF;
+
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+        RAISE EXCEPTION 'accounts表不存在';
+    END IF;
+
+    -- 锁定并检查转出账户
+    BEGIN
+        SELECT balance, version INTO v_from_balance, v_version
+        FROM accounts
+        WHERE id = p_from_account
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '转出账户不存在: %', p_from_account;
+        END IF;
+
+        IF v_from_balance IS NULL THEN
+            RAISE EXCEPTION '转出账户余额为空';
+        END IF;
+
+        IF v_from_balance < p_amount THEN
+            RAISE EXCEPTION '余额不足: 当前余额=%, 需要=%', v_from_balance, p_amount;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '检查转出账户失败: %', SQLERRM;
+    END;
+
+    -- 检查转入账户
+    BEGIN
+        SELECT balance INTO v_to_balance
+        FROM accounts
+        WHERE id = p_to_account
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '转入账户不存在: %', p_to_account;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '检查转入账户失败: %', SQLERRM;
+    END;
+
+    -- 执行转账
+    BEGIN
+        -- 扣款
+        UPDATE accounts
+        SET balance = balance - p_amount,
+            version = version + 1
+        WHERE id = p_from_account
+          AND version = v_version;  -- 乐观锁
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '转账失败：账户版本不匹配，可能被并发修改';
+        END IF;
+
+        -- 入账
+        UPDATE accounts
+        SET balance = COALESCE(balance, 0) + p_amount,
+            version = COALESCE(version, 0) + 1
+        WHERE id = p_to_account;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION '转账失败：转入账户更新失败';
+        END IF;
+
+        -- 验证余额
+        SELECT balance INTO v_from_balance
+        FROM accounts
+        WHERE id = p_from_account;
+
+        IF v_from_balance < 0 THEN
+            RAISE EXCEPTION '转账后余额异常: %', v_from_balance;
+        END IF;
+    EXCEPTION
+        WHEN numeric_value_out_of_range THEN
+            RAISE EXCEPTION '转账金额计算溢出';
+        WHEN OTHERS THEN
+            RAISE EXCEPTION '执行转账失败: %', SQLERRM;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'transfer_money执行失败: %', SQLERRM;
 END;
 $$;
 
@@ -6496,21 +6719,73 @@ BEFORE UPDATE ON users
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
 
--- 审计日志触发器
+-- 审计日志触发器函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION audit_log()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old_data JSONB;
+    v_new_data JSONB;
 BEGIN
-    INSERT INTO audit_logs (table_name, operation, old_data, new_data, changed_at)
-    VALUES (
-        TG_TABLE_NAME,
-        TG_OP,
-        row_to_json(OLD),
-        row_to_json(NEW),
-        NOW()
-    );
-    RETURN NEW;
+    -- 检查表是否存在
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'audit_logs') THEN
+        RAISE WARNING 'audit_logs表不存在，无法记录审计日志';
+        RETURN COALESCE(NEW, OLD);
+    END IF;
+
+    -- 转换OLD记录为JSONB
+    BEGIN
+        IF OLD IS NOT NULL THEN
+            v_old_data := row_to_json(OLD)::JSONB;
+        ELSE
+            v_old_data := NULL;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '转换OLD记录为JSONB失败: %', SQLERRM;
+            v_old_data := NULL;
+    END;
+
+    -- 转换NEW记录为JSONB
+    BEGIN
+        IF NEW IS NOT NULL THEN
+            v_new_data := row_to_json(NEW)::JSONB;
+        ELSE
+            v_new_data := NULL;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '转换NEW记录为JSONB失败: %', SQLERRM;
+            v_new_data := NULL;
+    END;
+
+    -- 插入审计日志
+    BEGIN
+        INSERT INTO audit_logs (table_name, operation, old_data, new_data, changed_at)
+        VALUES (
+            COALESCE(TG_TABLE_NAME, 'unknown'),
+            COALESCE(TG_OP, 'unknown'),
+            v_old_data,
+            v_new_data,
+            NOW()
+        );
+    EXCEPTION
+        WHEN unique_violation THEN
+            RAISE WARNING '审计日志记录已存在';
+        WHEN foreign_key_violation THEN
+            RAISE WARNING '违反外键约束，无法记录审计日志';
+        WHEN OTHERS THEN
+            RAISE WARNING '记录审计日志失败: %', SQLERRM;
+    END;
+
+    RETURN COALESCE(NEW, OLD);
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'audit_log触发器函数执行失败: %', SQLERRM;
+        RETURN COALESCE(NEW, OLD);  -- 即使出错也返回记录，避免影响主操作
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER audit_users
 AFTER INSERT OR UPDATE OR DELETE ON users

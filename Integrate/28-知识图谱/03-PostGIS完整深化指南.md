@@ -318,20 +318,68 @@ JOIN geofences g ON ST_Within(v.location, g.boundary)
 WHERE v.last_update > NOW() - INTERVAL '5 minutes';
 
 -- 触发器：自动告警
+-- 检查地理围栏触发器函数（带完整错误处理）
 CREATE FUNCTION check_geofence()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
 BEGIN
+    -- 检查NEW和OLD记录
+    IF NEW IS NULL THEN
+        RAISE WARNING 'NEW记录为空，无法检查地理围栏';
+        RETURN NULL;
+    END IF;
+
+    IF OLD IS NULL THEN
+        RAISE WARNING 'OLD记录为空（可能是INSERT操作），无法检查进入围栏';
+        RETURN NEW;
+    END IF;
+
+    -- 验证必需字段
+    IF NEW.vehicle_id IS NULL THEN
+        RAISE WARNING '车辆ID为空，跳过地理围栏检查';
+        RETURN NEW;
+    END IF;
+
+    IF NEW.location IS NULL THEN
+        RAISE WARNING '车辆位置为空，跳过地理围栏检查';
+        RETURN NEW;
+    END IF;
+
+    IF OLD.location IS NULL THEN
+        RAISE WARNING '旧位置为空，无法检查进入围栏';
+        RETURN NEW;
+    END IF;
+
+    -- 检查PostGIS扩展
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
+        RAISE EXCEPTION 'PostGIS扩展未安装，ST_Within函数不可用';
+    END IF;
+
     -- 检查进入围栏
-    INSERT INTO geofence_alerts (vehicle_id, geofence_id, alert_type)
-    SELECT NEW.vehicle_id, g.id, 'enter'
-    FROM geofences g
-    WHERE ST_Within(NEW.location, g.boundary)
-      AND NOT ST_Within(OLD.location, g.boundary)
-      AND g.alert_type IN ('enter', 'both');
+    BEGIN
+        INSERT INTO geofence_alerts (vehicle_id, geofence_id, alert_type)
+        SELECT NEW.vehicle_id, g.id, 'enter'
+        FROM geofences g
+        WHERE g.boundary IS NOT NULL
+          AND ST_Within(NEW.location, g.boundary)
+          AND NOT ST_Within(OLD.location, g.boundary)
+          AND g.alert_type IN ('enter', 'both')
+          AND g.id IS NOT NULL;
+    EXCEPTION
+        WHEN undefined_function THEN
+            RAISE EXCEPTION 'ST_Within函数不存在，请安装PostGIS扩展';
+        WHEN OTHERS THEN
+            RAISE WARNING '插入地理围栏告警失败: %', SQLERRM;
+    END;
 
     RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'check_geofence触发器函数执行失败: %', SQLERRM;
+        RETURN NEW;  -- 即使出错也返回NEW，避免阻塞主操作
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER geofence_trigger
 AFTER UPDATE OF location ON vehicles
