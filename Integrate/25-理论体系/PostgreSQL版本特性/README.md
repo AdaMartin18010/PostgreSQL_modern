@@ -31,13 +31,13 @@
 
 ### PostgreSQL 18 特性
 
-3. ✅ [异步I/O（AIO）子系统](pg18-aio.md)
+1. ✅ [异步I/O（AIO）子系统](pg18-aio.md)
    - io_uring支持（Linux）
    - 顺序扫描性能提升3.3x
    - 版本链遍历性能提升7.3x
    - VACUUM时间减少3.4x
 
-4. ✅ [虚拟生成列](pg18-virtual-columns.md)
+2. ✅ [虚拟生成列](pg18-virtual-columns.md)
    - 虚拟列支持（VIRTUAL）
    - 存储空间节省8-10%
    - 版本链大小减少8-10%
@@ -45,7 +45,7 @@
 
 ### MVCC实现细节
 
-5. ✅ [PostgreSQL MVCC实现细节](PostgreSQL-MVCC实现细节.md) ⭐ 新增（P0改进）
+1. ✅ [PostgreSQL MVCC实现细节](PostgreSQL-MVCC实现细节.md) ⭐ 新增（P0改进）
    - Heap Tuple结构详解
    - WAL机制深入分析
    - VACUUM机制深入分析
