@@ -146,7 +146,7 @@ mindmap
 ### **2.2 Matrix Comparison: Isolation Level Implementation (矩阵对比)**
 
 | **Isolation Level** | **MVCC Implementation** | **Lock Implementation** | **Anomalies Prevented** | **Performance Impact** |
-|---------------------|------------------------|------------------------|------------------------|------------------------|
+| :------------------ | :--------------------- | :--------------------- | :--------------------- | :--------------------- |
 | **Read Uncommitted** | N/A (reads latest version) | No locks | None | Highest speed, lowest safety |
 | **读未提交** | 直接读最新版本，无视trx_id | 不获取任何锁 | 无 | 速度最快，安全性最低 |
 | **Read Committed** | Per-statement Read View | Short-term S/X locks | Dirty Read | Moderate overhead |
@@ -353,7 +353,7 @@ $$\text{Throughput} = \frac{N_{\text{ops}}}{T_{\text{wait}} + T_{\text{exec}} + 
 **Parameter Comparison**:
 
 | **Parameter** | **MVCC (RC)** | **MVCC (RR)** | **2PL (Serializable)** |
-|---------------|---------------|---------------|------------------------|
+| :----------- | :----------- | :----------- | :------------------- |
 | $T_{\text{wait}}$ | 0 (non-blocking) | 0 (non-blocking) | $\sum C_{\text{lock}}$ |
 | $T_{\text{exec}}$ | $C_{\text{visibility}}$ | $C_{\text{visibility}}$ | $C_{\text{lock}}$ |
 | $p_{\text{conflict}}$ | $p_{\text{ww}}$ | $p_{\text{ww}} + p_{\text{rw}}$ | $p_{\text{deadlock}}$ |
@@ -370,7 +370,7 @@ $$\frac{\text{Reads}}{\text{Writes}} > \frac{C_{\text{lock}}}{C_{\text{visibilit
 ### **4.1 InnoDB vs PostgreSQL MVCC Implementation**
 
 | **Aspect** | **InnoDB (Undo Log)** | **PostgreSQL (Tuple Versioning)** |
-|------------|----------------------|-----------------------------------|
+| :-------- | :------------------- | :------------------------------- |
 | **Storage** | Base row + undo chain | Full tuple copies |
 | **Version Access** | Reconstruct via undo | Direct tuple read |
 | **Visibility** | Transaction ID + roll_ptr | xmin/xmax + snapshot |
@@ -422,7 +422,7 @@ graph LR
 ## **Part V: Anomaly Prevention Decision Table (异常防止决策表)**
 
 | **Isolation Level** | **MVCC Mechanism** | **Lock Mechanism** | **Dirty Read** | **Non-Repeatable** | **Phantom** | **Write Skew** |
-|---------------------|--------------------|--------------------|----------------|-------------------|-------------|----------------|
+| :------------------ | :----------------- | :----------------- | :------------- | :---------------- | :--------- | :------------ |
 | **Read Uncommitted** | Read latest version | None | ❌ | ❌ | ❌ | ❌ |
 | **读未提交** | 直接读最新物理版本 | 无锁 | 不防止 | 不防止 | 不防止 | 不防止 |
 | **Read Committed** | Per-statement snapshot | Short X-lock on write | ✅ | ❌ | ❌ | ❌ |
@@ -528,7 +528,7 @@ decision-tree
 ## **Part VIII: Performance Benchmarking Matrix (性能基准矩阵)**
 
 | **Workload** | **Transactions/sec** | **P99 Latency** | **Best Strategy** | **Reasoning** |
-|--------------|---------------------|-----------------|-------------------|---------------|
+| :---------- | :------------------ | :------------- | :--------------- | :----------- |
 | **Read-Only** | 100,000+ | 5ms | MVCC (RR) | No lock overhead |
 | **Read-Heavy 90%** | 50,000 | 10ms | MVCC (RC) | Snapshot isolation |
 | **Write-Heavy 60%** | 10,000 | 50ms | MVCC + Optimistic Locks | Low rollback rate |
@@ -555,7 +555,7 @@ $$T_{\text{total}} = T_{\text{CPU}} + T_{\text{lock}} + T_{\text{IO}} + T_{\text
 ### **Best Practices (最佳实践)**
 
 | **Scenario** | **Recommended Approach** | **Why** |
-|--------------|------------------------|---------|
+| :---------- | :--------------------- | :------ |
 | **Web App Queries** | MVCC (RC) | High concurrency, low contention |
 | **Financial Transfer** | MVCC (RR) + SELECT FOR UPDATE | Prevent write skew |
 | **Batch Update** | Pessimistic Locking (Table Lock) | Reduce deadlock risk |

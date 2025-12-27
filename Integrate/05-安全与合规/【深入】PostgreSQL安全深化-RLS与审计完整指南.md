@@ -54,8 +54,26 @@
     - [日常安全检查](#日常安全检查)
   - [📚 参考资源](#-参考资源)
     - [官方文档](#官方文档)
+      - [**PostgreSQL核心文档**](#postgresql核心文档)
+      - [**PostgreSQL扩展文档**](#postgresql扩展文档)
     - [最佳实践](#最佳实践)
+      - [**安全最佳实践**](#安全最佳实践)
+      - [**RLS最佳实践**](#rls最佳实践)
     - [合规框架](#合规框架)
+      - [**数据保护法规**](#数据保护法规)
+      - [**行业标准**](#行业标准)
+    - [开源工具和扩展](#开源工具和扩展)
+      - [**审计工具**](#审计工具)
+      - [**安全工具**](#安全工具)
+      - [**监控工具**](#监控工具)
+    - [社区资源](#社区资源)
+      - [**论坛和社区**](#论坛和社区)
+      - [**博客和文章**](#博客和文章)
+    - [书籍推荐](#书籍推荐)
+    - [视频教程](#视频教程)
+    - [研究论文](#研究论文)
+    - [工具和脚本](#工具和脚本)
+    - [参考资源使用建议](#参考资源使用建议)
 
 ---
 
@@ -4288,24 +4306,288 @@ WHERE rolcanlogin = true
 
 ### 官方文档
 
-1. [Row Security Policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
-2. [pgAudit](https://github.com/pgaudit/pgaudit)
-3. [pgcrypto](https://www.postgresql.org/docs/current/pgcrypto.html)
-4. [postgresql_anonymizer](https://postgresql-anonymizer.readthedocs.io/)
+#### **PostgreSQL核心文档**
+
+1. **Row Security Policies（行级安全策略）**
+   - 链接: [https://www.postgresql.org/docs/current/ddl-rowsecurity.html](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
+   - 内容: RLS策略的完整文档和示例
+
+2. **Security and Authentication（安全与认证）**
+   - 链接: [https://www.postgresql.org/docs/current/auth.html](https://www.postgresql.org/docs/current/auth.html)
+   - 内容: PostgreSQL认证和授权机制
+
+3. **Role Management（角色管理）**
+   - 链接: [https://www.postgresql.org/docs/current/user-manag.html](https://www.postgresql.org/docs/current/user-manag.html)
+   - 内容: 用户和角色管理
+
+4. **Privileges（权限）**
+   - 链接: [https://www.postgresql.org/docs/current/ddl-priv.html](https://www.postgresql.org/docs/current/ddl-priv.html)
+   - 内容: 对象权限管理
+
+#### **PostgreSQL扩展文档**
+
+1. **pgAudit（审计扩展）**
+   - GitHub: [https://github.com/pgaudit/pgaudit](https://github.com/pgaudit/pgaudit)
+   - 文档: [https://github.com/pgaudit/pgaudit/blob/master/README.md](https://github.com/pgaudit/pgaudit/blob/master/README.md)
+   - 功能: 详细的SQL审计日志
+
+2. **pgcrypto（加密扩展）**
+   - 文档: [https://www.postgresql.org/docs/current/pgcrypto.html](https://www.postgresql.org/docs/current/pgcrypto.html)
+   - 功能: 加密函数和哈希函数
+
+3. **postgresql_anonymizer（数据脱敏）**
+   - 文档: [https://postgresql-anonymizer.readthedocs.io/](https://postgresql-anonymizer.readthedocs.io/)
+   - GitHub: [https://github.com/postgresql-anonymizer/postgresql_anonymizer](https://github.com/postgresql-anonymizer/postgresql_anonymizer)
+   - 功能: 数据脱敏和匿名化
+
+4. **pg_stat_statements（性能监控）**
+   - 文档: [https://www.postgresql.org/docs/current/pgstatstatements.html](https://www.postgresql.org/docs/current/pgstatstatements.html)
+   - 功能: SQL语句性能统计
 
 ### 最佳实践
 
-1. [OWASP PostgreSQL Security](https://cheatsheetseries.owasp.org/cheatsheets/PostgreSQL_Cheat_Sheet.html)
-2. [CIS PostgreSQL Benchmark](https://www.cisecurity.org/benchmark/postgresql)
-3. [PostgreSQL Security Best Practices](https://www.postgresql.org/docs/current/security.html)
+#### **安全最佳实践**
+
+1. **OWASP PostgreSQL Security Cheat Sheet**
+   - 链接: [https://cheatsheetseries.owasp.org/cheatsheets/PostgreSQL_Cheat_Sheet.html](https://cheatsheetseries.owasp.org/cheatsheets/PostgreSQL_Cheat_Sheet.html)
+   - 内容: OWASP提供的PostgreSQL安全清单
+
+2. **CIS PostgreSQL Benchmark**
+   - 链接: [https://www.cisecurity.org/benchmark/postgresql](https://www.cisecurity.org/benchmark/postgresql)
+   - 内容: CIS PostgreSQL安全基准测试
+
+3. **PostgreSQL Security Best Practices**
+   - 链接: [https://www.postgresql.org/docs/current/security.html](https://www.postgresql.org/docs/current/security.html)
+   - 内容: PostgreSQL官方安全最佳实践
+
+4. **NIST Cybersecurity Framework**
+   - 链接: [https://www.nist.gov/cyberframework](https://www.nist.gov/cyberframework)
+   - 内容: NIST网络安全框架
+
+#### **RLS最佳实践**
+
+1. **RLS Performance Optimization**
+   - 内容: RLS性能优化技巧
+   - 要点:
+     - 使用索引优化策略函数
+     - 避免复杂的策略表达式
+     - 使用SECURITY DEFINER函数
+
+2. **Multi-Tenant RLS Patterns**
+   - 内容: 多租户RLS设计模式
+   - 要点:
+     - 租户ID隔离
+     - 层次化权限
+     - 性能考虑
 
 ### 合规框架
 
-1. **GDPR**: 数据保护条例
-2. **CCPA**: 加州消费者隐私法
-3. **SOC 2**: 服务组织控制
-4. **PCI-DSS**: 支付卡行业数据安全标准
-5. **HIPAA**: 健康保险便携性和责任法案
+#### **数据保护法规**
+
+1. **GDPR（通用数据保护条例）**
+   - 全称: General Data Protection Regulation
+   - 适用范围: 欧盟
+   - 关键要求:
+     - 数据最小化
+     - 数据可移植性
+     - 被遗忘权
+     - 数据泄露通知
+   - PostgreSQL实现:
+     - RLS实现数据访问控制
+     - 审计日志记录数据访问
+     - 数据脱敏保护隐私
+
+2. **CCPA（加州消费者隐私法）**
+   - 全称: California Consumer Privacy Act
+   - 适用范围: 美国加州
+   - 关键要求:
+     - 数据访问权
+     - 数据删除权
+     - 数据不出售权
+   - PostgreSQL实现:
+     - 审计日志追踪数据使用
+     - RLS控制数据访问
+
+3. **PIPEDA（个人信息保护和电子文档法）**
+   - 全称: Personal Information Protection and Electronic Documents Act
+   - 适用范围: 加拿大
+   - 关键要求: 个人信息保护
+
+#### **行业标准**
+
+1. **SOC 2（服务组织控制）**
+   - 类型: Type I / Type II
+   - 关键控制:
+     - 访问控制
+     - 加密
+     - 审计日志
+     - 变更管理
+   - PostgreSQL实现:
+     - RLS实现访问控制
+     - pgAudit实现审计
+     - SSL/TLS加密传输
+
+2. **PCI-DSS（支付卡行业数据安全标准）**
+   - 版本: PCI DSS 4.0
+   - 关键要求:
+     - 加密存储和传输
+     - 访问控制
+     - 审计日志
+     - 漏洞管理
+   - PostgreSQL实现:
+     - pgcrypto加密敏感数据
+     - RLS限制访问
+     - 完整审计日志
+
+3. **HIPAA（健康保险便携性和责任法案）**
+   - 全称: Health Insurance Portability and Accountability Act
+   - 适用范围: 美国医疗行业
+   - 关键要求:
+     - PHI（受保护健康信息）保护
+     - 访问控制
+     - 审计日志
+     - 加密要求
+   - PostgreSQL实现:
+     - RLS保护PHI
+     - 加密存储
+     - 完整审计
+
+4. **ISO/IEC 27001（信息安全管理）**
+   - 标准: ISO/IEC 27001:2022
+   - 关键要求:
+     - 信息安全管理体系
+     - 风险评估
+     - 访问控制
+     - 审计和监控
+   - PostgreSQL实现:
+     - 全面的安全控制
+     - 审计和监控
+     - 访问控制
+
+### 开源工具和扩展
+
+#### **审计工具**
+
+1. **pgAudit**
+   - GitHub: [https://github.com/pgaudit/pgaudit](https://github.com/pgaudit/pgaudit)
+   - 功能: 详细的SQL审计日志
+   - 支持: PostgreSQL 9.5+
+
+2. **pgAudit Extension**
+   - 功能: 增强的审计功能
+   - 特点: 可配置的审计策略
+
+#### **安全工具**
+
+1. **pgcrypto**
+   - 功能: 加密函数库
+   - 支持: AES、RSA、哈希等
+
+2. **postgresql_anonymizer**
+   - 功能: 数据脱敏和匿名化
+   - 支持: 多种脱敏策略
+
+3. **pg_partman**
+   - 功能: 分区管理
+   - 用途: 审计日志分区
+
+#### **监控工具**
+
+1. **pg_stat_statements**
+   - 功能: SQL性能统计
+   - 用途: 性能监控和优化
+
+2. **pgBadger**
+   - 功能: PostgreSQL日志分析器
+   - 用途: 日志分析和报告
+
+### 社区资源
+
+#### **论坛和社区**
+
+1. **PostgreSQL官方论坛**
+   - 链接: [https://www.postgresql.org/list/](https://www.postgresql.org/list/)
+   - 内容: PostgreSQL邮件列表和论坛
+
+2. **Stack Overflow**
+   - 标签: [postgresql](https://stackoverflow.com/questions/tagged/postgresql), [row-level-security](https://stackoverflow.com/questions/tagged/row-level-security)
+   - 内容: 技术问答
+
+3. **Reddit - r/PostgreSQL**
+   - 链接: [https://www.reddit.com/r/PostgreSQL/](https://www.reddit.com/r/PostgreSQL/)
+   - 内容: PostgreSQL社区讨论
+
+4. **PostgreSQL中文社区**
+   - 内容: 中文技术交流
+
+#### **博客和文章**
+
+1. **PostgreSQL官方博客**
+   - 链接: [https://www.postgresql.org/about/newsarchive/](https://www.postgresql.org/about/newsarchive/)
+   - 内容: PostgreSQL新闻和更新
+
+2. **2ndQuadrant博客**
+   - 内容: PostgreSQL最佳实践和教程
+
+3. **Percona博客**
+   - 内容: PostgreSQL性能和安全文章
+
+### 书籍推荐
+
+1. **《PostgreSQL即学即用》**
+   - 作者: 多位作者
+   - 内容: PostgreSQL基础和实践
+
+2. **《PostgreSQL High Performance》**
+   - 作者: Gregory Smith
+   - 内容: PostgreSQL性能优化
+
+3. **《Mastering PostgreSQL in Application Development》**
+   - 作者: Dimitri Fontaine
+   - 内容: PostgreSQL应用开发
+
+4. **《PostgreSQL Security》**
+   - 内容: PostgreSQL安全实践
+
+### 视频教程
+
+1. **PostgreSQL官方YouTube频道**
+   - 内容: PostgreSQL教程和会议视频
+
+2. **Coursera - PostgreSQL课程**
+   - 内容: PostgreSQL数据库课程
+
+3. **Udemy - PostgreSQL安全课程**
+   - 内容: PostgreSQL安全实践课程
+
+### 研究论文
+
+1. **Row-Level Security in PostgreSQL**
+   - 内容: RLS实现原理和性能分析
+
+2. **Database Auditing Best Practices**
+   - 内容: 数据库审计最佳实践研究
+
+3. **Multi-Tenant Database Security**
+   - 内容: 多租户数据库安全研究
+
+### 工具和脚本
+
+1. **RLS策略生成器**
+   - 功能: 自动生成RLS策略脚本
+
+2. **审计日志分析工具**
+   - 功能: 分析审计日志，生成报告
+
+3. **安全配置检查脚本**
+   - 功能: 检查PostgreSQL安全配置
+
+### 参考资源使用建议
+
+- 📚 **初学者**: 从官方文档和最佳实践开始
+- 🔧 **开发者**: 参考开源工具和扩展
+- 🏢 **企业用户**: 关注合规框架和行业标准
+- 🔬 **研究者**: 阅读研究论文了解最新进展
 
 ---
 

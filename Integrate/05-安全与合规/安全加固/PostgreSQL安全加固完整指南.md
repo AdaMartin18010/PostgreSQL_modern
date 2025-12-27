@@ -47,10 +47,78 @@ PostgreSQL安全加固是一个系统化的过程，涉及多个层面的安全�
 
 ### 1.1 安全加固目标
 
-- **防止未授权访问** - 确保只有授权用户能访问数据库
-- **保护数据安全** - 防止数据泄露、篡改、丢失
-- **满足合规要求** - 符合GDPR、HIPAA等法规要求
-- **建立安全监控** - 及时发现和响应安全事件
+PostgreSQL安全加固的目标是建立一个多层次、全方位的安全防护体系，确保数据库系统的安全性、完整性和可用性。
+
+**核心安全目标**：
+
+1. **防止未授权访问**：
+   - 确保只有授权用户能访问数据库
+   - 实现强身份认证机制
+   - 控制网络访问和连接
+   - 防止暴力破解和未授权访问
+
+2. **保护数据安全**：
+   - 防止数据泄露、篡改、丢失
+   - 实现数据加密（传输和存储）
+   - 保护敏感数据的完整性
+   - 实现数据备份和恢复
+
+3. **满足合规要求**：
+   - 符合GDPR、HIPAA、PCI-DSS等法规要求
+   - 实现审计日志和合规报告
+   - 支持数据保留和删除策略
+   - 满足行业特定的合规要求
+
+4. **建立安全监控**：
+   - 及时发现和响应安全事件
+   - 实现安全审计和日志记录
+   - 监控异常访问和行为
+   - 建立安全告警机制
+
+**安全加固的层次**：
+
+```text
+安全加固层次结构：
+-----------------
+应用层安全
+  ├── 输入验证
+  ├── SQL注入防护
+  └── 应用级加密
+
+数据库层安全
+  ├── 身份认证
+  ├── 访问控制
+  ├── 数据加密
+  └── 审计日志
+
+网络层安全
+  ├── SSL/TLS加密
+  ├── 防火墙规则
+  └── 连接限制
+
+系统层安全
+  ├── 文件权限
+  ├── 操作系统安全
+  └── 系统监控
+```
+
+**安全加固的收益**：
+
+| 安全措施 | 安全收益 | 性能影响 | 实施难度 |
+|---------|---------|---------|---------|
+| **强密码策略** | ⭐⭐⭐⭐⭐ | 无 | ⭐⭐ |
+| **SSL/TLS加密** | ⭐⭐⭐⭐⭐ | 5-10% | ⭐⭐⭐ |
+| **行级安全（RLS）** | ⭐⭐⭐⭐⭐ | 10-20% | ⭐⭐⭐⭐ |
+| **审计日志** | ⭐⭐⭐⭐ | 5-15% | ⭐⭐⭐ |
+| **数据加密** | ⭐⭐⭐⭐⭐ | 15-30% | ⭐⭐⭐⭐ |
+
+**安全加固的实施原则**：
+
+1. **最小权限原则**：用户只获得完成工作所需的最小权限
+2. **深度防御**：建立多层安全防护，不依赖单一安全措施
+3. **定期审计**：定期检查和审计安全配置和访问日志
+4. **及时更新**：及时应用安全补丁和更新
+5. **持续监控**：持续监控安全事件和异常行为
 
 ---
 
@@ -88,16 +156,208 @@ END $$;
 
 ### 2.2 认证方法
 
+PostgreSQL支持多种认证方法，选择合适的认证方法对安全性至关重要。
+
+**认证方法对比**：
+
+| 认证方法 | 安全性 | 适用场景 | 推荐度 |
+|---------|--------|---------|--------|
+| **trust** | ⭐ | 仅本地开发 | ❌ 不推荐 |
+| **md5** | ⭐⭐ | 旧系统兼容 | ⚠️ 不推荐 |
+| **scram-sha-256** | ⭐⭐⭐⭐⭐ | 生产环境 | ✅ 强烈推荐 |
+| **cert** | ⭐⭐⭐⭐⭐ | 高安全环境 | ✅ 推荐 |
+| **ldap** | ⭐⭐⭐⭐ | 企业环境 | ✅ 推荐 |
+| **pam** | ⭐⭐⭐⭐ | 系统集成 | ✅ 推荐 |
+
+**推荐配置**：
+
 ```bash
 # 编辑pg_hba.conf
 # 推荐配置：
 # TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# 本地连接（使用SCRAM-SHA-256）
 host    all             all             127.0.0.1/32            scram-sha-256
 host    all             all             ::1/128                 scram-sha-256
+
+# SSL连接（强制SSL）
 hostssl all             all             0.0.0.0/0               scram-sha-256
+
+# 拒绝其他连接
+host    all             all             0.0.0.0/0               reject
 ```
 
+**认证方法详细说明**：
+
+1. **SCRAM-SHA-256（推荐）**：
+   - **安全性**：最高，使用SHA-256哈希和盐值
+   - **性能**：良好，现代标准
+   - **适用场景**：所有生产环境
+   - **配置**：
+
+     ```sql
+     ALTER SYSTEM SET password_encryption = 'scram-sha-256';
+     SELECT pg_reload_conf();
+     ```
+
+2. **SSL客户端证书（高安全）**：
+   - **安全性**：最高，基于证书的双向认证
+   - **性能**：良好，但需要证书管理
+   - **适用场景**：高安全要求的系统
+   - **配置**：
+
+     ```bash
+     # pg_hba.conf
+     hostssl all all 0.0.0.0/0 cert
+     ```
+
+3. **LDAP认证（企业环境）**：
+   - **安全性**：高，集中式身份管理
+   - **性能**：取决于LDAP服务器
+   - **适用场景**：企业环境，需要统一身份管理
+   - **配置**：
+
+     ```bash
+     # pg_hba.conf
+     host all all 0.0.0.0/0 ldap ldapserver=ldap.example.com ldapprefix="cn=" ldapsuffix=",dc=example,dc=com"
+     ```
+
+**认证方法最佳实践**：
+
+1. **禁用trust认证**：
+
+   ```bash
+   # 检查是否有trust认证
+   grep -E "^[^#].*trust" /etc/postgresql/*/main/pg_hba.conf
+
+   # 如果有，改为scram-sha-256
+   ```
+
+2. **使用SSL连接**：
+   - 强制所有远程连接使用SSL
+   - 配置SSL证书和密钥
+   - 验证客户端证书
+
+3. **限制连接来源**：
+   - 使用IP白名单限制连接
+   - 只允许必要的IP地址连接
+   - 使用防火墙进一步限制
+
+4. **定期审查认证配置**：
+   - 定期检查pg_hba.conf配置
+   - 移除不必要的认证规则
+   - 确保所有认证方法都是安全的
+
 ### 2.3 SSL/TLS配置
+
+SSL/TLS配置是保护数据传输安全的关键措施，确保数据在传输过程中不被窃听或篡改。
+
+**SSL/TLS配置步骤**：
+
+1. **生成SSL证书**：
+
+   ```bash
+   # 生成自签名证书（仅用于测试）
+   openssl req -new -x509 -days 365 -nodes -text \
+     -out server.crt -keyout server.key \
+     -subj "/CN=db.example.com"
+
+   # 设置证书权限
+   chmod 600 server.key
+   chown postgres:postgres server.crt server.key
+   ```
+
+2. **配置PostgreSQL**：
+
+   ```conf
+   # postgresql.conf
+   ssl = on
+   ssl_cert_file = 'server.crt'
+   ssl_key_file = 'server.key'
+   ssl_ca_file = 'ca.crt'  # 如果使用CA签名的证书
+   ```
+
+3. **配置客户端连接**：
+
+   ```bash
+   # pg_hba.conf - 强制SSL连接
+   hostssl all all 0.0.0.0/0 scram-sha-256
+
+   # 拒绝非SSL连接
+   host all all 0.0.0.0/0 reject
+   ```
+
+**SSL/TLS安全配置**：
+
+1. **使用强加密算法**：
+
+   ```conf
+   # postgresql.conf
+   ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL'
+   ssl_prefer_server_ciphers = on
+   ```
+
+2. **启用SSL协议版本控制**：
+
+   ```conf
+   # 只允许TLS 1.2及以上版本
+   ssl_min_protocol_version = 'TLSv1.2'
+   ```
+
+3. **配置SSL证书验证**：
+
+   ```conf
+   # 要求客户端证书（双向认证）
+   ssl_ca_file = 'ca.crt'
+   ssl_cert_file = 'server.crt'
+   ssl_key_file = 'server.key'
+   ```
+
+**SSL/TLS性能优化**：
+
+1. **使用会话缓存**：
+
+   ```conf
+   # postgresql.conf
+   ssl_session_cache = on
+   ssl_session_cache_size = 100MB
+   ```
+
+2. **启用SSL压缩（谨慎使用）**：
+
+   ```conf
+   # 注意：SSL压缩可能导致安全问题（CRIME攻击）
+   # 通常不建议启用
+   # ssl_compression = off
+   ```
+
+**SSL/TLS验证和测试**：
+
+```sql
+-- 检查SSL连接状态
+SELECT ssl_is_used();
+
+-- 查看SSL连接信息
+SELECT
+    pid,
+    usename,
+    application_name,
+    client_addr,
+    ssl,
+    sslversion,
+    sslcipher
+FROM pg_stat_ssl
+JOIN pg_stat_activity USING (pid)
+WHERE ssl = true;
+```
+
+**SSL/TLS最佳实践**：
+
+1. **使用CA签名的证书**：生产环境应使用CA签名的证书，而不是自签名证书
+2. **定期更新证书**：定期更新SSL证书，避免证书过期
+3. **监控SSL连接**：监控SSL连接的使用情况和性能
+4. **禁用弱加密**：禁用SSL 2.0、SSL 3.0和弱加密算法
+5. **强制SSL连接**：对于敏感数据，强制所有连接使用SSL
 
 ```bash
 # postgresql.conf
