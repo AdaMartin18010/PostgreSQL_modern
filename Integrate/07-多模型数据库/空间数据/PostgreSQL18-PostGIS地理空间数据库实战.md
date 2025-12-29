@@ -12,8 +12,6 @@
 
 - [PostgreSQL 18 + PostGIS地理空间数据库实战](#postgresql-18--postgis地理空间数据库实战)
   - [📑 目录](#-目录)
-  - [1. PostGIS基础](#1-postgis基础)
-    - [1.1 安装](#11-安装)
   - [2. 几何类型](#2-几何类型)
     - [2.1 基础类型](#21-基础类型)
   - [3. 空间索引](#3-空间索引)
@@ -31,36 +29,6 @@
   - [8. 性能优化](#8-性能优化)
     - [8.1 空间索引优化](#81-空间索引优化)
     - [8.2 geometry vs geography](#82-geometry-vs-geography)
-
-## 1. PostGIS基础
-
-### 1.1 安装
-
-```bash
-#!/bin/bash
-# 性能测试：安装PostGIS（带错误处理）
-set -e
-set -u
-
-error_exit() {
-    echo "错误: $1" >&2
-    exit 1
-}
-
-DB_NAME="${1:-mydb}"
-
-# 安装PostGIS
-sudo apt install postgresql-18-postgis-3 || error_exit "安装PostGIS失败"
-
-# 创建扩展
-psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS postgis;" || error_exit "创建postgis扩展失败"
-psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;" || error_exit "创建postgis_topology扩展失败"
-
-# 验证
-psql -d "$DB_NAME" -c "SELECT PostGIS_Full_Version();" || error_exit "验证PostGIS失败"
-
-echo "PostGIS安装完成"
-```
 
 ---
 
