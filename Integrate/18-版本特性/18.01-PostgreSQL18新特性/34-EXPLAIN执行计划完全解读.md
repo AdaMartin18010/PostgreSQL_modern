@@ -10,17 +10,25 @@
 
 ## 📑 目录
 
-- [2.1 Seq Scan（顺序扫描）](#21-seq-scan顺序扫描)
-- [2.2 Index Scan](#22-index-scan)
-- [2.3 Index Only Scan](#23-index-only-scan)
-- [2.4 Bitmap Scan](#24-bitmap-scan)
-- [3.1 Nested Loop](#31-nested-loop)
-- [3.2 Hash Join](#32-hash-join)
-- [3.3 Merge Join](#33-merge-join)
-- [4.1 GroupAggregate](#41-groupaggregate)
-- [4.2 HashAggregate](#42-hashaggregate)
-- [5.1 常见问题模式](#51-常见问题模式)
-- [6.1 强制计划](#61-强制计划)
+- [PostgreSQL EXPLAIN执行计划完全解读](#postgresql-explain执行计划完全解读)
+  - [📑 目录](#-目录)
+  - [2. 扫描节点](#2-扫描节点)
+    - [2.1 Seq Scan（顺序扫描）](#21-seq-scan顺序扫描)
+    - [2.2 Index Scan](#22-index-scan)
+    - [2.3 Index Only Scan](#23-index-only-scan)
+    - [2.4 Bitmap Scan](#24-bitmap-scan)
+  - [3. JOIN节点](#3-join节点)
+    - [3.1 Nested Loop](#31-nested-loop)
+    - [3.2 Hash Join](#32-hash-join)
+    - [3.3 Merge Join](#33-merge-join)
+  - [4. 聚合节点](#4-聚合节点)
+    - [4.1 GroupAggregate](#41-groupaggregate)
+    - [4.2 HashAggregate](#42-hashaggregate)
+  - [5. 性能问题识别](#5-性能问题识别)
+    - [5.1 常见问题模式](#51-常见问题模式)
+  - [6. 优化技巧](#6-优化技巧)
+    - [6.1 强制计划](#61-强制计划)
+
 ---
 
 ## 2. 扫描节点

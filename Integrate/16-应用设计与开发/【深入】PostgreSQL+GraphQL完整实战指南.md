@@ -3832,4 +3832,5 @@ const server = new ApolloServer({
 **版本历史**:
 
 - v1.0 (2025-01): 初始版本，覆盖PostGraphile、Hasura、Apollo三大方案
+
 ```
