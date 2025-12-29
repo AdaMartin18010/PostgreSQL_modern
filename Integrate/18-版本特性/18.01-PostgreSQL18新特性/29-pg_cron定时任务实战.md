@@ -10,66 +10,14 @@
 
 ## 📑 目录
 
-- [PostgreSQL 18 pg\_cron定时任务实战](#postgresql-18-pg_cron定时任务实战)
-  - [📑 目录](#-目录)
-  - [1. 安装配置](#1-安装配置)
-  - [2. 基础任务](#2-基础任务)
-    - [2.1 创建定时任务](#21-创建定时任务)
-    - [2.2 管理任务](#22-管理任务)
-  - [3. 高级任务](#3-高级任务)
-    - [3.1 复杂SQL任务](#31-复杂sql任务)
-    - [3.2 调用存储过程](#32-调用存储过程)
-  - [4. 实战案例](#4-实战案例)
-    - [4.1 分区自动管理](#41-分区自动管理)
-    - [4.2 数据库备份](#42-数据库备份)
-  - [5. 监控与告警](#5-监控与告警)
-    - [5.1 性能监控任务](#51-性能监控任务)
-  - [6. 错误处理](#6-错误处理)
-    - [6.1 任务失败处理](#61-任务失败处理)
-  - [7. 最佳实践](#7-最佳实践)
-
-## 1. 安装配置
-
-```bash
-#!/bin/bash
-# 安装pg_cron（带错误处理）
-set -e
-set -u
-
-error_exit() {
-    echo "错误: $1" >&2
-    exit 1
-}
-
-# 安装pg_cron
-if ! sudo apt install -y postgresql-18-cron 2>/dev/null; then
-    error_exit "安装postgresql-18-cron失败"
-fi
-
-# 配置
-if ! echo "shared_preload_libraries = 'pg_cron'" | \
-  sudo tee -a /etc/postgresql/18/main/postgresql.conf > /dev/null; then
-    error_exit "配置shared_preload_libraries失败"
-fi
-
-if ! echo "cron.database_name = 'postgres'" | \
-  sudo tee -a /etc/postgresql/18/main/postgresql.conf > /dev/null; then
-    error_exit "配置cron.database_name失败"
-fi
-
-# 重启
-if ! sudo systemctl restart postgresql; then
-    error_exit "重启PostgreSQL失败"
-fi
-
-# 创建扩展
-if ! psql -c "CREATE EXTENSION IF NOT EXISTS pg_cron;" 2>/dev/null; then
-    error_exit "创建扩展失败"
-fi
-
-echo "✅ pg_cron安装和配置完成"
-```
-
+- [2.1 创建定时任务](#21-创建定时任务)
+- [2.2 管理任务](#22-管理任务)
+- [3.1 复杂SQL任务](#31-复杂sql任务)
+- [3.2 调用存储过程](#32-调用存储过程)
+- [4.1 分区自动管理](#41-分区自动管理)
+- [4.2 数据库备份](#42-数据库备份)
+- [5.1 性能监控任务](#51-性能监控任务)
+- [6.1 任务失败处理](#61-任务失败处理)
 ---
 
 ## 2. 基础任务

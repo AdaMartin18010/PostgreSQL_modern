@@ -10,64 +10,14 @@
 
 ## 📑 目录
 
-- [PostgreSQL 18 pg\_stat\_statements性能分析](#postgresql-18-pg_stat_statements性能分析)
-  - [📑 目录](#-目录)
-  - [1. 安装配置](#1-安装配置)
-  - [2. 核心视图](#2-核心视图)
-    - [2.1 pg\_stat\_statements字段](#21-pg_stat_statements字段)
-  - [3. 常用查询](#3-常用查询)
-    - [3.1 Top慢查询](#31-top慢查询)
-    - [3.2 缓存命中率分析](#32-缓存命中率分析)
-    - [3.3 临时文件使用](#33-临时文件使用)
-  - [4. 查询模式分析](#4-查询模式分析)
-    - [4.1 按类型统计](#41-按类型统计)
-    - [4.2 表访问分析](#42-表访问分析)
-  - [5. 性能基线](#5-性能基线)
-    - [5.1 建立基线](#51-建立基线)
-  - [6. 自动化分析](#6-自动化分析)
-    - [6.1 每日报告](#61-每日报告)
-  - [7. 重置统计](#7-重置统计)
-
-## 1. 安装配置
-
-```sql
--- 性能测试：安装扩展（带错误处理）
-BEGIN;
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-COMMIT;
-EXCEPTION
-    WHEN duplicate_object THEN
-        RAISE NOTICE '扩展pg_stat_statements已存在';
-    WHEN OTHERS THEN
-        RAISE NOTICE '安装扩展失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
-
--- 性能测试：配置参数（带错误处理）
-BEGIN;
-DO $$
-BEGIN
-    ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
-    ALTER SYSTEM SET pg_stat_statements.max = 10000;  -- 跟踪10000个查询
-    ALTER SYSTEM SET pg_stat_statements.track = 'all';  -- all/top/none
-    ALTER SYSTEM SET pg_stat_statements.track_utility = on;  -- 跟踪DDL
-    ALTER SYSTEM SET pg_stat_statements.save = on;  -- 重启后保留
-
-    PERFORM pg_reload_conf();
-
-    RAISE NOTICE 'pg_stat_statements配置已更新，部分参数需要重启PostgreSQL生效';
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '配置参数失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
-END $$;
-COMMIT;
-
--- 重启PostgreSQL
--- sudo systemctl restart postgresql
-```
-
+- [2.1 pg_stat_statements字段](#21-pg_stat_statements字段)
+- [3.1 Top慢查询](#31-top慢查询)
+- [3.2 缓存命中率分析](#32-缓存命中率分析)
+- [3.3 临时文件使用](#33-临时文件使用)
+- [4.1 按类型统计](#41-按类型统计)
+- [4.2 表访问分析](#42-表访问分析)
+- [5.1 建立基线](#51-建立基线)
+- [6.1 每日报告](#61-每日报告)
 ---
 
 ## 2. 核心视图

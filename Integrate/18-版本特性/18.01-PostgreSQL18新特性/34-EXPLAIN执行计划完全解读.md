@@ -10,72 +10,17 @@
 
 ## 📑 目录
 
-- [PostgreSQL EXPLAIN执行计划完全解读](#postgresql-explain执行计划完全解读)
-  - [📑 目录](#-目录)
-  - [1. EXPLAIN基础](#1-explain基础)
-  - [2. 扫描节点](#2-扫描节点)
-    - [2.1 Seq Scan（顺序扫描）](#21-seq-scan顺序扫描)
-    - [2.2 Index Scan](#22-index-scan)
-    - [2.3 Index Only Scan](#23-index-only-scan)
-    - [2.4 Bitmap Scan](#24-bitmap-scan)
-  - [3. JOIN节点](#3-join节点)
-    - [3.1 Nested Loop](#31-nested-loop)
-    - [3.2 Hash Join](#32-hash-join)
-    - [3.3 Merge Join](#33-merge-join)
-  - [4. 聚合节点](#4-聚合节点)
-    - [4.1 GroupAggregate](#41-groupaggregate)
-    - [4.2 HashAggregate](#42-hashaggregate)
-  - [5. 性能问题识别](#5-性能问题识别)
-    - [5.1 常见问题模式](#51-常见问题模式)
-  - [6. 优化技巧](#6-优化技巧)
-    - [6.1 强制计划](#61-强制计划)
-
-## 1. EXPLAIN基础
-
-```sql
--- 性能测试：基础EXPLAIN（带错误处理）
-BEGIN;
-EXPLAIN SELECT * FROM users WHERE age > 25;
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'EXPLAIN查询失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
-
--- 性能测试：实际执行（带错误处理）
-BEGIN;
-EXPLAIN ANALYZE SELECT * FROM users WHERE age > 25;
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'EXPLAIN ANALYZE失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
-
--- 性能测试：详细信息（带错误处理）
-BEGIN;
-EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS, TIMING, SUMMARY)
-SELECT * FROM users WHERE age > 25;
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '详细EXPLAIN失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
-
--- 性能测试：JSON格式（带错误处理）
-BEGIN;
-EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-SELECT * FROM users WHERE age > 25;
-COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'JSON格式EXPLAIN失败: %', SQLERRM;
-        ROLLBACK;
-        RAISE;
-```
-
+- [2.1 Seq Scan（顺序扫描）](#21-seq-scan顺序扫描)
+- [2.2 Index Scan](#22-index-scan)
+- [2.3 Index Only Scan](#23-index-only-scan)
+- [2.4 Bitmap Scan](#24-bitmap-scan)
+- [3.1 Nested Loop](#31-nested-loop)
+- [3.2 Hash Join](#32-hash-join)
+- [3.3 Merge Join](#33-merge-join)
+- [4.1 GroupAggregate](#41-groupaggregate)
+- [4.2 HashAggregate](#42-hashaggregate)
+- [5.1 常见问题模式](#51-常见问题模式)
+- [6.1 强制计划](#61-强制计划)
 ---
 
 ## 2. 扫描节点
