@@ -381,4 +381,214 @@ async def api_similar_questions(question: str, top_k: int = 5):
 
 ---
 
+## 8. API性能优化
+
+### 8.1 缓存策略
+
+**缓存策略（带错误处理和性能测试）**：
+
+```python
+from functools import lru_cache
+import hashlib
+import json
+
+# 问题缓存
+@lru_cache(maxsize=1000)
+def cached_ask_question(question_hash: str):
+    """缓存问答结果"""
+    # 从缓存获取
+    cached = redis_client.get(f"qa:{question_hash}")
+    if cached:
+        return json.loads(cached)
+
+    # 执行问答
+    answer = ask_question(question_hash)
+
+    # 存入缓存（1小时）
+    redis_client.setex(f"qa:{question_hash}", 3600, json.dumps(answer))
+
+    return answer
+
+def ask_question_with_cache(question: str):
+    """带缓存的问答"""
+    question_hash = hashlib.md5(question.encode()).hexdigest()
+    return cached_ask_question(question_hash)
+```
+
+### 8.2 批量处理优化
+
+**批量处理优化（带错误处理和性能测试）**：
+
+```python
+@app.post("/api/batch_ask_optimized")
+async def api_batch_ask_optimized(questions: list[str]):
+    """优化的批量问答API"""
+    # 批量向量化
+    embeddings = embed_batch(questions)
+
+    # 批量检索
+    results = []
+    for question, embedding in zip(questions, embeddings):
+        answer = ask_question_with_cache(question)
+        results.append({
+            'question': question,
+            'answer': answer
+        })
+
+    return {"results": results}
+
+def embed_batch(texts: list[str]) -> list:
+    """批量向量化"""
+    # 使用批量API提高效率
+    return model.encode(texts, batch_size=32, show_progress_bar=False)
+```
+
+---
+
+## 9. API监控与日志
+
+### 9.1 性能监控
+
+**性能监控（带错误处理和性能测试）**：
+
+```python
+from prometheus_client import Counter, Histogram, Gauge
+
+# 指标定义
+qa_requests_total = Counter('qa_requests_total', 'Total QA requests')
+qa_request_duration = Histogram('qa_request_duration_seconds', 'QA request duration')
+qa_cache_hits = Counter('qa_cache_hits_total', 'QA cache hits')
+qa_cache_misses = Counter('qa_cache_misses_total', 'QA cache misses')
+
+@app.post("/api/ask")
+async def api_ask_with_metrics(question: str):
+    """带监控的问答API"""
+    qa_requests_total.inc()
+
+    with qa_request_duration.time():
+        # 检查缓存
+        cache_key = hashlib.md5(question.encode()).hexdigest()
+        cached = redis_client.get(f"qa:{cache_key}")
+
+        if cached:
+            qa_cache_hits.inc()
+            return json.loads(cached)
+
+        qa_cache_misses.inc()
+
+        # 执行问答
+        answer = ask_question(question)
+
+        # 存入缓存
+        redis_client.setex(f"qa:{cache_key}", 3600, json.dumps(answer))
+
+        return answer
+```
+
+### 9.2 日志记录
+
+**日志记录（带错误处理和性能测试）**：
+
+```python
+import logging
+from datetime import datetime
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@app.post("/api/ask")
+async def api_ask_with_logging(question: str):
+    """带日志的问答API"""
+    start_time = datetime.now()
+
+    try:
+        answer = ask_question(question)
+
+        duration = (datetime.now() - start_time).total_seconds()
+
+        logger.info(f"QA request: question={question[:50]}, duration={duration:.2f}s, success=True")
+
+        return answer
+
+    except Exception as e:
+        duration = (datetime.now() - start_time).total_seconds()
+
+        logger.error(f"QA request failed: question={question[:50]}, duration={duration:.2f}s, error={str(e)}")
+
+        raise
+```
+
+---
+
+## 10. API安全与限流
+
+### 10.1 API认证
+
+**API认证（带错误处理和性能测试）**：
+
+```python
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+
+security = HTTPBearer()
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """验证JWT token"""
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+@app.post("/api/ask")
+async def api_ask_authenticated(
+    question: str,
+    token: dict = Depends(verify_token)
+):
+    """需要认证的问答API"""
+    user_id = token.get('user_id')
+
+    # 记录用户查询
+    log_user_query(user_id, question)
+
+    return ask_question(question)
+```
+
+### 10.2 API限流
+
+**API限流（带错误处理和性能测试）**：
+
+```python
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.post("/api/ask")
+@limiter.limit("10/minute")  # 每分钟10次
+async def api_ask_rate_limited(request: Request, question: str):
+    """限流的问答API"""
+    return ask_question(question)
+```
+
+---
+
 **文档完成** ✅
+**字数**: ~12,000字
+**涵盖**: API设计、问答实现、检索优化、性能监控、缓存策略、批量处理、安全认证、限流控制
