@@ -18,7 +18,7 @@
 
 ### 数据隔离策略
 
-**方案1：共享Schema + RLS（推荐）**
+**方案1：共享Schema + RLS（推荐）**:
 
 ```sql
 CREATE TABLE orders (
@@ -42,7 +42,7 @@ CREATE POLICY tenant_isolation ON orders
 -- 性能：查询时间降低20-50%
 ```
 
-**方案2：独立Schema**
+**方案2：独立Schema**:
 
 ```sql
 -- 为每个租户创建Schema
