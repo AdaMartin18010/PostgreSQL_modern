@@ -10,10 +10,16 @@
 
 ## 📑 目录
 
-- [11.1 从PostgreSQL 17迁移到18](#111-从postgresql-17迁移到18)
-- [11.2 启用异步I/O配置](#112-启用异步io配置)
-- [11.3 性能对比测试](#113-性能对比测试)
-- [11.4 回滚方案](#114-回滚方案)
+- [11. 迁移指南](#11-迁移指南)
+  - [11. 迁移指南](#11-迁移指南-1)
+  - [📑 目录](#-目录)
+    - [11.1 从PostgreSQL 17迁移到18](#111-从postgresql-17迁移到18)
+    - [11.2 启用异步I/O配置](#112-启用异步io配置)
+    - [11.3 性能对比测试](#113-性能对比测试)
+    - [11.4 回滚方案](#114-回滚方案)
+    - [11.5 迁移检查清单](#115-迁移检查清单)
+    - [11.6 迁移后优化](#116-迁移后优化)
+    - [11.7 常见迁移问题](#117-常见迁移问题)
 
 ---
 
@@ -163,5 +169,191 @@ sudo -u postgres psql -c "SELECT version();"
 - **数据一致性**: 确保回滚后数据完整
 - **配置恢复**: 恢复PostgreSQL 17的配置参数
 - **应用兼容**: 确认应用仍兼容PostgreSQL 17
+
+### 11.5 迁移检查清单
+
+**迁移前检查**：
+
+```sql
+-- 1. 检查PostgreSQL版本
+SELECT version();
+
+-- 2. 检查系统要求
+SELECT
+    name,
+    setting,
+    CASE
+        WHEN name = 'io_direct' AND setting != 'off' THEN '✅ 支持'
+        WHEN name = 'effective_io_concurrency' AND setting::int >= 200 THEN '✅ 已配置'
+        ELSE '⚠️ 需配置'
+    END AS status
+FROM pg_settings
+WHERE name IN ('io_direct', 'effective_io_concurrency', 'wal_io_concurrency');
+
+-- 3. 检查扩展兼容性
+SELECT
+    extname,
+    extversion,
+    CASE
+        WHEN extname IN ('pgvector', 'postgis', 'timescaledb') THEN '✅ 兼容'
+        ELSE '⚠️ 需验证'
+    END AS compatibility
+FROM pg_extension
+ORDER BY extname;
+```
+
+**迁移步骤检查清单**：
+
+```text
+□ 备份数据库
+□ 检查应用兼容性
+□ 在测试环境验证
+□ 准备回滚方案
+□ 执行升级
+□ 验证数据库完整性
+□ 启用异步I/O配置
+□ 性能测试
+□ 监控运行状态
+```
+
+### 11.6 迁移后优化
+
+**优化步骤**：
+
+```sql
+-- 1. 更新统计信息
+ANALYZE;
+
+-- 2. 重建索引（如果需要）
+REINDEX DATABASE your_database;
+
+-- 3. 优化配置参数
+ALTER SYSTEM SET effective_io_concurrency = 300;
+ALTER SYSTEM SET wal_io_concurrency = 300;
+ALTER SYSTEM SET io_uring_queue_depth = 512;
+
+-- 4. 重新加载配置
+SELECT pg_reload_conf();
+
+-- 5. 验证配置
+SELECT name, setting, unit
+FROM pg_settings
+WHERE name IN (
+    'io_direct',
+    'effective_io_concurrency',
+    'wal_io_concurrency',
+    'io_uring_queue_depth'
+);
+```
+
+**性能验证**：
+
+```sql
+-- 创建性能基准表
+CREATE TABLE IF NOT EXISTS migration_performance_log (
+    id SERIAL PRIMARY KEY,
+    test_name TEXT,
+    pg_version TEXT,
+    tps NUMERIC,
+    avg_latency_ms NUMERIC,
+    test_time TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 记录性能测试结果
+INSERT INTO migration_performance_log (test_name, pg_version, tps, avg_latency_ms)
+VALUES
+('批量写入', 'PostgreSQL 18', 5400, 37);
+
+-- 对比性能提升
+SELECT
+    test_name,
+    pg_version,
+    tps,
+    avg_latency_ms,
+    ROUND((tps / LAG(tps) OVER (PARTITION BY test_name ORDER BY test_time) - 1) * 100, 1) AS improvement_pct
+FROM migration_performance_log
+ORDER BY test_name, test_time;
+```
+
+### 11.7 常见迁移问题
+
+**问题1: 升级后性能未提升**
+
+**原因分析**：
+
+- 异步I/O未正确启用
+- 配置参数未优化
+- 系统资源不足
+
+**解决方案**：
+
+```sql
+-- 检查异步I/O状态
+SELECT
+    name,
+    setting,
+    CASE
+        WHEN name = 'io_direct' AND setting != 'off' THEN '✅ 已启用'
+        ELSE '❌ 未启用'
+    END AS status
+FROM pg_settings
+WHERE name = 'io_direct';
+
+-- 检查I/O性能
+SELECT
+    context,
+    SUM(reads + writes) AS total_io,
+    SUM(io_wait_time) AS wait_time
+FROM pg_stat_io
+WHERE context = 'async'
+GROUP BY context;
+```
+
+**问题2: 升级后出现兼容性问题**
+
+**原因分析**：
+
+- 扩展版本不兼容
+- SQL语法变化
+- 配置参数变化
+
+**解决方案**：
+
+```sql
+-- 检查扩展版本
+SELECT
+    extname,
+    extversion,
+    pg_catalog.pg_get_extension_ddl(extname) AS ddl
+FROM pg_extension
+WHERE extname IN ('pgvector', 'postgis', 'timescaledb');
+
+-- 更新扩展版本
+ALTER EXTENSION pgvector UPDATE;
+```
+
+**问题3: 升级后WAL增长过快**
+
+**原因分析**：
+
+- wal_level设置过高
+- 未启用WAL压缩
+- 复制配置不当
+
+**解决方案**：
+
+```sql
+-- 检查WAL配置
+SELECT name, setting
+FROM pg_settings
+WHERE name IN ('wal_level', 'wal_compression', 'max_wal_size');
+
+-- 优化WAL配置
+ALTER SYSTEM SET wal_level = 'replica';
+ALTER SYSTEM SET wal_compression = on;
+ALTER SYSTEM SET max_wal_size = '4GB';
+```
+
+---
 
 **返回**: [文档首页](../README.md) | [上一章节](../10-监控和诊断/README.md) | [下一章节](../12-性能调优检查清单/README.md)

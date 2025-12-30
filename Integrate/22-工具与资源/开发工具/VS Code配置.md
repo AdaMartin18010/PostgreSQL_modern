@@ -23,6 +23,17 @@
   - [5. 代码格式化](#5-代码格式化)
     - [5.1 格式化配置](#51-格式化配置)
     - [5.2 格式化快捷键](#52-格式化快捷键)
+  - [6. 高级功能](#6-高级功能)
+    - [6.1 查询历史](#61-查询历史)
+    - [6.2 查询结果导出](#62-查询结果导出)
+    - [6.3 代码片段](#63-代码片段)
+  - [7. 最佳实践](#7-最佳实践)
+    - [7.1 工作区配置](#71-工作区配置)
+    - [7.2 查询模板](#72-查询模板)
+    - [7.3 扩展推荐](#73-扩展推荐)
+  - [8. 故障排查](#8-故障排查)
+    - [8.1 连接问题](#81-连接问题)
+    - [8.2 扩展问题](#82-扩展问题)
   - [📚 相关文档](#-相关文档)
 
 ---
@@ -134,7 +145,9 @@ SELECT * FROM users;
 {
   "sql-formatter.uppercase": true,
   "sql-formatter.linesBetweenQueries": 2,
-  "sql-formatter.keywordCase": "upper"
+  "sql-formatter.keywordCase": "upper",
+  "sql-formatter.indentSize": 2,
+  "sql-formatter.maxLineLength": 100
 }
 ```
 
@@ -144,6 +157,199 @@ SELECT * FROM users;
 格式化SQL: Shift+Alt+F
 格式化选中: Ctrl+K Ctrl+F
 ```
+
+## 6. 高级功能
+
+### 6.1 查询历史
+
+**查看历史**：
+
+```text
+1. 打开命令面板 (Ctrl+Shift+P)
+2. 输入 "SQLTools: Show Query History"
+3. 查看历史查询
+4. 重新执行查询
+```
+
+**历史配置**：
+
+```json
+{
+  "sqltools.queryHistory": {
+    "enabled": true,
+    "maxHistory": 100,
+    "saveToFile": true,
+    "filePath": ".sqltools/history.json"
+  }
+}
+```
+
+### 6.2 查询结果导出
+
+**导出格式**：
+
+```text
+1. 执行查询
+2. 右键结果 → Export
+3. 选择格式（CSV、JSON、Excel）
+4. 保存文件
+```
+
+**导出配置**：
+
+```json
+{
+  "sqltools.results": {
+    "exportFormats": ["csv", "json", "excel"],
+    "defaultFormat": "csv",
+    "includeHeaders": true
+  }
+}
+```
+
+### 6.3 代码片段
+
+**创建片段**：
+
+```json
+{
+  "PostgreSQL": {
+    "prefix": "pg-select",
+    "body": [
+      "SELECT ${1:*}",
+      "FROM ${2:table}",
+      "WHERE ${3:condition};"
+    ],
+    "description": "PostgreSQL SELECT查询"
+  }
+}
+```
+
+**常用片段**：
+
+```json
+{
+  "pg-create-table": {
+    "prefix": "pg-create-table",
+    "body": [
+      "CREATE TABLE ${1:table_name} (",
+      "  id SERIAL PRIMARY KEY,",
+      "  ${2:columns}",
+      ");"
+    ]
+  },
+  "pg-insert": {
+    "prefix": "pg-insert",
+    "body": [
+      "INSERT INTO ${1:table} (${2:columns})",
+      "VALUES (${3:values});"
+    ]
+  }
+}
+```
+
+## 7. 最佳实践
+
+### 7.1 工作区配置
+
+**项目配置**：
+
+```json
+{
+  "sqltools.connections": [
+    {
+      "name": "项目数据库",
+      "driver": "PostgreSQL",
+      "server": "${env:DB_HOST}",
+      "port": 5432,
+      "database": "${env:DB_NAME}",
+      "username": "${env:DB_USER}",
+      "password": "${env:DB_PASSWORD}"
+    }
+  ]
+}
+```
+
+### 7.2 查询模板
+
+**常用查询模板**：
+
+```sql
+-- 表结构查询
+SELECT
+    column_name,
+    data_type,
+    is_nullable,
+    column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = '$TABLE_NAME$'
+ORDER BY ordinal_position;
+
+-- 表大小查询
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+```
+
+### 7.3 扩展推荐
+
+**推荐扩展列表**：
+
+```json
+{
+  "recommendations": [
+    "ms-ossdata.vscode-postgresql",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-pg",
+    "adpyke.vscode-sql-formatter",
+    "ckolkman.vscode-postgres",
+    "ms-python.python"
+  ]
+}
+```
+
+## 8. 故障排查
+
+### 8.1 连接问题
+
+**常见问题**：
+
+1. **连接超时**
+
+   ```json
+   {
+     "connectTimeout": 30000,
+     "tcpKeepAlive": true
+   }
+   ```
+
+2. **SSL连接失败**
+
+   ```json
+   {
+     "sslmode": "prefer",
+     "sslrootcert": "/path/to/ca-cert.pem"
+   }
+   ```
+
+3. **认证失败**
+   - 检查用户名和密码
+   - 检查pg_hba.conf配置
+   - 检查用户权限
+
+### 8.2 扩展问题
+
+**扩展不工作**：
+
+1. 重新加载窗口：`Ctrl+Shift+P` → `Reload Window`
+2. 检查扩展是否启用
+3. 查看扩展日志：`Output` → 选择扩展
+4. 重新安装扩展
 
 ---
 

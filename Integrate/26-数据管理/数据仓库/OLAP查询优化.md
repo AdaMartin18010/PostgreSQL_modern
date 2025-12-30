@@ -27,6 +27,17 @@
   - [6. 最佳实践](#6-最佳实践)
     - [✅ 推荐做法](#-推荐做法)
     - [❌ 避免做法](#-避免做法)
+  - [7. 窗口函数优化](#7-窗口函数优化)
+    - [7.1 窗口函数使用](#71-窗口函数使用)
+    - [7.2 窗口函数性能优化](#72-窗口函数性能优化)
+  - [8. 查询计划优化](#8-查询计划优化)
+    - [8.1 查询计划分析](#81-查询计划分析)
+    - [8.2 查询重写优化](#82-查询重写优化)
+  - [9. 物化视图增量刷新](#9-物化视图增量刷新)
+    - [9.1 增量刷新策略](#91-增量刷新策略)
+  - [10. OLAP查询监控](#10-olap查询监控)
+    - [10.1 查询性能监控](#101-查询性能监控)
+    - [10.2 查询优化建议](#102-查询优化建议)
   - [📚 相关文档](#-相关文档)
 
 ---
@@ -245,6 +256,290 @@ WHERE t.year = 2024 AND t.month = 1;
 2. **过度使用CUBE** - 组合爆炸影响性能
 3. **忽略分区** - 大表不分区影响性能
 4. **不刷新物化视图** - 数据过时
+
+---
+
+## 7. 窗口函数优化
+
+### 7.1 窗口函数使用
+
+```sql
+-- 窗口函数：计算移动平均（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT
+    t.date,
+    p.category_name,
+    f.sales_amount,
+    AVG(f.sales_amount) OVER (
+        PARTITION BY p.category_name
+        ORDER BY t.date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS moving_avg_7days,
+    SUM(f.sales_amount) OVER (
+        PARTITION BY p.category_name
+        ORDER BY t.date
+        ROWS UNBOUNDED PRECEDING
+    ) AS running_total
+FROM fact_sales f
+JOIN dim_time t ON f.time_id = t.time_id
+JOIN dim_product p ON f.product_id = p.product_id
+WHERE t.year = 2024
+ORDER BY t.date, p.category_name;
+```
+
+### 7.2 窗口函数性能优化
+
+```sql
+-- 优化：使用物化视图预计算窗口函数结果
+CREATE MATERIALIZED VIEW mv_sales_window_stats AS
+SELECT
+    t.date,
+    p.category_name,
+    SUM(f.sales_amount) AS daily_sales,
+    AVG(f.sales_amount) OVER (
+        PARTITION BY p.category_name
+        ORDER BY t.date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS moving_avg_7days
+FROM fact_sales f
+JOIN dim_time t ON f.time_id = t.time_id
+JOIN dim_product p ON f.product_id = p.product_id
+GROUP BY t.date, p.category_name;
+
+-- 创建索引
+CREATE INDEX idx_mv_sales_window_stats_date ON mv_sales_window_stats (date);
+CREATE INDEX idx_mv_sales_window_stats_category ON mv_sales_window_stats (category_name);
+```
+
+---
+
+## 8. 查询计划优化
+
+### 8.1 查询计划分析
+
+```sql
+-- 查询计划分析（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+SELECT
+    t.year,
+    t.quarter,
+    p.category_name,
+    c.region_name,
+    SUM(f.sales_amount) AS total_sales,
+    COUNT(*) AS transaction_count
+FROM fact_sales f
+JOIN dim_time t ON f.time_id = t.time_id
+JOIN dim_product p ON f.product_id = p.product_id
+JOIN dim_customer c ON f.customer_id = c.customer_id
+WHERE t.year = 2024
+GROUP BY t.year, t.quarter, p.category_name, c.region_name
+ORDER BY total_sales DESC
+LIMIT 100;
+
+-- 分析要点：
+-- 1. 检查是否使用了分区裁剪
+-- 2. 检查JOIN顺序是否最优
+-- 3. 检查是否使用了索引
+-- 4. 检查并行查询是否启用
+```
+
+### 8.2 查询重写优化
+
+```sql
+-- 优化前：多次扫描事实表
+SELECT
+    t.year,
+    SUM(f.sales_amount) AS total_sales
+FROM fact_sales f
+JOIN dim_time t ON f.time_id = t.time_id
+WHERE t.year = 2024
+GROUP BY t.year;
+
+SELECT
+    p.category_name,
+    SUM(f.sales_amount) AS total_sales
+FROM fact_sales f
+JOIN dim_product p ON f.product_id = p.product_id
+WHERE EXISTS (
+    SELECT 1 FROM dim_time t
+    WHERE t.time_id = f.time_id AND t.year = 2024
+)
+GROUP BY p.category_name;
+
+-- 优化后：使用GROUPING SETS一次扫描
+SELECT
+    t.year,
+    p.category_name,
+    SUM(f.sales_amount) AS total_sales
+FROM fact_sales f
+JOIN dim_time t ON f.time_id = t.time_id
+JOIN dim_product p ON f.product_id = p.product_id
+WHERE t.year = 2024
+GROUP BY GROUPING SETS (
+    (t.year),
+    (p.category_name)
+);
+```
+
+---
+
+## 9. 物化视图增量刷新
+
+### 9.1 增量刷新策略
+
+```sql
+-- 创建支持增量刷新的物化视图
+CREATE MATERIALIZED VIEW mv_sales_daily AS
+SELECT
+    t.date,
+    p.category_name,
+    SUM(f.sales_amount) AS total_sales,
+    COUNT(*) AS transaction_count
+FROM fact_sales f
+JOIN dim_time t ON f.time_id = t.time_id
+JOIN dim_product p ON f.product_id = p.product_id
+GROUP BY t.date, p.category_name;
+
+-- 创建唯一索引（支持CONCURRENT刷新）
+CREATE UNIQUE INDEX mv_sales_daily_idx ON mv_sales_daily (date, category_name);
+
+-- 增量刷新函数（带错误处理和性能测试）
+CREATE OR REPLACE FUNCTION refresh_mv_sales_daily_incremental()
+RETURNS TABLE (
+    refreshed_count BIGINT,
+    refresh_duration INTERVAL
+) AS $$
+DECLARE
+    start_time TIMESTAMPTZ;
+    end_time TIMESTAMPTZ;
+    refreshed_rows BIGINT;
+    last_refresh_date DATE;
+BEGIN
+    start_time := clock_timestamp();
+
+    -- 获取上次刷新日期
+    SELECT MAX(date) INTO last_refresh_date
+    FROM mv_sales_daily;
+
+    IF last_refresh_date IS NULL THEN
+        last_refresh_date := '1970-01-01'::DATE;
+    END IF;
+
+    -- 增量刷新（只刷新新数据）
+    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sales_daily;
+
+    -- 或者手动增量更新
+    INSERT INTO mv_sales_daily (date, category_name, total_sales, transaction_count)
+    SELECT
+        t.date,
+        p.category_name,
+        SUM(f.sales_amount) AS total_sales,
+        COUNT(*) AS transaction_count
+    FROM fact_sales f
+    JOIN dim_time t ON f.time_id = t.time_id
+    JOIN dim_product p ON f.product_id = p.product_id
+    WHERE t.date > last_refresh_date
+    GROUP BY t.date, p.category_name
+    ON CONFLICT (date, category_name) DO UPDATE
+    SET total_sales = EXCLUDED.total_sales,
+        transaction_count = EXCLUDED.transaction_count;
+
+    GET DIAGNOSTICS refreshed_rows = ROW_COUNT;
+    end_time := clock_timestamp();
+
+    RETURN QUERY SELECT
+        refreshed_rows,
+        end_time - start_time;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '增量刷新失败: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 执行增量刷新
+SELECT * FROM refresh_mv_sales_daily_incremental();
+```
+
+---
+
+## 10. OLAP查询监控
+
+### 10.1 查询性能监控
+
+```sql
+-- OLAP查询性能监控视图
+CREATE OR REPLACE VIEW v_olap_query_performance AS
+SELECT
+    query,
+    calls,
+    total_exec_time,
+    mean_exec_time,
+    max_exec_time,
+    ROUND(100.0 * shared_blks_hit / NULLIF(shared_blks_hit + shared_blks_read, 0), 2) AS cache_hit_ratio
+FROM pg_stat_statements
+WHERE query LIKE '%GROUP BY%'
+   OR query LIKE '%ROLLUP%'
+   OR query LIKE '%CUBE%'
+   OR query LIKE '%GROUPING SETS%'
+ORDER BY mean_exec_time DESC
+LIMIT 50;
+
+-- 查询性能监控
+SELECT * FROM v_olap_query_performance;
+```
+
+### 10.2 查询优化建议
+
+```sql
+-- OLAP查询优化建议函数（带错误处理和性能测试）
+CREATE OR REPLACE FUNCTION analyze_olap_query(
+    p_query_text TEXT
+)
+RETURNS TABLE (
+    optimization_type TEXT,
+    suggestion TEXT,
+    expected_improvement TEXT
+) AS $$
+BEGIN
+    -- 检查是否使用物化视图
+    IF p_query_text NOT LIKE '%MATERIALIZED VIEW%' AND
+       p_query_text LIKE '%GROUP BY%' THEN
+        RETURN QUERY SELECT
+            'MATERIALIZED_VIEW'::TEXT,
+            '考虑创建物化视图预计算聚合结果'::TEXT,
+            '性能提升50-90%'::TEXT;
+    END IF;
+
+    -- 检查是否使用分区
+    IF p_query_text NOT LIKE '%PARTITION%' AND
+       p_query_text LIKE '%WHERE%date%' THEN
+        RETURN QUERY SELECT
+            'PARTITIONING'::TEXT,
+            '考虑按时间分区事实表'::TEXT,
+            '查询时间减少60-80%'::TEXT;
+    END IF;
+
+    -- 检查是否使用并行查询
+    IF p_query_text LIKE '%GROUP BY%' AND
+       p_query_text NOT LIKE '%max_parallel%' THEN
+        RETURN QUERY SELECT
+            'PARALLEL_QUERY'::TEXT,
+            '启用并行查询加速聚合计算'::TEXT,
+            '性能提升30-50%'::TEXT;
+    END IF;
+
+    RETURN;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '分析OLAP查询失败: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 执行查询分析
+SELECT * FROM analyze_olap_query('SELECT t.year, SUM(f.sales_amount) FROM fact_sales f JOIN dim_time t ON f.time_id = t.time_id GROUP BY t.year');
+```
 
 ---
 

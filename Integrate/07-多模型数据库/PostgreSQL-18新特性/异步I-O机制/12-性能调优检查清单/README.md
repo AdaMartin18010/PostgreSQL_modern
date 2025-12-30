@@ -10,9 +10,15 @@
 
 ## 📑 目录
 
-- [12.1 配置检查清单](#121-配置检查清单)
-- [12.2 性能调优检查清单表](#122-性能调优检查清单表)
-- [12.3 性能调优步骤](#123-性能调优步骤)
+- [12. 性能调优检查清单](#12-性能调优检查清单)
+  - [12. 性能调优检查清单](#12-性能调优检查清单-1)
+  - [📑 目录](#-目录)
+    - [12.1 配置检查清单](#121-配置检查清单)
+    - [12.2 性能调优检查清单表](#122-性能调优检查清单表)
+    - [12.3 性能调优步骤](#123-性能调优步骤)
+    - [12.4 性能问题诊断](#124-性能问题诊断)
+    - [12.5 性能优化建议](#125-性能优化建议)
+    - [12.6 性能监控仪表板](#126-性能监控仪表板)
 
 ---
 
@@ -119,5 +125,155 @@ ORDER BY test_time DESC;
 - **持续监控**: 调优后持续监控一段时间
 - **记录变更**: 记录所有配置变更和性能变化
 - **回滚准备**: 准备回滚方案以防性能下降
+
+### 12.4 性能问题诊断
+
+**常见性能问题**：
+
+| 问题 | 症状 | 可能原因 | 解决方案 |
+|------|------|---------|---------|
+| **I/O等待高** | I/O等待时间>20% | io_uring配置不当 | 增加io_uring_queue_depth |
+| **CPU利用率低** | CPU利用率<30% | I/O并发数不足 | 增加effective_io_concurrency |
+| **查询延迟高** | P99延迟>200ms | 索引缺失或配置不当 | 优化查询和索引 |
+| **连接数不足** | 连接数使用率>90% | max_connections设置过小 | 增加max_connections或使用连接池 |
+
+**诊断脚本**：
+
+```sql
+-- 综合性能诊断
+WITH performance_check AS (
+    SELECT
+        'I/O等待时间' AS metric,
+        CASE
+            WHEN (
+                SELECT SUM(io_wait_time)
+                FROM pg_stat_io
+                WHERE context = 'async'
+            ) / NULLIF(
+                SELECT SUM(io_wait_time + io_read_time + io_write_time)
+                FROM pg_stat_io
+                WHERE context = 'async'
+            , 1) * 100 > 20 THEN '❌ 过高'
+            ELSE '✅ 正常'
+        END AS status
+    UNION ALL
+    SELECT
+        'I/O并发数' AS metric,
+        CASE
+            WHEN (SELECT setting::int FROM pg_settings WHERE name = 'effective_io_concurrency') < 200 THEN '⚠️ 偏低'
+            WHEN (SELECT setting::int FROM pg_settings WHERE name = 'effective_io_concurrency') > 500 THEN '⚠️ 偏高'
+            ELSE '✅ 正常'
+        END AS status
+    UNION ALL
+    SELECT
+        '连接数使用率' AS metric,
+        CASE
+            WHEN (
+                SELECT COUNT(*) FROM pg_stat_activity
+            )::float / NULLIF(
+                (SELECT setting::int FROM pg_settings WHERE name = 'max_connections')
+            , 1) * 100 > 80 THEN '❌ 过高'
+            ELSE '✅ 正常'
+        END AS status
+)
+SELECT * FROM performance_check;
+```
+
+### 12.5 性能优化建议
+
+**优化优先级**：
+
+1. **P0 - 关键优化**（立即执行）
+   - [ ] 启用异步I/O（io_direct）
+   - [ ] 配置合理的I/O并发数
+   - [ ] 优化慢查询
+
+2. **P1 - 重要优化**（近期执行）
+   - [ ] 调整内存配置
+   - [ ] 优化索引策略
+   - [ ] 配置连接池
+
+3. **P2 - 可选优化**（长期规划）
+   - [ ] 升级硬件
+   - [ ] 优化应用层代码
+   - [ ] 实施读写分离
+
+**优化效果评估**：
+
+```sql
+-- 创建性能优化记录表
+CREATE TABLE IF NOT EXISTS performance_optimization_log (
+    id SERIAL PRIMARY KEY,
+    optimization_date TIMESTAMPTZ DEFAULT NOW(),
+    optimization_type TEXT,
+    before_value TEXT,
+    after_value TEXT,
+    performance_improvement NUMERIC,
+    notes TEXT
+);
+
+-- 记录优化效果
+INSERT INTO performance_optimization_log
+(optimization_type, before_value, after_value, performance_improvement, notes)
+VALUES
+('io_concurrency', '100', '300', 50.0, 'I/O并发数从100增加到300，性能提升50%');
+
+-- 查询优化历史
+SELECT
+    optimization_date,
+    optimization_type,
+    before_value,
+    after_value,
+    performance_improvement || '%' AS improvement,
+    notes
+FROM performance_optimization_log
+ORDER BY optimization_date DESC;
+```
+
+### 12.6 性能监控仪表板
+
+**监控指标查询**：
+
+```sql
+-- 创建性能监控视图
+CREATE OR REPLACE VIEW performance_dashboard AS
+SELECT
+    'I/O性能' AS category,
+    jsonb_build_object(
+        'io_wait_pct', ROUND(
+            (SELECT SUM(io_wait_time) FROM pg_stat_io WHERE context = 'async')::numeric /
+            NULLIF((SELECT SUM(io_wait_time + io_read_time + io_write_time)
+                    FROM pg_stat_io WHERE context = 'async'), 0) * 100, 2
+        ),
+        'io_reads', (SELECT SUM(reads) FROM pg_stat_io WHERE context = 'async'),
+        'io_writes', (SELECT SUM(writes) FROM pg_stat_io WHERE context = 'async')
+    ) AS metrics
+UNION ALL
+SELECT
+    '查询性能' AS category,
+    jsonb_build_object(
+        'avg_query_time', (
+            SELECT ROUND(AVG(mean_exec_time), 2)
+            FROM pg_stat_statements
+            WHERE calls > 100
+        ),
+        'slow_queries', (
+            SELECT COUNT(*)
+            FROM pg_stat_statements
+            WHERE mean_exec_time > 1000
+        )
+    ) AS metrics
+UNION ALL
+SELECT
+    '连接状态' AS category,
+    jsonb_build_object(
+        'active_connections', (SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active'),
+        'idle_connections', (SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'idle'),
+        'max_connections', (SELECT setting FROM pg_settings WHERE name = 'max_connections')
+    ) AS metrics;
+
+-- 查询监控仪表板
+SELECT * FROM performance_dashboard;
+```
 
 **返回**: [文档首页](../README.md) | [上一章节](../11-迁移指南/README.md) | [下一章节](../13-与其他特性集成/README.md)

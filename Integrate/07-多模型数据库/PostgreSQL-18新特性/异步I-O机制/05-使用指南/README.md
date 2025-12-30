@@ -10,9 +10,30 @@
 
 ## 📑 目录
 
-- [5.1.1 配置步骤](#511-配置步骤)
-- [5.2 JSONB 写入优化](#52-jsonb-写入优化)
-- [5.3 批量写入示例](#53-批量写入示例)
+- [5. 使用指南](#5-使用指南)
+  - [5. 使用指南](#5-使用指南-1)
+  - [📑 目录](#-目录)
+  - [5.1 启用异步 I/O](#51-启用异步-io)
+    - [5.1.1 配置步骤](#511-配置步骤)
+      - [5.1.2 验证配置](#512-验证配置)
+      - [5.1.3 配置建议](#513-配置建议)
+    - [5.2 JSONB 写入优化](#52-jsonb-写入优化)
+      - [5.2.1 传统同步写入](#521-传统同步写入)
+      - [5.2.2 异步写入优化](#522-异步写入优化)
+      - [5.2.3 最佳实践](#523-最佳实践)
+    - [5.3 批量写入示例](#53-批量写入示例)
+      - [5.3.1 Python 批量插入](#531-python-批量插入)
+      - [5.3.2 性能优化技巧](#532-性能优化技巧)
+      - [5.3.3 错误处理](#533-错误处理)
+    - [5.4 事务管理优化](#54-事务管理优化)
+      - [5.4.1 事务大小控制](#541-事务大小控制)
+      - [5.4.2 并发事务管理](#542-并发事务管理)
+    - [5.5 连接池配置](#55-连接池配置)
+      - [5.5.1 连接池大小](#551-连接池大小)
+      - [5.5.2 连接池监控](#552-连接池监控)
+    - [5.6 错误处理和重试](#56-错误处理和重试)
+      - [5.6.1 错误处理策略](#561-错误处理策略)
+      - [5.6.2 批量操作错误处理](#562-批量操作错误处理)
 
 ---
 
@@ -301,6 +322,202 @@ except psycopg2.Error as e:
     conn.rollback()
     print(f"❌ 插入失败: {e}")
     raise
+```
+
+### 5.4 事务管理优化
+
+#### 5.4.1 事务大小控制
+
+**事务大小建议**：
+
+```sql
+-- ✅ 推荐：合理的事务大小（1000-10000条）
+BEGIN;
+INSERT INTO documents (content, metadata)
+SELECT
+    jsonb_build_object('id', i, 'data', repeat('x', 1000)),
+    jsonb_build_object('batch', 1)
+FROM generate_series(1, 5000) i;
+COMMIT;
+
+-- ❌ 不推荐：过大的事务（可能导致锁竞争）
+BEGIN;
+INSERT INTO documents (content, metadata)
+SELECT
+    jsonb_build_object('id', i, 'data', repeat('x', 1000)),
+    jsonb_build_object('batch', 1)
+FROM generate_series(1, 1000000) i;  -- 太大
+COMMIT;
+```
+
+**事务性能对比**：
+
+| 事务大小 | 性能 | 锁竞争风险 | 推荐度 |
+|---------|------|-----------|--------|
+| **<100条** | 基准 | 低 | ⭐⭐ |
+| **1000条** | +50% | 低 | ⭐⭐⭐⭐ |
+| **10000条** | +100% | 中 | ⭐⭐⭐⭐⭐ |
+| **>100000条** | +150% | 高 | ⭐⭐ |
+
+#### 5.4.2 并发事务管理
+
+**并发事务配置**：
+
+```sql
+-- 配置最大连接数
+ALTER SYSTEM SET max_connections = 500;
+
+-- 配置工作内存（影响并发事务性能）
+ALTER SYSTEM SET work_mem = '64MB';
+
+-- 配置维护工作内存
+ALTER SYSTEM SET maintenance_work_mem = '1GB';
+```
+
+**并发事务示例**：
+
+```python
+import asyncio
+import asyncpg
+
+async def concurrent_transactions():
+    # 创建连接池
+    pool = await asyncpg.create_pool(
+        host='localhost',
+        database='testdb',
+        min_size=10,
+        max_size=50
+    )
+
+    async def execute_transaction(conn_id):
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO documents (content, metadata)
+                    VALUES ($1, $2)
+                    """,
+                    json.dumps({'id': conn_id}),
+                    json.dumps({'batch': conn_id})
+                )
+
+    # 并发执行多个事务
+    tasks = [execute_transaction(i) for i in range(100)]
+    await asyncio.gather(*tasks)
+```
+
+### 5.5 连接池配置
+
+#### 5.5.1 连接池大小
+
+**连接池配置建议**：
+
+| 应用类型 | 连接池大小 | 说明 |
+|---------|-----------|------|
+| **小型应用** | 10-20 | 低并发场景 |
+| **中型应用** | 20-50 | 中等并发场景 |
+| **大型应用** | 50-100 | 高并发场景 |
+| **超大型应用** | 100-200 | 超高并发场景 |
+
+**PgBouncer配置示例**：
+
+```ini
+[databases]
+mydb = host=localhost port=5432 dbname=mydb
+
+[pgbouncer]
+pool_mode = transaction
+max_client_conn = 1000
+default_pool_size = 100
+min_pool_size = 10
+reserve_pool_size = 5
+```
+
+#### 5.5.2 连接池监控
+
+**监控连接池使用情况**：
+
+```sql
+-- 查看当前连接数
+SELECT
+    COUNT(*) AS total_connections,
+    COUNT(*) FILTER (WHERE state = 'active') AS active_connections,
+    COUNT(*) FILTER (WHERE state = 'idle') AS idle_connections,
+    (SELECT setting FROM pg_settings WHERE name = 'max_connections') AS max_connections
+FROM pg_stat_activity
+WHERE datname = current_database();
+
+-- 查看连接等待情况
+SELECT
+    wait_event_type,
+    wait_event,
+    COUNT(*) AS wait_count
+FROM pg_stat_activity
+WHERE wait_event_type IS NOT NULL
+GROUP BY wait_event_type, wait_event
+ORDER BY wait_count DESC;
+```
+
+### 5.6 错误处理和重试
+
+#### 5.6.1 错误处理策略
+
+**错误处理示例**：
+
+```python
+import psycopg2
+from psycopg2 import errors
+import time
+
+def insert_with_retry(conn, data, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO documents (content, metadata) VALUES (%s, %s)",
+                (data['content'], data['metadata'])
+            )
+            conn.commit()
+            return True
+        except errors.DeadlockDetected:
+            if attempt < max_retries - 1:
+                time.sleep(0.1 * (2 ** attempt))  # 指数退避
+                continue
+            else:
+                raise
+        except errors.UniqueViolation:
+            # 唯一约束冲突，不需要重试
+            conn.rollback()
+            return False
+        except Exception as e:
+            conn.rollback()
+            raise
+    return False
+```
+
+#### 5.6.2 批量操作错误处理
+
+**批量操作错误处理**：
+
+```python
+def batch_insert_with_error_handling(conn, data_list):
+    successful = []
+    failed = []
+
+    for data in data_list:
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO documents (content, metadata) VALUES (%s, %s)",
+                (data['content'], data['metadata'])
+            )
+            conn.commit()
+            successful.append(data)
+        except Exception as e:
+            conn.rollback()
+            failed.append({'data': data, 'error': str(e)})
+
+    return successful, failed
 ```
 
 ---
