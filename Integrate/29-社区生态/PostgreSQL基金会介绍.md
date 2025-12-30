@@ -21,6 +21,21 @@
   - [5. 如何参与](#5-如何参与)
     - [5.1 参与方式](#51-参与方式)
     - [5.2 贡献渠道](#52-贡献渠道)
+  - [6. 代码贡献流程](#6-代码贡献流程)
+    - [6.1 贡献步骤](#61-贡献步骤)
+    - [6.2 补丁提交规范](#62-补丁提交规范)
+  - [7. 文档贡献](#7-文档贡献)
+    - [7.1 文档类型](#71-文档类型)
+    - [7.2 文档贡献流程](#72-文档贡献流程)
+  - [8. 社区支持](#8-社区支持)
+    - [8.1 技术支持](#81-技术支持)
+    - [8.2 Bug报告](#82-bug报告)
+  - [9. 资金支持](#9-资金支持)
+    - [9.1 支持方式](#91-支持方式)
+    - [9.2 资金用途](#92-资金用途)
+  - [10. 社区资源](#10-社区资源)
+    - [10.1 学习资源](#101-学习资源)
+    - [10.2 社区工具](#102-社区工具)
   - [📚 相关文档](#-相关文档)
 
 ---
@@ -322,15 +337,15 @@ PostgreSQL文档包括：
 
 **邮件列表支持**：
 
-- **pgsql-general@postgresql.org** - 一般技术问题
+- **<pgsql-general@postgresql.org>** - 一般技术问题
   - 使用问题、配置问题、性能问题
   - 适合：所有PostgreSQL用户
 
-- **pgsql-hackers@postgresql.org** - 开发讨论
+- **<pgsql-hackers@postgresql.org>** - 开发讨论
   - 功能开发、补丁讨论、技术设计
   - 适合：PostgreSQL开发者
 
-- **pgsql-admin@postgresql.org** - 管理问题
+- **<pgsql-admin@postgresql.org>** - 管理问题
   - 数据库管理、备份恢复、高可用
   - 适合：数据库管理员
 
@@ -405,25 +420,25 @@ PostgreSQL基金会接受多种形式的资金支持：
 
 **官方资源**：
 
-- **官方文档** - https://www.postgresql.org/docs/
-- **Wiki** - https://wiki.postgresql.org/
-- **Planet PostgreSQL** - https://planet.postgresql.org/
-- **PostgreSQL.org** - https://www.postgresql.org/
+- **官方文档** - <https://www.postgresql.org/docs/>
+- **Wiki** - <https://wiki.postgresql.org/>
+- **Planet PostgreSQL** - <https://planet.postgresql.org/>
+- **PostgreSQL.org** - <https://www.postgresql.org/>
 
 **中文资源**：
 
-- **PostgreSQL中文社区** - https://postgresql.ac.cn/
-- **中文文档** - https://postgresql.ac.cn/docs/
-- **中文Wiki** - https://wiki.postgresql.org.cn/
+- **PostgreSQL中文社区** - <https://postgresql.ac.cn/>
+- **中文文档** - <https://postgresql.ac.cn/docs/>
+- **中文Wiki** - <https://wiki.postgresql.org.cn/>
 
 ### 10.2 社区工具
 
 **开发工具**：
 
-- **Git仓库** - https://git.postgresql.org/
-- **邮件列表归档** - https://www.postgresql.org/list/
-- **Bug跟踪** - https://www.postgresql.org/support/submitbug/
-- **CI/CD** - https://buildfarm.postgresql.org/
+- **Git仓库** - <https://git.postgresql.org/>
+- **邮件列表归档** - <https://www.postgresql.org/list/>
+- **Bug跟踪** - <https://www.postgresql.org/support/submitbug/>
+- **CI/CD** - <https://buildfarm.postgresql.org/>
 
 **社区平台**：
 
