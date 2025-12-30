@@ -983,5 +983,3 @@ ORDER BY pg_database_size(datname) DESC;
 
 **最后更新**: 2025年1月
 **状态**: ✅ 完成
-
-```
