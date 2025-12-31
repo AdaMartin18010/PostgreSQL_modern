@@ -1256,10 +1256,70 @@ WHERE user_id IN (
 #### 方案1：添加索引
 
 ```sql
-CREATE INDEX users_country_idx ON users(country);
-CREATE INDEX orders_user_id_idx ON orders(user_id);
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
-ANALYZE users, orders;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'users' AND indexname = 'users_country_idx') THEN
+            CREATE INDEX users_country_idx ON users(country);
+            RAISE NOTICE '索引 users_country_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 users_country_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders' AND indexname = 'orders_user_id_idx') THEN
+            CREATE INDEX orders_user_id_idx ON orders(user_id);
+            RAISE NOTICE '索引 orders_user_id_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_user_id_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 更新统计信息（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '必需的表不存在，无法更新统计信息';
+            RETURN;
+        END IF;
+
+        ANALYZE users, orders;
+        RAISE NOTICE '统计信息更新成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '更新统计信息失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 性能提升：3000ms → 450ms
 ```
