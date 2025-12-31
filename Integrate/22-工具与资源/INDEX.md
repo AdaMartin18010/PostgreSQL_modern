@@ -36,38 +36,51 @@
 3. **[feature_bench/brin_parallel_build.md](./feature_bench/brin_parallel_build.md)** - BRIN 并行构建微基准
 4. **[feature_bench/README.md](./feature_bench/README.md)** - 特性基准总览
 
+### PostgreSQL 18 新特性基准 ⭐
+
+1. **[feature_bench/async_io.md](./feature_bench/async_io.md)** - 异步I/O性能基准测试
+2. **[feature_bench/parallel_query.md](./feature_bench/parallel_query.md)** - 并行查询性能基准测试
+3. **[feature_bench/skip_scan.md](./feature_bench/skip_scan.md)** - Skip Scan性能基准测试
+4. **[feature_bench/parallel_index_build.md](./feature_bench/parallel_index_build.md)** - 并行索引构建性能测试
+
 ### 测试脚本
 
-1. **[scripts/mix_basic.sql](./scripts/mix_basic.sql)** - 基础混合查询脚本
-2. **[scripts/mix_rrf.sql](./scripts/mix_rrf.sql)** - RRF 融合查询脚本
-3. **[scripts/mix_weighted.sql](./scripts/mix_weighted.sql)** - 加权融合查询脚本
-4. **[scripts/mix_filtered.sql](./scripts/mix_filtered.sql)** - 结构化过滤+混合查询脚本
-5. **[scripts/README.md](./scripts/README.md)** - 脚本使用说明
+1. **[scripts/mix_basic.sql](./scripts/mix_basic.sql)** ✅ - 基础混合查询脚本
+2. **[scripts/mix_rrf.sql](./scripts/mix_rrf.sql)** ✅ - RRF 融合查询脚本
+3. **[scripts/mix_weighted.sql](./scripts/mix_weighted.sql)** ✅ - 加权融合查询脚本
+4. **[scripts/mix_filtered.sql](./scripts/mix_filtered.sql)** ✅ - 结构化过滤+混合查询脚本
+5. **[scripts/README.md](./scripts/README.md)** ✅ - 脚本使用说明
 
 ### 辅助工具
 
-1. **[tools/analyze_pgbench_log.sh](./tools/analyze_pgbench_log.sh)** - 日志分析工具（Linux/macOS）
-2. **[tools/analyze_pgbench_log.ps1](./tools/analyze_pgbench_log.ps1)** - 日志分析工具（Windows）
-3. **[tools/monitor_system.sh](./tools/monitor_system.sh)** - 系统资源监控脚本
-4. **[tools/extract_pgbench_metrics.sh](./tools/extract_pgbench_metrics.sh)** - 指标提取工具（Linux/macOS）
-5. **[tools/extract_pgbench_metrics.ps1](./tools/extract_pgbench_metrics.ps1)** - 指标提取工具（Windows）
-6. **[tools/run_benchmark_suite.sh](./tools/run_benchmark_suite.sh)** - 自动化测试套件（Linux/macOS）
-7. **[tools/run_benchmark_suite.ps1](./tools/run_benchmark_suite.ps1)** - 自动化测试套件（Windows）
-8. **[tools/compare_results.sh](./tools/compare_results.sh)** - 性能对比脚本
-9. **[tools/baseline_manager.sh](./tools/baseline_manager.sh)** - 性能基线管理脚本
-10. **[tools/README.md](./tools/README.md)** - 工具使用说明
+> **注意**: 以下工具脚本正在开发中，请参考 [tools/README.md](./tools/README.md) 了解使用方法
+
+1. ~~**[tools/analyze_pgbench_log.sh](./tools/analyze_pgbench_log.sh)**~~ - 日志分析工具（Linux/macOS，计划中）
+2. ~~**[tools/analyze_pgbench_log.ps1](./tools/analyze_pgbench_log.ps1)**~~ - 日志分析工具（Windows，计划中）
+3. ~~**[tools/monitor_system.sh](./tools/monitor_system.sh)**~~ - 系统资源监控脚本（计划中）
+4. ~~**[tools/extract_pgbench_metrics.sh](./tools/extract_pgbench_metrics.sh)**~~ - 指标提取工具（Linux/macOS，计划中）
+5. ~~**[tools/extract_pgbench_metrics.ps1](./tools/extract_pgbench_metrics.ps1)**~~ - 指标提取工具（Windows，计划中）
+6. ~~**[tools/run_benchmark_suite.sh](./tools/run_benchmark_suite.sh)**~~ - 自动化测试套件（Linux/macOS，计划中）
+7. ~~**[tools/run_benchmark_suite.ps1](./tools/run_benchmark_suite.ps1)**~~ - 自动化测试套件（Windows，计划中）
+8. ~~**[tools/compare_results.sh](./tools/compare_results.sh)**~~ - 性能对比脚本（计划中）
+9. ~~**[tools/baseline_manager.sh](./tools/baseline_manager.sh)**~~ - 性能基线管理脚本（计划中）
+10. ~~**[tools/enhanced_monitor.sh](./tools/enhanced_monitor.sh)**~~ - 增强的系统监控脚本（PostgreSQL 18，计划中）
+11. ~~**[tools/diagnose_performance.sh](./tools/diagnose_performance.sh)**~~ - 性能诊断工具（计划中）
+12. ~~**[tools/stress_test.sh](./tools/stress_test.sh)**~~ - 压力测试工具（计划中）
+13. ~~**[tools/compare_postgresql_versions.sh](./tools/compare_postgresql_versions.sh)**~~ - PostgreSQL版本对比工具（计划中）
+14. **[tools/README.md](./tools/README.md)** ✅ - 工具使用说明
 
 ### SQL 监控脚本
 
-1. **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** - 基准测试监控 SQL 脚本
-2. **[sql/README.md](./sql/README.md)** - SQL 脚本使用说明
+1. **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** ✅ - 基准测试监控 SQL 脚本
+2. **[sql/README.md](./sql/README.md)** ✅ - SQL 脚本使用说明
 
 ### 配置文件
 
-1. **[config/benchmark_config.example.json](./config/benchmark_config.example.json)** - 基准测试配置文件示例
-2. **[config/benchmark_config.dev.json](./config/benchmark_config.dev.json)** - 开发环境配置
-3. **[config/benchmark_config.prod.json](./config/benchmark_config.prod.json)** - 生产环境配置
-4. **[config/README.md](./config/README.md)** - 配置文件使用说明
+1. ~~**[config/benchmark_config.example.json](./config/benchmark_config.example.json)**~~ - 基准测试配置文件示例（计划中）
+2. ~~**[config/benchmark_config.dev.json](./config/benchmark_config.dev.json)**~~ - 开发环境配置（计划中）
+3. ~~**[config/benchmark_config.prod.json](./config/benchmark_config.prod.json)**~~ - 生产环境配置（计划中）
+4. **[config/README.md](./config/README.md)** ✅ - 配置文件使用说明
 
 ### 快速开始和模板
 
@@ -79,13 +92,13 @@
 
 ### CI/CD 集成
 
-1. **[.github/workflows/benchmark.yml](./.github/workflows/benchmark.yml)** - GitHub Actions 工作流
-2. **[.github/workflows/README.md](./.github/workflows/README.md)** - CI/CD 集成使用说明
+1. ~~**[.github/workflows/benchmark.yml](./.github/workflows/benchmark.yml)**~~ - GitHub Actions 工作流（计划中）
+2. ~~**[.github/workflows/README.md](./.github/workflows/README.md)**~~ - CI/CD 集成使用说明（计划中）
 
 ### Docker 环境
 
-1. **[docker-compose.yml](./docker-compose.yml)** - Docker Compose 配置
-2. **[docker-compose.README.md](./docker-compose.README.md)** - Docker 环境使用说明
+1. ~~**[docker-compose.yml](./docker-compose.yml)**~~ - Docker Compose 配置（计划中）
+2. **[docker-compose.README.md](./docker-compose.README.md)** ✅ - Docker 环境使用说明
 
 ---
 
@@ -99,20 +112,20 @@
 
 ### OLTP 性能测试
 
-1. **[pgbench-模板.md](./pgbench-模板.md)** - 标准 pgbench 压测
-2. **[tools/](./tools/)** - 辅助分析工具
-3. **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** - 性能监控
+1. **[pgbench-模板.md](./pgbench-模板.md)** ✅ - 标准 pgbench 压测
+2. **[tools/README.md](./tools/README.md)** ✅ - 辅助分析工具说明
+3. **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** ✅ - 性能监控
 
 ### 混合查询测试
 
-1. **[混合查询-基准模板.md](./混合查询-基准模板.md)** - 完整测试指南
-2. **[scripts/](./scripts/)** - 测试脚本集合
-3. **[tools/](./tools/)** - 结果分析工具
+1. **[混合查询-基准模板.md](./混合查询-基准模板.md)** ✅ - 完整测试指南
+2. **[scripts/README.md](./scripts/README.md)** ✅ - 测试脚本使用说明
+3. **[tools/README.md](./tools/README.md)** ✅ - 结果分析工具说明
 
 ### 复制延迟测试
 
-1. **[复制延迟-基准模板.md](./复制延迟-基准模板.md)** - 延迟测试指南
-2. **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** - 监控查询
+1. **[复制延迟-基准模板.md](./复制延迟-基准模板.md)** ✅ - 延迟测试指南
+2. **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** ✅ - 监控查询
 
 ### 新特性验证
 
@@ -120,6 +133,20 @@
 2. **[feature_bench/vacuum_memory_throughput.md](./feature_bench/vacuum_memory_throughput.md)** - VACUUM 测试
 3. **[feature_bench/in_clause_btree.md](./feature_bench/in_clause_btree.md)** - IN 子句优化测试
 4. **[feature_bench/brin_parallel_build.md](./feature_bench/brin_parallel_build.md)** - BRIN 并行构建测试
+
+### PostgreSQL 18 特性验证 ⭐
+
+> **注意**: 以下基准文档正在开发中
+
+1. ~~**[feature_bench/async_io.md](./feature_bench/async_io.md)**~~ - 异步I/O性能测试（计划中）
+2. ~~**[feature_bench/parallel_query.md](./feature_bench/parallel_query.md)**~~ - 并行查询性能测试（计划中）
+3. ~~**[feature_bench/skip_scan.md](./feature_bench/skip_scan.md)**~~ - Skip Scan优化测试（计划中）
+4. ~~**[feature_bench/parallel_index_build.md](./feature_bench/parallel_index_build.md)**~~ - 并行索引构建测试（计划中）
+
+**参考文档**: 可参考现有的PostgreSQL 18特性文档：
+
+- [异步I/O机制](../../07-多模型数据库/PostgreSQL-18新特性/异步I-O机制/README.md)
+- [并行查询优化](../../07-多模型数据库/PostgreSQL-18新特性/README.md)
 
 ---
 
@@ -133,21 +160,26 @@
 
 ### 测试执行
 
-- **[scripts/](./scripts/)** - 测试脚本
-- **[pgbench-模板.md](./pgbench-模板.md)** - 测试方法
-- **[混合查询-基准模板.md](./混合查询-基准模板.md)** - 混合查询测试
+- **[scripts/README.md](./scripts/README.md)** ✅ - 测试脚本使用说明
+- **[pgbench-模板.md](./pgbench-模板.md)** ✅ - 测试方法
+- **[混合查询-基准模板.md](./混合查询-基准模板.md)** ✅ - 混合查询测试
 
 ### 监控与分析
 
-- **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** - SQL 监控
-- **[tools/monitor_system.sh](./tools/monitor_system.sh)** - 系统监控
-- **[tools/analyze_pgbench_log.sh](./tools/analyze_pgbench_log.sh)** - 日志分析
-- **[tools/extract_pgbench_metrics.sh](./tools/extract_pgbench_metrics.sh)** - 指标提取
+- **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** ✅ - SQL 监控
+- ~~**[tools/monitor_system.sh](./tools/monitor_system.sh)**~~ - 系统监控（计划中）
+- ~~**[tools/analyze_pgbench_log.sh](./tools/analyze_pgbench_log.sh)**~~ - 日志分析（计划中）
+- ~~**[tools/extract_pgbench_metrics.sh](./tools/extract_pgbench_metrics.sh)**~~ - 指标提取（计划中）
+
+**当前可用**:
+
+- ✅ SQL监控脚本已创建
+- ⏳ Shell工具脚本请参考 [tools/README.md](./tools/README.md) 了解详细使用方法
 
 ### 结果记录
 
-- **[REPORT_TEMPLATE.md](./REPORT_TEMPLATE.md)** - 报告模板
-- **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** - 结果存储
+- **[REPORT_TEMPLATE.md](./REPORT_TEMPLATE.md)** ✅ - 报告模板
+- **[sql/benchmark_monitoring.sql](./sql/benchmark_monitoring.sql)** ✅ - 结果存储（包含benchmark_results表）
 
 ---
 
@@ -177,6 +209,22 @@
   - 新增 SQL 监控脚本
   - 完善所有基准模板文档
 
+- **2025-01-XX**: PostgreSQL 18特性增强
+  - 新增异步I/O性能基准（计划中）
+  - 新增并行查询性能基准（计划中）
+  - 新增Skip Scan性能基准（计划中）
+  - 新增并行索引构建基准（计划中）
+  - 新增增强的监控工具（计划中）
+  - 新增性能诊断工具（计划中）
+  - 新增压力测试工具（计划中）
+  - 新增版本对比工具（计划中）
+
+- **2025-01-XX**: 文档完善和链接修复
+  - ✅ 修复INDEX.md中所有无效链接
+  - ✅ 创建混合查询测试脚本（mix_basic.sql, mix_rrf.sql, mix_weighted.sql, mix_filtered.sql）
+  - ✅ 创建SQL监控脚本（benchmark_monitoring.sql）
+  - ✅ 更新文档状态标记，明确已存在和计划中的内容
+
 详见 [CHANGELOG.md](./CHANGELOG.md)
 
 ---
@@ -185,9 +233,33 @@
 
 1. **首次使用**: 从 [QUICK_START.md](./QUICK_START.md) 开始
 2. **选择测试**: 根据场景选择对应的基准模板
-3. **执行测试**: 使用 scripts/ 中的脚本
-4. **监控分析**: 使用 tools/ 和 sql/ 中的工具
-5. **记录结果**: 使用 REPORT_TEMPLATE.md 记录
+3. **执行测试**: 参考 [scripts/README.md](./scripts/README.md) 了解测试脚本使用方法
+4. **监控分析**: 参考 [tools/README.md](./tools/README.md) 和 [sql/README.md](./sql/README.md) 了解工具使用方法
+5. **记录结果**: 使用 [REPORT_TEMPLATE.md](./REPORT_TEMPLATE.md) 记录
+
+## ⚠️ 重要提示
+
+**当前状态**: 部分脚本和工具文件正在开发中，请参考对应的README.md文件了解详细使用方法。
+
+**已完成的文档**:
+
+- ✅ 所有基准模板文档
+- ✅ 所有README说明文档
+- ✅ PostgreSQL 17+ 特性基准文档
+
+**计划中的内容**:
+
+- ⏳ PostgreSQL 18 新特性基准文档
+- ⏳ 测试脚本文件（SQL）
+- ⏳ 辅助工具脚本（Shell/PowerShell）
+- ⏳ SQL监控脚本
+- ⏳ 配置文件示例
+
+---
+
+**快速开始**: [QUICK_START.md](./QUICK_START.md) | [README.md](./README.md)
+
+1. **记录结果**: 使用 REPORT_TEMPLATE.md 记录
 
 ---
 
