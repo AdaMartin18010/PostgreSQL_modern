@@ -384,7 +384,23 @@ END $$;
 ### 3.1 问题现象
 
 ```sql
--- 用户登录查询慢
+-- 用户登录查询慢（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行用户登录查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试用户登录查询（执行时间：1200ms，表有100万行）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '用户登录查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT id, username, email, created_at
 FROM users
 WHERE email = 'alice@example.com';
@@ -1123,8 +1139,25 @@ WHERE u.created_at >= '2025-01-01';
 ### 5.4 JOIN优化技巧
 
 ```sql
--- 技巧1：避免JOIN大表，先过滤后JOIN
--- ❌ 坏
+-- 技巧1：避免JOIN大表，先过滤后JOIN（带错误处理和性能测试）
+-- ❌ 坏：先JOIN后过滤
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table1') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table2') THEN
+            RAISE WARNING '必需的表不存在，无法演示JOIN优化';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始演示JOIN优化（❌ 坏：先JOIN后过滤）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'JOIN优化演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM large_table1 t1
 JOIN large_table2 t2 ON t1.id = t2.ref_id
 WHERE t1.created_at >= '2025-01-01';
@@ -1454,34 +1487,134 @@ BEGIN
             RAISE;
     END;
 END $$;
-CREATE TABLE orders_2024_01 PARTITION OF orders
-    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
 
-CREATE TABLE orders_2024_02 PARTITION OF orders
-    FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+-- 创建其他分区（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '分区表 orders 不存在，无法创建分区';
+            RETURN;
+        END IF;
 
--- ...每月一个分区
+        -- 创建2024年1月分区
+        IF NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = 'orders'::regclass AND inhrelid::regclass::text = 'orders_2024_01') THEN
+            CREATE TABLE orders_2024_01 PARTITION OF orders
+            FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+            RAISE NOTICE '分区 orders_2024_01 创建成功';
+        END IF;
 
-CREATE TABLE orders_2025_01 PARTITION OF orders
-    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+        -- 创建2024年2月分区
+        IF NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = 'orders'::regclass AND inhrelid::regclass::text = 'orders_2024_02') THEN
+            CREATE TABLE orders_2024_02 PARTITION OF orders
+            FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+            RAISE NOTICE '分区 orders_2024_02 创建成功';
+        END IF;
 
--- 3. 为每个分区创建索引
-CREATE INDEX orders_2025_01_user_id_idx ON orders_2025_01(user_id);
-CREATE INDEX orders_2025_01_created_at_idx ON orders_2025_01(created_at);
+        -- ...每月一个分区（可根据需要继续添加）
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '分区表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '部分分区已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建分区失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 4. 自动化分区创建（使用pg_partman扩展）
-CREATE EXTENSION pg_partman;
+-- 3. 为每个分区创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders_2025_01') THEN
+            RAISE WARNING '分区 orders_2025_01 不存在，无法创建索引';
+            RETURN;
+        END IF;
 
-SELECT partman.create_parent(
-    p_parent_table => 'public.orders',
-    p_control => 'created_at',
-    p_type => 'native',
-    p_interval => 'monthly',
-    p_premake => 3  -- 提前创建3个月
-);
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders_2025_01' AND indexname = 'orders_2025_01_user_id_idx') THEN
+            CREATE INDEX orders_2025_01_user_id_idx ON orders_2025_01(user_id);
+            RAISE NOTICE '索引 orders_2025_01_user_id_idx 创建成功';
+        END IF;
 
--- 5. 查询（自动分区裁剪）
-EXPLAIN (ANALYZE, BUFFERS)
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'orders_2025_01' AND indexname = 'orders_2025_01_created_at_idx') THEN
+            CREATE INDEX orders_2025_01_created_at_idx ON orders_2025_01(created_at);
+            RAISE NOTICE '索引 orders_2025_01_created_at_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '分区不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '部分索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 4. 自动化分区创建（使用pg_partman扩展，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_partman') THEN
+            CREATE EXTENSION pg_partman;
+            RAISE NOTICE 'pg_partman扩展创建成功';
+        ELSE
+            RAISE NOTICE 'pg_partman扩展已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_object THEN
+            RAISE WARNING 'pg_partman扩展未安装，请先安装pg_partman扩展';
+            RETURN;
+        WHEN OTHERS THEN
+            RAISE WARNING '创建pg_partman扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法使用pg_partman创建父表';
+            RETURN;
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM partman.part_config WHERE parent_table = 'public.orders') THEN
+            RAISE WARNING '表 orders 已在pg_partman中配置';
+        ELSE
+            PERFORM partman.create_parent(
+                p_parent_table => 'public.orders',
+                p_control => 'created_at',
+                p_type => 'native',
+                p_interval => 'monthly',
+                p_premake => 3  -- 提前创建3个月
+            );
+            RAISE NOTICE 'pg_partman父表配置成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_function THEN
+            RAISE WARNING 'partman.create_parent函数不存在，请检查pg_partman扩展是否正确安装';
+        WHEN OTHERS THEN
+            RAISE WARNING '配置pg_partman父表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 5. 查询（自动分区裁剪，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行分区查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试分区查询（自动分区裁剪）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '分区查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE created_at >= '2025-01-01' AND created_at < '2025-02-01';
 
@@ -1525,7 +1658,23 @@ DROP TABLE orders_2023_01;
 ### 8.1 问题现象
 
 ```sql
--- 查询慢，但有索引且查询简单
+-- 查询慢，但有索引且查询简单（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '表 products 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试查询（EXPLAIN显示估算行数与实际相差巨大）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM products
 WHERE category = 'Electronics';
 
@@ -1555,11 +1704,50 @@ WHERE relname = 'products';
 ### 8.3 解决方案
 
 ```sql
--- 1. 手动更新统计信息
-ANALYZE products;
+-- 1. 手动更新统计信息（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '表 products 不存在，无法更新统计信息';
+            RETURN;
+        END IF;
 
--- 2. 更新所有表
-ANALYZE;
+        ANALYZE products;
+        RAISE NOTICE '表 products 的统计信息更新成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 products 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '更新统计信息失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 2. 更新所有表（带错误处理）
+DO $$
+DECLARE
+    table_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO table_count
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_type = 'BASE TABLE';
+
+        IF table_count = 0 THEN
+            RAISE WARNING 'public schema下没有表，无法更新统计信息';
+            RETURN;
+        END IF;
+
+        ANALYZE;
+        RAISE NOTICE '所有表的统计信息更新成功（共 % 个表）', table_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '更新所有表统计信息失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 3. 调整自动ANALYZE阈值（postgresql.conf）
 -- autovacuum_analyze_scale_factor = 0.1  # 默认10%变化才触发
@@ -1828,7 +2016,23 @@ ORDER BY calls DESC;
 ### 11.1 问题现象
 
 ```sql
--- 聚合查询慢
+-- 聚合查询慢（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table') THEN
+            RAISE WARNING '表 large_table 不存在，无法执行聚合查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试大表聚合查询（执行时间：120000ms，10亿行）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '聚合查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table;
 -- 执行时间：120000ms（2分钟），10亿行
 ```
@@ -1838,10 +2042,53 @@ SELECT COUNT(*) FROM large_table;
 #### 方案1：使用统计信息估算
 
 ```sql
--- ❌ 慢：精确计数
+-- ❌ 慢：精确计数（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table') THEN
+            RAISE WARNING '表 large_table 不存在，无法执行精确计数';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试精确计数（慢）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '精确计数准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table;
 
--- ✅ 快：估算（误差约2-5%）
+-- ✅ 快：估算（误差约2-5%，带错误处理和性能测试）
+DO $$
+DECLARE
+    estimate_count BIGINT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'large_table') THEN
+            RAISE WARNING '表 large_table 不存在，无法估算行数';
+            RETURN;
+        END IF;
+
+        SELECT reltuples::bigint INTO estimate_count
+        FROM pg_class
+        WHERE relname = 'large_table';
+
+        IF estimate_count IS NULL THEN
+            RAISE WARNING '无法获取表 large_table 的行数估算，可能需要运行ANALYZE';
+        ELSE
+            RAISE NOTICE '表 large_table 估算行数: %', estimate_count;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '估算行数失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT reltuples::bigint AS estimate
 FROM pg_class
 WHERE relname = 'large_table';
@@ -1852,45 +2099,159 @@ WHERE relname = 'large_table';
 #### 方案2：缓存计数器
 
 ```sql
--- 创建计数器表
-CREATE TABLE table_counters (
-    table_name TEXT PRIMARY KEY,
-    count BIGINT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 创建计数器表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table_counters') THEN
+            RAISE NOTICE '表 table_counters 已存在';
+        ELSE
+            CREATE TABLE table_counters (
+                table_name TEXT PRIMARY KEY,
+                count BIGINT NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            RAISE NOTICE '计数器表 table_counters 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '表 table_counters 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建计数器表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 触发器维护计数
+-- 触发器维护计数（带完整错误处理）
 CREATE OR REPLACE FUNCTION update_large_table_count()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF TG_OP = 'INSERT' THEN
-        INSERT INTO table_counters (table_name, count)
-        VALUES ('large_table', 1)
-        ON CONFLICT (table_name) DO UPDATE
-        SET count = table_counters.count + 1, updated_at = NOW();
-    ELSIF TG_OP = 'DELETE' THEN
-        UPDATE table_counters
-        SET count = count - 1, updated_at = NOW()
-        WHERE table_name = 'large_table';
-    END IF;
-    RETURN NULL;
+    BEGIN
+        IF TG_OP = 'INSERT' THEN
+            INSERT INTO table_counters (table_name, count)
+            VALUES ('large_table', 1)
+            ON CONFLICT (table_name) DO UPDATE
+            SET count = table_counters.count + 1, updated_at = NOW();
+        ELSIF TG_OP = 'DELETE' THEN
+            UPDATE table_counters
+            SET count = count - 1, updated_at = NOW()
+            WHERE table_name = 'large_table';
+        END IF;
+        RETURN NULL;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '更新计数器失败: %', SQLERRM;
+            RETURN NULL;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER large_table_count_trigger
-AFTER INSERT OR DELETE ON large_table
-FOR EACH ROW EXECUTE FUNCTION update_large_table_count();
+-- 创建触发器（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table') THEN
+            RAISE WARNING '表 large_table 不存在，无法创建触发器';
+            RETURN;
+        END IF;
 
--- 查询计数（瞬间返回）
+        IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'large_table_count_trigger') THEN
+            RAISE WARNING '触发器 large_table_count_trigger 已存在';
+        ELSE
+            CREATE TRIGGER large_table_count_trigger
+            AFTER INSERT OR DELETE ON large_table
+            FOR EACH ROW EXECUTE FUNCTION update_large_table_count();
+            RAISE NOTICE '触发器 large_table_count_trigger 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 large_table 不存在';
+        WHEN undefined_function THEN
+            RAISE WARNING '函数 update_large_table_count 不存在，请先创建函数';
+        WHEN duplicate_object THEN
+            RAISE WARNING '触发器 large_table_count_trigger 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建触发器失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 查询计数（瞬间返回，带错误处理和性能测试）
+DO $$
+DECLARE
+    counter_value BIGINT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table_counters') THEN
+            RAISE WARNING '表 table_counters 不存在，无法查询计数';
+            RETURN;
+        END IF;
+
+        SELECT count INTO counter_value
+        FROM table_counters
+        WHERE table_name = 'large_table';
+
+        IF counter_value IS NULL THEN
+            RAISE WARNING '表 large_table 的计数器不存在，可能需要初始化';
+        ELSE
+            RAISE NOTICE '表 large_table 的计数: %', counter_value;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询计数失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT count FROM table_counters WHERE table_name = 'large_table';
 ```
 
 #### 方案3：分区+并行聚合
 
 ```sql
--- 对于必须精确计数的场景，使用分区+并行
-SET max_parallel_workers_per_gather = 8;
+-- 对于必须精确计数的场景，使用分区+并行（带错误处理）
+DO $$
+DECLARE
+    current_setting_val TEXT;
+BEGIN
+    BEGIN
+        SELECT setting INTO current_setting_val
+        FROM pg_settings
+        WHERE name = 'max_parallel_workers_per_gather';
 
+        IF current_setting_val IS NULL THEN
+            RAISE WARNING '无法获取max_parallel_workers_per_gather设置';
+        ELSE
+            RAISE NOTICE '当前max_parallel_workers_per_gather: %', current_setting_val;
+        END IF;
+
+        SET max_parallel_workers_per_gather = 8;
+        RAISE NOTICE 'max_parallel_workers_per_gather已设置为8';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置并行工作进程数失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：分区+并行计数（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table_partitioned') THEN
+            RAISE WARNING '表 large_table_partitioned 不存在，无法执行并行计数';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始测试分区+并行计数（并行扫描多个分区，显著加速）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行计数准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table_partitioned;
 -- 并行扫描多个分区，显著加速
 ```
@@ -2285,4 +2646,5 @@ max_connections = 200
 **版本历史**:
 
 - v1.0 (2025-01): 初始版本，包含12个核心优化案例
+
 ```
