@@ -19,7 +19,8 @@
 
 ## 1. 概述
 
-BPMN（Business Process Model and Notation）是OMG组织维护的业务流程建模标准。BPMN 2.0定义了完整的业务流程建模语言，支持流程定义、执行和监控。
+BPMN（Business Process Model and Notation）是OMG组织维护的业务流程建模标准。
+BPMN 2.0定义了完整的业务流程建模语言，支持流程定义、执行和监控。
 
 ---
 
@@ -28,6 +29,7 @@ BPMN（Business Process Model and Notation）是OMG组织维护的业务流程�
 ### 2.1 流程定义
 
 **核心概念**:
+
 - Process（流程）
 - Task（任务）
 - Gateway（网关）
@@ -57,6 +59,7 @@ CREATE TABLE bpmn_process_definition (
 ## 4. 工作流引擎集成
 
 **推荐引擎**:
+
 - Camunda
 - Activiti
 - Flowable
@@ -65,8 +68,8 @@ CREATE TABLE bpmn_process_definition (
 
 ## 5. 相关资源
 
-- OMG BPMN 2.0标准: https://www.omg.org/spec/BPMN/2.0/
-- Camunda文档: https://docs.camunda.org/
+- OMG BPMN 2.0标准: <https://www.omg.org/spec/BPMN/2.0/>
+- Camunda文档: <https://docs.camunda.org/>
 
 ---
 

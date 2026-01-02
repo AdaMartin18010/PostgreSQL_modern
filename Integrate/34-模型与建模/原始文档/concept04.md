@@ -48,7 +48,7 @@ graph TD
 ### 2.1 数据类型能力矩阵（vs MySQL/MongoDB/Snowflake）
 
 | 类型维度 | PostgreSQL | MySQL 8.0 | MongoDB 7 | Snowflake | **优势证明** |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | **数值精度** | ✅ NUMERIC(任意精度)<br>✅ BIGINT/INT8 | ⚠️ DECIMAL(65位上限)<br>⚠️ 无INT8 | ❌ 仅Double<br>❌ 精度丢失 | ✅ NUMBER(38位) | 金融场景：计算`99999999999999999.999999999`时，PG精确，MongoDB约等于`1.0e17` |
 | **字符串** | ✅ TEXT无限制<br>✅ 字符集自动转换 | ⚠️ VARCHAR(65535)<br>⚠️ 需指定字符集 | ✅ 无限制 | ⚠️ VARCHAR(16MB) | 存储日志：PG的TEXT比MySQL MEDIUMTEXT快**30%**，因无长度检查开销 |
 | **JSON能力** | ✅ JSONB二进制+GIN<br>✅ 路径索引 | ⚠️ JSON类型弱<br>❌ 无原生索引 | ✅ BSON原生支持<br>✅ 灵活 | ⚠️ VARIANT类型 | 查询性能：JSONB路径查询比MySQL快**50倍**，比MongoDB快**2倍**（因B-Tree索引效率） |
@@ -64,7 +64,7 @@ graph TD
 ### 2.2 索引机制对比矩阵（空间 vs 时间复杂度）
 
 | 索引类型 | 时间复杂度 | 空间占用 | 适用场景 | **数学证明** | 维护成本 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | **B-Tree** | O(log n)搜索<br>O(n)范围扫描 | 1.2×数据量 | 等值、范围查询 | 高度h=logₜ(n+1)，t=分支因子(≈100)，1000万数据仅需h=4次I/O | 低 |
 | **GIN** | O(k)倒排+位图<br>k=关键词数 | 0.5×数据量 | JSONB、全文检索 | 倒排长度k服从Zipf分布，Top 100词覆盖80%查询 | 中（写入慢2倍） |
 | **GIST** | O(log n) R-Tree<br>平均O(k)搜索 | 1.5×数据量 | 空间、范围类型 | R-Tree节点覆盖面积最小化问题，PG使用GiST分裂算法优化 | 中 |
@@ -104,7 +104,7 @@ BRIN: 仅更新元数据 -> 0.1ms
 
 **SSI实现证明**：
 
-```
+```text
 PostgreSQL使用Serializable Snapshot Isolation (SSI)，通过读取序列化图检测写偏斜：
 - 维护rw-conflicts有向图
 - 检测环：O(V+E)复杂度，V=事务数，E=冲突边
@@ -146,7 +146,7 @@ graph TD
 
 **数学模型**：
 
-```
+```text
 总得分 = α×(TPS/CPUs) + β×(1/查询延迟) + γ×ln(数据规模) - δ×(范式级别+运维工时)
 
 权重建议：
