@@ -30,10 +30,20 @@
     - [6.1 时间范围查询](#61-时间范围查询)
     - [6.2 使用连续聚合](#62-使用连续聚合)
     - [6.3 使用Gap-filling](#63-使用gap-filling)
-  - [7. 最佳实践](#7-最佳实践)
-    - [7.1 设计原则](#71-设计原则)
-    - [7.2 性能优化](#72-性能优化)
-  - [8. 相关资源](#8-相关资源)
+  - [7. 高级特性与优化](#7-高级特性与优化)
+    - [7.1 分布式Hypertable（多节点）](#71-分布式hypertable多节点)
+    - [7.2 压缩深度优化](#72-压缩深度优化)
+    - [7.3 连续聚合高级配置](#73-连续聚合高级配置)
+    - [7.4 性能监控与诊断](#74-性能监控与诊断)
+    - [7.5 故障排查与优化](#75-故障排查与优化)
+  - [8. 实际应用案例](#8-实际应用案例)
+    - [8.1 IoT传感器监控系统](#81-iot传感器监控系统)
+    - [8.2 金融交易数据存储](#82-金融交易数据存储)
+  - [9. 最佳实践总结](#9-最佳实践总结)
+    - [9.1 设计原则](#91-设计原则)
+    - [9.2 性能优化](#92-性能优化)
+    - [9.3 监控与维护](#93-监控与维护)
+  - [10. 相关资源](#10-相关资源)
 
 ---
 
@@ -375,60 +385,660 @@ ORDER BY bucket;
 
 ---
 
-## 7. 最佳实践
+## 7. 高级特性与优化
 
-### 7.1 设计原则
+### 7.1 分布式Hypertable（多节点）
 
-**原则1: 选择合适的chunk时间间隔**:
+**TimescaleDB多节点架构**:
 
-- 高频数据（秒级）：1天
-- 中频数据（分钟级）：1周
-- 低频数据（小时级）：1月
+```sql
+-- 1. 创建访问节点（Access Node）
+-- 在访问节点上创建分布式Hypertable
+SELECT create_distributed_hypertable(
+    'sensor_readings',
+    'time',
+    chunk_time_interval => INTERVAL '1 day',
+    replication_factor => 2  -- 每个chunk复制2份
+);
 
-**原则2: 使用连续聚合预计算**:
+-- 2. 添加数据节点（Data Node）
+SELECT add_data_node('dn1', host => 'dn1.example.com');
+SELECT add_data_node('dn2', host => 'dn2.example.com');
+SELECT add_data_node('dn3', host => 'dn3.example.com');
 
-- 创建多级聚合（小时、天、周）
-- 减少实时查询计算量
+-- 3. 查看数据节点状态
+SELECT * FROM timescaledb_information.data_nodes;
 
-**原则3: 配置数据保留策略**:
+-- 4. 查看chunk分布
+SELECT
+    chunk_name,
+    data_nodes,
+    range_start,
+    range_end
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'sensor_readings';
+```
 
-- 原始数据保留30-90天
-- 聚合数据保留1-2年
+**分布式查询优化**:
+
+```sql
+-- 启用查询并行化
+SET timescaledb.enable_parallel_chunk_append = true;
+
+-- 分布式聚合查询
+SELECT
+    device_id,
+    AVG(value) AS avg_value,
+    COUNT(*) AS count
+FROM sensor_readings
+WHERE time >= NOW() - INTERVAL '24 hours'
+GROUP BY device_id;
+```
 
 ---
 
-### 7.2 性能优化
+### 7.2 压缩深度优化
+
+**压缩策略选择**:
+
+```sql
+-- 1. 按设备压缩（segmentby）
+ALTER TABLE sensor_readings SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id, sensor_type',
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+-- 2. 查看压缩效果
+SELECT
+    chunk_name,
+    pg_size_pretty(before_compression_total_bytes) AS uncompressed,
+    pg_size_pretty(after_compression_total_bytes) AS compressed,
+    ROUND(100.0 * (1 - after_compression_total_bytes::NUMERIC / before_compression_total_bytes), 2) AS compression_ratio_pct,
+    numrows_pre_compression,
+    numrows_post_compression
+FROM timescaledb_information.compressed_chunk_stats
+WHERE hypertable_name = 'sensor_readings'
+ORDER BY compression_ratio_pct DESC;
+
+-- 3. 压缩性能测试
+EXPLAIN ANALYZE
+SELECT AVG(value)
+FROM sensor_readings
+WHERE device_id = 123
+  AND time >= NOW() - INTERVAL '30 days';
+```
+
+**压缩最佳实践**:
+
+- **segmentby选择**: 选择查询中经常一起过滤的列（如device_id）
+- **orderby选择**: 选择时间列，按时间顺序压缩
+- **压缩时机**: 数据写入7天后压缩，平衡查询性能和压缩率
+- **压缩率目标**: 时序数据通常可达到10:1到50:1的压缩比
+
+---
+
+### 7.3 连续聚合高级配置
+
+**多级聚合策略**:
+
+```sql
+-- 1. 小时级聚合
+CREATE MATERIALIZED VIEW sensor_readings_hourly
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 hour', time) AS bucket,
+    device_id,
+    sensor_type,
+    AVG(value) AS avg_value,
+    MIN(value) AS min_value,
+    MAX(value) AS max_value,
+    STDDEV(value) AS stddev_value,
+    COUNT(*) AS reading_count,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value) AS median_value,
+    PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY value) AS p95_value
+FROM sensor_readings
+GROUP BY bucket, device_id, sensor_type;
+
+-- 2. 天级聚合（基于小时级聚合）
+CREATE MATERIALIZED VIEW sensor_readings_daily
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 day', bucket) AS bucket,
+    device_id,
+    sensor_type,
+    AVG(avg_value) AS avg_value,
+    MIN(min_value) AS min_value,
+    MAX(max_value) AS max_value,
+    SUM(reading_count) AS total_readings
+FROM sensor_readings_hourly
+GROUP BY bucket, device_id, sensor_type;
+
+-- 3. 配置刷新策略
+SELECT add_continuous_aggregate_policy(
+    'sensor_readings_hourly',
+    start_offset => INTERVAL '3 hours',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour',
+    if_not_exists => true
+);
+
+SELECT add_continuous_aggregate_policy(
+    'sensor_readings_daily',
+    start_offset => INTERVAL '3 days',
+    end_offset => INTERVAL '1 day',
+    schedule_interval => INTERVAL '1 day',
+    if_not_exists => true
+);
+```
+
+**实时聚合与物化聚合混合**:
+
+```sql
+-- 创建实时聚合（自动合并物化数据和实时数据）
+CREATE MATERIALIZED VIEW sensor_readings_hourly_realtime
+WITH (
+    timescaledb.continuous,
+    timescaledb.materialized_only = false  -- 启用实时聚合
+) AS
+SELECT
+    time_bucket('1 hour', time) AS bucket,
+    device_id,
+    AVG(value) AS avg_value,
+    COUNT(*) AS reading_count
+FROM sensor_readings
+GROUP BY bucket, device_id;
+
+-- 查询时自动使用物化数据（历史）+ 实时数据（最新）
+SELECT * FROM sensor_readings_hourly_realtime
+WHERE bucket >= NOW() - INTERVAL '7 days'
+  AND device_id = 123
+ORDER BY bucket DESC;
+```
+
+---
+
+### 7.4 性能监控与诊断
+
+**Chunk健康检查**:
+
+```sql
+-- 1. 查看chunk大小分布
+SELECT
+    chunk_name,
+    range_start,
+    range_end,
+    pg_size_pretty(total_bytes) AS size,
+    num_rows,
+    ROUND(total_bytes::NUMERIC / NULLIF(num_rows, 0), 2) AS bytes_per_row
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'sensor_readings'
+ORDER BY total_bytes DESC
+LIMIT 20;
+
+-- 2. 识别大chunk（可能需要调整chunk_time_interval）
+SELECT
+    chunk_name,
+    pg_size_pretty(total_bytes) AS size,
+    range_start,
+    range_end,
+    EXTRACT(EPOCH FROM (range_end - range_start)) / 3600 AS hours_span
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'sensor_readings'
+  AND total_bytes > 1073741824  -- 大于1GB
+ORDER BY total_bytes DESC;
+
+-- 3. 查看压缩chunk统计
+SELECT
+    chunk_name,
+    pg_size_pretty(before_compression_total_bytes) AS uncompressed,
+    pg_size_pretty(after_compression_total_bytes) AS compressed,
+    ROUND(100.0 * (1 - after_compression_total_bytes::NUMERIC / before_compression_total_bytes), 2) AS compression_ratio_pct
+FROM timescaledb_information.compressed_chunk_stats
+WHERE hypertable_name = 'sensor_readings'
+ORDER BY compression_ratio_pct DESC;
+```
+
+**查询性能分析**:
+
+```sql
+-- 1. 启用查询计划分析
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+SELECT
+    device_id,
+    AVG(value) AS avg_value
+FROM sensor_readings
+WHERE time >= NOW() - INTERVAL '24 hours'
+GROUP BY device_id;
+
+-- 2. 检查分区剪枝是否生效
+EXPLAIN (ANALYZE)
+SELECT * FROM sensor_readings
+WHERE time >= NOW() - INTERVAL '1 day'
+  AND device_id = 123;
+-- 应该看到 "Chunks excluded: X" 表示分区剪枝生效
+
+-- 3. 查看连续聚合刷新状态
+SELECT
+    view_name,
+    last_run_started_at,
+    last_successful_finish,
+    last_run_status,
+    job_status,
+    next_start
+FROM timescaledb_information.jobs
+WHERE proc_name = 'policy_refresh_continuous_aggregate'
+ORDER BY last_run_started_at DESC;
+```
+
+**写入性能监控**:
+
+```sql
+-- 1. 监控写入速率
+SELECT
+    time_bucket('1 minute', time) AS minute,
+    COUNT(*) AS inserts_per_minute,
+    COUNT(DISTINCT device_id) AS unique_devices
+FROM sensor_readings
+WHERE time >= NOW() - INTERVAL '1 hour'
+GROUP BY minute
+ORDER BY minute DESC;
+
+-- 2. 检查chunk创建频率
+SELECT
+    chunk_name,
+    range_start,
+    range_end,
+    created_at
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'sensor_readings'
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+---
+
+### 7.5 故障排查与优化
+
+**常见问题1: Chunk过多导致性能下降**
+
+```sql
+-- 问题：chunk_time_interval设置过小，导致chunk过多
+-- 诊断：查看chunk数量
+SELECT COUNT(*) AS chunk_count
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'sensor_readings';
+
+-- 解决：合并小chunk（需要重新创建hypertable）
+-- 1. 导出数据
+COPY sensor_readings TO '/tmp/sensor_readings_backup.csv';
+
+-- 2. 删除hypertable
+DROP TABLE sensor_readings CASCADE;
+
+-- 3. 重新创建hypertable（使用更大的chunk_time_interval）
+CREATE TABLE sensor_readings (...);
+SELECT create_hypertable(
+    'sensor_readings',
+    'time',
+    chunk_time_interval => INTERVAL '7 days'  -- 从1天改为7天
+);
+
+-- 4. 导入数据
+COPY sensor_readings FROM '/tmp/sensor_readings_backup.csv';
+```
+
+**常见问题2: 连续聚合刷新失败**
+
+```sql
+-- 诊断：查看失败的任务
+SELECT
+    job_id,
+    proc_name,
+    scheduled,
+    last_run_started_at,
+    last_run_status,
+    last_run_duration,
+    last_run_status_change,
+    last_successful_finish,
+    last_finish_status,
+    last_error_message
+FROM timescaledb_information.jobs
+WHERE last_run_status = 'failed'
+ORDER BY last_run_started_at DESC;
+
+-- 解决：手动刷新连续聚合
+CALL refresh_continuous_aggregate('sensor_readings_hourly', NULL, NULL);
+
+-- 或者修复策略
+SELECT alter_job(
+    job_id,
+    schedule_interval => INTERVAL '2 hours',  -- 降低刷新频率
+    max_runtime => INTERVAL '30 minutes'      -- 增加超时时间
+);
+```
+
+**常见问题3: 压缩策略未执行**
+
+```sql
+-- 诊断：查看压缩任务状态
+SELECT
+    job_id,
+    proc_name,
+    scheduled,
+    last_run_started_at,
+    last_run_status,
+    config
+FROM timescaledb_information.jobs
+WHERE proc_name = 'policy_compression';
+
+-- 解决：手动触发压缩
+SELECT compress_chunk(chunk)
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'sensor_readings'
+  AND is_compressed = false
+  AND range_end < NOW() - INTERVAL '7 days'
+LIMIT 10;
+
+-- 或者调整压缩策略
+SELECT alter_job(
+    job_id,
+    schedule_interval => INTERVAL '1 hour'  -- 更频繁执行
+);
+```
+
+---
+
+## 8. 实际应用案例
+
+### 8.1 IoT传感器监控系统
+
+**场景**: 1000个传感器，每秒采集一次数据，需要实时监控和历史分析。
+
+**数据模型设计**:
+
+```sql
+-- 1. 创建传感器数据表
+CREATE TABLE sensor_metrics (
+    time TIMESTAMPTZ NOT NULL,
+    sensor_id INT NOT NULL,
+    metric_type VARCHAR(50) NOT NULL,
+    value DOUBLE PRECISION NOT NULL,
+    quality INT DEFAULT 100,
+    metadata JSONB DEFAULT '{}'
+);
+
+-- 2. 创建Hypertable
+SELECT create_hypertable(
+    'sensor_metrics',
+    'time',
+    chunk_time_interval => INTERVAL '1 day',
+    if_not_exists => true
+);
+
+-- 3. 创建索引
+CREATE INDEX idx_sensor_metrics_sensor_time
+ON sensor_metrics(sensor_id, time DESC);
+CREATE INDEX idx_sensor_metrics_type_time
+ON sensor_metrics(metric_type, time DESC);
+
+-- 4. 创建实时聚合（1分钟）
+CREATE MATERIALIZED VIEW sensor_metrics_1min
+WITH (timescaledb.continuous, timescaledb.materialized_only = false) AS
+SELECT
+    time_bucket('1 minute', time) AS bucket,
+    sensor_id,
+    metric_type,
+    AVG(value) AS avg_value,
+    MIN(value) AS min_value,
+    MAX(value) AS max_value,
+    COUNT(*) AS sample_count
+FROM sensor_metrics
+GROUP BY bucket, sensor_id, metric_type;
+
+-- 5. 创建小时聚合
+CREATE MATERIALIZED VIEW sensor_metrics_1hour
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 hour', bucket) AS bucket,
+    sensor_id,
+    metric_type,
+    AVG(avg_value) AS avg_value,
+    MIN(min_value) AS min_value,
+    MAX(max_value) AS max_value,
+    SUM(sample_count) AS total_samples
+FROM sensor_metrics_1min
+GROUP BY bucket, sensor_id, metric_type;
+
+-- 6. 配置压缩（7天前数据压缩）
+ALTER TABLE sensor_metrics SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'sensor_id, metric_type',
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+SELECT add_compression_policy(
+    'sensor_metrics',
+    INTERVAL '7 days'
+);
+
+-- 7. 配置保留策略（原始数据保留90天）
+SELECT add_retention_policy(
+    'sensor_metrics',
+    INTERVAL '90 days'
+);
+
+-- 8. 配置聚合刷新策略
+SELECT add_continuous_aggregate_policy(
+    'sensor_metrics_1min',
+    start_offset => INTERVAL '3 hours',
+    end_offset => INTERVAL '1 minute',
+    schedule_interval => INTERVAL '1 minute'
+);
+
+SELECT add_continuous_aggregate_policy(
+    'sensor_metrics_1hour',
+    start_offset => INTERVAL '3 days',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour'
+);
+```
+
+**性能指标**:
+
+- **写入性能**: 100,000行/秒
+- **查询性能**:
+  - 实时查询（最近1小时）: < 100ms
+  - 历史查询（90天）: < 1s（使用连续聚合）
+- **压缩率**: 15:1（原始数据压缩后）
+- **存储成本**: 降低85%
+
+---
+
+### 8.2 金融交易数据存储
+
+**场景**: 高频交易系统，每秒百万级交易记录，需要快速查询和长期存储。
+
+**数据模型设计**:
+
+```sql
+-- 1. 创建交易表
+CREATE TABLE trades (
+    time TIMESTAMPTZ NOT NULL,
+    symbol VARCHAR(20) NOT NULL,
+    exchange VARCHAR(10) NOT NULL,
+    price DECIMAL(20, 8) NOT NULL,
+    volume DECIMAL(20, 8) NOT NULL,
+    trade_type CHAR(1) NOT NULL,  -- 'B' buy, 'S' sell
+    trade_id BIGINT NOT NULL
+);
+
+-- 2. 创建Hypertable（按小时分区，高频数据）
+SELECT create_hypertable(
+    'trades',
+    'time',
+    chunk_time_interval => INTERVAL '1 hour',  -- 高频数据使用小chunk
+    if_not_exists => true
+);
+
+-- 3. 创建索引
+CREATE INDEX idx_trades_symbol_time ON trades(symbol, time DESC);
+CREATE INDEX idx_trades_exchange_time ON trades(exchange, time DESC);
+CREATE INDEX idx_trades_trade_id ON trades(trade_id);
+
+-- 4. 创建秒级聚合（用于实时监控）
+CREATE MATERIALIZED VIEW trades_1sec
+WITH (timescaledb.continuous, timescaledb.materialized_only = false) AS
+SELECT
+    time_bucket('1 second', time) AS bucket,
+    symbol,
+    exchange,
+    COUNT(*) AS trade_count,
+    SUM(volume) AS total_volume,
+    AVG(price) AS avg_price,
+    MIN(price) AS min_price,
+    MAX(price) AS max_price,
+    FIRST(price, time) AS open_price,
+    LAST(price, time) AS close_price
+FROM trades
+GROUP BY bucket, symbol, exchange;
+
+-- 5. 创建分钟级聚合（用于K线图）
+CREATE MATERIALIZED VIEW trades_1min
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 minute', bucket) AS bucket,
+    symbol,
+    exchange,
+    SUM(trade_count) AS total_trades,
+    SUM(total_volume) AS total_volume,
+    AVG(avg_price) AS avg_price,
+    MIN(min_price) AS min_price,
+    MAX(max_price) AS max_price,
+    FIRST(open_price, bucket) AS open_price,
+    LAST(close_price, bucket) AS close_price
+FROM trades_1sec
+GROUP BY bucket, symbol, exchange;
+
+-- 6. 配置压缩（1天前数据压缩）
+ALTER TABLE trades SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'symbol, exchange',
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+SELECT add_compression_policy(
+    'trades',
+    INTERVAL '1 day'
+);
+
+-- 7. 配置保留策略（原始数据保留1年）
+SELECT add_retention_policy(
+    'trades',
+    INTERVAL '1 year'
+);
+```
+
+---
+
+## 9. 最佳实践总结
+
+### 9.1 设计原则
+
+**原则1: 选择合适的chunk时间间隔**
+
+| 数据频率 | 推荐chunk间隔 | 原因 |
+|---------|--------------|------|
+| 秒级（>1000/s） | 1小时 | 避免chunk过大，提高查询性能 |
+| 分钟级（10-1000/s） | 1天 | 平衡chunk数量和查询性能 |
+| 小时级（<10/s） | 1周或1月 | 减少chunk数量，提高管理效率 |
+
+**原则2: 使用连续聚合预计算**
+
+- **多级聚合**: 创建秒级、分钟级、小时级、天级聚合
+- **实时聚合**: 最新数据使用实时聚合，历史数据使用物化聚合
+- **聚合策略**: 根据查询模式选择聚合粒度
+
+**原则3: 配置数据保留策略**
+
+- **原始数据**: 保留30-90天（根据业务需求）
+- **聚合数据**: 保留1-2年（用于长期分析）
+- **压缩数据**: 长期保留（用于归档查询）
+
+**原则4: 优化压缩策略**
+
+- **segmentby**: 选择查询中经常一起过滤的列
+- **orderby**: 选择时间列，按时间顺序压缩
+- **压缩时机**: 数据写入7天后压缩，平衡查询性能和压缩率
+
+---
+
+### 9.2 性能优化
 
 **索引策略**:
 
 ```sql
--- 创建复合索引（设备ID + 时间）
-CREATE INDEX idx_sensor_readings_device_time ON sensor_readings(device_id, time DESC);
+-- 1. 复合索引（设备ID + 时间）
+CREATE INDEX idx_sensor_readings_device_time
+ON sensor_readings(device_id, time DESC);
 
--- 创建部分索引（仅索引活跃设备）
-CREATE INDEX idx_sensor_readings_active_device ON sensor_readings(device_id, time DESC)
+-- 2. 部分索引（仅索引活跃设备）
+CREATE INDEX idx_sensor_readings_active_device
+ON sensor_readings(device_id, time DESC)
 WHERE device_id IN (SELECT device_id FROM active_devices);
+
+-- 3. 表达式索引（用于特定查询模式）
+CREATE INDEX idx_sensor_readings_date
+ON sensor_readings((time::DATE), device_id);
 ```
 
 **查询优化**:
 
 ```sql
--- 使用LIMIT限制结果集
+-- ✅ 正确：使用时间范围查询（自动分区剪枝）
+SELECT * FROM sensor_readings
+WHERE time >= NOW() - INTERVAL '24 hours'
+  AND device_id = 123;
+
+-- ❌ 错误：使用函数（分区剪枝失效）
+SELECT * FROM sensor_readings
+WHERE DATE_TRUNC('day', time) = CURRENT_DATE
+  AND device_id = 123;
+
+-- ✅ 正确：使用LIMIT限制结果集
 SELECT * FROM sensor_readings
 WHERE device_id = 123
 ORDER BY time DESC
 LIMIT 1000;
 
--- 使用时间范围限制
-SELECT * FROM sensor_readings
-WHERE device_id = 123
-  AND time >= NOW() - INTERVAL '1 hour'
-ORDER BY time DESC;
+-- ✅ 正确：使用连续聚合查询历史数据
+SELECT * FROM sensor_readings_hourly
+WHERE bucket >= NOW() - INTERVAL '7 days'
+  AND device_id = 123;
 ```
 
 ---
 
-## 8. 相关资源
+### 9.3 监控与维护
+
+**日常监控指标**:
+
+1. **Chunk数量**: 监控chunk数量，避免过多chunk影响性能
+2. **Chunk大小**: 监控chunk大小，确保在合理范围内（100MB-1GB）
+3. **压缩率**: 监控压缩率，确保达到预期（>10:1）
+4. **连续聚合刷新**: 监控刷新状态，确保及时刷新
+5. **查询性能**: 监控查询响应时间，识别慢查询
+
+**定期维护任务**:
+
+1. **每周**: 检查chunk大小分布，调整chunk_time_interval
+2. **每月**: 检查压缩策略执行情况，优化压缩配置
+3. **每季度**: 评估数据保留策略，调整保留期限
+4. **每年**: 评估整体架构，考虑升级或重构
+
+---
+
+## 10. 相关资源
 
 - [时序数据模型](./时序数据模型.md) - 时序数据建模基础
 - [设备孪生模型](./设备孪生模型.md) - IoT设备建模
