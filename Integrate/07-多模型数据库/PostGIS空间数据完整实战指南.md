@@ -122,11 +122,15 @@ sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 sudo apt-get update
 
-# 安装PostGIS
+# 安装PostGIS（PostgreSQL 18，推荐）
+sudo apt-get install postgresql-18-postgis-3
+
+# 或者安装PostgreSQL 17版本
 sudo apt-get install postgresql-17-postgis-3
 
 # 或者安装特定版本
-sudo apt-get install postgresql-17-postgis-3.4
+sudo apt-get install postgresql-18-postgis-3.4  # PostgreSQL 18 + PostGIS 3.4
+sudo apt-get install postgresql-17-postgis-3.4  # PostgreSQL 17 + PostGIS 3.4
 ```
 
 #### CentOS/RHEL安装
@@ -134,19 +138,50 @@ sudo apt-get install postgresql-17-postgis-3.4
 ```bash
 # 添加PostgreSQL官方YUM仓库
 sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+# 安装PostgreSQL 18（推荐）
+sudo yum install -y postgresql18-server postgresql18
+
+# 或者安装PostgreSQL 17
 sudo yum install -y postgresql17-server postgresql17
 
-# 安装PostGIS
+# 安装PostGIS（PostgreSQL 18，推荐）
+sudo yum install -y postgis34_18
+
+# 或者安装PostgreSQL 17版本
 sudo yum install -y postgis34_17
 
 # 或者使用dnf (Fedora/RHEL 8+)
-sudo dnf install -y postgis34_17
+sudo dnf install -y postgis34_18  # PostgreSQL 18
+sudo dnf install -y postgis34_17  # PostgreSQL 17
 ```
 
 #### Docker安装
 
+**PostgreSQL 18 + PostGIS（推荐）**：
+
 ```dockerfile
-# Dockerfile
+# Dockerfile（PostgreSQL 18 + PostGIS 3.4，推荐）
+FROM postgis/postgis:18-3.4
+
+# 自定义配置
+ENV POSTGRES_DB=mydb
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=password
+
+# 运行PostGIS容器（PostgreSQL 18）
+docker run -d \
+  --name postgis-db \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=gisdb \
+  -p 5432:5432 \
+  postgis/postgis:18-3.4
+```
+
+**PostgreSQL 17 + PostGIS**：
+
+```dockerfile
+# Dockerfile（PostgreSQL 17 + PostGIS 3.4）
 FROM postgis/postgis:17-3.4
 
 # 自定义配置
@@ -154,7 +189,7 @@ ENV POSTGRES_DB=mydb
 ENV POSTGRES_USER=postgres
 ENV POSTGRES_PASSWORD=password
 
-# 运行PostGIS容器
+# 运行PostGIS容器（PostgreSQL 17）
 docker run -d \
   --name postgis-db \
   -e POSTGRES_PASSWORD=password \
@@ -162,6 +197,13 @@ docker run -d \
   -p 5432:5432 \
   postgis/postgis:17-3.4
 ```
+
+**可用镜像版本**：
+
+- `postgis/postgis:18-3.4` - PostgreSQL 18 + PostGIS 3.4（推荐）⭐
+- `postgis/postgis:17-3.4` - PostgreSQL 17 + PostGIS 3.4
+- `postgis/postgis:18-3.5` - PostgreSQL 18 + PostGIS 3.5（如果可用）
+- `postgis/postgis:latest` - 最新版本
 
 #### 从源码编译安装
 
@@ -1376,7 +1418,10 @@ SELECT ST_ShortestLine(
 #### 安装pgRouting
 
 ```bash
-# Ubuntu/Debian
+# Ubuntu/Debian（PostgreSQL 18，推荐）
+sudo apt-get install postgresql-18-pgrouting
+
+# 或者PostgreSQL 17版本
 sudo apt-get install postgresql-17-pgrouting
 
 # 或在数据库中创建扩展

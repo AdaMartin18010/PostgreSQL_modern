@@ -8,6 +8,33 @@
 
 # PostgreSQL SQL注入防御完整指南
 
+## 📑 目录
+
+- [PostgreSQL SQL注入防御完整指南](#postgresql-sql注入防御完整指南)
+  - [📑 目录](#-目录)
+  - [1. SQL注入原理](#1-sql注入原理)
+    - [1.1 经典SQL注入](#11-经典sql注入)
+  - [2. 参数化查询](#2-参数化查询)
+    - [2.1 Python (psycopg2)](#21-python-psycopg2)
+    - [2.2 Node.js (node-postgres)](#22-nodejs-node-postgres)
+    - [2.3 Java (JDBC)](#23-java-jdbc)
+  - [3. ORM防御](#3-orm防御)
+    - [3.1 Django](#31-django)
+    - [3.2 SQLAlchemy](#32-sqlalchemy)
+  - [4. 高级注入场景](#4-高级注入场景)
+    - [4.1 ORDER BY注入](#41-order-by注入)
+    - [4.2 LIKE注入](#42-like注入)
+    - [4.3 LIMIT/OFFSET注入](#43-limitoffset注入)
+  - [5. 二次注入](#5-二次注入)
+  - [6. 数据库层防御](#6-数据库层防御)
+    - [6.1 最小权限](#61-最小权限)
+    - [6.2 函数包装](#62-函数包装)
+  - [7. WAF与监控](#7-waf与监控)
+    - [7.1 WAF规则](#71-waf规则)
+    - [7.2 日志监控](#72-日志监控)
+  - [8. 代码审计清单](#8-代码审计清单)
+  - [9. 测试用例](#9-测试用例)
+
 ## 1. SQL注入原理
 
 ### 1.1 经典SQL注入
