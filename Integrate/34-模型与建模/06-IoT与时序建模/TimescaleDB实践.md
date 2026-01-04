@@ -2,7 +2,7 @@
 
 > **创建日期**: 2025年1月
 > **来源**: TimescaleDB官方文档 + 实践总结
-> **状态**: 基于TimescaleDB 2.13+特性
+> **状态**: ✅ 已完成
 > **文档编号**: 06-02
 
 ---
@@ -43,7 +43,22 @@
     - [9.1 设计原则](#91-设计原则)
     - [9.2 性能优化](#92-性能优化)
     - [9.3 监控与维护](#93-监控与维护)
-  - [10. 相关资源](#10-相关资源)
+  - [10. 性能优化与监控 / Performance Optimization and Monitoring](#10-性能优化与监控--performance-optimization-and-monitoring)
+    - [10.1 TimescaleDB性能优化](#101-timescaledb性能优化)
+    - [10.2 查询性能监控](#102-查询性能监控)
+    - [10.3 存储空间监控](#103-存储空间监控)
+  - [11. 常见问题解答 / FAQ](#11-常见问题解答--faq)
+    - [Q1: TimescaleDB和普通PostgreSQL表有什么区别？](#q1-timescaledb和普通postgresql表有什么区别)
+    - [Q2: 如何选择chunk大小？](#q2-如何选择chunk大小)
+    - [Q3: TimescaleDB压缩如何优化？](#q3-timescaledb压缩如何优化)
+    - [Q4: 连续聚合如何优化性能？](#q4-连续聚合如何优化性能)
+    - [Q5: TimescaleDB如何处理数据保留？](#q5-timescaledb如何处理数据保留)
+  - [11. 相关资源 / Related Resources](#11-相关资源--related-resources)
+    - [11.1 核心相关文档 / Core Related Documents](#111-核心相关文档--core-related-documents)
+    - [11.2 理论基础 / Theoretical Foundation](#112-理论基础--theoretical-foundation)
+    - [11.3 实践指南 / Practical Guides](#113-实践指南--practical-guides)
+    - [11.4 应用案例 / Application Cases](#114-应用案例--application-cases)
+    - [11.5 参考资源 / Reference Resources](#115-参考资源--reference-resources)
 
 ---
 
@@ -660,7 +675,7 @@ LIMIT 10;
 
 ### 7.5 故障排查与优化
 
-**常见问题1: Chunk过多导致性能下降**
+**常见问题1: Chunk过多导致性能下降**:
 
 ```sql
 -- 问题：chunk_time_interval设置过小，导致chunk过多
@@ -688,7 +703,7 @@ SELECT create_hypertable(
 COPY sensor_readings FROM '/tmp/sensor_readings_backup.csv';
 ```
 
-**常见问题2: 连续聚合刷新失败**
+**常见问题2: 连续聚合刷新失败**:
 
 ```sql
 -- 诊断：查看失败的任务
@@ -718,7 +733,7 @@ SELECT alter_job(
 );
 ```
 
-**常见问题3: 压缩策略未执行**
+**常见问题3: 压缩策略未执行**:
 
 ```sql
 -- 诊断：查看压缩任务状态
@@ -945,7 +960,7 @@ SELECT add_retention_policy(
 
 ### 9.1 设计原则
 
-**原则1: 选择合适的chunk时间间隔**
+**原则1: 选择合适的chunk时间间隔**:
 
 | 数据频率 | 推荐chunk间隔 | 原因 |
 |---------|--------------|------|
@@ -953,19 +968,19 @@ SELECT add_retention_policy(
 | 分钟级（10-1000/s） | 1天 | 平衡chunk数量和查询性能 |
 | 小时级（<10/s） | 1周或1月 | 减少chunk数量，提高管理效率 |
 
-**原则2: 使用连续聚合预计算**
+**原则2: 使用连续聚合预计算**:
 
 - **多级聚合**: 创建秒级、分钟级、小时级、天级聚合
 - **实时聚合**: 最新数据使用实时聚合，历史数据使用物化聚合
 - **聚合策略**: 根据查询模式选择聚合粒度
 
-**原则3: 配置数据保留策略**
+**原则3: 配置数据保留策略**:
 
 - **原始数据**: 保留30-90天（根据业务需求）
 - **聚合数据**: 保留1-2年（用于长期分析）
 - **压缩数据**: 长期保留（用于归档查询）
 
-**原则4: 优化压缩策略**
+**原则4: 优化压缩策略**:
 
 - **segmentby**: 选择查询中经常一起过滤的列
 - **orderby**: 选择时间列，按时间顺序压缩
@@ -1038,12 +1053,238 @@ WHERE bucket >= NOW() - INTERVAL '7 days'
 
 ---
 
-## 10. 相关资源
+## 10. 性能优化与监控 / Performance Optimization and Monitoring
+
+### 10.1 TimescaleDB性能优化
+
+**Chunk大小优化**:
+
+```sql
+-- 查看chunk大小分布
+SELECT
+    hypertable_name,
+    COUNT(*) AS chunk_count,
+    AVG(chunk_size) AS avg_chunk_size,
+    MIN(chunk_size) AS min_chunk_size,
+    MAX(chunk_size) AS max_chunk_size,
+    pg_size_pretty(AVG(chunk_size)) AS avg_size_pretty
+FROM timescaledb_information.chunks
+GROUP BY hypertable_name;
+
+-- 调整chunk大小（如果chunk太小或太大）
+SELECT set_chunk_time_interval('sensor_readings', INTERVAL '1 day');
+```
+
+**压缩优化**:
+
+```sql
+-- 优化压缩配置
+ALTER TABLE sensor_readings SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id, sensor_type',
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+-- 查看压缩效果
+SELECT
+    hypertable_name,
+    COUNT(*) FILTER (WHERE is_compressed = false) AS uncompressed_chunks,
+    COUNT(*) FILTER (WHERE is_compressed = true) AS compressed_chunks,
+    pg_size_pretty(SUM(chunk_size) FILTER (WHERE is_compressed = false)) AS uncompressed_size,
+    pg_size_pretty(SUM(chunk_size) FILTER (WHERE is_compressed = true)) AS compressed_size
+FROM timescaledb_information.chunks
+GROUP BY hypertable_name;
+```
+
+### 10.2 查询性能监控
+
+**监控查询性能**:
+
+```sql
+-- 使用pg_stat_statements监控TimescaleDB查询
+SELECT
+    LEFT(query, 100) AS query_preview,
+    calls,
+    mean_exec_time,
+    max_exec_time,
+    total_exec_time
+FROM pg_stat_statements
+WHERE query LIKE '%sensor_readings%'
+  OR query LIKE '%hypertable%'
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+
+-- 监控连续聚合刷新性能
+SELECT
+    view_name,
+    last_run_started_at,
+    last_successful_finish,
+    last_run_status,
+    job_status
+FROM timescaledb_information.jobs
+WHERE proc_name LIKE '%refresh%';
+```
+
+### 10.3 存储空间监控
+
+**监控存储空间**:
+
+```sql
+-- 监控hypertable大小
+SELECT
+    hypertable_name,
+    pg_size_pretty(total_bytes) AS total_size,
+    pg_size_pretty(table_bytes) AS table_size,
+    pg_size_pretty(index_bytes) AS index_size,
+    pg_size_pretty(toast_bytes) AS toast_size
+FROM timescaledb_information.hypertables;
+
+-- 监控chunk大小和数量
+SELECT
+    hypertable_name,
+    COUNT(*) AS chunk_count,
+    pg_size_pretty(SUM(chunk_size)) AS total_size,
+    COUNT(*) FILTER (WHERE is_compressed = true) AS compressed_count,
+    pg_size_pretty(SUM(chunk_size) FILTER (WHERE is_compressed = true)) AS compressed_size
+FROM timescaledb_information.chunks
+GROUP BY hypertable_name;
+```
+
+---
+
+## 11. 常见问题解答 / FAQ
+
+### Q1: TimescaleDB和普通PostgreSQL表有什么区别？
+
+**A**: 主要区别：
+
+| 特性 | TimescaleDB Hypertable | 普通PostgreSQL表 |
+|------|----------------------|-----------------|
+| 分区 | 自动按时间分区 | 需要手动分区 |
+| 查询优化 | 自动分区剪枝 | 需要手动优化 |
+| 压缩 | 内置压缩支持 | 需要手动实现 |
+| 连续聚合 | 内置支持 | 需要手动实现 |
+| 数据保留 | 内置策略 | 需要手动实现 |
+
+**选择原则**:
+
+- 时序数据 → 使用TimescaleDB
+- 普通OLTP数据 → 使用普通PostgreSQL表
+
+### Q2: 如何选择chunk大小？
+
+**A**: Chunk大小选择：
+
+- **推荐大小**: 100MB - 1GB
+- **太小**: chunk数量过多，影响查询性能
+- **太大**: 单个chunk查询慢，压缩效率低
+
+**调整方法**:
+
+```sql
+-- 查看当前chunk大小
+SELECT set_chunk_time_interval('sensor_readings', INTERVAL '1 day');
+
+-- 根据数据量调整
+-- 如果每天数据量100MB，设置1天chunk
+-- 如果每天数据量500MB，设置2天chunk
+```
+
+### Q3: TimescaleDB压缩如何优化？
+
+**A**: 压缩优化策略：
+
+```sql
+-- 优化1：选择合适的segmentby列
+ALTER TABLE sensor_readings SET (
+    timescaledb.compress_segmentby = 'device_id, sensor_type'
+);
+
+-- 优化2：选择合适的orderby列
+ALTER TABLE sensor_readings SET (
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+-- 优化3：调整压缩策略时间
+SELECT add_compression_policy('sensor_readings', INTERVAL '7 days');
+```
+
+### Q4: 连续聚合如何优化性能？
+
+**A**: 连续聚合优化：
+
+```sql
+-- 优化1：选择合适的刷新间隔
+CREATE MATERIALIZED VIEW sensor_readings_hourly
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 hour', time) AS bucket,
+    device_id,
+    AVG(value) AS avg_value
+FROM sensor_readings
+GROUP BY bucket, device_id;
+
+-- 设置刷新策略（每小时刷新）
+SELECT add_continuous_aggregate_policy('sensor_readings_hourly',
+    start_offset => INTERVAL '3 hours',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour');
+```
+
+### Q5: TimescaleDB如何处理数据保留？
+
+**A**: 数据保留策略：
+
+```sql
+-- 创建保留策略（90天后删除）
+SELECT add_retention_policy('sensor_readings', INTERVAL '90 days');
+
+-- 条件保留策略（只保留重要数据）
+CREATE OR REPLACE FUNCTION retention_policy_function()
+RETURNS TABLE(retention_interval INTERVAL) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT CASE
+        WHEN device_type = 'critical' THEN INTERVAL '1 year'
+        WHEN device_type = 'important' THEN INTERVAL '6 months'
+        ELSE INTERVAL '90 days'
+    END AS retention_interval
+    FROM devices;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+## 11. 相关资源 / Related Resources
+
+### 11.1 核心相关文档 / Core Related Documents
 
 - [时序数据模型](./时序数据模型.md) - 时序数据建模基础
 - [设备孪生模型](./设备孪生模型.md) - IoT设备建模
-- [索引策略](../08-PostgreSQL建模实践/索引策略.md) - 时序数据索引策略
-- TimescaleDB官方文档: <https://docs.timescale.com/>
+- [分区策略](../08-PostgreSQL建模实践/分区策略.md) - TimescaleDB分区策略
+- [索引策略](../08-PostgreSQL建模实践/索引策略.md) - TimescaleDB索引策略
+- [性能优化](../08-PostgreSQL建模实践/性能优化.md) - TimescaleDB性能优化
+
+### 11.2 理论基础 / Theoretical Foundation
+
+- [范式理论](../01-数据建模理论基础/范式理论.md) - 时序数据范式设计
+
+### 11.3 实践指南 / Practical Guides
+
+- [性能优化与监控](#10-性能优化与监控--performance-optimization-and-monitoring) - 本文档的性能监控章节
+- [IoT监控系统案例](../10-综合应用案例/IoT监控系统案例.md) - TimescaleDB应用案例
+
+### 11.4 应用案例 / Application Cases
+
+- [IoT监控系统案例](../10-综合应用案例/IoT监控系统案例.md) - TimescaleDB完整案例
+
+### 11.5 参考资源 / Reference Resources
+
+- [权威资源索引](../00-导航与索引/权威资源索引.md) - 权威资源列表
+- [术语对照表](../00-导航与索引/术语对照表.md) - 术语对照
+- [快速查找指南](../00-导航与索引/快速查找指南.md) - 快速查找工具
+- TimescaleDB官方文档: [TimescaleDB Documentation](https://docs.timescale.com/)
 
 ---
 

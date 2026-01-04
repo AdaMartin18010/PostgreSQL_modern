@@ -2,7 +2,7 @@
 
 > **创建日期**: 2025年1月
 > **来源**: OMG BPMN 2.0标准 + 实践总结
-> **状态**: 基于权威标准深化扩展
+> **状态**: ✅ 已完成
 > **文档编号**: 07-01
 
 ---
@@ -23,7 +23,25 @@
   - [4. 工作流引擎集成](#4-工作流引擎集成)
     - [4.1 推荐引擎](#41-推荐引擎)
     - [4.2 数据库集成](#42-数据库集成)
-  - [5. 相关资源](#5-相关资源)
+  - [5. 实际应用案例 / Practical Application Examples](#5-实际应用案例--practical-application-examples)
+    - [5.1 案例1: 订单审批流程](#51-案例1-订单审批流程)
+    - [5.2 案例2: 文档审批流程](#52-案例2-文档审批流程)
+    - [5.3 案例3: 请假申请流程](#53-案例3-请假申请流程)
+  - [6. 性能优化与监控 / Performance Optimization and Monitoring](#6-性能优化与监控--performance-optimization-and-monitoring)
+    - [6.1 BPMN流程性能优化](#61-bpmn流程性能优化)
+    - [6.2 流程监控与诊断](#62-流程监控与诊断)
+  - [7. 常见问题解答 / FAQ](#7-常见问题解答--faq)
+    - [Q1: BPMN流程如何与PostgreSQL集成？](#q1-bpmn流程如何与postgresql集成)
+    - [Q2: 如何处理BPMN流程的并发执行？](#q2-如何处理bpmn流程的并发执行)
+    - [Q3: 如何优化BPMN流程查询性能？](#q3-如何优化bpmn流程查询性能)
+    - [Q4: BPMN流程如何实现超时处理？](#q4-bpmn流程如何实现超时处理)
+    - [Q5: 如何实现BPMN流程的版本管理？](#q5-如何实现bpmn流程的版本管理)
+  - [7. 相关资源 / Related Resources](#7-相关资源--related-resources)
+    - [7.1 核心相关文档 / Core Related Documents](#71-核心相关文档--core-related-documents)
+    - [7.2 理论基础 / Theoretical Foundation](#72-理论基础--theoretical-foundation)
+    - [7.3 实践指南 / Practical Guides](#73-实践指南--practical-guides)
+    - [7.4 应用案例 / Application Cases](#74-应用案例--application-cases)
+    - [7.5 参考资源 / Reference Resources](#75-参考资源--reference-resources)
 
 ---
 
@@ -375,13 +393,455 @@ GROUP BY pd.process_id, pd.process_key, pd.process_name, pd.version;
 
 ---
 
-## 5. 相关资源
+## 5. 实际应用案例 / Practical Application Examples
+
+### 5.1 案例1: 订单审批流程
+
+**订单审批BPMN流程实现**:
+
+```sql
+-- 订单审批流程定义
+INSERT INTO bpmn_process_definition (
+    process_key, process_name, version, bpmn_xml
+) VALUES (
+    'order_approval',
+    '订单审批流程',
+    1,
+    '<?xml version="1.0" encoding="UTF-8"?>
+    <bpmn:definitions>
+        <bpmn:process id="order_approval" name="订单审批流程">
+            <bpmn:startEvent id="start"/>
+            <bpmn:userTask id="review_order" name="审核订单"/>
+            <bpmn:exclusiveGateway id="approval_gateway"/>
+            <bpmn:userTask id="approve_order" name="批准订单"/>
+            <bpmn:userTask id="reject_order" name="拒绝订单"/>
+            <bpmn:endEvent id="end"/>
+            <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="review_order"/>
+            <bpmn:sequenceFlow id="flow2" sourceRef="review_order" targetRef="approval_gateway"/>
+            <bpmn:sequenceFlow id="flow3" sourceRef="approval_gateway" targetRef="approve_order">
+                <bpmn:conditionExpression>${approved == true}</bpmn:conditionExpression>
+            </bpmn:sequenceFlow>
+            <bpmn:sequenceFlow id="flow4" sourceRef="approval_gateway" targetRef="reject_order">
+                <bpmn:conditionExpression>${approved == false}</bpmn:conditionExpression>
+            </bpmn:sequenceFlow>
+            <bpmn:sequenceFlow id="flow5" sourceRef="approve_order" targetRef="end"/>
+            <bpmn:sequenceFlow id="flow6" sourceRef="reject_order" targetRef="end"/>
+        </bpmn:process>
+    </bpmn:definitions>'
+);
+
+-- 启动订单审批流程
+CREATE OR REPLACE FUNCTION start_order_approval_process(
+    p_order_id BIGINT,
+    p_applicant_id BIGINT
+)
+RETURNS VARCHAR AS $$
+DECLARE
+    v_instance_id VARCHAR;
+BEGIN
+    -- 创建流程实例
+    INSERT INTO bpmn_process_instance (
+        instance_id, process_id, business_key, status, start_time
+    )
+    SELECT
+        'PI_' || TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') || '_' || p_order_id,
+        process_id,
+        'ORDER_' || p_order_id,
+        'running',
+        NOW()
+    FROM bpmn_process_definition
+    WHERE process_key = 'order_approval' AND version = 1
+    RETURNING instance_id INTO v_instance_id;
+
+    -- 创建第一个任务
+    INSERT INTO bpmn_task (
+        task_id, instance_id, task_name, assignee, status
+    )
+    VALUES (
+        'TASK_' || v_instance_id || '_1',
+        v_instance_id,
+        '审核订单',
+        (SELECT user_id FROM users WHERE role = 'reviewer' LIMIT 1),
+        'pending'
+    );
+
+    RETURN v_instance_id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 5.2 案例2: 文档审批流程
+
+**文档审批BPMN流程实现**:
+
+```sql
+-- 文档审批流程（多级审批）
+CREATE TABLE document_approval_process (
+    process_id BIGSERIAL PRIMARY KEY,
+    document_id BIGINT NOT NULL,
+    current_level INT DEFAULT 1,
+    max_level INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 多级审批函数
+CREATE OR REPLACE FUNCTION process_document_approval(
+    p_document_id BIGINT,
+    p_approver_id BIGINT,
+    p_approved BOOLEAN,
+    p_comment TEXT
+)
+RETURNS VOID AS $$
+DECLARE
+    v_current_level INT;
+    v_max_level INT;
+BEGIN
+    -- 获取当前审批级别
+    SELECT current_level, max_level INTO v_current_level, v_max_level
+    FROM document_approval_process
+    WHERE document_id = p_document_id;
+
+    -- 记录审批结果
+    INSERT INTO document_approval_history (
+        document_id, approver_id, approval_level, approved, comment, approved_at
+    )
+    VALUES (
+        p_document_id, p_approver_id, v_current_level, p_approved, p_comment, NOW()
+    );
+
+    IF p_approved THEN
+        IF v_current_level < v_max_level THEN
+            -- 进入下一级审批
+            UPDATE document_approval_process
+            SET current_level = current_level + 1
+            WHERE document_id = p_document_id;
+        ELSE
+            -- 所有级别审批完成
+            UPDATE document_approval_process
+            SET status = 'approved'
+            WHERE document_id = p_document_id;
+        END IF;
+    ELSE
+        -- 审批被拒绝
+        UPDATE document_approval_process
+        SET status = 'rejected'
+        WHERE document_id = p_document_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 5.3 案例3: 请假申请流程
+
+**请假申请BPMN流程实现**:
+
+```sql
+-- 请假申请流程
+CREATE TABLE leave_application_process (
+    process_id BIGSERIAL PRIMARY KEY,
+    applicant_id BIGINT NOT NULL,
+    leave_type VARCHAR(50) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    days INT NOT NULL,
+    reason TEXT,
+    approver_id BIGINT,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 请假申请处理函数
+CREATE OR REPLACE FUNCTION process_leave_application(
+    p_applicant_id BIGINT,
+    p_leave_type VARCHAR,
+    p_start_date DATE,
+    p_end_date DATE,
+    p_reason TEXT
+)
+RETURNS BIGINT AS $$
+DECLARE
+    v_process_id BIGINT;
+    v_days INT;
+    v_approver_id BIGINT;
+BEGIN
+    -- 计算请假天数
+    v_days := p_end_date - p_start_date + 1;
+
+    -- 根据请假类型和天数确定审批人
+    IF p_leave_type = 'annual' AND v_days <= 3 THEN
+        -- 年假3天以内，直接主管审批
+        SELECT manager_id INTO v_approver_id FROM employees WHERE employee_id = p_applicant_id;
+    ELSIF p_leave_type = 'annual' AND v_days > 3 THEN
+        -- 年假3天以上，需要部门经理审批
+        SELECT department_manager_id INTO v_approver_id
+        FROM employees e
+        JOIN departments d ON e.department_id = d.department_id
+        WHERE e.employee_id = p_applicant_id;
+    ELSE
+        -- 其他类型，需要HR审批
+        SELECT user_id INTO v_approver_id FROM users WHERE role = 'hr' LIMIT 1;
+    END IF;
+
+    -- 创建请假申请
+    INSERT INTO leave_application_process (
+        applicant_id, leave_type, start_date, end_date, days, reason, approver_id
+    )
+    VALUES (
+        p_applicant_id, p_leave_type, p_start_date, p_end_date, v_days, p_reason, v_approver_id
+    )
+    RETURNING process_id INTO v_process_id;
+
+    -- 创建审批任务
+    INSERT INTO bpmn_task (
+        task_id, instance_id, task_name, assignee, status, business_key
+    )
+    VALUES (
+        'TASK_' || v_process_id,
+        'LEAVE_' || v_process_id,
+        '审批请假申请',
+        v_approver_id,
+        'pending',
+        'LEAVE_' || v_process_id
+    );
+
+    RETURN v_process_id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+## 6. 性能优化与监控 / Performance Optimization and Monitoring
+
+### 6.1 BPMN流程性能优化
+
+**索引优化**:
+
+```sql
+-- 流程实例索引
+CREATE INDEX idx_process_instance_status ON bpmn_process_instance(status, start_time DESC);
+CREATE INDEX idx_process_instance_business_key ON bpmn_process_instance(business_key);
+CREATE INDEX idx_process_instance_process ON bpmn_process_instance(process_id, status);
+
+-- 任务索引
+CREATE INDEX idx_task_assignee_status ON bpmn_task(assignee, status);
+CREATE INDEX idx_task_instance ON bpmn_task(instance_id, status);
+CREATE INDEX idx_task_due_date ON bpmn_task(due_date) WHERE status = 'pending';
+```
+
+**查询优化**:
+
+```sql
+-- ✅ 优化：使用覆盖索引查询待办任务
+CREATE INDEX idx_task_assignee_covering ON bpmn_task(assignee, status)
+INCLUDE (task_id, task_name, instance_id, created_time)
+WHERE status = 'pending';
+
+-- 查询仅需扫描索引
+SELECT task_id, task_name, instance_id, created_time
+FROM bpmn_task
+WHERE assignee = 123 AND status = 'pending';
+```
+
+### 6.2 流程监控与诊断
+
+**流程性能监控**:
+
+```sql
+-- 监控：流程执行性能
+SELECT
+    pd.process_name,
+    COUNT(*) AS instance_count,
+    AVG(EXTRACT(EPOCH FROM (pi.end_time - pi.start_time))) AS avg_duration_seconds,
+    MAX(EXTRACT(EPOCH FROM (pi.end_time - pi.start_time))) AS max_duration_seconds,
+    COUNT(*) FILTER (WHERE pi.status = 'completed') AS completed_count,
+    COUNT(*) FILTER (WHERE pi.status = 'running') AS running_count
+FROM bpmn_process_definition pd
+LEFT JOIN bpmn_process_instance pi ON pd.process_id = pi.process_id
+WHERE pi.start_time >= NOW() - INTERVAL '24 hours'
+GROUP BY pd.process_id, pd.process_name;
+
+-- 监控：任务处理性能
+SELECT
+    task_name,
+    COUNT(*) AS task_count,
+    AVG(EXTRACT(EPOCH FROM (completed_time - created_time))) AS avg_processing_seconds,
+    COUNT(*) FILTER (WHERE status = 'pending') AS pending_count,
+    COUNT(*) FILTER (WHERE status = 'completed') AS completed_count
+FROM bpmn_task
+WHERE created_time >= NOW() - INTERVAL '24 hours'
+GROUP BY task_name
+ORDER BY task_count DESC;
+```
+
+---
+
+## 7. 常见问题解答 / FAQ
+
+### Q1: BPMN流程如何与PostgreSQL集成？
+
+**A**: 集成策略：
+
+```sql
+-- 方案1：使用PostgreSQL存储BPMN流程定义和实例
+CREATE TABLE bpmn_process_definition (...);
+CREATE TABLE bpmn_process_instance (...);
+CREATE TABLE bpmn_task (...);
+
+-- 方案2：使用外部BPMN引擎（Camunda、Flowable）
+-- 将流程数据存储在PostgreSQL中
+-- 使用REST API或消息队列与引擎通信
+```
+
+### Q2: 如何处理BPMN流程的并发执行？
+
+**A**: 并发控制策略：
+
+```sql
+-- 使用行级锁
+BEGIN;
+SELECT * FROM bpmn_task
+WHERE task_id = 'TASK_123' AND status = 'pending'
+FOR UPDATE;
+
+-- 更新任务状态
+UPDATE bpmn_task
+SET status = 'completed', completed_time = NOW()
+WHERE task_id = 'TASK_123';
+COMMIT;
+
+-- 使用乐观锁（版本号）
+CREATE TABLE bpmn_task (
+    task_id VARCHAR PRIMARY KEY,
+    version INT DEFAULT 1,
+    ...
+);
+
+UPDATE bpmn_task
+SET status = 'completed',
+    version = version + 1
+WHERE task_id = 'TASK_123' AND version = 1;
+```
+
+### Q3: 如何优化BPMN流程查询性能？
+
+**A**: 查询优化策略：
+
+1. **索引优化**: 为常用查询创建索引
+2. **物化视图**: 预计算流程统计
+3. **分区优化**: 按时间分区流程实例表
+
+```sql
+-- 创建流程统计物化视图
+CREATE MATERIALIZED VIEW mv_process_statistics AS
+SELECT
+    pd.process_name,
+    DATE_TRUNC('day', pi.start_time) AS process_day,
+    COUNT(*) AS instance_count,
+    AVG(EXTRACT(EPOCH FROM (pi.end_time - pi.start_time))) AS avg_duration
+FROM bpmn_process_definition pd
+JOIN bpmn_process_instance pi ON pd.process_id = pi.process_id
+GROUP BY pd.process_name, DATE_TRUNC('day', pi.start_time);
+
+-- 定期刷新
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_process_statistics;
+```
+
+### Q4: BPMN流程如何实现超时处理？
+
+**A**: 超时处理实现：
+
+```sql
+-- 任务超时检查函数
+CREATE OR REPLACE FUNCTION check_task_timeout()
+RETURNS INT AS $$
+DECLARE
+    v_count INT;
+BEGIN
+    -- 查找超时的任务
+    UPDATE bpmn_task
+    SET status = 'timeout',
+        timeout_time = NOW()
+    WHERE status = 'pending'
+      AND due_date < NOW()
+      AND due_date IS NOT NULL;
+
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 定时执行超时检查（使用pg_cron）
+SELECT cron.schedule('check-task-timeout', '*/5 * * * *',
+    'SELECT check_task_timeout();');
+```
+
+### Q5: 如何实现BPMN流程的版本管理？
+
+**A**: 版本管理策略：
+
+```sql
+-- 流程定义版本管理
+CREATE TABLE bpmn_process_definition (
+    process_id BIGSERIAL PRIMARY KEY,
+    process_key VARCHAR(100) NOT NULL,
+    version INT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(process_key, version)
+);
+
+-- 查询最新版本
+SELECT * FROM bpmn_process_definition
+WHERE process_key = 'order_approval'
+  AND is_active = TRUE
+ORDER BY version DESC
+LIMIT 1;
+
+-- 流程实例关联版本
+CREATE TABLE bpmn_process_instance (
+    instance_id VARCHAR PRIMARY KEY,
+    process_id BIGINT NOT NULL REFERENCES bpmn_process_definition(process_id),
+    process_version INT NOT NULL,
+    ...
+);
+```
+
+---
+
+## 7. 相关资源 / Related Resources
+
+### 7.1 核心相关文档 / Core Related Documents
 
 - [状态机建模](./状态机建模.md) - 状态机建模基础
 - [工作流模式](./工作流模式.md) - 工作流模式指南
-- [OMG BPMN 2.0标准](https://www.omg.org/spec/BPMN/2.0/) - BPMN官方标准
-- [Camunda文档](https://docs.camunda.org/) - Camunda BPMN引擎文档
-- [Flowable文档](https://www.flowable.com/open-source/docs/) - Flowable文档
+- [JSONB状态机实现](./JSONB状态机实现.md) - JSONB实现状态机
+- [订单管理模型](../04-OLTP建模/订单管理模型.md) - 订单BPMN流程案例
+
+### 7.2 理论基础 / Theoretical Foundation
+
+- [约束理论](../01-数据建模理论基础/约束理论.md) - BPMN流程约束理论
+
+### 7.3 实践指南 / Practical Guides
+
+- [性能优化与监控](#6-性能优化与监控--performance-optimization-and-monitoring) - 本文档的性能监控章节
+- [实际应用案例](#5-实际应用案例--practical-application-examples) - 本文档的应用案例章节
+- [性能优化](../08-PostgreSQL建模实践/性能优化.md) - BPMN流程性能优化
+
+### 7.4 应用案例 / Application Cases
+
+- [电商数据模型案例](../10-综合应用案例/电商数据模型案例.md) - 电商BPMN流程案例
+- [金融数据模型案例](../10-综合应用案例/金融数据模型案例.md) - 金融BPMN流程案例
+
+### 7.5 参考资源 / Reference Resources
+
+- [权威资源索引](../00-导航与索引/权威资源索引.md) - 权威资源列表
+- [术语对照表](../00-导航与索引/术语对照表.md) - 术语对照
+- [快速查找指南](../00-导航与索引/快速查找指南.md) - 快速查找工具
+- OMG BPMN 2.0标准: [BPMN 2.0 Specification](https://www.omg.org/spec/BPMN/2.0/)
+- Camunda文档: [Camunda BPMN Engine](https://docs.camunda.org/)
+- Flowable文档: [Flowable Documentation](https://www.flowable.com/open-source/docs/)
 
 ---
 

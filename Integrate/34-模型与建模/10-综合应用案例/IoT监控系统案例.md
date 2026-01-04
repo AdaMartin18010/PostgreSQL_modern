@@ -2,7 +2,7 @@
 
 > **创建日期**: 2025年1月
 > **来源**: 综合应用案例
-> **状态**: 待完善
+> **状态**: ✅ 已完成
 > **文档编号**: 10-03
 
 ---
@@ -27,7 +27,24 @@
   - [6. PostgreSQL实现](#6-postgresql实现)
     - [6.1 完整系统实现](#61-完整系统实现)
     - [6.2 查询示例](#62-查询示例)
-  - [7. 相关资源](#7-相关资源)
+  - [7. 性能优化与监控 / Performance Optimization and Monitoring](#7-性能优化与监控--performance-optimization-and-monitoring)
+    - [7.1 数据写入优化](#71-数据写入优化)
+    - [7.2 查询性能优化](#72-查询性能优化)
+    - [7.3 存储优化](#73-存储优化)
+    - [7.4 系统监控](#74-系统监控)
+  - [8. 常见问题解答 / FAQ](#8-常见问题解答--faq)
+    - [Q1: 如何支持百万级设备接入？](#q1-如何支持百万级设备接入)
+    - [Q2: 如何处理高频数据写入？](#q2-如何处理高频数据写入)
+    - [Q3: 如何优化实时查询性能？](#q3-如何优化实时查询性能)
+    - [Q4: 如何实现数据压缩和归档？](#q4-如何实现数据压缩和归档)
+    - [Q5: 如何优化告警检测性能？](#q5-如何优化告警检测性能)
+    - [Q6: 如何监控系统健康状态？](#q6-如何监控系统健康状态)
+  - [8. 相关资源 / Related Resources](#8-相关资源--related-resources)
+    - [8.1 核心相关文档 / Core Related Documents](#81-核心相关文档--core-related-documents)
+    - [8.2 理论基础 / Theoretical Foundation](#82-理论基础--theoretical-foundation)
+    - [8.3 实践指南 / Practical Guides](#83-实践指南--practical-guides)
+    - [8.4 应用案例 / Application Cases](#84-应用案例--application-cases)
+    - [8.5 参考资源 / Reference Resources](#85-参考资源--reference-resources)
 
 ---
 
@@ -450,11 +467,360 @@ ORDER BY hour DESC;
 
 ---
 
-## 7. 相关资源
+## 7. 性能优化与监控 / Performance Optimization and Monitoring
+
+### 7.1 数据写入优化
+
+**批量写入优化**:
+
+```sql
+-- 批量插入遥测数据
+CREATE OR REPLACE FUNCTION batch_insert_telemetry(
+    p_data JSONB
+)
+RETURNS INT AS $$
+DECLARE
+    v_count INT;
+BEGIN
+    INSERT INTO device_telemetry (device_id, time, sensor_type, value)
+    SELECT
+        (elem->>'device_id')::INT,
+        (elem->>'time')::TIMESTAMPTZ,
+        elem->>'sensor_type',
+        (elem->>'value')::DOUBLE PRECISION
+    FROM jsonb_array_elements(p_data) AS elem;
+
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 使用COPY批量导入（最快）
+COPY device_telemetry (device_id, time, sensor_type, value)
+FROM '/path/to/data.csv' WITH CSV HEADER;
+```
+
+**写入性能监控**:
+
+```sql
+-- 监控写入速率
+SELECT
+    time_bucket('1 minute', time) AS minute,
+    COUNT(*) AS data_points,
+    COUNT(DISTINCT device_id) AS device_count
+FROM device_telemetry
+WHERE time >= NOW() - INTERVAL '1 hour'
+GROUP BY minute
+ORDER BY minute DESC;
+```
+
+### 7.2 查询性能优化
+
+**连续聚合优化**:
+
+```sql
+-- 创建多级聚合视图
+CREATE MATERIALIZED VIEW device_telemetry_minutely
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 minute', time) AS bucket,
+    device_id,
+    sensor_type,
+    AVG(value) AS avg_value,
+    MAX(value) AS max_value,
+    MIN(value) AS min_value,
+    COUNT(*) AS data_points
+FROM device_telemetry
+GROUP BY bucket, device_id, sensor_type;
+
+CREATE MATERIALIZED VIEW device_telemetry_hourly
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 hour', time) AS bucket,
+    device_id,
+    sensor_type,
+    AVG(value) AS avg_value,
+    MAX(value) AS max_value,
+    MIN(value) AS min_value
+FROM device_telemetry_minutely
+GROUP BY bucket, device_id, sensor_type;
+
+-- 查询时使用聚合视图
+SELECT * FROM device_telemetry_hourly
+WHERE device_id = 1
+  AND bucket >= NOW() - INTERVAL '24 hours';
+```
+
+### 7.3 存储优化
+
+**压缩策略优化**:
+
+```sql
+-- TimescaleDB压缩配置
+ALTER TABLE device_telemetry SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id',
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+-- 设置压缩策略（7天后压缩）
+SELECT add_compression_policy('device_telemetry', INTERVAL '7 days');
+
+-- 数据保留策略（90天后删除）
+SELECT add_retention_policy('device_telemetry', INTERVAL '90 days');
+```
+
+**存储空间监控**:
+
+```sql
+-- 监控存储空间
+SELECT
+    hypertable_name,
+    COUNT(*) AS chunk_count,
+    pg_size_pretty(SUM(chunk_size)) AS total_size,
+    COUNT(*) FILTER (WHERE is_compressed = true) AS compressed_chunks,
+    pg_size_pretty(SUM(chunk_size) FILTER (WHERE is_compressed = true)) AS compressed_size
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'device_telemetry'
+GROUP BY hypertable_name;
+```
+
+### 7.4 系统监控
+
+**设备监控**:
+
+```sql
+-- 监控设备在线状态
+SELECT
+    device_type,
+    COUNT(*) FILTER (WHERE status = 'online') AS online_count,
+    COUNT(*) FILTER (WHERE status = 'offline') AS offline_count,
+    COUNT(*) FILTER (WHERE last_connected_at < NOW() - INTERVAL '5 minutes') AS disconnected_count,
+    AVG(EXTRACT(EPOCH FROM (NOW() - last_connected_at))) FILTER (WHERE status = 'offline') AS avg_offline_seconds
+FROM device_twin
+GROUP BY device_type;
+
+-- 监控数据采集延迟
+SELECT
+    device_id,
+    MAX(time) AS last_data_time,
+    NOW() - MAX(time) AS data_delay,
+    COUNT(*) FILTER (WHERE time >= NOW() - INTERVAL '1 hour') AS data_points_last_hour
+FROM device_telemetry
+GROUP BY device_id
+HAVING MAX(time) < NOW() - INTERVAL '5 minutes'
+ORDER BY data_delay DESC;
+```
+
+**告警监控**:
+
+```sql
+-- 监控告警统计
+SELECT
+    alert_level,
+    COUNT(*) AS alert_count,
+    COUNT(*) FILTER (WHERE status = 'active') AS active_count,
+    COUNT(*) FILTER (WHERE status = 'resolved') AS resolved_count,
+    AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))) FILTER (WHERE status = 'resolved') AS avg_resolution_seconds
+FROM device_alerts
+WHERE created_at >= NOW() - INTERVAL '24 hours'
+GROUP BY alert_level
+ORDER BY alert_count DESC;
+```
+
+---
+
+## 8. 常见问题解答 / FAQ
+
+### Q1: 如何支持百万级设备接入？
+
+**A**: 大规模设备支持策略：
+
+1. **分区优化**: 按设备ID或时间分区
+2. **连接池**: 使用pgBouncer管理连接
+3. **异步处理**: 使用消息队列缓冲写入
+4. **读写分离**: 分离实时写入和历史查询
+
+```sql
+-- 按设备ID HASH分区
+CREATE TABLE device_telemetry (
+    ...
+) PARTITION BY HASH (device_id);
+
+-- 创建8个分区
+CREATE TABLE device_telemetry_0 PARTITION OF device_telemetry
+    FOR VALUES WITH (MODULUS 8, REMAINDER 0);
+-- ... 创建其他分区
+```
+
+### Q2: 如何处理高频数据写入？
+
+**A**: 高频写入优化：
+
+1. **批量写入**: 使用批量INSERT或COPY
+2. **异步写入**: 使用消息队列缓冲
+3. **连接复用**: 使用连接池
+4. **减少索引**: 仅创建必要索引
+
+```sql
+-- 批量写入函数
+CREATE OR REPLACE FUNCTION batch_insert_telemetry_bulk(
+    p_device_id INT,
+    p_data_points JSONB
+)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO device_telemetry (device_id, time, sensor_type, value)
+    SELECT
+        p_device_id,
+        (elem->>'time')::TIMESTAMPTZ,
+        elem->>'sensor_type',
+        (elem->>'value')::DOUBLE PRECISION
+    FROM jsonb_array_elements(p_data_points) AS elem;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Q3: 如何优化实时查询性能？
+
+**A**: 实时查询优化：
+
+1. **使用连续聚合**: 预计算聚合结果
+2. **限制查询范围**: 只查询最近数据
+3. **使用物化视图**: 缓存热点查询
+4. **索引优化**: 为时间范围查询创建索引
+
+```sql
+-- 实时数据查询（仅查询最近1小时）
+SELECT * FROM device_telemetry
+WHERE device_id = 1
+  AND time >= NOW() - INTERVAL '1 hour'
+ORDER BY time DESC;
+
+-- 使用连续聚合查询历史数据
+SELECT * FROM device_telemetry_hourly
+WHERE device_id = 1
+  AND bucket >= NOW() - INTERVAL '7 days';
+```
+
+### Q4: 如何实现数据压缩和归档？
+
+**A**: 压缩和归档策略：
+
+```sql
+-- TimescaleDB自动压缩
+SELECT add_compression_policy('device_telemetry', INTERVAL '7 days');
+
+-- 手动压缩
+SELECT compress_chunk(chunk) FROM timescaledb_information.chunks
+WHERE hypertable_name = 'device_telemetry'
+  AND is_compressed = false
+  AND range_end < NOW() - INTERVAL '7 days';
+
+-- 归档旧数据
+CREATE TABLE device_telemetry_archive (LIKE device_telemetry INCLUDING ALL);
+
+INSERT INTO device_telemetry_archive
+SELECT * FROM device_telemetry
+WHERE time < NOW() - INTERVAL '1 year';
+
+DELETE FROM device_telemetry
+WHERE time < NOW() - INTERVAL '1 year';
+```
+
+### Q5: 如何优化告警检测性能？
+
+**A**: 告警检测优化：
+
+1. **规则缓存**: 缓存活跃告警规则
+2. **批量检测**: 批量处理多个设备
+3. **异步检测**: 非关键告警异步检测
+4. **规则优先级**: 先检测高优先级规则
+
+```sql
+-- 批量告警检测
+CREATE OR REPLACE FUNCTION batch_check_alerts(
+    p_device_ids INT[]
+)
+RETURNS TABLE(device_id INT, alert_level VARCHAR, message TEXT) AS $$
+DECLARE
+    v_device_id INT;
+    v_rule RECORD;
+BEGIN
+    FOR v_device_id IN SELECT unnest(p_device_ids)
+    LOOP
+        FOR v_rule IN SELECT * FROM alert_rules WHERE is_enabled = TRUE ORDER BY priority DESC
+        LOOP
+            -- 执行规则检测
+            IF check_alert_rule(v_device_id, v_rule) THEN
+                RETURN QUERY SELECT v_device_id, v_rule.alert_level, v_rule.message;
+                EXIT;  -- 找到告警后退出
+            END IF;
+        END LOOP;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Q6: 如何监控系统健康状态？
+
+**A**: 系统健康监控：
+
+```sql
+-- 系统健康检查视图
+CREATE VIEW system_health_check AS
+SELECT
+    'device_online_rate' AS metric,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'online') / COUNT(*), 2) AS value
+FROM device_twin
+UNION ALL
+SELECT
+    'data_collection_rate' AS metric,
+    COUNT(*) AS value
+FROM device_telemetry
+WHERE time >= NOW() - INTERVAL '1 minute'
+UNION ALL
+SELECT
+    'alert_resolution_rate' AS metric,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'resolved') / COUNT(*), 2) AS value
+FROM device_alerts
+WHERE created_at >= NOW() - INTERVAL '24 hours';
+
+-- 查询系统健康状态
+SELECT * FROM system_health_check;
+```
+
+---
+
+## 8. 相关资源 / Related Resources
+
+### 8.1 核心相关文档 / Core Related Documents
 
 - [TimescaleDB实践](../06-IoT与时序建模/TimescaleDB实践.md) - TimescaleDB详细指南
 - [时序数据模型](../06-IoT与时序建模/时序数据模型.md) - 时序数据建模
 - [设备孪生模型](../06-IoT与时序建模/设备孪生模型.md) - 设备孪生设计
+- [分区策略](../08-PostgreSQL建模实践/分区策略.md) - IoT数据分区策略
+- [索引策略](../08-PostgreSQL建模实践/索引策略.md) - IoT数据索引设计
+- [性能优化](../08-PostgreSQL建模实践/性能优化.md) - 性能优化指南
+
+### 8.2 理论基础 / Theoretical Foundation
+
+- [范式理论](../01-数据建模理论基础/范式理论.md) - 时序数据范式设计
+
+### 8.3 实践指南 / Practical Guides
+
+- [性能优化与监控](#7-性能优化与监控--performance-optimization-and-monitoring) - 本文档的性能监控章节
+
+### 8.4 应用案例 / Application Cases
+
+- [电商数据模型案例](./电商数据模型案例.md) - 电商系统建模案例
+- [金融数据模型案例](./金融数据模型案例.md) - 金融系统建模案例
+
+### 8.5 参考资源 / Reference Resources
+
+- [权威资源索引](../00-导航与索引/权威资源索引.md) - 权威资源列表
+- [术语对照表](../00-导航与索引/术语对照表.md) - 术语对照
+- [快速查找指南](../00-导航与索引/快速查找指南.md) - 快速查找工具
 
 ---
 

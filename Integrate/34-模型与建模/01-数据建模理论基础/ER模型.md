@@ -55,7 +55,8 @@
 
 ## 1. 概述
 
-ER模型（Entity-Relationship Model，实体-关系模型）是数据库设计中最常用的概念建模方法，由Peter Chen在1976年提出。ER模型通过实体、属性和关系来描述现实世界的数据结构。
+ER模型（Entity-Relationship Model，实体-关系模型）是数据库设计中最常用的概念建模方法，由Peter Chen在1976年提出。
+ER模型通过实体、属性和关系来描述现实世界的数据结构。
 
 ---
 

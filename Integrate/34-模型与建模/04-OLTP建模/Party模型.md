@@ -31,6 +31,20 @@
     - [6.2 索引设计 / Index Design](#62-索引设计--index-design)
     - [6.3 约束设计 / Constraint Design](#63-约束设计--constraint-design)
     - [6.4 视图设计 / View Design](#64-视图设计--view-design)
+    - [6.5 示例数据脚本 / Sample Data Script](#65-示例数据脚本--sample-data-script)
+    - [6.6 查询示例 / Query Examples](#66-查询示例--query-examples)
+      - [查询1: 获取所有活跃客户](#查询1-获取所有活跃客户)
+      - [查询2: 获取组织的所有员工](#查询2-获取组织的所有员工)
+      - [查询3: 获取Party的所有角色](#查询3-获取party的所有角色)
+      - [查询4: 获取客户关系详情](#查询4-获取客户关系详情)
+      - [查询5: 获取Party的完整联系方式](#查询5-获取party的完整联系方式)
+      - [查询6: 获取Party的完整地址信息](#查询6-获取party的完整地址信息)
+      - [查询7: 获取组织层级结构](#查询7-获取组织层级结构)
+      - [查询8: 获取Party的通信历史](#查询8-获取party的通信历史)
+      - [查询9: 统计各角色的Party数量](#查询9-统计各角色的party数量)
+      - [查询10: 查找同时扮演多个角色的Party](#查询10-查找同时扮演多个角色的party)
+      - [查询11: 获取客户关系统计](#查询11-获取客户关系统计)
+      - [查询12: 查找最近30天没有联系的客户](#查询12-查找最近30天没有联系的客户)
   - [7. PostgreSQL实现 / PostgreSQL Implementation](#7-postgresql实现--postgresql-implementation)
     - [7.1 继承表实现 / Table Inheritance Implementation](#71-继承表实现--table-inheritance-implementation)
     - [4.2 分区表实现](#42-分区表实现)
@@ -40,11 +54,33 @@
     - [5.2 Party Contact Mechanism（参与方联系方式机制）](#52-party-contact-mechanism参与方联系方式机制)
     - [5.3 Facility Versus Contact Mechanism（设施与联系方式）](#53-facility-versus-contact-mechanism设施与联系方式)
     - [5.4 Party Communication Event（参与方通信事件）](#54-party-communication-event参与方通信事件)
-  - [6. 常见应用场景](#6-常见应用场景)
-    - [6.1 CRM系统](#61-crm系统)
-    - [6.2 ERP系统](#62-erp系统)
-    - [6.3 电商平台](#63-电商平台)
-  - [7. 相关资源](#7-相关资源)
+  - [8. 常见应用场景 / Common Application Scenarios](#8-常见应用场景--common-application-scenarios)
+    - [8.1 CRM系统完整案例 / CRM System Complete Case](#81-crm系统完整案例--crm-system-complete-case)
+    - [8.2 ERP系统完整案例 / ERP System Complete Case](#82-erp系统完整案例--erp-system-complete-case)
+    - [8.3 电商平台完整案例 / E-commerce Platform Complete Case](#83-电商平台完整案例--e-commerce-platform-complete-case)
+  - [9. 性能优化建议 / Performance Optimization Recommendations](#9-性能优化建议--performance-optimization-recommendations)
+    - [9.1 索引优化 / Index Optimization](#91-索引优化--index-optimization)
+    - [9.2 查询优化 / Query Optimization](#92-查询优化--query-optimization)
+    - [9.3 分区策略 / Partitioning Strategy](#93-分区策略--partitioning-strategy)
+    - [9.4 缓存策略 / Caching Strategy](#94-缓存策略--caching-strategy)
+    - [9.5 监控和维护 / Monitoring and Maintenance](#95-监控和维护--monitoring-and-maintenance)
+  - [10. 常见问题解答 / FAQ](#10-常见问题解答--faq)
+    - [Q1: Party模型相比传统设计有什么优势？](#q1-party模型相比传统设计有什么优势)
+    - [Q2: 什么时候应该使用Party模型？](#q2-什么时候应该使用party模型)
+    - [Q3: 如何处理Party模型的性能问题？](#q3-如何处理party模型的性能问题)
+    - [Q4: Party Role和Party Relationship有什么区别？](#q4-party-role和party-relationship有什么区别)
+    - [Q5: 如何处理Party模型的级联删除？](#q5-如何处理party模型的级联删除)
+    - [Q6: 如何迁移现有系统到Party模型？](#q6-如何迁移现有系统到party模型)
+    - [Q7: Party模型支持哪些PostgreSQL特性？](#q7-party模型支持哪些postgresql特性)
+    - [Q8: 如何处理Party模型的并发更新？](#q8-如何处理party模型的并发更新)
+    - [Q9: 如何查询Party的完整信息？](#q9-如何查询party的完整信息)
+    - [Q10: Party模型如何与订单系统集成？](#q10-party模型如何与订单系统集成)
+  - [7. 相关资源 / Related Resources](#7-相关资源--related-resources)
+    - [7.1 核心相关文档 / Core Related Documents](#71-核心相关文档--core-related-documents)
+    - [7.2 理论基础 / Theoretical Foundation](#72-理论基础--theoretical-foundation)
+    - [7.3 实践指南 / Practical Guides](#73-实践指南--practical-guides)
+    - [7.4 应用案例 / Application Cases](#74-应用案例--application-cases)
+    - [7.5 参考资源 / Reference Resources](#75-参考资源--reference-resources)
 
 ---
 
@@ -547,8 +583,6 @@ WHERE pr.relationship_type = 'CUSTOMER_RELATIONSHIP'
 
 ---
 
----
-
 ## 3. Party模型设计优势
 
 ### 3.1 避免重复设计
@@ -1008,6 +1042,585 @@ GROUP BY p.party_id, p.party_type, p.name, per.first_name, per.last_name, org.le
 
 ---
 
+### 6.5 示例数据脚本 / Sample Data Script
+
+基于Volume 1 Chapter 2的完整示例数据：
+
+```sql
+-- ============================================
+-- Party Model Sample Data
+-- Based on Volume 1 Chapter 2 Examples
+-- ============================================
+
+-- 1. 插入Party Role类型
+INSERT INTO party_role_type (role_type, description, role_category) VALUES
+-- Person Roles
+('EMPLOYEE', '员工', 'PERSON'),
+('CONTRACTOR', '承包商', 'PERSON'),
+('FAMILY_MEMBER', '家庭成员', 'PERSON'),
+('CONTACT', '联系人', 'PERSON'),
+('SUPPLIER_COORDINATOR', '供应商协调员', 'PERSON'),
+('TEAM_LEADER', '团队领导', 'PERSON'),
+('MENTOR', '导师', 'PERSON'),
+('PARENT', '父母', 'PERSON'),
+-- Organization Roles
+('DISTRIBUTION_CHANNEL', '分销渠道', 'ORGANIZATION'),
+('AGENT', '代理商', 'ORGANIZATION'),
+('DISTRIBUTOR', '分销商', 'ORGANIZATION'),
+('COMPETITOR', '竞争对手', 'ORGANIZATION'),
+('PARTNER', '合作伙伴', 'ORGANIZATION'),
+('REGULATORY_AGENCY', '监管机构', 'ORGANIZATION'),
+('SUPPLIER', '供应商', 'ORGANIZATION'),
+('PARENT_ORGANIZATION', '母公司', 'ORGANIZATION'),
+('SUBSIDIARY', '子公司', 'ORGANIZATION'),
+('INTERNAL_ORGANIZATION', '内部组织', 'ORGANIZATION'),
+-- Common Roles
+('CUSTOMER', '客户', 'COMMON'),
+('BILL_TO_CUSTOMER', '账单客户', 'COMMON'),
+('SHIP_TO_CUSTOMER', '收货客户', 'COMMON'),
+('END_USER_CUSTOMER', '最终用户客户', 'COMMON'),
+('SHAREHOLDER', '股东', 'COMMON'),
+('PROSPECT', '潜在客户', 'COMMON')
+ON CONFLICT (role_type) DO NOTHING;
+
+-- 2. 插入Party（基于Volume 1 Table 2.4）
+-- ABC Corporation (Party ID: 100)
+INSERT INTO party (party_id, party_type, name) VALUES (100, 'O', 'ABC Corporation')
+ON CONFLICT (party_id, party_type) DO UPDATE SET name = EXCLUDED.name;
+INSERT INTO organization (party_id, legal_name, tax_id, founded_date, organization_type)
+VALUES (100, 'ABC Corporation', 'TAX-001', '1980-01-01', 'Legal')
+ON CONFLICT (party_id) DO UPDATE SET legal_name = EXCLUDED.legal_name;
+
+-- ABC Subsidiary (Party ID: 200)
+INSERT INTO party (party_id, party_type, name) VALUES (200, 'O', 'ABC Subsidiary')
+ON CONFLICT (party_id, party_type) DO UPDATE SET name = EXCLUDED.name;
+INSERT INTO organization (party_id, legal_name, tax_id, founded_date, organization_type)
+VALUES (200, 'ABC Subsidiary Inc.', 'TAX-002', '1990-01-01', 'Legal')
+ON CONFLICT (party_id) DO UPDATE SET legal_name = EXCLUDED.legal_name;
+
+-- ACME Corporation (Party ID: 700)
+INSERT INTO party (party_id, party_type, name) VALUES (700, 'O', 'ACME Corporation')
+ON CONFLICT (party_id, party_type) DO UPDATE SET name = EXCLUDED.name;
+INSERT INTO organization (party_id, legal_name, tax_id, founded_date, organization_type)
+VALUES (700, 'ACME Corporation', 'TAX-700', '1975-01-01', 'Legal')
+ON CONFLICT (party_id) DO UPDATE SET legal_name = EXCLUDED.legal_name;
+
+-- John Smith (Party ID: 5000)
+INSERT INTO party (party_id, party_type, name) VALUES (5000, 'P', 'John Smith')
+ON CONFLICT (party_id, party_type) DO UPDATE SET name = EXCLUDED.name;
+INSERT INTO person (party_id, first_name, last_name, birth_date, gender)
+VALUES (5000, 'John', 'Smith', '1965-05-15', 'M')
+ON CONFLICT (party_id) DO UPDATE SET first_name = EXCLUDED.first_name;
+
+-- 3. 插入Party Role（基于Volume 1 Table 2.4）
+-- ABC Corporation roles
+INSERT INTO party_role (party_id, party_type, role_type, valid_from)
+VALUES
+(100, 'O', 'INTERNAL_ORGANIZATION', '1980-01-01'::TIMESTAMPTZ),
+(100, 'O', 'PARENT_ORGANIZATION', '1980-01-01'::TIMESTAMPTZ)
+ON CONFLICT DO NOTHING;
+
+-- ABC Subsidiary roles
+INSERT INTO party_role (party_id, party_type, role_type, valid_from)
+VALUES
+(200, 'O', 'INTERNAL_ORGANIZATION', '1990-01-01'::TIMESTAMPTZ),
+(200, 'O', 'SUBSIDIARY', '1990-01-01'::TIMESTAMPTZ)
+ON CONFLICT DO NOTHING;
+
+-- ACME Corporation roles
+INSERT INTO party_role (party_id, party_type, role_type, valid_from)
+VALUES
+(700, 'O', 'CUSTOMER', '1999-01-01'::TIMESTAMPTZ),
+(700, 'O', 'SUPPLIER', '1999-01-01'::TIMESTAMPTZ)
+ON CONFLICT DO NOTHING;
+
+-- John Smith roles
+INSERT INTO party_role (party_id, party_type, role_type, valid_from)
+VALUES
+(5000, 'P', 'EMPLOYEE', '1989-12-31'::TIMESTAMPTZ),
+(5000, 'P', 'SUPPLIER_COORDINATOR', '1995-01-01'::TIMESTAMPTZ),
+(5000, 'P', 'PARENT', '1990-01-01'::TIMESTAMPTZ),
+(5000, 'P', 'TEAM_LEADER', '1998-01-01'::TIMESTAMPTZ),
+(5000, 'P', 'MENTOR', '1999-01-01'::TIMESTAMPTZ)
+ON CONFLICT DO NOTHING;
+
+-- 4. 插入Party Relationship类型
+INSERT INTO party_relationship_type (relationship_type, description, from_role_type, to_role_type) VALUES
+('CUSTOMER_RELATIONSHIP', '客户关系', 'CUSTOMER', 'INTERNAL_ORGANIZATION'),
+('EMPLOYMENT', '雇佣关系', 'EMPLOYEE', 'INTERNAL_ORGANIZATION'),
+('ORGANIZATION_ROLLUP', '组织层级关系', 'SUBSIDIARY', 'PARENT_ORGANIZATION'),
+('SUPPLIER_RELATIONSHIP', '供应商关系', 'SUPPLIER', 'INTERNAL_ORGANIZATION')
+ON CONFLICT (relationship_type) DO NOTHING;
+
+-- 5. 插入Party Relationship（基于Volume 1 Table 2.5-2.7）
+-- Customer Relationship: ACME -> ABC Subsidiary
+INSERT INTO party_relationship (
+    party_id_from, party_type_from, party_role_id_from,
+    party_id_to, party_type_to, party_role_id_to,
+    relationship_type, valid_from
+)
+SELECT
+    700, 'O', pr_from.party_role_id,
+    200, 'O', pr_to.party_role_id,
+    'CUSTOMER_RELATIONSHIP', '1999-01-01'::TIMESTAMPTZ
+FROM party_role pr_from, party_role pr_to
+WHERE pr_from.party_id = 700 AND pr_from.role_type = 'CUSTOMER'
+  AND pr_to.party_id = 200 AND pr_to.role_type = 'INTERNAL_ORGANIZATION'
+  AND NOT EXISTS (
+      SELECT 1 FROM party_relationship pr
+      WHERE pr.party_id_from = 700 AND pr.party_id_to = 200
+        AND pr.relationship_type = 'CUSTOMER_RELATIONSHIP'
+  );
+
+-- Employment: John Smith -> ABC Subsidiary
+INSERT INTO party_relationship (
+    party_id_from, party_type_from, party_role_id_from,
+    party_id_to, party_type_to, party_role_id_to,
+    relationship_type, valid_from, valid_to
+)
+SELECT
+    5000, 'P', pr_from.party_role_id,
+    200, 'O', pr_to.party_role_id,
+    'EMPLOYMENT', '1989-12-31'::TIMESTAMPTZ, '1999-12-01'::TIMESTAMPTZ
+FROM party_role pr_from, party_role pr_to
+WHERE pr_from.party_id = 5000 AND pr_from.role_type = 'EMPLOYEE'
+  AND pr_to.party_id = 200 AND pr_to.role_type = 'INTERNAL_ORGANIZATION'
+  AND NOT EXISTS (
+      SELECT 1 FROM party_relationship pr
+      WHERE pr.party_id_from = 5000 AND pr.party_id_to = 200
+        AND pr.relationship_type = 'EMPLOYMENT'
+  );
+
+-- Organization Rollup: ABC Subsidiary -> ABC Corporation
+INSERT INTO party_relationship (
+    party_id_from, party_type_from, party_role_id_from,
+    party_id_to, party_type_to, party_role_id_to,
+    relationship_type, valid_from
+)
+SELECT
+    200, 'O', pr_from.party_role_id,
+    100, 'O', pr_to.party_role_id,
+    'ORGANIZATION_ROLLUP', '1990-01-01'::TIMESTAMPTZ
+FROM party_role pr_from, party_role pr_to
+WHERE pr_from.party_id = 200 AND pr_from.role_type = 'SUBSIDIARY'
+  AND pr_to.party_id = 100 AND pr_to.role_type = 'PARENT_ORGANIZATION'
+  AND NOT EXISTS (
+      SELECT 1 FROM party_relationship pr
+      WHERE pr.party_id_from = 200 AND pr.party_id_to = 100
+        AND pr.relationship_type = 'ORGANIZATION_ROLLUP'
+  );
+
+-- 6. 插入Party Relationship Info
+INSERT INTO party_relationship_info (party_relationship_id, priority_type, status_type, notes)
+SELECT
+    pr.party_relationship_id,
+    'HIGH',
+    'ACTIVE',
+    'Primary customer relationship'
+FROM party_relationship pr
+WHERE pr.relationship_type = 'CUSTOMER_RELATIONSHIP'
+  AND pr.party_id_from = 700 AND pr.party_id_to = 200
+ON CONFLICT (party_relationship_id) DO NOTHING;
+
+-- 7. 插入Contact Mechanism类型
+INSERT INTO contact_mechanism_type (contact_mechanism_type, description, mechanism_category) VALUES
+('POSTAL_ADDRESS', '邮政地址', 'POSTAL'),
+('PHONE', '电话', 'TELECOMMUNICATIONS'),
+('FAX', '传真', 'TELECOMMUNICATIONS'),
+('MOBILE_PHONE', '手机', 'TELECOMMUNICATIONS'),
+('EMAIL', '电子邮箱', 'ELECTRONIC'),
+('WEB_URL', '网站URL', 'ELECTRONIC')
+ON CONFLICT (contact_mechanism_type) DO NOTHING;
+
+-- 8. 插入Contact Mechanism（基于Volume 1 Table 2.11）
+-- ABC Corporation联系方式
+INSERT INTO contact_mechanism (contact_mechanism_type, contact_value) VALUES
+('PHONE', '(212) 234-0958'),
+('FAX', '(212) 334-5896'),
+('EMAIL', 'info@abccorp.com'),
+('WEB_URL', 'https://www.abccorp.com')
+ON CONFLICT DO NOTHING;
+
+-- 关联Party与Contact Mechanism
+INSERT INTO party_contact_mechanism (party_id, party_type, contact_mechanism_id)
+SELECT 100, 'O', contact_mechanism_id
+FROM contact_mechanism
+WHERE contact_value IN ('(212) 234-0958', '(212) 334-5896', 'info@abccorp.com', 'https://www.abccorp.com')
+ON CONFLICT DO NOTHING;
+
+-- 9. 插入Postal Address
+INSERT INTO postal_address (postal_address_id, address1, address2, directions) VALUES
+(1, '100 Main Street', 'Suite 101', 'Take Highway 95 to Main Street exit, turn right'),
+(2, '200 Corporate Drive', NULL, 'Building A, 3rd Floor')
+ON CONFLICT (postal_address_id) DO UPDATE SET address1 = EXCLUDED.address1;
+
+-- 10. 插入Geographic Boundary
+INSERT INTO geographic_boundary (boundary_type, boundary_name, boundary_code, parent_boundary_id) VALUES
+('COUNTRY', 'United States', 'US', NULL),
+('STATE', 'New York', 'NY', (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_code = 'US')),
+('CITY', 'New York', 'NYC', (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_code = 'NY')),
+('POSTAL_CODE', '10001', '10001', (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_name = 'New York' AND boundary_type = 'CITY'))
+ON CONFLICT (boundary_type, boundary_code) DO NOTHING;
+
+-- 关联地址与地理边界
+INSERT INTO postal_address_boundary (postal_address_id, geographic_boundary_id, boundary_role)
+SELECT 1, geographic_boundary_id, 'POSTAL_CODE'
+FROM geographic_boundary WHERE boundary_code = '10001'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO postal_address_boundary (postal_address_id, geographic_boundary_id, boundary_role)
+SELECT 1, geographic_boundary_id, 'CITY'
+FROM geographic_boundary WHERE boundary_name = 'New York' AND boundary_type = 'CITY'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO postal_address_boundary (postal_address_id, geographic_boundary_id, boundary_role)
+SELECT 1, geographic_boundary_id, 'STATE'
+FROM geographic_boundary WHERE boundary_code = 'NY'
+ON CONFLICT DO NOTHING;
+
+-- 关联Party与地址
+INSERT INTO party_postal_address (party_id, party_type, postal_address_id, address_purpose)
+VALUES (100, 'O', 1, 'Headquarters'),
+       (100, 'O', 1, 'Billing')
+ON CONFLICT DO NOTHING;
+```
+
+---
+
+### 6.6 查询示例 / Query Examples
+
+#### 查询1: 获取所有活跃客户
+
+```sql
+-- 查询所有当前活跃的客户
+SELECT
+    p.party_id,
+    p.name,
+    p.party_type,
+    pr.role_type,
+    pr.valid_from,
+    pr.valid_to
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+WHERE pr.role_type IN ('CUSTOMER', 'BILL_TO_CUSTOMER', 'SHIP_TO_CUSTOMER', 'END_USER_CUSTOMER')
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+ORDER BY p.name;
+
+-- 性能测试
+EXPLAIN ANALYZE
+SELECT
+    p.party_id,
+    p.name,
+    p.party_type,
+    pr.role_type
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+WHERE pr.role_type IN ('CUSTOMER', 'BILL_TO_CUSTOMER', 'SHIP_TO_CUSTOMER', 'END_USER_CUSTOMER')
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW());
+```
+
+#### 查询2: 获取组织的所有员工
+
+```sql
+-- 查询指定组织的所有员工
+SELECT
+    p.party_id,
+    p.name,
+    per.first_name,
+    per.last_name,
+    pr.valid_from AS employment_start,
+    pr.valid_to AS employment_end
+FROM party p
+JOIN person per ON p.party_id = per.party_id AND p.party_type = 'P'
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+JOIN party_relationship pr_rel ON pr.party_role_id = pr_rel.party_role_id_from
+JOIN party p_org ON pr_rel.party_id_to = p_org.party_id AND pr_rel.party_type_to = p_org.party_type
+WHERE pr.role_type = 'EMPLOYEE'
+  AND p_org.party_id = 200  -- ABC Subsidiary
+  AND pr_rel.relationship_type = 'EMPLOYMENT'
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+ORDER BY pr.valid_from DESC;
+```
+
+#### 查询3: 获取Party的所有角色
+
+```sql
+-- 查询指定Party的所有角色
+SELECT
+    p.party_id,
+    p.name,
+    pr.role_type,
+    prt.description AS role_description,
+    prt.role_category,
+    pr.valid_from,
+    pr.valid_to,
+    CASE
+        WHEN pr.valid_to IS NULL OR pr.valid_to > NOW() THEN 'Active'
+        ELSE 'Inactive'
+    END AS status
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+JOIN party_role_type prt ON pr.role_type = prt.role_type
+WHERE p.party_id = 5000  -- John Smith
+ORDER BY pr.valid_from DESC;
+```
+
+#### 查询4: 获取客户关系详情
+
+```sql
+-- 查询指定组织的所有客户关系
+SELECT
+    p_from.name AS customer_name,
+    p_to.name AS internal_org_name,
+    pr.relationship_type,
+    prt.description AS relationship_description,
+    pr.valid_from,
+    pr.valid_to,
+    pri.status_type,
+    pri.priority_type,
+    pri.notes,
+    pri.last_contact_date
+FROM party_relationship pr
+JOIN party p_from ON pr.party_id_from = p_from.party_id AND pr.party_type_from = p_from.party_type
+JOIN party p_to ON pr.party_id_to = p_to.party_id AND pr.party_type_to = p_to.party_type
+JOIN party_relationship_type prt ON pr.relationship_type = prt.relationship_type
+LEFT JOIN party_relationship_info pri ON pr.party_relationship_id = pri.party_relationship_id
+WHERE pr.relationship_type = 'CUSTOMER_RELATIONSHIP'
+  AND pr.party_id_to = 200  -- ABC Subsidiary
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+ORDER BY pri.priority_type DESC NULLS LAST, p_from.name;
+```
+
+#### 查询5: 获取Party的完整联系方式
+
+```sql
+-- 查询Party的所有联系方式（包括地址、电话、邮件）
+SELECT
+    p.party_id,
+    p.name,
+    cmt.contact_mechanism_type,
+    cm.contact_value,
+    cmpt.purpose_type,
+    cmpt.description AS purpose_description,
+    pcm.non_solicitation_ind,
+    pcm.valid_from,
+    pcm.valid_to,
+    CASE
+        WHEN pcm.valid_to IS NULL OR pcm.valid_to > NOW() THEN 'Active'
+        ELSE 'Inactive'
+    END AS contact_status
+FROM party p
+JOIN party_contact_mechanism pcm ON p.party_id = pcm.party_id AND p.party_type = pcm.party_type
+JOIN contact_mechanism cm ON pcm.contact_mechanism_id = cm.contact_mechanism_id
+JOIN contact_mechanism_type cmt ON cm.contact_mechanism_type = cmt.contact_mechanism_type
+LEFT JOIN contact_mechanism_purpose cmp ON pcm.party_id = cmp.party_id
+    AND pcm.party_type = cmp.party_type
+    AND pcm.contact_mechanism_id = cmp.contact_mechanism_id
+    AND (cmp.valid_to IS NULL OR cmp.valid_to > NOW())
+LEFT JOIN contact_mechanism_purpose_type cmpt ON cmp.purpose_type = cmpt.purpose_type
+WHERE p.party_id = 100  -- ABC Corporation
+ORDER BY cmt.mechanism_category, cmt.contact_mechanism_type;
+```
+
+#### 查询6: 获取Party的完整地址信息
+
+```sql
+-- 查询Party的地址信息（包括地理边界）
+SELECT
+    p.party_id,
+    p.name,
+    pa.address1,
+    pa.address2,
+    pa.directions,
+    ppa.address_purpose,
+    gb_city.boundary_name AS city,
+    gb_state.boundary_name AS state,
+    gb_country.boundary_name AS country,
+    gb_postal.boundary_code AS postal_code,
+    ppa.valid_from,
+    ppa.valid_to
+FROM party p
+JOIN party_postal_address ppa ON p.party_id = ppa.party_id AND p.party_type = ppa.party_type
+JOIN postal_address pa ON ppa.postal_address_id = pa.postal_address_id
+LEFT JOIN postal_address_boundary pab_city ON pa.postal_address_id = pab_city.postal_address_id
+    AND pab_city.boundary_role = 'CITY'
+LEFT JOIN geographic_boundary gb_city ON pab_city.geographic_boundary_id = gb_city.geographic_boundary_id
+LEFT JOIN postal_address_boundary pab_state ON pa.postal_address_id = pab_state.postal_address_id
+    AND pab_state.boundary_role = 'STATE'
+LEFT JOIN geographic_boundary gb_state ON pab_state.geographic_boundary_id = gb_state.geographic_boundary_id
+LEFT JOIN postal_address_boundary pab_country ON pa.postal_address_id = pab_country.postal_address_id
+    AND pab_country.boundary_role = 'COUNTRY'
+LEFT JOIN geographic_boundary gb_country ON pab_country.geographic_boundary_id = gb_country.geographic_boundary_id
+LEFT JOIN postal_address_boundary pab_postal ON pa.postal_address_id = pab_postal.postal_address_id
+    AND pab_postal.boundary_role = 'POSTAL_CODE'
+LEFT JOIN geographic_boundary gb_postal ON pab_postal.geographic_boundary_id = gb_postal.geographic_boundary_id
+WHERE p.party_id = 100
+  AND (ppa.valid_to IS NULL OR ppa.valid_to > NOW())
+ORDER BY ppa.address_purpose;
+```
+
+#### 查询7: 获取组织层级结构
+
+```sql
+-- 查询组织层级结构（递归查询）
+WITH RECURSIVE org_hierarchy AS (
+    -- 起始点：根组织
+    SELECT
+        p.party_id,
+        p.name,
+        p.party_type,
+        pr_rel.party_id_to AS parent_id,
+        0 AS level,
+        ARRAY[p.party_id] AS path
+    FROM party p
+    JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+    JOIN party_relationship pr_rel ON pr.party_role_id = pr_rel.party_role_id_from
+    WHERE pr.role_type = 'PARENT_ORGANIZATION'
+      AND pr_rel.relationship_type = 'ORGANIZATION_ROLLUP'
+      AND (pr_rel.valid_to IS NULL OR pr_rel.valid_to > NOW())
+
+    UNION ALL
+
+    -- 递归：子组织
+    SELECT
+        p.party_id,
+        p.name,
+        p.party_type,
+        pr_rel.party_id_to AS parent_id,
+        oh.level + 1,
+        oh.path || p.party_id
+    FROM party p
+    JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+    JOIN party_relationship pr_rel ON pr.party_role_id = pr_rel.party_role_id_from
+    JOIN org_hierarchy oh ON pr_rel.party_id_to = oh.party_id
+    WHERE pr.role_type = 'SUBSIDIARY'
+      AND pr_rel.relationship_type = 'ORGANIZATION_ROLLUP'
+      AND (pr_rel.valid_to IS NULL OR pr_rel.valid_to > NOW())
+      AND NOT p.party_id = ANY(oh.path)  -- 防止循环
+)
+SELECT
+    party_id,
+    name,
+    level,
+    path
+FROM org_hierarchy
+ORDER BY path;
+```
+
+#### 查询8: 获取Party的通信历史
+
+```sql
+-- 查询Party的所有通信事件
+SELECT
+    ce.communication_event_id,
+    ce.datetime_started,
+    ce.datetime_ended,
+    ce.contact_mechanism_type,
+    ce.status_type,
+    ce.notes,
+    p_from.name AS from_party,
+    p_to.name AS to_party,
+    cept.purpose_type,
+    cept.description AS purpose_description,
+    cest.description AS status_description
+FROM communication_event ce
+LEFT JOIN party_relationship pr ON ce.party_relationship_id = pr.party_relationship_id
+LEFT JOIN party p_from ON pr.party_id_from = p_from.party_id AND pr.party_type_from = p_from.party_type
+LEFT JOIN party p_to ON pr.party_id_to = p_to.party_id AND pr.party_type_to = p_to.party_type
+LEFT JOIN communication_event_purpose cep ON ce.communication_event_id = cep.communication_event_id
+LEFT JOIN communication_event_purpose_type cept ON cep.purpose_type = cept.purpose_type
+LEFT JOIN communication_event_status_type cest ON ce.status_type = cest.status_type
+WHERE (pr.party_id_from = 5000 OR pr.party_id_to = 5000)  -- John Smith
+ORDER BY ce.datetime_started DESC
+LIMIT 50;
+```
+
+#### 查询9: 统计各角色的Party数量
+
+```sql
+-- 统计各角色的活跃Party数量
+SELECT
+    prt.role_type,
+    prt.description,
+    prt.role_category,
+    COUNT(DISTINCT pr.party_id) AS party_count,
+    COUNT(DISTINCT CASE WHEN p.party_type = 'P' THEN pr.party_id END) AS person_count,
+    COUNT(DISTINCT CASE WHEN p.party_type = 'O' THEN pr.party_id END) AS organization_count
+FROM party_role_type prt
+LEFT JOIN party_role pr ON prt.role_type = pr.role_type
+    AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+LEFT JOIN party p ON pr.party_id = p.party_id AND pr.party_type = p.party_type
+GROUP BY prt.role_type, prt.description, prt.role_category
+ORDER BY prt.role_category, party_count DESC;
+```
+
+#### 查询10: 查找同时扮演多个角色的Party
+
+```sql
+-- 查找同时扮演多个角色的Party
+SELECT
+    p.party_id,
+    p.name,
+    p.party_type,
+    COUNT(DISTINCT pr.role_type) AS role_count,
+    STRING_AGG(DISTINCT pr.role_type, ', ' ORDER BY pr.role_type) AS roles
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+WHERE (pr.valid_to IS NULL OR pr.valid_to > NOW())
+GROUP BY p.party_id, p.name, p.party_type
+HAVING COUNT(DISTINCT pr.role_type) > 1
+ORDER BY role_count DESC, p.name;
+```
+
+#### 查询11: 获取客户关系统计
+
+```sql
+-- 按组织统计客户关系
+SELECT
+    p.party_id,
+    p.name AS internal_org_name,
+    COUNT(DISTINCT pr.party_relationship_id) AS customer_count,
+    COUNT(DISTINCT CASE WHEN pri.status_type = 'ACTIVE' THEN pr.party_relationship_id END) AS active_customers,
+    COUNT(DISTINCT CASE WHEN pri.priority_type = 'HIGH' THEN pr.party_relationship_id END) AS high_priority_customers,
+    MAX(pri.last_contact_date) AS last_contact_date
+FROM party p
+JOIN party_role pr_org ON p.party_id = pr_org.party_id AND p.party_type = pr_org.party_type
+JOIN party_relationship pr ON pr_org.party_role_id = pr.party_role_id_to
+JOIN party_relationship_type prt ON pr.relationship_type = prt.relationship_type
+LEFT JOIN party_relationship_info pri ON pr.party_relationship_id = pri.party_relationship_id
+WHERE pr_org.role_type = 'INTERNAL_ORGANIZATION'
+  AND pr.relationship_type = 'CUSTOMER_RELATIONSHIP'
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+GROUP BY p.party_id, p.name
+ORDER BY customer_count DESC;
+```
+
+#### 查询12: 查找最近30天没有联系的客户
+
+```sql
+-- 查找最近30天没有联系的活跃客户
+SELECT
+    p.party_id,
+    p.name AS customer_name,
+    pr.relationship_type,
+    pri.status_type,
+    pri.priority_type,
+    pri.last_contact_date,
+    NOW() - pri.last_contact_date AS days_since_contact
+FROM party p
+JOIN party_role pr_cust ON p.party_id = pr_cust.party_id AND p.party_type = pr_cust.party_type
+JOIN party_relationship pr ON pr_cust.party_role_id = pr.party_role_id_from
+JOIN party_relationship_info pri ON pr.party_relationship_id = pri.party_relationship_id
+WHERE pr_cust.role_type = 'CUSTOMER'
+  AND pr.relationship_type = 'CUSTOMER_RELATIONSHIP'
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+  AND pri.status_type = 'ACTIVE'
+  AND (pri.last_contact_date IS NULL OR pri.last_contact_date < NOW() - INTERVAL '30 days')
+ORDER BY pri.priority_type DESC NULLS LAST, days_since_contact DESC NULLS LAST;
+```
+
+---
+
 ## 7. PostgreSQL实现 / PostgreSQL Implementation
 
 ### 7.1 继承表实现 / Table Inheritance Implementation
@@ -1375,8 +1988,6 @@ WHERE p.party_id = 100
 
 ---
 
----
-
 ### 5.3 Facility Versus Contact Mechanism（设施与联系方式）
 
 **定义 / Definition**: Facility表示物理设施（如仓库、工厂、建筑物），而Contact Mechanism是联系Party的机制。
@@ -1624,95 +2235,718 @@ ORDER BY ce.datetime_started DESC;
 
 ---
 
-## 6. 常见应用场景
+## 8. 常见应用场景 / Common Application Scenarios
 
-### 6.1 CRM系统
+### 8.1 CRM系统完整案例 / CRM System Complete Case
+
+**业务场景**: 客户关系管理系统需要统一管理客户、潜在客户、合作伙伴等。
+
+**实现要点**:
+
+1. **客户管理**: 使用Party Role区分客户类型
+2. **客户标签**: 扩展标签系统
+3. **互动历史**: 使用Communication Event记录
+4. **客户细分**: 使用Party Classification
+
+**完整实现**:
 
 ```sql
--- CRM系统中的Party模型
-CREATE TABLE party (
-    party_id SERIAL PRIMARY KEY,
-    party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-) PARTITION BY LIST (party_type);
+-- 1. 扩展Party Role类型（CRM特定）
+INSERT INTO party_role_type (role_type, description, role_category) VALUES
+('PROSPECT', '潜在客户', 'COMMON'),
+('LEAD', '线索', 'COMMON'),
+('CUSTOMER', '客户', 'COMMON'),
+('VIP_CUSTOMER', 'VIP客户', 'COMMON'),
+('PARTNER', '合作伙伴', 'ORGANIZATION')
+ON CONFLICT (role_type) DO NOTHING;
 
--- 客户角色
-INSERT INTO party_role (party_id, role_type) VALUES (1, 'Customer');
-
--- 客户标签
+-- 2. 客户标签表
 CREATE TABLE party_tag (
     tag_id SERIAL PRIMARY KEY,
-    party_id INT NOT NULL REFERENCES party(party_id),
+    party_id INT NOT NULL,
+    party_type CHAR(1) NOT NULL,
     tag_name VARCHAR(50) NOT NULL,
-    UNIQUE(party_id, tag_name)
+    tag_category VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+    UNIQUE(party_id, party_type, tag_name)
 );
 
--- 客户互动历史
-CREATE TABLE party_interaction (
-    interaction_id SERIAL PRIMARY KEY,
-    party_id INT NOT NULL REFERENCES party(party_id),
-    interaction_type VARCHAR(50) NOT NULL,
-    interaction_date TIMESTAMPTZ DEFAULT NOW(),
-    notes TEXT
-);
+CREATE INDEX idx_party_tag_party ON party_tag(party_id, party_type);
+CREATE INDEX idx_party_tag_name ON party_tag(tag_name);
+
+-- 3. 客户细分（使用Party Classification）
+INSERT INTO party_classification_type (classification_type, description, applies_to) VALUES
+('CUSTOMER_SEGMENT', '客户细分', 'B'),
+('INDUSTRY', '行业', 'O'),
+('COMPANY_SIZE', '公司规模', 'O'),
+('REVENUE_RANGE', '收入范围', 'O')
+ON CONFLICT (classification_type) DO NOTHING;
+
+-- 4. CRM查询：获取所有潜在客户
+SELECT
+    p.party_id,
+    p.name,
+    p.party_type,
+    pr.role_type,
+    pr.valid_from,
+    jsonb_agg(DISTINCT jsonb_build_object('tag', pt.tag_name, 'category', pt.tag_category)) AS tags,
+    jsonb_agg(DISTINCT jsonb_build_object('type', pc.classification_type, 'value', pc.classification_value)) AS classifications
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+LEFT JOIN party_tag pt ON p.party_id = pt.party_id AND p.party_type = pt.party_type
+LEFT JOIN party_classification pc ON p.party_id = pc.party_id AND p.party_type = pc.party_type
+WHERE pr.role_type IN ('PROSPECT', 'LEAD')
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+GROUP BY p.party_id, p.name, p.party_type, pr.role_type, pr.valid_from
+ORDER BY pr.valid_from DESC;
+
+-- 5. CRM查询：获取客户的互动历史
+SELECT
+    p.party_id,
+    p.name AS customer_name,
+    ce.communication_event_id,
+    ce.datetime_started,
+    ce.contact_mechanism_type,
+    cept.purpose_type,
+    ce.notes,
+    ce.status_type
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+JOIN party_relationship pr_rel ON pr.party_role_id = pr_rel.party_role_id_from
+JOIN communication_event ce ON pr_rel.party_relationship_id = ce.party_relationship_id
+LEFT JOIN communication_event_purpose cep ON ce.communication_event_id = cep.communication_event_id
+LEFT JOIN communication_event_purpose_type cept ON cep.purpose_type = cept.purpose_type
+WHERE pr.role_type = 'CUSTOMER'
+  AND p.party_id = 700  -- 指定客户
+ORDER BY ce.datetime_started DESC
+LIMIT 20;
 ```
 
 ---
 
-### 6.2 ERP系统
+### 8.2 ERP系统完整案例 / ERP System Complete Case
+
+**业务场景**: 企业资源规划系统需要统一管理供应商、客户、内部组织等。
+
+**实现要点**:
+
+1. **供应商管理**: 使用Party Role和Party Relationship
+2. **采购订单**: 关联Supplier Party
+3. **销售订单**: 关联Customer Party
+4. **内部组织**: 使用Organization Rollup关系
+
+**完整实现**:
 
 ```sql
--- ERP系统中的Party模型
--- 供应商角色
-INSERT INTO party_role (party_id, role_type) VALUES (2, 'Supplier');
+-- 1. 扩展Party Role类型（ERP特定）
+INSERT INTO party_role_type (role_type, description, role_category) VALUES
+('SUPPLIER', '供应商', 'ORGANIZATION'),
+('APPROVED_SUPPLIER', '认证供应商', 'ORGANIZATION'),
+('CUSTOMER', '客户', 'COMMON'),
+('INTERNAL_ORGANIZATION', '内部组织', 'ORGANIZATION'),
+('COST_CENTER', '成本中心', 'ORGANIZATION')
+ON CONFLICT (role_type) DO NOTHING;
 
--- 采购订单关联Party
+-- 2. 采购订单表
 CREATE TABLE purchase_orders (
     po_id BIGSERIAL PRIMARY KEY,
-    supplier_id INT NOT NULL REFERENCES party(party_id),
+    supplier_id INT NOT NULL,
+    supplier_party_type CHAR(1) NOT NULL,
+    internal_org_id INT NOT NULL,
+    internal_org_party_type CHAR(1) NOT NULL DEFAULT 'O',
+    po_number VARCHAR(50) UNIQUE NOT NULL,
     order_date TIMESTAMPTZ DEFAULT NOW(),
-    total_amount NUMERIC(10,2) NOT NULL
+    expected_delivery_date TIMESTAMPTZ,
+    total_amount NUMERIC(10,2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'DRAFT',
+    FOREIGN KEY (supplier_id, supplier_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (internal_org_id, internal_org_party_type) REFERENCES party(party_id, party_type)
 );
 
--- 销售订单关联Party
+CREATE INDEX idx_purchase_orders_supplier ON purchase_orders(supplier_id, supplier_party_type);
+CREATE INDEX idx_purchase_orders_internal_org ON purchase_orders(internal_org_id, internal_org_party_type);
+CREATE INDEX idx_purchase_orders_date ON purchase_orders(order_date);
+
+-- 3. 销售订单表
 CREATE TABLE sales_orders (
     so_id BIGSERIAL PRIMARY KEY,
-    customer_id INT NOT NULL REFERENCES party(party_id),
+    customer_id INT NOT NULL,
+    customer_party_type CHAR(1) NOT NULL,
+    bill_to_party_id INT,
+    bill_to_party_type CHAR(1),
+    ship_to_party_id INT,
+    ship_to_party_type CHAR(1),
+    internal_org_id INT NOT NULL,
+    internal_org_party_type CHAR(1) NOT NULL DEFAULT 'O',
+    so_number VARCHAR(50) UNIQUE NOT NULL,
     order_date TIMESTAMPTZ DEFAULT NOW(),
-    total_amount NUMERIC(10,2) NOT NULL
+    total_amount NUMERIC(10,2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'DRAFT',
+    FOREIGN KEY (customer_id, customer_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (bill_to_party_id, bill_to_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (ship_to_party_id, ship_to_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (internal_org_id, internal_org_party_type) REFERENCES party(party_id, party_type)
 );
+
+CREATE INDEX idx_sales_orders_customer ON sales_orders(customer_id, customer_party_type);
+CREATE INDEX idx_sales_orders_date ON sales_orders(order_date);
+
+-- 4. ERP查询：获取供应商的采购订单统计
+SELECT
+    p.party_id,
+    p.name AS supplier_name,
+    COUNT(DISTINCT po.po_id) AS total_orders,
+    SUM(po.total_amount) AS total_purchase_amount,
+    AVG(po.total_amount) AS avg_order_amount,
+    MAX(po.order_date) AS last_order_date
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+JOIN purchase_orders po ON p.party_id = po.supplier_id AND p.party_type = po.supplier_party_type
+WHERE pr.role_type = 'SUPPLIER'
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+GROUP BY p.party_id, p.name
+ORDER BY total_purchase_amount DESC;
+
+-- 5. ERP查询：获取客户的销售订单统计
+SELECT
+    p.party_id,
+    p.name AS customer_name,
+    COUNT(DISTINCT so.so_id) AS total_orders,
+    SUM(so.total_amount) AS total_sales_amount,
+    AVG(so.total_amount) AS avg_order_amount,
+    MAX(so.order_date) AS last_order_date,
+    MIN(so.order_date) AS first_order_date
+FROM party p
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+JOIN sales_orders so ON p.party_id = so.customer_id AND p.party_type = so.customer_party_type
+WHERE pr.role_type = 'CUSTOMER'
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+GROUP BY p.party_id, p.name
+ORDER BY total_sales_amount DESC;
+
+-- 6. ERP查询：获取组织层级的所有成本中心
+WITH RECURSIVE cost_centers AS (
+    SELECT
+        p.party_id,
+        p.name,
+        pr_rel.party_id_to AS parent_id,
+        0 AS level
+    FROM party p
+    JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+    JOIN party_relationship pr_rel ON pr.party_role_id = pr_rel.party_role_id_from
+    WHERE pr.role_type = 'COST_CENTER'
+      AND pr_rel.relationship_type = 'ORGANIZATION_ROLLUP'
+      AND (pr_rel.valid_to IS NULL OR pr_rel.valid_to > NOW())
+
+    UNION ALL
+
+    SELECT
+        p.party_id,
+        p.name,
+        pr_rel.party_id_to AS parent_id,
+        cc.level + 1
+    FROM party p
+    JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+    JOIN party_relationship pr_rel ON pr.party_role_id = pr_rel.party_role_id_from
+    JOIN cost_centers cc ON pr_rel.party_id_to = cc.party_id
+    WHERE pr.role_type = 'COST_CENTER'
+      AND pr_rel.relationship_type = 'ORGANIZATION_ROLLUP'
+      AND (pr_rel.valid_to IS NULL OR pr_rel.valid_to > NOW())
+)
+SELECT * FROM cost_centers ORDER BY level, name;
 ```
 
 ---
 
-### 6.3 电商平台
+### 8.3 电商平台完整案例 / E-commerce Platform Complete Case
+
+**业务场景**: 电商平台需要支持B2B2C模式，一个Party可以同时是买家、卖家、推广者。
+
+**实现要点**:
+
+1. **多角色支持**: 一个Party可以同时是Customer、Seller、Affiliate
+2. **订单关联**: 订单关联Customer和Seller
+3. **推广关系**: 使用Party Relationship记录推广关系
+4. **评价系统**: 扩展评价和评分
+
+**完整实现**:
 
 ```sql
--- 电商平台中的Party模型
--- 一个Party可以同时是：
--- 1. Customer（购买商品）
--- 2. Seller（销售商品）
--- 3. Affiliate（推广商品）
+-- 1. 扩展Party Role类型（电商特定）
+INSERT INTO party_role_type (role_type, description, role_category) VALUES
+('CUSTOMER', '买家', 'COMMON'),
+('SELLER', '卖家', 'ORGANIZATION'),
+('AFFILIATE', '推广者', 'COMMON'),
+('VIP_CUSTOMER', 'VIP买家', 'COMMON'),
+('VERIFIED_SELLER', '认证卖家', 'ORGANIZATION')
+ON CONFLICT (role_type) DO NOTHING;
 
-INSERT INTO party_role (party_id, role_type) VALUES
-(1, 'Customer'),
-(1, 'Seller'),
-(1, 'Affiliate');
-
--- 订单关联Customer
+-- 2. 订单表（关联Customer和Seller）
 CREATE TABLE orders (
     order_id BIGSERIAL PRIMARY KEY,
-    customer_id INT NOT NULL REFERENCES party(party_id),
-    seller_id INT NOT NULL REFERENCES party(party_id),
+    customer_id INT NOT NULL,
+    customer_party_type CHAR(1) NOT NULL,
+    seller_id INT NOT NULL,
+    seller_party_type CHAR(1) NOT NULL DEFAULT 'O',
+    affiliate_id INT,  -- 推广者（可选）
+    affiliate_party_type CHAR(1),
+    order_number VARCHAR(50) UNIQUE NOT NULL,
     order_date TIMESTAMPTZ DEFAULT NOW(),
-    total_amount NUMERIC(10,2) NOT NULL
+    total_amount NUMERIC(10,2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    FOREIGN KEY (customer_id, customer_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (seller_id, seller_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (affiliate_id, affiliate_party_type) REFERENCES party(party_id, party_type)
 );
+
+CREATE INDEX idx_orders_customer ON orders(customer_id, customer_party_type);
+CREATE INDEX idx_orders_seller ON orders(seller_id, seller_party_type);
+CREATE INDEX idx_orders_affiliate ON orders(affiliate_id, affiliate_party_type);
+CREATE INDEX idx_orders_date ON orders(order_date);
+
+-- 3. 推广关系表
+CREATE TABLE affiliate_relationships (
+    affiliate_relationship_id SERIAL PRIMARY KEY,
+    affiliate_id INT NOT NULL,
+    affiliate_party_type CHAR(1) NOT NULL,
+    customer_id INT NOT NULL,
+    customer_party_type CHAR(1) NOT NULL,
+    relationship_code VARCHAR(50) UNIQUE NOT NULL,  -- 推广码
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (affiliate_id, affiliate_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (customer_id, customer_party_type) REFERENCES party(party_id, party_type)
+);
+
+CREATE INDEX idx_affiliate_relationships_affiliate ON affiliate_relationships(affiliate_id, affiliate_party_type);
+CREATE INDEX idx_affiliate_relationships_customer ON affiliate_relationships(customer_id, customer_party_type);
+
+-- 4. 评价表
+CREATE TABLE party_ratings (
+    rating_id SERIAL PRIMARY KEY,
+    rater_party_id INT NOT NULL,
+    rater_party_type CHAR(1) NOT NULL,
+    rated_party_id INT NOT NULL,
+    rated_party_type CHAR(1) NOT NULL,
+    rating_type VARCHAR(50) NOT NULL,  -- SELLER_RATING, PRODUCT_RATING, etc.
+    rating_value INT NOT NULL CHECK (rating_value >= 1 AND rating_value <= 5),
+    comment TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (rater_party_id, rater_party_type) REFERENCES party(party_id, party_type),
+    FOREIGN KEY (rated_party_id, rated_party_type) REFERENCES party(party_id, party_type)
+);
+
+CREATE INDEX idx_party_ratings_rated ON party_ratings(rated_party_id, rated_party_type, rating_type);
+
+-- 5. 电商查询：获取卖家的订单统计
+SELECT
+    p.party_id,
+    p.name AS seller_name,
+    COUNT(DISTINCT o.order_id) AS total_orders,
+    COUNT(DISTINCT o.customer_id) AS unique_customers,
+    SUM(o.total_amount) AS total_revenue,
+    AVG(o.total_amount) AS avg_order_value,
+    AVG(pr.rating_value) AS avg_rating
+FROM party p
+JOIN party_role pr_seller ON p.party_id = pr_seller.party_id AND p.party_type = pr_seller.party_type
+JOIN orders o ON p.party_id = o.seller_id AND p.party_type = o.seller_party_type
+LEFT JOIN party_ratings pr ON p.party_id = pr.rated_party_id
+    AND pr.rated_party_type = p.party_type
+    AND pr.rating_type = 'SELLER_RATING'
+WHERE pr_seller.role_type = 'SELLER'
+  AND (pr_seller.valid_to IS NULL OR pr_seller.valid_to > NOW())
+GROUP BY p.party_id, p.name
+ORDER BY total_revenue DESC;
+
+-- 6. 电商查询：获取买家的购买历史
+SELECT
+    p.party_id,
+    p.name AS customer_name,
+    o.order_id,
+    o.order_number,
+    o.order_date,
+    o.total_amount,
+    p_seller.name AS seller_name,
+    o.status
+FROM party p
+JOIN party_role pr_customer ON p.party_id = pr_customer.party_id AND p.party_type = pr_customer.party_type
+JOIN orders o ON p.party_id = o.customer_id AND p.party_type = o.customer_party_type
+JOIN party p_seller ON o.seller_id = p_seller.party_id AND o.seller_party_type = p_seller.party_type
+WHERE pr_customer.role_type = 'CUSTOMER'
+  AND (pr_customer.valid_to IS NULL OR pr_customer.valid_to > NOW())
+  AND p.party_id = 700  -- 指定买家
+ORDER BY o.order_date DESC;
+
+-- 7. 电商查询：获取推广者的推广统计
+SELECT
+    p.party_id,
+    p.name AS affiliate_name,
+    COUNT(DISTINCT ar.customer_id) AS referred_customers,
+    COUNT(DISTINCT o.order_id) AS orders_from_referrals,
+    SUM(o.total_amount) AS total_referral_revenue,
+    AVG(o.total_amount) AS avg_referral_order_value
+FROM party p
+JOIN party_role pr_affiliate ON p.party_id = pr_affiliate.party_id AND p.party_type = pr_affiliate.party_type
+LEFT JOIN affiliate_relationships ar ON p.party_id = ar.affiliate_id AND p.party_type = ar.affiliate_party_type
+LEFT JOIN orders o ON ar.customer_id = o.customer_id
+    AND ar.customer_party_type = o.customer_party_type
+    AND o.affiliate_id = p.party_id
+WHERE pr_affiliate.role_type = 'AFFILIATE'
+  AND (pr_affiliate.valid_to IS NULL OR pr_affiliate.valid_to > NOW())
+GROUP BY p.party_id, p.name
+ORDER BY total_referral_revenue DESC;
 ```
 
 ---
 
-## 7. 相关资源
+## 9. 性能优化建议 / Performance Optimization Recommendations
+
+### 9.1 索引优化 / Index Optimization
+
+**关键索引**:
+
+```sql
+-- 1. Party Role活跃查询索引（最重要）
+CREATE INDEX idx_party_role_active ON party_role(party_id, role_type, valid_from, valid_to)
+    WHERE valid_to IS NULL;
+
+-- 2. Party Relationship活跃查询索引
+CREATE INDEX idx_party_relationship_active ON party_relationship(
+    party_id_from, party_id_to, relationship_type, valid_from, valid_to
+) WHERE valid_to IS NULL;
+
+-- 3. Party Contact Mechanism活跃查询索引
+CREATE INDEX idx_party_contact_mechanism_active ON party_contact_mechanism(
+    party_id, party_type, contact_mechanism_id, valid_from, valid_to
+) WHERE valid_to IS NULL;
+
+-- 4. 分区表查询优化（自动分区剪枝）
+-- 确保查询条件包含party_type以利用分区剪枝
+-- ✅ 好的查询
+SELECT * FROM party WHERE party_type = 'P' AND name LIKE 'John%';
+
+-- ❌ 不好的查询（无法利用分区剪枝）
+SELECT * FROM party WHERE name LIKE 'John%';
+```
+
+### 9.2 查询优化 / Query Optimization
+
+**优化技巧**:
+
+1. **使用部分索引**: 对于活跃记录查询，使用`WHERE valid_to IS NULL`的部分索引
+2. **避免过度JOIN**: 使用视图预聚合常用查询
+3. **使用物化视图**: 对于复杂统计查询，使用物化视图
+4. **批量查询**: 使用`IN`或`ANY`代替多次单独查询
+
+**示例**:
+
+```sql
+-- 创建物化视图用于快速统计
+CREATE MATERIALIZED VIEW mv_party_role_statistics AS
+SELECT
+    pr.role_type,
+    prt.role_category,
+    COUNT(DISTINCT pr.party_id) AS active_party_count,
+    COUNT(DISTINCT CASE WHEN p.party_type = 'P' THEN pr.party_id END) AS person_count,
+    COUNT(DISTINCT CASE WHEN p.party_type = 'O' THEN pr.party_id END) AS organization_count
+FROM party_role pr
+JOIN party_role_type prt ON pr.role_type = prt.role_type
+JOIN party p ON pr.party_id = p.party_id AND pr.party_type = p.party_type
+WHERE pr.valid_to IS NULL OR pr.valid_to > NOW()
+GROUP BY pr.role_type, prt.role_category;
+
+CREATE UNIQUE INDEX ON mv_party_role_statistics(role_type);
+
+-- 定期刷新物化视图（使用cron或pg_cron）
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_party_role_statistics;
+```
+
+### 9.3 分区策略 / Partitioning Strategy
+
+**推荐分区策略**:
+
+```sql
+-- 1. 按party_type分区（已实现）
+CREATE TABLE party (...) PARTITION BY LIST (party_type);
+
+-- 2. 对于大表，可以考虑按时间范围分区
+-- 例如：party_role可以按valid_from年份分区
+CREATE TABLE party_role (
+    ...
+) PARTITION BY RANGE (valid_from);
+
+CREATE TABLE party_role_2020 PARTITION OF party_role
+    FOR VALUES FROM ('2020-01-01') TO ('2021-01-01');
+CREATE TABLE party_role_2021 PARTITION OF party_role
+    FOR VALUES FROM ('2021-01-01') TO ('2022-01-01');
+-- ... 依此类推
+```
+
+### 9.4 缓存策略 / Caching Strategy
+
+**推荐缓存策略**:
+
+1. **应用层缓存**: 缓存常用的Party Role类型、关系类型等字典数据
+2. **查询结果缓存**: 使用Redis缓存复杂查询结果
+3. **连接池**: 使用PgBouncer或PgPool进行连接池管理
+
+### 9.5 监控和维护 / Monitoring and Maintenance
+
+**关键监控指标**:
+
+```sql
+-- 1. 监控表大小
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- 2. 监控索引使用情况
+SELECT
+    schemaname,
+    tablename,
+    indexname,
+    idx_scan,
+    idx_tup_read,
+    idx_tup_fetch
+FROM pg_stat_user_indexes
+WHERE schemaname = 'public'
+ORDER BY idx_scan ASC;  -- 扫描次数少的索引可能需要优化
+
+-- 3. 监控慢查询
+-- 启用pg_stat_statements扩展
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+-- 查看最慢的查询
+SELECT
+    query,
+    calls,
+    total_time,
+    mean_time,
+    max_time
+FROM pg_stat_statements
+WHERE query LIKE '%party%'
+ORDER BY mean_time DESC
+LIMIT 10;
+```
+
+---
+
+## 10. 常见问题解答 / FAQ
+
+### Q1: Party模型相比传统设计有什么优势？
+
+**A**: Party模型的主要优势包括：
+
+1. **统一管理**: 避免在多个表中重复存储相同的组织或人员信息
+2. **灵活扩展**: 支持一个Party同时扮演多个角色，无需修改表结构
+3. **历史跟踪**: 通过valid_from/valid_to字段支持角色和关系的历史跟踪
+4. **减少冗余**: 联系方式、地址等信息只需存储一次，多个Party可以共享
+
+### Q2: 什么时候应该使用Party模型？
+
+**A**: 适合使用Party模型的场景：
+
+- ✅ 需要统一管理客户、供应商、员工等不同角色的系统
+- ✅ 一个实体可能同时扮演多个角色的业务场景（如B2B2C电商）
+- ✅ 需要跟踪角色和关系历史变化的系统
+- ✅ 需要灵活扩展新角色类型的系统
+
+不适合的场景：
+
+- ❌ 简单的单一角色系统（如纯B2C电商，只有买家）
+- ❌ 性能要求极高且查询模式固定的系统
+- ❌ 数据量很小且结构简单的系统
+
+### Q3: 如何处理Party模型的性能问题？
+
+**A**: 性能优化建议：
+
+1. **索引优化**: 为常用查询创建合适的索引，特别是部分索引
+2. **分区策略**: 使用分区表按party_type或时间范围分区
+3. **查询优化**: 避免过度JOIN，使用视图或物化视图预聚合
+4. **缓存策略**: 缓存字典数据和常用查询结果
+5. **批量操作**: 使用批量INSERT/UPDATE代替循环操作
+
+### Q4: Party Role和Party Relationship有什么区别？
+
+**A**:
+
+- **Party Role**: 定义Party本身可以扮演的角色（如Customer、Supplier、Employee），是Party的属性
+- **Party Relationship**: 定义两个Party之间的关系（如Customer-Organization、Employee-Employer），是Party之间的关联
+
+**示例**:
+
+- Party Role: "John Smith是Employee"
+- Party Relationship: "John Smith（Employee）与ABC Corporation（Employer）之间的Employment关系"
+
+### Q5: 如何处理Party模型的级联删除？
+
+**A**: 根据业务需求设置级联删除策略：
+
+```sql
+-- 1. 删除Party时，级联删除所有相关数据（谨慎使用）
+ALTER TABLE party_role
+    ADD CONSTRAINT fk_party_role_party
+    FOREIGN KEY (party_id, party_type)
+    REFERENCES party(party_id, party_type)
+    ON DELETE CASCADE;
+
+-- 2. 删除Party时，保留关系但设为失效（推荐）
+-- 不设置CASCADE，手动更新valid_to字段
+UPDATE party_role
+SET valid_to = NOW()
+WHERE party_id = ? AND valid_to IS NULL;
+
+-- 3. 软删除：添加deleted_at字段
+ALTER TABLE party ADD COLUMN deleted_at TIMESTAMPTZ;
+-- 查询时过滤已删除的记录
+SELECT * FROM party WHERE deleted_at IS NULL;
+```
+
+### Q6: 如何迁移现有系统到Party模型？
+
+**A**: 迁移步骤：
+
+1. **分析现有数据**: 识别所有需要统一的实体（Customer、Supplier、Employee等）
+2. **设计映射**: 将现有表映射到Party模型
+3. **数据迁移**:
+
+   ```sql
+   -- 示例：迁移Customer表到Party模型
+   INSERT INTO party (party_type, name, created_at)
+   SELECT 'O', company_name, created_at FROM customers;
+
+   INSERT INTO party_role (party_id, party_type, role_type)
+   SELECT party_id, 'O', 'CUSTOMER' FROM party WHERE party_id IN (
+       SELECT party_id FROM customers
+   );
+   ```
+
+4. **应用层改造**: 修改应用代码使用Party模型
+5. **数据验证**: 验证迁移后的数据完整性
+6. **逐步切换**: 使用双写或灰度发布逐步切换
+
+### Q7: Party模型支持哪些PostgreSQL特性？
+
+**A**: Party模型充分利用了PostgreSQL的高级特性：
+
+1. **分区表**: 使用LIST分区按party_type分区
+2. **JSONB**: 在视图中使用jsonb_agg聚合数据
+3. **递归查询**: 使用WITH RECURSIVE查询组织层级
+4. **部分索引**: 使用WHERE子句创建部分索引优化活跃记录查询
+5. **检查约束**: 使用CHECK约束确保数据完整性
+6. **触发器**: 可以使用触发器自动维护valid_to字段
+
+### Q8: 如何处理Party模型的并发更新？
+
+**A**: 并发控制策略：
+
+1. **乐观锁**: 使用版本号或时间戳
+
+   ```sql
+   ALTER TABLE party ADD COLUMN version INT DEFAULT 1;
+   -- 更新时检查版本
+   UPDATE party SET name = ?, version = version + 1
+   WHERE party_id = ? AND version = ?;
+   ```
+
+2. **悲观锁**: 使用SELECT FOR UPDATE
+
+   ```sql
+   BEGIN;
+   SELECT * FROM party WHERE party_id = ? FOR UPDATE;
+   -- 执行更新操作
+   COMMIT;
+   ```
+
+3. **行级锁**: PostgreSQL自动处理行级锁
+
+### Q9: 如何查询Party的完整信息？
+
+**A**: 使用预定义的视图或自定义查询：
+
+```sql
+-- 使用预定义视图
+SELECT * FROM v_party_complete WHERE party_id = ?;
+
+-- 或自定义查询
+SELECT
+    p.*,
+    jsonb_agg(DISTINCT jsonb_build_object('role', pr.role_type)) AS roles,
+    jsonb_agg(DISTINCT jsonb_build_object('contact', cm.contact_value)) AS contacts
+FROM party p
+LEFT JOIN party_role pr ON p.party_id = pr.party_id AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
+LEFT JOIN party_contact_mechanism pcm ON p.party_id = pcm.party_id AND (pcm.valid_to IS NULL OR pcm.valid_to > NOW())
+LEFT JOIN contact_mechanism cm ON pcm.contact_mechanism_id = cm.contact_mechanism_id
+WHERE p.party_id = ?
+GROUP BY p.party_id;
+```
+
+### Q10: Party模型如何与订单系统集成？
+
+**A**: 集成方式：
+
+```sql
+-- 订单表关联Party
+CREATE TABLE orders (
+    order_id BIGSERIAL PRIMARY KEY,
+    customer_party_id INT NOT NULL,
+    customer_party_type CHAR(1) NOT NULL,
+    -- 其他字段...
+    FOREIGN KEY (customer_party_id, customer_party_type)
+        REFERENCES party(party_id, party_type)
+);
+
+-- 查询订单的Party信息
+SELECT
+    o.*,
+    p.name AS customer_name,
+    p.party_type,
+    pr.role_type
+FROM orders o
+JOIN party p ON o.customer_party_id = p.party_id AND o.customer_party_type = p.party_type
+JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
+WHERE pr.role_type = 'CUSTOMER'
+  AND (pr.valid_to IS NULL OR pr.valid_to > NOW());
+```
+
+---
+
+## 7. 相关资源 / Related Resources
+
+### 7.1 核心相关文档 / Core Related Documents
+
+- [订单管理模型](./订单管理模型.md) - 订单模型中使用Party模型
+- [范式化设计](./范式化设计.md) - 数据库范式化设计理论
+- [约束设计](../08-PostgreSQL建模实践/约束设计.md) - Party模型的约束设计
+
+### 7.2 理论基础 / Theoretical Foundation
+
+- [ER模型](../01-数据建模理论基础/ER模型.md) - 实体-关系模型基础
+- [范式理论](../01-数据建模理论基础/范式理论.md) - 数据库范式理论
+- [Silverston数据模型资源手册](../02-权威资源与标准/Silverston数据模型资源手册.md) - Volume 1 Party模型来源
+
+### 7.3 实践指南 / Practical Guides
+
+- [性能优化](../08-PostgreSQL建模实践/性能优化.md) - Party模型性能优化
+- [索引策略](../08-PostgreSQL建模实践/索引策略.md) - Party模型索引设计
+- [数据类型选择](../08-PostgreSQL建模实践/数据类型选择.md) - Party模型数据类型选择
+
+### 7.4 应用案例 / Application Cases
+
+- [电商数据模型案例](../10-综合应用案例/电商数据模型案例.md) - Party模型在电商中的应用
+- [金融数据模型案例](../10-综合应用案例/金融数据模型案例.md) - Party模型在金融中的应用
+
+### 7.5 参考资源 / Reference Resources
+
+- [权威资源索引](../00-导航与索引/权威资源索引.md) - 权威资源列表
+- [术语对照表](../00-导航与索引/术语对照表.md) - Volume 1/2术语对照
+- [快速查找指南](../00-导航与索引/快速查找指南.md) - 快速查找工具
+- PostgreSQL官方文档: [Table Inheritance](https://www.postgresql.org/docs/current/ddl-inherit.html)
 
 - [Silverston数据模型资源手册](../02-权威资源与标准/Silverston数据模型资源手册.md) - Party模型来源
 - [范式化设计](./范式化设计.md) - OLTP设计原则

@@ -2,7 +2,7 @@
 
 > **创建日期**: 2025年1月
 > **来源**: PostgreSQL Citus + 列存扩展
-> **状态**: 待完善
+> **状态**: ✅ 已完成
 > **文档编号**: 05-04
 
 ---
@@ -28,7 +28,26 @@
     - [5.1 HTAP概念](#51-htap概念)
     - [5.2 HTAP实现](#52-htap实现)
     - [5.3 HTAP查询路由](#53-htap查询路由)
-  - [6. 相关资源](#6-相关资源)
+  - [6. 更多实际案例 / More Practical Examples](#6-更多实际案例--more-practical-examples)
+    - [6.1 案例1: 销售分析系统](#61-案例1-销售分析系统)
+    - [6.2 案例2: 用户行为分析系统](#62-案例2-用户行为分析系统)
+    - [6.3 案例3: 财务分析系统](#63-案例3-财务分析系统)
+  - [7. 性能优化与监控 / Performance Optimization and Monitoring](#7-性能优化与监控--performance-optimization-and-monitoring)
+    - [7.1 列存性能优化](#71-列存性能优化)
+    - [7.2 查询性能监控](#72-查询性能监控)
+    - [7.3 存储空间监控](#73-存储空间监控)
+  - [8. 常见问题解答 / FAQ](#8-常见问题解答--faq)
+    - [Q1: 什么时候应该使用列存表？](#q1-什么时候应该使用列存表)
+    - [Q2: 列存表和行存表如何选择？](#q2-列存表和行存表如何选择)
+    - [Q3: HTAP架构如何实现？](#q3-htap架构如何实现)
+    - [Q4: 列存表如何优化写入性能？](#q4-列存表如何优化写入性能)
+    - [Q5: 列存表查询性能如何优化？](#q5-列存表查询性能如何优化)
+  - [8. 相关资源 / Related Resources](#8-相关资源--related-resources)
+    - [8.1 核心相关文档 / Core Related Documents](#81-核心相关文档--core-related-documents)
+    - [8.2 理论基础 / Theoretical Foundation](#82-理论基础--theoretical-foundation)
+    - [8.3 实践指南 / Practical Guides](#83-实践指南--practical-guides)
+    - [8.4 应用案例 / Application Cases](#84-应用案例--application-cases)
+    - [8.5 参考资源 / Reference Resources](#85-参考资源--reference-resources)
 
 ---
 
@@ -369,12 +388,331 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-## 6. 相关资源
+## 6. 更多实际案例 / More Practical Examples
+
+### 6.1 案例1: 销售分析系统
+
+**销售分析列存实现**:
+
+```sql
+-- 销售事实表（列存）
+CREATE TABLE fact_sales_columnar (
+    sale_date DATE NOT NULL,
+    product_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    salesperson_id INT,
+    quantity INT NOT NULL,
+    unit_price NUMERIC(10,2) NOT NULL,
+    total_amount NUMERIC(10,2) NOT NULL,
+    discount_amount NUMERIC(10,2) DEFAULT 0,
+    shipping_cost NUMERIC(10,2) DEFAULT 0
+) USING columnar;
+
+-- 创建索引（列存表支持索引）
+CREATE INDEX idx_sales_date ON fact_sales_columnar(sale_date);
+CREATE INDEX idx_sales_product ON fact_sales_columnar(product_id);
+CREATE INDEX idx_sales_customer ON fact_sales_columnar(customer_id);
+
+-- 查询：销售分析
+SELECT
+    DATE_TRUNC('month', sale_date) AS month,
+    product_id,
+    SUM(quantity) AS total_quantity,
+    SUM(total_amount) AS total_revenue,
+    AVG(unit_price) AS avg_price
+FROM fact_sales_columnar
+WHERE sale_date >= '2024-01-01'
+GROUP BY month, product_id
+ORDER BY total_revenue DESC;
+```
+
+### 6.2 案例2: 用户行为分析系统
+
+**用户行为分析列存实现**:
+
+```sql
+-- 用户行为事实表（列存）
+CREATE TABLE fact_user_behavior_columnar (
+    event_date TIMESTAMPTZ NOT NULL,
+    user_id BIGINT NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    page_url TEXT,
+    session_id VARCHAR(100),
+    duration_seconds INT,
+    metadata JSONB
+) USING columnar;
+
+-- 分区（列存表支持分区）
+CREATE TABLE fact_user_behavior_columnar_2024_01 PARTITION OF fact_user_behavior_columnar
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01') USING columnar;
+
+-- 查询：用户行为分析
+SELECT
+    DATE_TRUNC('day', event_date) AS day,
+    event_type,
+    COUNT(*) AS event_count,
+    COUNT(DISTINCT user_id) AS unique_users,
+    AVG(duration_seconds) AS avg_duration
+FROM fact_user_behavior_columnar
+WHERE event_date >= NOW() - INTERVAL '30 days'
+GROUP BY day, event_type
+ORDER BY day DESC, event_count DESC;
+```
+
+### 6.3 案例3: 财务分析系统
+
+**财务分析列存实现**:
+
+```sql
+-- 财务交易事实表（列存）
+CREATE TABLE fact_financial_transactions_columnar (
+    transaction_date DATE NOT NULL,
+    account_id INT NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL,
+    amount NUMERIC(15,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'CNY',
+    category_id INT,
+    description TEXT
+) USING columnar;
+
+-- 查询：财务分析
+SELECT
+    DATE_TRUNC('quarter', transaction_date) AS quarter,
+    transaction_type,
+    SUM(amount) AS total_amount,
+    COUNT(*) AS transaction_count,
+    AVG(amount) AS avg_amount
+FROM fact_financial_transactions_columnar
+WHERE transaction_date >= '2024-01-01'
+GROUP BY quarter, transaction_type
+ORDER BY quarter DESC, total_amount DESC;
+```
+
+---
+
+## 7. 性能优化与监控 / Performance Optimization and Monitoring
+
+### 7.1 列存性能优化
+
+**压缩优化**:
+
+```sql
+-- 查看列存表压缩率
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
+    pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) AS table_size
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename LIKE '%columnar%';
+
+-- 手动压缩列存表
+SELECT columnar.alter_columnar_table_set(
+    'fact_sales_columnar',
+    compression_level => 6  -- 0-9，数字越大压缩率越高
+);
+```
+
+**查询优化**:
+
+```sql
+-- ✅ 优化：只查询需要的列
+SELECT sale_date, product_id, total_amount
+FROM fact_sales_columnar
+WHERE sale_date >= '2024-01-01';
+-- 列存只读取需要的列，性能更好
+
+-- ❌ 未优化：查询所有列
+SELECT * FROM fact_sales_columnar
+WHERE sale_date >= '2024-01-01';
+-- 读取所有列，性能较差
+```
+
+### 7.2 查询性能监控
+
+**监控查询性能**:
+
+```sql
+-- 使用pg_stat_statements监控列存查询
+SELECT
+    LEFT(query, 100) AS query_preview,
+    calls,
+    mean_exec_time,
+    max_exec_time,
+    total_exec_time
+FROM pg_stat_statements
+WHERE query LIKE '%columnar%'
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+
+-- 对比行存和列存查询性能
+-- 行存查询
+EXPLAIN ANALYZE
+SELECT SUM(total_amount) FROM fact_sales_rowstore WHERE sale_date >= '2024-01-01';
+-- Seq Scan: 5000ms
+
+-- 列存查询
+EXPLAIN ANALYZE
+SELECT SUM(total_amount) FROM fact_sales_columnar WHERE sale_date >= '2024-01-01';
+-- Columnar Scan: 500ms（快10倍）
+```
+
+### 7.3 存储空间监控
+
+**存储空间对比**:
+
+```sql
+-- 对比行存和列存存储空间
+SELECT
+    'rowstore' AS storage_type,
+    pg_size_pretty(pg_total_relation_size('fact_sales_rowstore')) AS size
+UNION ALL
+SELECT
+    'columnar' AS storage_type,
+    pg_size_pretty(pg_total_relation_size('fact_sales_columnar')) AS size;
+
+-- 计算压缩率
+SELECT
+    pg_total_relation_size('fact_sales_rowstore')::NUMERIC /
+    NULLIF(pg_total_relation_size('fact_sales_columnar'), 0) AS compression_ratio;
+```
+
+---
+
+## 8. 常见问题解答 / FAQ
+
+### Q1: 什么时候应该使用列存表？
+
+**A**: 列存表适用场景：
+
+- ✅ **OLAP查询**: 分析型查询，聚合计算
+- ✅ **大表**: 表很大（GB级以上）
+- ✅ **列式查询**: 查询只涉及部分列
+- ✅ **低写入频率**: 写入频率低，主要是批量导入
+
+**不适用场景**:
+
+- ❌ **OLTP查询**: 事务型查询，单行查询
+- ❌ **高写入频率**: 频繁的单行写入
+- ❌ **全列查询**: 经常查询所有列
+
+### Q2: 列存表和行存表如何选择？
+
+**A**: 选择原则：
+
+| 特性 | 行存表 | 列存表 |
+|------|--------|--------|
+| OLTP查询 | ✅ 优秀 | ❌ 较差 |
+| OLAP查询 | ⚠️ 一般 | ✅ 优秀 |
+| 写入性能 | ✅ 优秀 | ⚠️ 一般 |
+| 压缩率 | ⚠️ 一般 | ✅ 优秀 |
+| 单行查询 | ✅ 优秀 | ❌ 较差 |
+| 聚合查询 | ⚠️ 一般 | ✅ 优秀 |
+
+**建议**:
+
+- OLTP场景 → 使用行存表
+- OLAP场景 → 使用列存表
+- HTAP场景 → 行存+列存混合
+
+### Q3: HTAP架构如何实现？
+
+**A**: HTAP实现策略：
+
+```sql
+-- 方案1：双表架构（行存+列存）
+CREATE TABLE orders_rowstore (...);  -- OLTP查询
+CREATE TABLE orders_columnar (...) USING columnar;  -- OLAP查询
+
+-- 数据同步
+INSERT INTO orders_columnar SELECT * FROM orders_rowstore WHERE order_date >= CURRENT_DATE - INTERVAL '1 day';
+
+-- 方案2：使用物化视图
+CREATE MATERIALIZED VIEW orders_olap AS
+SELECT * FROM orders_rowstore;
+
+-- 定期刷新
+REFRESH MATERIALIZED VIEW CONCURRENTLY orders_olap;
+```
+
+### Q4: 列存表如何优化写入性能？
+
+**A**: 写入优化策略：
+
+1. **批量写入**: 使用批量INSERT或COPY
+2. **异步同步**: 使用ETL工具异步同步
+3. **减少压缩**: 降低压缩级别（写入时）
+4. **分区**: 使用分区表减少写入影响
+
+```sql
+-- ✅ 优化：批量写入
+INSERT INTO fact_sales_columnar
+SELECT * FROM staging_table;
+
+-- ✅ 优化：使用COPY
+COPY fact_sales_columnar FROM '/path/to/data.csv' WITH CSV HEADER;
+```
+
+### Q5: 列存表查询性能如何优化？
+
+**A**: 查询优化策略：
+
+1. **只查询需要的列**: 避免SELECT *
+2. **使用索引**: 为WHERE条件创建索引
+3. **分区剪枝**: 使用分区减少扫描范围
+4. **聚合预计算**: 使用物化视图预计算聚合
+
+```sql
+-- ✅ 优化：只查询需要的列
+SELECT sale_date, total_amount FROM fact_sales_columnar;
+
+-- ✅ 优化：使用索引
+CREATE INDEX idx_sales_date ON fact_sales_columnar(sale_date);
+SELECT * FROM fact_sales_columnar WHERE sale_date >= '2024-01-01';
+```
+
+---
+
+## 8. 相关资源 / Related Resources
+
+### 8.1 核心相关文档 / Core Related Documents
+
+- [维度建模基础](./维度建模基础.md) - OLAP维度建模基础
+- [事实表技术](./事实表技术.md) - 事实表列存实现
+- [维度表技术](./维度表技术.md) - 维度表设计
+- [分区策略](../08-PostgreSQL建模实践/分区策略.md) - 列存表分区策略
+- [索引策略](../08-PostgreSQL建模实践/索引策略.md) - 列存表索引设计
+- [性能优化](../08-PostgreSQL建模实践/性能优化.md) - 列存查询性能优化
+
+### 8.2 理论基础 / Theoretical Foundation
+
+- [Kimball维度建模](../02-权威资源与标准/Kimball维度建模.md) - Kimball维度建模理论
+- [范式理论](../01-数据建模理论基础/范式理论.md) - 数据库范式理论
+
+### 8.3 实践指南 / Practical Guides
+
+- [性能优化与监控](#7-性能优化与监控--performance-optimization-and-monitoring) - 本文档的性能监控章节
+- [更多实际案例](#6-更多实际案例--more-practical-examples) - 本文档的应用案例章节
+
+### 8.4 应用案例 / Application Cases
+
+- [电商数据模型案例](../10-综合应用案例/电商数据模型案例.md) - 电商列存实现案例
+- [金融数据模型案例](../10-综合应用案例/金融数据模型案例.md) - 金融列存实现案例
+
+### 8.5 参考资源 / Reference Resources
+
+- [权威资源索引](../00-导航与索引/权威资源索引.md) - 权威资源列表
+- [术语对照表](../00-导航与索引/术语对照表.md) - 术语对照
+- [快速查找指南](../00-导航与索引/快速查找指南.md) - 快速查找工具
+- Citus官方文档: [Columnar Storage](https://docs.citusdata.com/en/stable/develop/reference_citus_sql.html#columnar-storage)
+- PostgreSQL官方文档: [Table Storage](https://www.postgresql.org/docs/current/storage.html)
 
 - [维度建模基础](./维度建模基础.md) - 维度建模指南
 - [事实表技术](./事实表技术.md) - 事实表设计
 - [Citus官方文档](https://docs.citusdata.com/) - Citus列存文档
 - [PostgreSQL列存扩展](https://github.com/citusdata/citus) - Citus GitHub
+- [性能优化](../08-PostgreSQL建模实践/性能优化.md) - 性能优化指南
 
 ---
 
