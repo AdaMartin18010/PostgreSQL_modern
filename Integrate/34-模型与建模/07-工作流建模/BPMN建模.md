@@ -12,6 +12,13 @@
 - [BPMN建模完整指南](#bpmn建模完整指南)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+  - [1.1 理论基础](#11-理论基础)
+    - [1.1.1 BPMN基本概念](#111-bpmn基本概念)
+    - [1.1.2 流程执行理论](#112-流程执行理论)
+    - [1.1.3 任务执行理论](#113-任务执行理论)
+    - [1.1.4 网关理论](#114-网关理论)
+    - [1.1.5 事件理论](#115-事件理论)
+    - [1.1.6 复杂度分析](#116-复杂度分析)
   - [2. BPMN核心元素](#2-bpmn核心元素)
     - [2.1 流程定义](#21-流程定义)
     - [2.2 任务类型](#22-任务类型)
@@ -49,6 +56,96 @@
 
 BPMN（Business Process Model and Notation）是OMG组织维护的业务流程建模标准。
 BPMN 2.0定义了完整的业务流程建模语言，支持流程定义、执行和监控。
+
+---
+
+## 1.1 理论基础
+
+### 1.1.1 BPMN基本概念
+
+**BPMN（Business Process Model and Notation）**:
+
+- **定义**: 业务流程建模和标注标准
+- **版本**: BPMN 2.0（当前版本）
+- **目的**: 统一业务流程建模语言
+
+**BPMN核心元素**:
+
+- **流程（Process）**: 业务流程定义
+- **任务（Task）**: 需要执行的工作
+- **网关（Gateway）**: 流程分支控制
+- **事件（Event）**: 流程中的事件
+
+### 1.1.2 流程执行理论
+
+**流程实例（Process Instance）**:
+
+- **定义**: 流程定义的执行实例
+- **状态**: 运行中、已完成、已取消
+- **生命周期**: 创建 → 运行 → 完成/取消
+
+**流程状态机**:
+
+- **状态**: $S = \{created, running, completed, cancelled\}$
+- **转换**: $s_i \rightarrow s_j$ (状态转换)
+- **事件**: 触发状态转换的事件
+
+### 1.1.3 任务执行理论
+
+**任务（Task）**:
+
+- **任务类型**: User Task、Service Task、Script Task
+- **任务状态**: pending → active → completed/failed
+- **任务分配**: 分配给用户或系统
+
+**任务执行**:
+
+- **顺序执行**: 任务按顺序执行
+- **并行执行**: 任务可以并行执行
+- **条件执行**: 根据条件执行任务
+
+### 1.1.4 网关理论
+
+**网关（Gateway）**:
+
+- **排他网关**: 互斥选择，只有一个分支执行
+- **并行网关**: 并行执行多个分支
+- **包容网关**: 一个或多个分支执行
+- **事件网关**: 基于事件的选择
+
+**网关决策**:
+
+- **条件评估**: 评估分支条件
+- **分支选择**: 选择执行的分支
+- **同步**: 并行分支的同步
+
+### 1.1.5 事件理论
+
+**事件（Event）**:
+
+- **开始事件**: 流程开始
+- **结束事件**: 流程结束
+- **中间事件**: 流程中的事件
+
+**事件类型**:
+
+- **消息事件**: 基于消息的事件
+- **定时事件**: 基于时间的事件
+- **错误事件**: 错误处理事件
+
+### 1.1.6 复杂度分析
+
+**存储复杂度**:
+
+- **流程定义**: $O(P)$ where P is number of processes
+- **流程实例**: $O(P \times I)$ where I is average instances per process
+- **任务实例**: $O(I \times T)$ where T is average tasks per instance
+
+**执行复杂度**:
+
+- **流程执行**: $O(T)$ where T is number of tasks
+- **网关决策**: $O(B)$ where B is number of branches
+- **事件处理**: $O(E)$ where E is number of events
 
 ---
 
@@ -94,92 +191,135 @@ BPMN 2.0定义了完整的业务流程建模语言，支持流程定义、执行
 **BPMN流程定义存储**:
 
 ```sql
--- BPMN流程定义表
-CREATE TABLE bpmn_process_definition (
-    process_id SERIAL PRIMARY KEY,
-    process_key VARCHAR(100) NOT NULL UNIQUE,
-    process_name VARCHAR(200) NOT NULL,
-    version INT NOT NULL DEFAULT 1,
-    -- BPMN XML定义
-    bpmn_xml TEXT NOT NULL,
-    -- 解析后的JSON结构（便于查询）
-    bpmn_json JSONB,
-    -- 流程元数据
-    description TEXT,
-    category VARCHAR(100),
-    -- 状态
-    is_active BOOLEAN DEFAULT TRUE,
-    is_deployed BOOLEAN DEFAULT FALSE,
-    -- 时间戳
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    deployed_at TIMESTAMPTZ,
-    UNIQUE(process_key, version)
-);
+-- BPMN流程定义表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS bpmn_process_definition (
+        process_id SERIAL PRIMARY KEY,
+        process_key VARCHAR(100) NOT NULL UNIQUE,
+        process_name VARCHAR(200) NOT NULL,
+        version INT NOT NULL DEFAULT 1,
+        -- BPMN XML定义
+        bpmn_xml TEXT NOT NULL,
+        -- 解析后的JSON结构（便于查询）
+        bpmn_json JSONB,
+        -- 流程元数据
+        description TEXT,
+        category VARCHAR(100),
+        -- 状态
+        is_active BOOLEAN DEFAULT TRUE,
+        is_deployed BOOLEAN DEFAULT FALSE,
+        -- 时间戳
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        deployed_at TIMESTAMPTZ,
+        UNIQUE(process_key, version)
+    );
+    RAISE NOTICE '表 bpmn_process_definition 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 bpmn_process_definition 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 bpmn_process_definition 失败: %', SQLERRM;
+END $$;
 
--- 流程实例表
-CREATE TABLE bpmn_process_instance (
-    instance_id BIGSERIAL PRIMARY KEY,
-    process_id INT NOT NULL REFERENCES bpmn_process_definition(process_id),
-    process_key VARCHAR(100) NOT NULL,
-    -- 实例状态
-    status VARCHAR(50) DEFAULT 'running', -- 'running', 'completed', 'terminated', 'suspended'
-    -- 业务键
-    business_key VARCHAR(200),
-    -- 实例变量
-    variables JSONB DEFAULT '{}',
-    -- 时间戳
-    started_at TIMESTAMPTZ DEFAULT NOW(),
-    ended_at TIMESTAMPTZ,
-    started_by VARCHAR(100)
-);
+-- 流程实例表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS bpmn_process_instance (
+        instance_id BIGSERIAL PRIMARY KEY,
+        process_id INT NOT NULL REFERENCES bpmn_process_definition(process_id),
+        process_key VARCHAR(100) NOT NULL,
+        -- 实例状态
+        status VARCHAR(50) DEFAULT 'running', -- 'running', 'completed', 'terminated', 'suspended'
+        -- 业务键
+        business_key VARCHAR(200),
+        -- 实例变量
+        variables JSONB DEFAULT '{}',
+        -- 时间戳
+        started_at TIMESTAMPTZ DEFAULT NOW(),
+        ended_at TIMESTAMPTZ,
+        started_by VARCHAR(100)
+    );
+    RAISE NOTICE '表 bpmn_process_instance 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 bpmn_process_instance 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 bpmn_process_instance 失败: %', SQLERRM;
+END $$;
 
--- 任务实例表
-CREATE TABLE bpmn_task_instance (
-    task_id BIGSERIAL PRIMARY KEY,
-    instance_id BIGINT NOT NULL REFERENCES bpmn_process_instance(instance_id),
-    -- 任务定义
-    task_key VARCHAR(100) NOT NULL,
-    task_name VARCHAR(200),
-    task_type VARCHAR(50), -- 'user', 'service', 'script', 'business_rule'
-    -- 任务状态
-    status VARCHAR(50) DEFAULT 'created', -- 'created', 'assigned', 'completed', 'cancelled'
-    -- 分配信息
-    assignee VARCHAR(100),
-    candidate_users TEXT[],
-    candidate_groups TEXT[],
-    -- 任务变量
-    task_variables JSONB DEFAULT '{}',
-    -- 时间戳
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    assigned_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    due_date TIMESTAMPTZ
-);
+-- 任务实例表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS bpmn_task_instance (
+        task_id BIGSERIAL PRIMARY KEY,
+        instance_id BIGINT NOT NULL REFERENCES bpmn_process_instance(instance_id),
+        -- 任务定义
+        task_key VARCHAR(100) NOT NULL,
+        task_name VARCHAR(200),
+        task_type VARCHAR(50), -- 'user', 'service', 'script', 'business_rule'
+        -- 任务状态
+        status VARCHAR(50) DEFAULT 'created', -- 'created', 'assigned', 'completed', 'cancelled'
+        -- 分配信息
+        assignee VARCHAR(100),
+        candidate_users TEXT[],
+        candidate_groups TEXT[],
+        -- 任务变量
+        task_variables JSONB DEFAULT '{}',
+        -- 时间戳
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        assigned_at TIMESTAMPTZ,
+        completed_at TIMESTAMPTZ,
+        due_date TIMESTAMPTZ
+    );
+    RAISE NOTICE '表 bpmn_task_instance 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 bpmn_task_instance 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 bpmn_task_instance 失败: %', SQLERRM;
+END $$;
 
--- 流程执行历史表
-CREATE TABLE bpmn_execution_history (
-    history_id BIGSERIAL PRIMARY KEY,
-    instance_id BIGINT NOT NULL,
-    activity_id VARCHAR(100) NOT NULL,
-    activity_type VARCHAR(50), -- 'task', 'gateway', 'event'
-    activity_name VARCHAR(200),
-    -- 执行状态
-    status VARCHAR(50), -- 'started', 'completed', 'cancelled'
-    -- 执行变量快照
-    variables JSONB,
-    -- 时间戳
-    start_time TIMESTAMPTZ,
-    end_time TIMESTAMPTZ,
-    duration_ms BIGINT GENERATED ALWAYS AS (
-        EXTRACT(EPOCH FROM (end_time - start_time)) * 1000
-    ) STORED
-);
+-- 流程执行历史表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS bpmn_execution_history (
+        history_id BIGSERIAL PRIMARY KEY,
+        instance_id BIGINT NOT NULL,
+        activity_id VARCHAR(100) NOT NULL,
+        activity_type VARCHAR(50), -- 'task', 'gateway', 'event'
+        activity_name VARCHAR(200),
+        -- 执行状态
+        status VARCHAR(50), -- 'started', 'completed', 'cancelled'
+        -- 执行变量快照
+        variables JSONB,
+        -- 时间戳
+        start_time TIMESTAMPTZ,
+        end_time TIMESTAMPTZ,
+        duration_ms BIGINT GENERATED ALWAYS AS (
+            EXTRACT(EPOCH FROM (end_time - start_time)) * 1000
+        ) STORED
+    );
+    RAISE NOTICE '表 bpmn_execution_history 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 bpmn_execution_history 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 bpmn_execution_history 失败: %', SQLERRM;
+END $$;
 
--- 创建索引
-CREATE INDEX idx_process_instance_status ON bpmn_process_instance(status, started_at DESC);
-CREATE INDEX idx_task_instance_assignee ON bpmn_task_instance(assignee, status);
-CREATE INDEX idx_task_instance_instance ON bpmn_task_instance(instance_id, status);
-CREATE INDEX idx_execution_history_instance ON bpmn_execution_history(instance_id, start_time DESC);
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_process_instance_status ON bpmn_process_instance(status, started_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_task_instance_assignee ON bpmn_task_instance(assignee, status);
+    CREATE INDEX IF NOT EXISTS idx_task_instance_instance ON bpmn_task_instance(instance_id, status);
+    CREATE INDEX IF NOT EXISTS idx_execution_history_instance ON bpmn_execution_history(instance_id, start_time DESC);
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 ### 3.2 BPMN解析函数

@@ -12,6 +12,14 @@
 - [PostgreSQL列存实现](#postgresql列存实现)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+  - [1.1 理论基础](#11-理论基础)
+    - [1.1.1 列式存储基本概念](#111-列式存储基本概念)
+    - [1.1.2 列式存储理论](#112-列式存储理论)
+    - [1.1.3 列式存储压缩理论](#113-列式存储压缩理论)
+    - [1.1.4 HTAP架构理论](#114-htap架构理论)
+    - [1.1.5 列式存储查询理论](#115-列式存储查询理论)
+    - [1.1.6 列式存储写入理论](#116-列式存储写入理论)
+    - [1.1.7 复杂度分析](#117-复杂度分析)
   - [2. Citus列存](#2-citus列存)
     - [2.1 Citus列存特性](#21-citus列存特性)
     - [2.2 启用列存](#22-启用列存)
@@ -65,6 +73,112 @@ PostgreSQL通过Citus扩展支持列式存储，适用于OLAP场景的大规模�
 
 ---
 
+## 1.1 理论基础
+
+### 1.1.1 列式存储基本概念
+
+**列式存储（Columnar Storage）**:
+
+- **定义**: 数据按列组织存储，而不是按行
+- **结构**: 每列单独存储，相同类型数据连续存储
+- **优势**: 分析查询性能优异，压缩率高
+
+**列式存储 vs 行式存储**:
+
+| 特性 | 行式存储 | 列式存储 |
+|------|---------|---------|
+| **数据组织** | 按行组织 | 按列组织 |
+| **查询性能** | OLTP查询快 | OLAP查询快 |
+| **压缩率** | 低 | 高 |
+| **写入性能** | 快 | 慢 |
+| **更新性能** | 快 | 慢 |
+
+### 1.1.2 列式存储理论
+
+**列式存储原理**:
+
+- **数据组织**: $C = \{c_1, c_2, ..., c_n\}$ where $c_i$ is column
+- **存储结构**: 每列单独存储，相同类型数据连续
+- **查询优化**: 只读取需要的列，减少I/O
+
+**列式存储优势**:
+
+- **压缩优化**: 相同类型数据压缩效果好
+- **查询优化**: 只读取需要的列
+- **聚合优化**: 列式数据便于聚合计算
+
+### 1.1.3 列式存储压缩理论
+
+**列式存储压缩**:
+
+- **压缩算法**: Run-Length Encoding、Delta Encoding、Dictionary Encoding
+- **压缩率**: 通常5-10倍压缩率
+- **压缩效果**: 相同类型数据压缩效果好
+
+**压缩算法**:
+
+- **RLE**: Run-Length Encoding，适合重复数据
+- **Delta Encoding**: 差值编码，适合有序数据
+- **Dictionary Encoding**: 字典编码，适合低基数数据
+
+### 1.1.4 HTAP架构理论
+
+**HTAP（Hybrid Transaction/Analytical Processing）**:
+
+- **定义**: 混合事务/分析处理架构
+- **特点**: 同时支持OLTP和OLAP
+- **实现**: 行存表+列存表，查询路由
+
+**HTAP架构**:
+
+- **OLTP**: 使用行存表，保证事务性能
+- **OLAP**: 使用列存表，保证分析性能
+- **数据同步**: ETL/ELT管道同步数据
+
+### 1.1.5 列式存储查询理论
+
+**列式存储查询**:
+
+- **列扫描**: 只扫描需要的列
+- **向量化**: 向量化处理提高性能
+- **并行处理**: 列式数据便于并行处理
+
+**查询优化**:
+
+- **列剪枝**: 只读取需要的列
+- **向量化**: 向量化处理提高性能
+- **并行扫描**: 并行扫描提高性能
+
+### 1.1.6 列式存储写入理论
+
+**列式存储写入**:
+
+- **写入性能**: 列式存储写入性能较差
+- **批量写入**: 批量写入提高性能
+- **写入优化**: 使用批量写入和压缩优化
+
+**写入优化**:
+
+- **批量写入**: 批量写入减少I/O
+- **压缩优化**: 写入时压缩优化
+- **异步写入**: 异步写入提高性能
+
+### 1.1.7 复杂度分析
+
+**存储复杂度**:
+
+- **行式存储**: $O(N \times M)$ where N is rows, M is columns
+- **列式存储**: $O(N \times M)$ (same structure, different organization)
+- **压缩存储**: $O(N \times M \times C)$ where C is compression ratio
+
+**查询复杂度**:
+
+- **行式查询**: $O(N)$ (full scan)
+- **列式查询**: $O(N \times K)$ where K is number of columns scanned
+- **聚合查询**: $O(N)$ (column scan)
+
+---
+
 ## 2. Citus列存
 
 ### 2.1 Citus列存特性
@@ -81,25 +195,55 @@ PostgreSQL通过Citus扩展支持列式存储，适用于OLAP场景的大规模�
 **安装和启用**:
 
 ```sql
--- 安装Citus扩展
-CREATE EXTENSION IF NOT EXISTS citus;
+-- 安装Citus扩展（带错误处理）
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS citus;
+    RAISE NOTICE 'Citus扩展已安装';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'Citus扩展已存在，跳过安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '安装Citus扩展失败: %', SQLERRM;
+END $$;
 
--- 查看Citus版本
+-- 查看Citus版本（带性能测试）
+EXPLAIN ANALYZE
 SELECT * FROM citus_version();
 
--- 创建列存表
-CREATE TABLE sales_fact_columnar (
-    sale_id BIGSERIAL,
-    date_id INT NOT NULL,
-    product_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    quantity INT NOT NULL,
-    amount NUMERIC(10,2) NOT NULL
-) USING columnar;
+-- 创建列存表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS sales_fact_columnar (
+        sale_id BIGSERIAL,
+        date_id INT NOT NULL,
+        product_id INT NOT NULL,
+        customer_id INT NOT NULL,
+        quantity INT NOT NULL,
+        amount NUMERIC(10,2) NOT NULL
+    ) USING columnar;
+    RAISE NOTICE '列存表 sales_fact_columnar 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 sales_fact_columnar 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建列存表失败: %', SQLERRM;
+END $$;
 
--- 或者使用ALTER TABLE转换
-CREATE TABLE sales_fact_row AS SELECT * FROM sales_fact LIMIT 0;
-ALTER TABLE sales_fact_row SET (columnar = true);
+-- 或者使用ALTER TABLE转换（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'sales_fact_row') THEN
+        CREATE TABLE sales_fact_row AS SELECT * FROM sales_fact LIMIT 0;
+        ALTER TABLE sales_fact_row SET (columnar = true);
+        RAISE NOTICE '表已转换为列存';
+    ELSE
+        RAISE NOTICE '表 sales_fact_row 已存在，跳过转换';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '转换表失败: %', SQLERRM;
+END $$;
 ```
 
 ### 2.3 列存表管理
@@ -107,11 +251,13 @@ ALTER TABLE sales_fact_row SET (columnar = true);
 **列存表操作**:
 
 ```sql
--- 查看列存表信息
+-- 查看列存表信息（带性能测试）
+EXPLAIN ANALYZE
 SELECT * FROM columnar.storage
 WHERE relation_name = 'sales_fact_columnar';
 
--- 查看列存表统计
+-- 查看列存表统计（带性能测试）
+EXPLAIN ANALYZE
 SELECT
     schemaname,
     tablename,
@@ -119,12 +265,19 @@ SELECT
 FROM pg_tables
 WHERE tablename LIKE '%columnar%';
 
--- 列存表压缩
-SELECT columnar.alter_columnar_table_set(
-    'sales_fact_columnar',
-    compression => 'pglz',
-    compression_level => 1
-);
+-- 列存表压缩（带错误处理）
+DO $$
+BEGIN
+    PERFORM columnar.alter_columnar_table_set(
+        'sales_fact_columnar',
+        compression => 'pglz',
+        compression_level => 1
+    );
+    RAISE NOTICE '列存表压缩设置成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置列存表压缩失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -214,7 +367,8 @@ CREATE INDEX idx_sales_date_year ON fact_sales_columnar(sale_year)
 **优化查询模式**:
 
 ```sql
--- 列存表查询：只选择需要的列
+-- 列存表查询：只选择需要的列（带性能测试）
+EXPLAIN ANALYZE
 SELECT
     sale_year,
     sale_month,
@@ -230,7 +384,7 @@ ORDER BY sale_year, sale_month;
 -- 避免SELECT *，只查询需要的列
 -- 列存表在SELECT *时性能不如行存表
 
--- 利用分区裁剪
+-- 利用分区裁剪（带性能测试）
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT product_id, SUM(amount) AS total
 FROM fact_sales_columnar
@@ -243,10 +397,18 @@ GROUP BY product_id;
 **更新统计信息**:
 
 ```sql
--- 列存表需要手动更新统计信息
-ANALYZE fact_sales_columnar;
+-- 列存表需要手动更新统计信息（带错误处理）
+DO $$
+BEGIN
+    ANALYZE fact_sales_columnar;
+    RAISE NOTICE '统计信息更新成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '更新统计信息失败: %', SQLERRM;
+END $$;
 
--- 查看列存表统计
+-- 查看列存表统计（带性能测试）
+EXPLAIN ANALYZE
 SELECT
     schemaname,
     tablename,
@@ -256,7 +418,8 @@ SELECT
 FROM pg_stats
 WHERE tablename = 'fact_sales_columnar';
 
--- 列存表压缩统计
+-- 列存表压缩统计（带性能测试）
+EXPLAIN ANALYZE
 SELECT
     relation_name,
     stripe_count,
@@ -287,31 +450,57 @@ WHERE relation_name = 'fact_sales_columnar';
 **HTAP架构设计**:
 
 ```sql
--- OLTP表：行存（事务处理）
-CREATE TABLE orders_oltp (
-    order_id BIGSERIAL PRIMARY KEY,
-    customer_id INT NOT NULL,
-    order_date TIMESTAMPTZ DEFAULT NOW(),
-    order_amount NUMERIC(10,2) NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    -- 索引优化事务查询
-    INDEX idx_orders_customer (customer_id),
-    INDEX idx_orders_date (order_date)
-);
+-- OLTP表：行存（事务处理，带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS orders_oltp (
+        order_id BIGSERIAL PRIMARY KEY,
+        customer_id INT NOT NULL,
+        order_date TIMESTAMPTZ DEFAULT NOW(),
+        order_amount NUMERIC(10,2) NOT NULL,
+        status VARCHAR(50) NOT NULL
+    );
+    RAISE NOTICE 'OLTP表 orders_oltp 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 orders_oltp 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建OLTP表失败: %', SQLERRM;
+END $$;
 
--- OLAP表：列存（分析处理）
-CREATE TABLE orders_olap (
-    order_id BIGINT,
-    customer_id INT NOT NULL,
-    order_date DATE NOT NULL,
-    order_year INT NOT NULL,
-    order_month INT NOT NULL,
-    order_amount NUMERIC(10,2) NOT NULL,
-    status VARCHAR(50) NOT NULL
-) USING columnar
-PARTITION BY RANGE (order_date);
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders_oltp(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_date ON orders_oltp(order_date);
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 
--- 数据同步：ETL过程
+-- OLAP表：列存（分析处理，带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS orders_olap (
+        order_id BIGINT,
+        customer_id INT NOT NULL,
+        order_date DATE NOT NULL,
+        order_year INT NOT NULL,
+        order_month INT NOT NULL,
+        order_amount NUMERIC(10,2) NOT NULL,
+        status VARCHAR(50) NOT NULL
+    ) USING columnar
+    PARTITION BY RANGE (order_date);
+    RAISE NOTICE 'OLAP表 orders_olap 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 orders_olap 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建OLAP表失败: %', SQLERRM;
+END $$;
+
+-- 数据同步：ETL过程（带错误处理）
 CREATE OR REPLACE FUNCTION sync_oltp_to_olap()
 RETURNS VOID AS $$
 BEGIN
@@ -329,9 +518,14 @@ BEGIN
         order_amount,
         status
     FROM orders_oltp
-    WHERE order_date > (
+    WHERE order_date > COALESCE((
         SELECT MAX(order_date) FROM orders_olap
-    );
+    ), '1970-01-01'::DATE);
+
+    RAISE NOTICE '数据同步完成';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '数据同步失败: %', SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -344,7 +538,7 @@ $$ LANGUAGE plpgsql;
 **查询路由策略**:
 
 ```sql
--- OLTP查询：使用行存表
+-- OLTP查询：使用行存表（带错误处理和性能测试）
 CREATE OR REPLACE FUNCTION get_order_details(p_order_id BIGINT)
 RETURNS TABLE (
     order_id BIGINT,
@@ -353,14 +547,25 @@ RETURNS TABLE (
     order_amount NUMERIC
 ) AS $$
 BEGIN
+    IF p_order_id IS NULL THEN
+        RAISE EXCEPTION 'order_id不能为NULL';
+    END IF;
+
     RETURN QUERY
     SELECT o.order_id, o.customer_id, o.order_date, o.order_amount
     FROM orders_oltp o
     WHERE o.order_id = p_order_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询订单详情失败: %', SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
 
--- OLAP查询：使用列存表
+-- 性能测试
+EXPLAIN ANALYZE
+SELECT * FROM get_order_details(1);
+
+-- OLAP查询：使用列存表（带错误处理和性能测试）
 CREATE OR REPLACE FUNCTION get_sales_analytics(
     p_start_date DATE,
     p_end_date DATE
@@ -372,6 +577,13 @@ RETURNS TABLE (
     order_count BIGINT
 ) AS $$
 BEGIN
+    IF p_start_date IS NULL OR p_end_date IS NULL THEN
+        RAISE EXCEPTION '日期参数不能为NULL';
+    END IF;
+    IF p_start_date > p_end_date THEN
+        RAISE EXCEPTION '开始日期不能大于结束日期';
+    END IF;
+
     RETURN QUERY
     SELECT
         order_year,
@@ -382,8 +594,15 @@ BEGIN
     WHERE order_date BETWEEN p_start_date AND p_end_date
     GROUP BY order_year, order_month
     ORDER BY order_year, order_month;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '查询销售分析失败: %', SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 性能测试
+EXPLAIN ANALYZE
+SELECT * FROM get_sales_analytics('2025-01-01'::DATE, '2025-12-31'::DATE);
 ```
 
 ---

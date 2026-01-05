@@ -872,13 +872,14 @@ END $$;
 **诊断步骤**：
 
 ```sql
--- 1. 检查自动VACUUM配置
-SHOW autovacuum;
-SHOW autovacuum_naptime;
-SHOW autovacuum_vacuum_threshold;
-SHOW autovacuum_analyze_threshold;
+-- 1. 检查自动VACUUM配置（带性能测试）
+EXPLAIN ANALYZE
+SELECT name, setting, unit, short_desc
+FROM pg_settings
+WHERE name IN ('autovacuum', 'autovacuum_naptime', 'autovacuum_vacuum_threshold', 'autovacuum_analyze_threshold');
 
--- 2. 检查自动VACUUM活动
+-- 2. 检查自动VACUUM活动（带性能测试）
+EXPLAIN ANALYZE
 SELECT
     schemaname,
     relname,

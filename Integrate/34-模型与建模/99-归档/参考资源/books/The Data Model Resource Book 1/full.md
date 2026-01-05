@@ -974,28 +974,28 @@ Many of the data models have slightly different and more enhanced data structure
 
 A number of new chapters have been added to the second edition. Chapter 14 provides additional star schemas that can be used as templates for data analysis solutions. Chapter 15 provides an explanation of how to use the universal data models to create an enterprise data model, a logical data model, and a physical database design. This chapter provides examples of customizing enterprise and logical data models and several physical database design examples for implementing one of the universal data models. A great number of new universal data models have been added to the already existing comprehensive library from the first edition. Table 1.1 provides a listing of the new models.
 
-Table 1.1 Data Models Added in Second Edition  
+Table 1.1 Data Models Added in Second Edition
 
 <table><tr><td>CHAPTER</td><td>NEW DATA MODELS THAT HAVE BEEN ADDED FROM THE FIRST EDITION TO THE SECOND EDITION</td></tr><tr><td rowspan="7">2 Parties</td><td>2b Person-alternate model</td></tr><tr><td>2.4 Party roles</td></tr><tr><td>2.5 Specific party relationships</td></tr><tr><td>2.6 Common party relationships</td></tr><tr><td>2.11 Facility versus contact mechanism</td></tr><tr><td>2.12 Party communication event</td></tr><tr><td>2.13 Communication event follow up event</td></tr><tr><td rowspan="3">3 Products</td><td>3.4 Product feature</td></tr><tr><td>3.10a Products and parts</td></tr><tr><td>3.10b Products and parts-alternate model</td></tr><tr><td rowspan="4">4 Orders</td><td>4.3 Sales order parties and contact mechanisms</td></tr><tr><td>4.4 Purchase order parties and contact mechanisms</td></tr><tr><td>4.6 Order adjustments</td></tr><tr><td>4.12 Agreement roles</td></tr><tr><td>5 Shipments</td><td>5.4 Shipment receipt for incoming shipments</td></tr><tr><td></td><td>5.5 Item issuances for outgoing shipments</td></tr><tr><td></td><td>5.6 Shipping documents</td></tr><tr><td></td><td>5.7 Shipment route segments</td></tr><tr><td>6 Work Efforts</td><td>6.1 Work requirement</td></tr><tr><td></td><td>6.2 Work requirement roles</td></tr><tr><td></td><td>6.12 Work effort results</td></tr><tr><td>7 Invoices</td><td>7.8a Invoice payments</td></tr><tr><td></td><td>7.8b Invoice payments-alternate model</td></tr><tr><td></td><td>7.9 Financial accounts, withdrawals and deposits</td></tr><tr><td>8 Accounting</td><td>8.2 Business transactions versus accounting transactions</td></tr><tr><td></td><td>8.4 General ledger account associations and subsidiary ledger accounts</td></tr><tr><td></td><td>8.7 Budget revision</td></tr><tr><td></td><td>8.8 Budget revision review</td></tr><tr><td></td><td>8.9 Budget scenario</td></tr><tr><td>9 Human Resources</td><td>9.8 Benefits tracking</td></tr><tr><td></td><td>9.10 Employee application</td></tr><tr><td></td><td>9.11 Employee skills and qualifications</td></tr><tr><td></td><td>9.12 Employee performance</td></tr><tr><td></td><td>9.13 Employee termination</td></tr></table>
 
-12 Star Schema Designs for Sales Analysis Star Schema Designs  
+12 Star Schema Designs for Sales Analysis Star Schema Designs
 14 Additional Star Schema Designs
 
 12.2 Transaction oriented sales data mart
 
-14.1 Inventory management stars schema  
-14.2 Purchase order star schema  
-14.3 Shipment star schema  
-14.4 Work effort star schema  
+14.1 Inventory management stars schema
+14.2 Purchase order star schema
+14.3 Shipment star schema
+14.4 Work effort star schema
 14.5 Financial analysis star schema
 
 15 Implementing Universal Data Models
 
-15.2. Customized party contact mechanism (using different terms)  
-15.3 Additions to the party contact mechanism model  
-15.4 Detailed model for sales force (showing a customized version for a particular application)  
-15.6 Party roles and relationships physical design option 1  
-15.7 Party roles and relationships physical design option 2  
+15.2. Customized party contact mechanism (using different terms)
+15.3 Additions to the party contact mechanism model
+15.4 Detailed model for sales force (showing a customized version for a particular application)
+15.6 Party roles and relationships physical design option 1
+15.7 Party roles and relationships physical design option 2
 15.8 Party roles and relationships physical design option 3
 
 Conventions and Standards Used in This Book
@@ -1014,7 +1014,7 @@ Entities are included in the data model if it is a requirement of the enterprise
 
 Entities are represented by rounded boxes. Figure 1.1 shows an example of the entity ORDER.
 
-![](images/2efaf9df8a37b4d4d2496cd1f91184158bf69e4c2cfcec32884f29c9bbff1088.jpg)  
+![](images/2efaf9df8a37b4d4d2496cd1f91184158bf69e4c2cfcec32884f29c9bbff1088.jpg)
 Figure 1.1 An entity.
 
 # Subtypes and Supertypes
@@ -1065,7 +1065,7 @@ ORDER #ORDERID \*ORDERDATE oENTRYDATE
 
 Certain strings included in an attribute's name have meanings based on the conventions shown in Table 1.2.
 
-Table 1.2 Conventions Used in Attribute Naming  
+Table 1.2 Conventions Used in Attribute Naming
 
 <table><tr><td>STRING WITHINMEANING</td></tr><tr><td>ATTRIBUTE</td></tr><tr><td>NAME</td></tr></table>
 
@@ -1083,14 +1083,14 @@ Relationships define how two entities are associated with each other. When relat
 
 Relationships may be either optional or mandatory. A dotted relationship line next to an entity means that the relationship from that entity is optional, and a continuous line means that the relationship is mandatory (the relationship has to exist for all occurrences of each entity). Figure 1.5 shows a relationship that "each SHIPMENT must be shipped from one and only one POSTAL ADDRESS." This means that the postal address for each shipment must be specified in order to create a shipment instance. The same relationship has an optional aspect when read in the other direction: "Each POSTAL ADDRESS may be the source of one or more SHIPMENTS." Hence, there could be a postal address which has not been used for a shipment yet.
 
-![](images/a34b6bdef89cdab202d4e22bbe40203865d61c4f7a449397dce6337ff153f109.jpg)  
+![](images/a34b6bdef89cdab202d4e22bbe40203865d61c4f7a449397dce6337ff153f109.jpg)
 Figure 1.5 Mandatory versus optional relationships.
 
 # Relationship Cardinality
 
 Relationships may be one-to-one, one-to-many, or many-to-many. This is generally known as the cardinality of the relationship. The presence of a crowsfoot (a three-pronged line that looks like a crow's foot) defines whether an entity points to more than one occurrence of another entity. Figure 1.6 shows that "each ORDER must be composed of one or more ORDER ITEMS" because the crows-foot is at the ORDER ITEM side. The other relationship side states that "each ORDER ITEM must be part of one and only one ORDER." A one-to-one relationship doesn't have any crowsfeet on the relationship, and a many-to-many relationship has crowsfeet at both ends of the relationship. Sometimes, one-to-many relationships are referred to as parent-child relationships.
 
-![](images/e77214543126e914ea35d9fefefdf004b6b06a66e48e99d3ee1bbd767c979a9d.jpg)  
+![](images/e77214543126e914ea35d9fefefdf004b6b06a66e48e99d3ee1bbd767c979a9d.jpg)
 Figure 1.6 One-to-many relationship.
 
 Sometimes the term "over time" needs to be added to the relationship sentence to verify whether the relationship is one-to-many. For instance, an ORDER may appear to have only one ORDER STATUS; however, if status history is required, then each ORDER may be in the status of by one or more ORDER STATUSes, over time.
@@ -1149,7 +1149,7 @@ EFFORT DEPENDENCY subtype) or broken down into several lower-
 
 level work efforts (WORK EFFORT BREAKDOWN subtype).
 
-![](images/1597aae0e4d4538edb0a1fe450a17462fec94fb31785a987676a93fb03f4344e.jpg)  
+![](images/1597aae0e4d4538edb0a1fe450a17462fec94fb31785a987676a93fb03f4344e.jpg)
 Figure 1.9 Recursive relationships.
 
 # Physical Models
@@ -1170,7 +1170,7 @@ Conventions Used for Illustration Tables
 
 Many parts of the data models are illustrated via tables that contain possible values for attributes. Each illustration table is normally defined to show a specific entity and the relevant information from related entities. For instance, there may be a table illustrating the ORDER ITEM entity, as shown in Table 1.3.
 
-Table 1.3 Order Item  
+Table 1.3 Order Item
 
 <table><tr><td>ORDER ID</td><td>ORDER DATE</td><td>ORDER ITEM SEQ ID</td><td>COMMENT</td></tr><tr><td>12930</td><td>April 30, 1995</td><td>1</td><td>Need this item urgently</td></tr><tr><td></td><td></td><td>2</td><td>There&#x27;s no time pressure at all on this item</td></tr></table>
 
@@ -1214,9 +1214,9 @@ The remainder of this book will provide many examples of universal data models a
 
 The most frequent business information need is to ask questions about people and organizations and to be able to rely on accurate answers to these questions. For instance:
 
-- What are the attributes or characteristics of the people and organizations that are involved in the course of conducting business?  
-- What relationships exist between various people, between various organizations, and between people and organizations?  
-- What are the addresses, phone numbers, and other contact mechanisms of people and organizations, and how can they be contacted?  
+- What are the attributes or characteristics of the people and organizations that are involved in the course of conducting business?
+- What relationships exist between various people, between various organizations, and between people and organizations?
+- What are the addresses, phone numbers, and other contact mechanisms of people and organizations, and how can they be contacted?
 - What types of communication or contacts have occurred between various parties, and what is necessary to effectively follow up on these communications?
 
 Almost all business applications track information about people and organizations, recording information about customers, suppliers, subsidiaries, departments, employees, and contractors redundantly
@@ -1225,19 +1225,19 @@ in many different systems. For this reason, it is very difficult to keep key inf
 
 The data model within this chapter can be used for most organizations and applications. Subsequent chapters use this data model as a basis on which to add more detail. This chapter includes data models on the following:
 
-- Organization  
-- Person (alternate model also provided)  
-- Party (organizations or people)  
-- Party roles (i.e., customers, suppliers, internal organizations)  
-- Specific party relationships (i.e., customer relationship, supplier relationship, employment)  
-Common party relationships  
-- Party relationship information  
-- Postal address information (postal addresses and geographic boundaries)  
-- Party contact mechanism—telecommunications numbers and electronic addresses  
-- Party contact mechanism (expanded)  
+- Organization
+- Person (alternate model also provided)
+- Party (organizations or people)
+- Party roles (i.e., customers, suppliers, internal organizations)
+- Specific party relationships (i.e., customer relationship, supplier relationship, employment)
+Common party relationships
+- Party relationship information
+- Postal address information (postal addresses and geographic boundaries)
+- Party contact mechanism—telecommunications numbers and electronic addresses
+- Party contact mechanism (expanded)
 - Facility versus contact mechanism
 
-- Party communication event (i.e., phone calls, support calls, meetings)  
+- Party communication event (i.e., phone calls, support calls, meetings)
 - Communication event follow-up
 
 # Organization
@@ -1256,7 +1256,7 @@ Figure 2.1 shows the data model for organization information. An organization is
 
 LEGAL ORGANIZATION, such as a CORPORATION or GOVERNMENT AGENCY, or an INFORMAL ORGANIZATION, such as a FAMILY, TEAM, or OTHER INFORMAL ORGANIZATION. Both legal and informal organizations may share many relationships because they may both be assigned to various roles and responsibilities and may be managed by people. While they share many things in common, they also have differences. For instance, a legal organization is the only type of organization that may be a party to a contract.
 
-![](images/d63506e3fa77aebf989bf0783223184bdcaa1cf74a31a8533da50b3e8f853081.jpg)  
+![](images/d63506e3fa77aebf989bf0783223184bdcaa1cf74a31a8533da50b3e8f853081.jpg)
 Figure 2.1 Organization.
 
 This model reduces redundancy because the organization information is stored only once, as opposed to storing this
@@ -1265,7 +1265,7 @@ information redundantly in a customer entity, a supplier entity, a department en
 
 Table 2.1 gives examples of data in the ORGANIZATION entity. ABC Corporation and ABC Subsidiary are examples of legal organizations that happen to be internal organizations of the enterprise being modeled. "Accounting Division," "Information Systems Department," and "Customer Service Division" are informal organizations and internal to the enterprise. "Fantastic Supplies," "Hughs Cargo," and "Sellers Assistance Corporation" are legal corporations that represent companies with whom the enterprise engages in business. The "Smith family" is an organization because it represents a group of individuals that are associated by family, and it may be useful for recording demographic information. The "Government Quality Commission" is a government agency that is involved in monitoring the operations of the enterprise.
 
-Table 2.1 Organizations  
+Table 2.1 Organizations
 
 <table><tr><td>ORGANIZATION ID</td><td>ORGANIZATION SUBTYPE</td><td rowspan="3">NAME ABC Corporation ABC Subsidiary</td></tr><tr><td>100</td><td>Legal organization</td></tr><tr><td>200</td><td>Legal organization</td></tr><tr><td>300</td><td>Informal organization</td><td>Accounting Division</td></tr><tr><td>400</td><td>Informal organization</td><td>Information Systems Department</td></tr><tr><td>500</td><td>Informal organization</td><td>Customer Service Division</td></tr><tr><td>600</td><td>Informal organization</td><td>Customer Support Team</td></tr><tr><td>700</td><td>Legal organization</td><td>ACME Corporation</td></tr><tr><td>800</td><td>Legal organization</td><td>Fantastic Supplies</td></tr><tr><td>900</td><td>Legal organization</td><td>Hughs Cargo</td></tr><tr><td>1000</td><td>Legal organization</td><td>Sellers Assistance Corporation</td></tr><tr><td>1100</td><td>Informal organization</td><td>Smith Family</td></tr><tr><td>1200</td><td>Legal organization</td><td>Government Quality Commission</td></tr></table>
 
@@ -1285,12 +1285,12 @@ division, a customer contact of another division, and a supplier contact of yet 
 
 To address this issue, Figure 2.2a shows a PERSON entity that stores a particular person's information, independent of his or her jobs or roles. Attributes of the PERSON entity may include current last name, current first name, current middle initial, gender, birth date, height, weight, and many other attributes that are listed in Figure 2.2a and describe the person.
 
-![](images/7df0f575338d44d29b484ab274a71741f2f2f0571929dac151f74566c3e0eefc.jpg)  
+![](images/7df0f575338d44d29b484ab274a71741f2f2f0571929dac151f74566c3e0eefc.jpg)
 Figure 2.2a Person.
 
 Table 2.2 shows some example data for the PERSON entity. The table shows key information about John Smith, Judy Smith, Nancy Barry, Marc Martinez, William Jones, Shirley Jones, Barry Cunningham, and Harry Johnson. This model helps reduce redundancy because the person's base information is maintained only once, even though the person may play many different roles. The "Party Roles" section later in this chapter will describe how to model the various roles each person and organization can play and the "Party Relationship" section will show how to model the interrelationships between party roles.
 
-Table 2.2 Person Data  
+Table 2.2 Person Data
 
 <table><tr><td>PERSON ID</td><td>LAST NAME</td><td>FIRST NAME</td><td>GENDER</td><td>BIRTH DATE</td><td>HEIGHT</td><td>WEIGHT</td></tr><tr><td>5000</td><td>Smith</td><td>John</td><td>Male</td><td>1/5/49</td><td>6&#x27;</td><td>190</td></tr><tr><td>5100</td><td>Smith</td><td>Judy</td><td>Female</td><td></td><td></td><td></td></tr><tr><td>5200</td><td>Barry</td><td>Nancy</td><td>Female</td><td></td><td></td><td></td></tr><tr><td>5300</td><td>Martinez</td><td>Marc</td><td>Male</td><td></td><td></td><td></td></tr><tr><td>5400</td><td>Jones</td><td>William</td><td>Male</td><td></td><td></td><td></td></tr><tr><td>5500</td><td>Jones</td><td>Shirley</td><td>Female</td><td>4/12/59</td><td>5&#x27;2&quot;</td><td>100</td></tr><tr><td>5600</td><td>Cunningham</td><td>Bobby</td><td>Male</td><td>3/14/65</td><td>5&#x27;11&quot;</td><td>170</td></tr><tr><td>5700</td><td>Johnson</td><td>Harry</td><td>Male</td><td>12/9/37</td><td>5&#x27;8&quot;</td><td>178</td></tr><tr><td>5800</td><td>Goldstein</td><td>Barry</td><td></td><td></td><td></td><td></td></tr><tr><td>5900</td><td>Schmoe</td><td>Joe</td><td>Male</td><td></td><td></td><td></td></tr><tr><td>6000</td><td>Red</td><td>Jerry</td><td>Male</td><td></td><td></td><td></td></tr></table>
 
@@ -1312,7 +1312,7 @@ A person may have many PERSON NAMES either at the same time (name aliases) or ov
 
 middle name, current personal title (i.e., Mr., Mrs., Dr., Ms.), current suffix (i.e., Jr., Senior, III) and any nicknames or aliases could be stored in the PERSON entity as in the previous diagram, and the PERSON NAME could be used to store a history of names.
 
-![](images/6d65aa173e221b48c449f6027f41099826cef4e6e3732661b6d67052b92d3621.jpg)  
+![](images/6d65aa173e221b48c449f6027f41099826cef4e6e3732661b6d67052b92d3621.jpg)
 Figure 2.2b Person-alternate model.
 
 Also shown in Figure 2.2b are entities to show the CITIZENSHIP and PASSPORTs that a person has had instead of the simple current passport number and passport expiration date attributes in the first model. This could be useful in travel applications.
@@ -1349,7 +1349,7 @@ Table 2.3 shows several party occurrences that are merely consolidations from th
 
 classifications, which illustrates that this information is totally optionally and may not be available from many of the parties.
 
-Table 2.3 Party Data  
+Table 2.3 Party Data
 
 <table><tr><td>PARTY</td><td>PARTY NAME (ORGANIZATION)</td><td>PARTY TYPE</td></tr><tr><td>ID</td><td>NAME OR FIRST NAME/LAST NAME)</td><td></td></tr><tr><td>100</td><td>ABC Corporation</td><td>Minority-owned business Manufacturer</td></tr><tr><td>200</td><td>ABC Subsidiary</td><td>Minority-owned business Manufacturer</td></tr><tr><td>300</td><td>Accounting Division</td><td></td></tr><tr><td>400</td><td>Information Systems Department</td><td></td></tr><tr><td>500</td><td>Customer Service Division</td><td></td></tr><tr><td>600</td><td>Customer support team</td><td></td></tr><tr><td>700</td><td>ACME Corporation</td><td>Woman-owned business Mail order firm Large organization</td></tr><tr><td>800</td><td>Fantastic Supplies</td><td>Janitorial service organization Small organization</td></tr><tr><td>900</td><td>Hughs Cargo</td><td>8A organization Service organization Small organization organization Small organization</td></tr><tr><td>1000</td><td>Sellers Assistance Corporation</td><td>Marketing service provider
 Medium-sized organization</td></tr><tr><td>1100</td><td>Smith Family</td><td></td></tr><tr><td>5000</td><td>John Smith</td><td></td></tr><tr><td>5100</td><td>Judy Smith</td><td></td></tr><tr><td>5200</td><td>Nancy Barry</td><td></td></tr><tr><td>5300</td><td>Marc Martinez</td><td>Hispanic Income classification
@@ -1411,7 +1411,7 @@ Party Role Example
 
 Table 2.4 illustrates examples of possible roles. Notice that most parties will have at least one role because they are maintained for some reason, and they often have more than one role. It is possible for a party to not have even a single role, for instance, in maintaining census data for people (although one could argue that the role is "census participant").
 
-Table 2.4 Party Role Data  
+Table 2.4 Party Role Data
 
 <table><tr><td>PARTY</td><td>PARTY</td><td>PARTY ROLE</td></tr><tr><td>ID</td><td></td><td></td></tr><tr><td rowspan="2">100</td><td rowspan="2">ABC Corporation</td><td>Internal organization</td></tr><tr><td>Parent organization</td></tr><tr><td rowspan="2">200</td><td rowspan="2">ABC Subsidiary</td><td>Internal organization</td></tr><tr><td>Subsidiary organization</td></tr><tr><td>300</td><td>Accounting Division</td><td>Internal organization Division</td></tr><tr><td rowspan="2">400</td><td rowspan="2">Information Systems Department</td><td>Internal organization</td></tr><tr><td>Department</td></tr><tr><td>500</td><td>Customer Service Division</td><td>Internal organization
 Department</td></tr><tr><td>600</td><td>Customer support team</td><td>Internal organization Team</td></tr><tr><td>700</td><td>ACME Corporation</td><td>Customer Supplier</td></tr><tr><td>800</td><td>Fantastic Supplies</td><td>Supplier Prospect</td></tr><tr><td>900</td><td>Hughs Cargo</td><td>Supplier</td></tr><tr><td>1000</td><td>Sellers Assistance Corporation</td><td>Agent</td></tr><tr><td>1100</td><td>Smith Family</td><td>Prospect</td></tr><tr><td>5000</td><td>John Smith</td><td>Employee
@@ -1421,12 +1421,12 @@ Account manager
 (internal sales representative)</td></tr><tr><td>5500</td><td>Shirley Jones</td><td>Project manager
 Employee</td></tr><tr><td></td><td></td><td>QA representative</td></tr><tr><td>5600</td><td>Barry Cunningham</td><td>Contractor</td></tr></table>
 
-5700 Harry Johnson Notary  
+5700 Harry Johnson Notary
 5800 Barry Goldstein Employee
 
 Apprentice
 
-5900 Joe Schmoe Customer contact  
+5900 Joe Schmoe Customer contact
 6000 Jerry Red Employee
 
 Customer service
@@ -1505,8 +1505,8 @@ These examples illustrate that there is some commonality between various party r
 
 shows the general nature of these PARTY RELATIONSHIPs being related to and from PARTY ROLES.
 
-![](images/42a61ca3ce2154d791016ab7880028619b6ef8a01fccaed79bebeec98fec3c76.jpg)  
-Figure 2.6a Common party relationships.  
+![](images/42a61ca3ce2154d791016ab7880028619b6ef8a01fccaed79bebeec98fec3c76.jpg)
+Figure 2.6a Common party relationships.
 Figure 2.6a also shows the corresponding PARTY RELATIONSHIP TYPE and its relationship to PARTY ROLE TYPE entity. The PARTY
 
 RELATIONSHIP TYPE description attribute describes in more detail the meaning behind this type of relationship. An example is that a "customer relationship" (which would be the name value) has a description of "where the customer has purchased or used purchasing products from an internal organization." (Substitute "supplier" for internal organization if a larger scope for customer is needed.).
@@ -1531,7 +1531,7 @@ Table 2.5 Organization-to-Organization Party Relationships
 
 <table><tr><td colspan="7">PARTY</td></tr><tr><td>RELATIONSHIP TYPE NAME</td><td>FROM PARTY</td><td>FROM ROLE</td><td>TO PARTY</td><td>TO ROLE</td><td>FROM DATE</td><td>THRU DATE</td></tr><tr><td>Organization rollup</td><td>ABC Subsidiary</td><td>Subsidiary</td><td>ABC Corporation</td><td>Parent corporation</td><td>3/4/1998</td><td></td></tr><tr><td>Organization rollup</td><td>XYZ Subsidiary</td><td>Subsidiary</td><td>ABC Corporation</td><td>Parent corporation</td><td>7/7/1999</td><td></td></tr><tr><td>Organization rollup</td><td>Customer Service Division</td><td>Division</td><td>ABC Subsidiary</td><td>Subsidiary</td><td>1/2/2000</td><td></td></tr><tr><td>Customer relationship</td><td>ACME Company</td><td>Customer</td><td>ABC Subsidiary</td><td>Internal organization</td><td>1/1/1999</td><td></td></tr><tr><td>Agent relationship</td><td>Sellers Assistance Corporation</td><td>Sales agent</td><td>ABC Subsidiary</td><td>Internal organization</td><td>6/1/1999</td><td>12/31/2001</td></tr><tr><td>Supplier relationship</td><td>Fantastic Supplies</td><td>Supplier</td><td>ABC Subsidiary</td><td>Internal organization</td><td>4/5/2001</td><td></td></tr></table>
 
-![](images/922672fc33c1330352b90cd86e0c88d42fdca2ff20630114362f856728040e35.jpg)  
+![](images/922672fc33c1330352b90cd86e0c88d42fdca2ff20630114362f856728040e35.jpg)
 Figure 2.6b Party relationship hierarchy example.
 
 The internal organizations illustrated within Table 2.5 are ABC Corporation, ABC Subsidiary, XYZ Subsidiary, and ABC's Customer Service Division. The first 2 rows show that ABC Subsidiary and XYZ subsidiary are subsidiaries of the parent corporation, ABC Corporation. The third row shows that the Customer Service Division
@@ -1558,10 +1558,10 @@ PARTY RELATIONSHIPs have other information associated with them, as shown in Fig
 
 relationships. The table shows that the customer relationship with ACME is regarded as high and the relationship is active. The agent relationship with Sellers Assistance Corporation is currently inactive. The supplier relationship with Fantastic Supplies is active, and the priority is regarded as medium. John Smith and Nancy Barry's supplier coordinator relationship is active, and so is the customer contact relationship between William Jones and Marc Martinez.
 
-![](images/cb378c57319d24ed6f15bb0b5e9fbef44e97205666a10ec02761a39708beb890.jpg)  
+![](images/cb378c57319d24ed6f15bb0b5e9fbef44e97205666a10ec02761a39708beb890.jpg)
 Figure 2.7 Party relationship information.
 
-Table 2.8 Party Relationship Information  
+Table 2.8 Party Relationship Information
 
 <table><tr><td colspan="7">PARTY</td></tr><tr><td>RELATIONSHIP TYPE NAME</td><td>FROM PARTY</td><td>FROM ROLE</td><td>TO PARTY</td><td>TO ROLE</td><td>STATUS</td><td>PRIORITY</td></tr><tr><td>Customer relationship</td><td>ACME Company</td><td>Customer</td><td>ABC Subsidiary</td><td>Internal organization</td><td>Active</td><td>High</td></tr><tr><td>Agent relationship</td><td>Sellers Assistance Corporation</td><td>Sales agent</td><td>ABC Subsidiary</td><td>Internal organization</td><td>Inactive</td><td></td></tr><tr><td>Supplier relationship</td><td>Fantastic Supplies</td><td>Supplier</td><td>ABC Subsidiary</td><td>Internal organization</td><td>Active</td><td>Medium</td></tr><tr><td>Supplier contact relationship</td><td>John Smith</td><td>Supplier coordinator</td><td>Nancy Barry</td><td>Supplier service contact</td><td>Active</td><td></td></tr><tr><td>Customer contact relationship</td><td>William Jones</td><td>Account manager (for ABC Subsidiary)</td><td>Marc Martinez</td><td>Customer contact</td><td>Active</td><td></td></tr></table>
 
@@ -1599,7 +1599,7 @@ Tables 2.9 and 2.10 give examples of party addresses. Table 2.9 lists the indivi
 
 Corporation and ABC Subsidiary. Additionally, ABC Subsidiary has more than one address, as illustrated by its two entries in Table 2.10.
 
-Table 2.9 Postal Address Data  
+Table 2.9 Postal Address Data
 
 <table><tr><td>ADDRESS ID</td><td>ADDRESS1</td><td>ADDRESS2</td><td>CITY</td></tr><tr><td>2300</td><td>100 Main Street</td><td>Suite 101</td><td>New York</td></tr><tr><td>2400</td><td>255 Fetch Street</td><td></td><td>Portland</td></tr><tr><td>2500</td><td>234 Stretch Street</td><td></td><td>Minneapolis</td></tr></table>
 
@@ -1637,7 +1637,7 @@ The CONTACT MECHANISM entity in Figure 2.9 stores access mechanisms for parties.
 
 to which parties. The CONTACT MECHANISM TYPE entity maintains allowable values for different types of contact mechanisms, for example, "phone," "mobile phone," "fax number," "e-mail address," and so on.
 
-![](images/5d39b92d6a1d1593a8dec07333ccb913471585ecfb17d17819f9d6ee9fb6ee17.jpg)  
+![](images/5d39b92d6a1d1593a8dec07333ccb913471585ecfb17d17819f9d6ee9fb6ee17.jpg)
 Figure 2.9 Party contact mechanism—telecommunications numbers and electronic addresses.
 
 CONTACT MECHANISMS are subtyped to include TELECOMMUNICATIONS NUMBER and ELECTRONIC ADDRESS. TELECOMMUNICATIONS NUMBER includes any access via telecommunications lines such as phones, faxes, modems, pagers, and cellular numbers. ELECTRONIC ADDRESS includes any access via services like the Internet or other electronic mail services.
@@ -1726,7 +1726,7 @@ COMMUNICATION EVENT STATUS TYPE maintains the state of the event. Example status
 
 The COMMUNICATION EVENT maintains the datetime started, datetime ended, and a note describing the contact. An example note may be "initial sales call went well and customer seemed interested in moving forward quickly with a demonstration of the Thingamajig product". Table 2.12 gives other examples of types of communication events.
 
-Table 2.12 Communication Events  
+Table 2.12 Communication Events
 
 <table><tr><td>COMMUNICATION
 EVENT ID</td><td>FROM PARTY</td><td>TO PARTY</td><td>START DATETIME</td><td>COMMUNICATION
@@ -1789,22 +1789,22 @@ Please refer to Appendix A for a listing of entities and attributes. SQL scripts
 
 Having established the models for parties and party roles and their relationships, this chapter focuses on the products that parties produce and use. Products are defined as goods or services that were, are, or will be sold by the enterprise. Goods are products that are more tangible in nature and generally created in advance for sale. Services are products that involve the use of parties' time and are less tangible in nature. Every organization needs to know a great deal of product information on a regular basis, such as the following issues:
 
-- How do the enterprise's services or goods compare in quality and price to those of its competitors?  
-- What inventory is needed at each location to meet the needs of customers?  
-- What are the prices, costs, and profitability for the services or goods that are offered?  
+- How do the enterprise's services or goods compare in quality and price to those of its competitors?
+- What inventory is needed at each location to meet the needs of customers?
+- What are the prices, costs, and profitability for the services or goods that are offered?
 - Where can the enterprise purchase the best services and goods at the best prices?
 
 Just as the party model stores common information about parties independent of their roles, the product model stores common product information regardless of whose products they are. This product model is therefore more flexible, stable, and understandable because product information is modeled only one time, regardless of whether it is the enterprise's products, competitors' products, or suppliers' products. This chapter models information on the following areas of product:
 
-Product definition  
-Product category  
-Product identification  
-Product feature  
-- Suppliers and manufacturers of products  
-- Inventory item storage  
-Product pricing  
-Product costing  
-- Product to product associations (alternate model also provided)  
+Product definition
+Product category
+Product identification
+Product feature
+- Suppliers and manufacturers of products
+- Inventory item storage
+Product pricing
+Product costing
+- Product to product associations (alternate model also provided)
 - Product and parts (alternate model also provided)
 
 # Product Definition
@@ -1821,7 +1821,7 @@ Figure 3.1 Product definition.
 
 Products include both tangible goods, which are called GOODS, and non-tangible offerings, which are calledSERVICES. For example, a GOOD may include specific types of pens, furniture, equipment, or anything that can be physically stored. (Even a software program, which is a GOOD, can be physically stored.) The alternate subtype, SERVICE, is for products that involve selling people's time and expertise such as consulting services, legal services, or any other services that provide time and/or expertise. (See Table 3.1.)
 
-Table 3.1 Products  
+Table 3.1 Products
 
 <table><tr><td>PRODUCT ID</td><td>PRODUCT DESCRIPTION</td><td>PRODUCT</td></tr><tr><td></td><td></td><td>SUBTYPE</td></tr><tr><td>PAP192</td><td>Johnson fine grade 8½ by 11 inch bond paper</td><td>Good</td></tr></table>
 
@@ -1831,8 +1831,8 @@ DSK401 Jerry's box of  $3 1 / 2$  -inch diskettes Good
 
 FRMCHFA1500Preprinted forms for insurance claims Good
 
-Office supply inventory management  
-CNS109  
+Office supply inventory management
+CNS109
 consulting service
 
 # Product Category
@@ -1843,7 +1843,7 @@ Figure 3.2 illustrates that a PRODUCT may be classified in one or more PRODUCT C
 
 associative entity, PRODUCT CATEGORY CLASSIFICATION describes which products are in which category. For example, all pens, pencils, paper, notebooks, desk sets, and diskettes are classified into the category of office supplies.
 
-![](images/ab15abe9e36febb8ee145d8e6de2a61dd29ee98f6a5833f75fded6b39c292e45.jpg)  
+![](images/ab15abe9e36febb8ee145d8e6de2a61dd29ee98f6a5833f75fded6b39c292e45.jpg)
 Figure 3.2 Product category.
 
 Product categories may change over time; therefore, the PRODUCT CATEGORY CLASSIFICATION has the attributes from date and thru date, which state when the product was classified into its grouping.
@@ -1872,7 +1872,7 @@ IDENTIFICATION entity has an attribute of ID value to store the various identifi
 
 office supply product may have a manufacturer ID number designated by the manufacturer and a UPCA number identified by the industry.
 
-![](images/484190150b07712ab57aa646a2b86242396944a3bed479db27838ff75ceef68d.jpg)  
+![](images/484190150b07712ab57aa646a2b86242396944a3bed479db27838ff75ceef68d.jpg)
 Figure 3.3 Product identification.
 
 # Product Features
@@ -1887,7 +1887,7 @@ In Figure 3.4, a PRODUCT FEATURE entity is used to define these ways in which th
 
 FEATURE allow the capability to specify if the features come as part of the standard configuration of the product, if the feature is mandatory as part of the product, if the feature needs to be selected (e.g., color), or if the feature is an optional component.
 
-![](images/dcb9427c0391b7c450d13c8f6fa7fdfde411a6f9efca7d211133218d07d76f93.jpg)  
+![](images/dcb9427c0391b7c450d13c8f6fa7fdfde411a6f9efca7d211133218d07d76f93.jpg)
 Figure 3.4 Product feature.
 
 The UNIT OF MEASURE entity helps define the product in terms of the type of measurement for the product. It also helps further define the DIMENSION subtype of PRODUCT FEATURE. The UNIT OF MEASURE CONVERSION allows different units of measures to be converted to a common unit in order to assess inventory levels of a type of good.
@@ -1902,17 +1902,17 @@ The PRODUCT FEATURE entity may have many subtypes and will invariably be customi
 
 of features that are applicable. Subtypes of PRODUCT FEATURE may include the following:
 
-- PRODUCT QUALITY classifies the product by value such as "grade A" or "grade B." For service products, such as a consultant, this may represent "expert" or "junior."  
-- COLOR describes the color(s) of the good. A good may have more than one COLOR option, but a different color may also denote that it is a separate good.  
+- PRODUCT QUALITY classifies the product by value such as "grade A" or "grade B." For service products, such as a consultant, this may represent "expert" or "junior."
+- COLOR describes the color(s) of the good. A good may have more than one COLOR option, but a different color may also denote that it is a separate good.
 - DIMENSION describes the various numeric descriptions of the good such as "8½-inch width," "11-inch length," or "10 pound."
-The DIMENSION is related to UNIT OF MEASURE, which has a description attribute that defines how the feature is being measured. The unit of measure may determine how the product can be inventoried and sold, such as by the "box" or "each." For service products, the unit of measure values may be "hours" or "days."  
-- SIZE specifies how large or small a product is in more general terms than dimension such as "extra large," "large," "medium," or "small." This feature could be useful in the garment industry.  
-- BRAND NAME describes the marketing name tied to the good, such as "Buick" for a General Motors vehicle. Note that the brand name may be different from the manufacturer's name.  
+The DIMENSION is related to UNIT OF MEASURE, which has a description attribute that defines how the feature is being measured. The unit of measure may determine how the product can be inventoried and sold, such as by the "box" or "each." For service products, the unit of measure values may be "hours" or "days."
+- SIZE specifies how large or small a product is in more general terms than dimension such as "extra large," "large," "medium," or "small." This feature could be useful in the garment industry.
+- BRAND NAME describes the marketing name tied to the good, such as "Buick" for a General Motors vehicle. Note that the brand name may be different from the manufacturer's name.
 - SOFTWARE FEATURE allows additional software to be added to products or allows certain software settings to be specified for a
 
 product. For instance, software dollar limits could be set for products that are based on usage, such as meters. Another example could be the setting of software preferences for a software package or hardware purchase.
 
-- HARDWARE FEATURES allow for the specification of certain components that are included or that may be added to a product-for example, a cover for a printer.  
+- HARDWARE FEATURES allow for the specification of certain components that are included or that may be added to a product-for example, a cover for a printer.
 - A BILLING FEATURE is an example of a product feature that specifies the standard types of terms that may be associated with a product, such as recording that an Internet access service may be available with either monthly or quarterly billing.
 
 # Product Feature Examples
@@ -1929,7 +1929,7 @@ Table 3.3 shows examples of possible products and different types of features. N
 
 store a product for each product variation. The details behind the product are stored in PRODUCT FEATURE APPLICABILITY entity and are shown in this table to clarify the definition of the product.
 
-Table 3.3 Product Features  
+Table 3.3 Product Features
 
 <table><tr><td>PRODUCT ID</td><td>NAME</td><td>QUALITY</td><td>COLOR</td><td>DIMENSION AND UNIT OF MEASURE</td><td>BRAND NAME</td><td>UNIT OF MEASURE</td></tr><tr><td>PAP192</td><td>Johnson fine grade 8½ by 11 paper</td><td>Fine grade, Required feature Extra glossy finish, Optional feature</td><td>Blue Gray Cream White Selectable feature</td><td>8½&quot; width 11&quot; length Required feature</td><td>Johnson, Required feature</td><td>Ream</td></tr><tr><td>PEN202</td><td>Goldstein Elite pen</td><td>Fine point, Required feature</td><td>Black, Standard Feature Blue, Optional feature</td><td></td><td>Goldstein, Required feature</td><td>Each</td></tr><tr><td>DSK401</td><td>Jerry&#x27;s box of 3½&quot; diskettes</td><td></td><td>Red, Required feature</td><td>3½&quot;, Required feature</td><td>Jerry&#x27;s, Required feature</td><td>Box</td></tr><tr><td>CNS109</td><td>Office supply inventory management consulting service</td><td>Expert, Required feature</td><td></td><td></td><td>ABC Corporation, Required feature</td><td></td></tr></table>
 
@@ -1965,10 +1965,10 @@ Table 3.4 provides examples of the suppliers that provide "Johnson fine grade  $
 
 purchase for its own use. The table illustrates representative data that would be stored in SUPPLIER PRODUCT.
 
-Table 3.4 Supplier Products  
+Table 3.4 Supplier Products
 
-<table><tr><td>PRODUCT</td><td>SUPPLIER</td><td>PREFERENCE 
-TYPE</td><td>RATING TYPE</td><td>STANDARD 
+<table><tr><td>PRODUCT</td><td>SUPPLIER</td><td>PREFERENCE
+TYPE</td><td>RATING TYPE</td><td>STANDARD
 LEAD TIME</td></tr><tr><td>Johnson fine grade 8½ by 11 bond paper</td><td>ABC Corporation</td><td>First</td><td>Outstanding</td><td>2 days</td></tr><tr><td>Johnson fine grade 8½ by 11 bond paper</td><td>Joe&#x27;s Stationery</td><td>Second</td><td>Outstanding</td><td>3 days</td></tr><tr><td>Johnson fine grade 8½ by 11 bond paper</td><td>Mike&#x27;s Office Supply</td><td>Third</td><td>Good</td><td>4 days</td></tr><tr><td>6&#x27; by 6&#x27; warehouse pallets</td><td>Gregg&#x27;s Pallet Shop</td><td>First</td><td>Outstanding</td><td>2 days</td></tr><tr><td>6&#x27; by 6&#x27; warehouse pallets</td><td>Pallets Incorporated</td><td>Second</td><td>Good</td><td>3 days</td></tr><tr><td>6&#x27; by 6&#x27; warehouse pallets</td><td>The Warehouse Company</td><td>Third</td><td>Fair</td><td>5 days</td></tr></table>
 
 Products may be manufactured by only one organization. Of course, it is possible for an organization to subcontract with another organization to produce a product. The organization that hired the subcontractor is still the manufacturer. For example, a car manufacturer often hires another organization to produce its cars. Because the original car manufacturer is still responsible for the product, it is considered the manufacturer.
@@ -1979,7 +1979,7 @@ Figure 3.6 shows how inventory items are modeled. While a GOOD represents a cata
 
 of a good at a location. The GOOD may be "Johnson fine grade,  $8 \frac{1}{2}$ by 11 bond paper," while the INVENTORY ITEM is the 100 reams of this good sitting in the central warehouse.
 
-![](images/4567c079e5e792e8aca188e58f736f5afed3ea66982d8a46007a3ecde2b6583c.jpg)  
+![](images/4567c079e5e792e8aca188e58f736f5afed3ea66982d8a46007a3ecde2b6583c.jpg)
 Figure 3.6 Inventory item storage.
 
 The INVENTORY ITEM may be either a SERIALIZED INVENTORY ITEM, which means each item's serial num(ber) is tracked, or a NON-SERIALIZED INVENTORY ITEM, which means a group of items is tracked together and the quantity on hand for these is
@@ -2000,7 +2000,7 @@ Table 3.5 provides examples of INVENTORY ITEM. ABC Corporation stores most of it
 
 item that may be stored at a facility level, instead of a container within a facility. Therefore, the container type is left blank.
 
-Table 3.5 Inventory Item  
+Table 3.5 Inventory Item
 
 <table><tr><td>GOOD</td><td>FACILITY</td><td>CONTAINER TYPE</td><td>INVENTORY ITEM ID</td><td>INVENTORY ITEM TYPE</td><td>QUANTITY ON HAND</td><td>SERIAL NUMBER</td></tr><tr><td>Johnson fine grade 81/2 by 11 bond paper</td><td>Warehouse at ABC Corporation 100 Main Street</td><td>Bin 200</td><td>1</td><td>Non-serialized</td><td>156</td><td></td></tr><tr><td>Johnson fine grade 81/2 by 11 bond paper</td><td>Warehouse at ABC Subsidiary 255 Fetch Street</td><td>Bin 400</td><td>2</td><td>Non-serialized</td><td>300</td><td></td></tr><tr><td>Goldstein Elite Pen</td><td>Warehouse at ABC Corporation 100 Main Street</td><td>Bin 125</td><td>1</td><td>Non-serialized</td><td>200</td><td></td></tr><tr><td>Jerry&#x27;s box of 31/2 inch diskettes</td><td>Warehouse at ABC Corporation 100 Main Street</td><td>Bin 250</td><td>1</td><td>Non-serialized</td><td>500</td><td></td></tr><tr><td>Action 250 Quality Copier</td><td>Warehouse at ABC Corporation 100 Main Street</td><td></td><td>1</td><td>Serialized</td><td>1</td><td>1094853</td></tr></table>
 
@@ -2014,7 +2014,7 @@ The REASON entity provides standard explanations of the variance to the inventor
 
 Every organization seems to have different mechanisms for pricing its products. There are some common principles behind pricing that are captured in the data model in Figure 3.7.
 
-![](images/6400517c0cc74d23acdd1a7f25db65d1e449a1595a917862e95bf1aece1f1ebf.jpg)  
+![](images/6400517c0cc74d23acdd1a7f25db65d1e449a1595a917862e95bf1aece1f1ebf.jpg)
 Figure 3.7 Standard product pricing.
 
 In most organizations, there are several aspects to pricing a product: the base price for which the organization sells the product, various discounts applied against the base price such as quantity breaks, surcharges such as freight and handling charges, and the
@@ -2113,7 +2113,7 @@ Products have many different types of relationships to other products. This sect
 
 Figure 3.9a Product to product associations.
 
-![](images/17c27bd5a5cba9446818b3e5bdec7eb41ac569f87cdbf1ab61adca6bbb2fa52c.jpg)  
+![](images/17c27bd5a5cba9446818b3e5bdec7eb41ac569f87cdbf1ab61adca6bbb2fa52c.jpg)
 Figure 3.9b Product to product associations—alternate model.
 
 ![](images/d15455dde3113f1e64d0da3de839dc5b60ad8ad069424aa6f5417cd4f3ac5bf4.jpg)
@@ -2128,7 +2128,7 @@ The PRODUCT COMPONENT has attributes of from date and thru date to signify the t
 
 Another attribute of PRODUCT COMPONENT is the quantity used. This attribute indicates how many of a certain product are used in the assembly of another product. For example, in some office desk sets two pens may be included in the set. The instruction attribute explains how to assemble the products. If a comprehensive set of instructions is needed, then a new entity named INSTRUCTION should be added and related to the PRODUCT COMPONENT. The comment attribute is used to describe any other note about the assembly of products. Table 3.7 shows an example of a product that is made up of other products.
 
-Table 3.7 Product Components  
+Table 3.7 Product Components
 
 <table><tr><td>PARENT PRODUCT TYPE</td><td>CHILD PRODUCT TYPE</td><td>QUANTITY</td></tr><tr><td>Office supply kit</td><td>Johnson fine grade 8½ by 11 bond paper</td><td>5</td></tr><tr><td>Office supply kit</td><td>Pennie&#x27;s 8½ by 11 binders</td><td>5</td></tr><tr><td>Office supply kit</td><td>Shwinger black ball point pen</td><td>6</td></tr></table>
 
@@ -2166,7 +2166,7 @@ One method of handling this is to simply subtype the GOOD entity into FINISHED G
 
 in making a product in which no work on it has been performed by the enterprise and it is the lowest level component that makes up a product. A RAW MATERIAL may be sold as a good or used in another good. A SUBASSEMBLY good is a product that is in a state of partial completion and is not generally sold to a customer or purchased from a supplier. If the enterprise purchased the subassembly from a supplier, it would be considered a RAW MATERIAL because the enterprise did not perform any additional work on the product.
 
-![](images/4d24a6a05ba842b07bdcafea85d2b62ad8f0d8f22e11d858fcbfbae14639090c.jpg)  
+![](images/4d24a6a05ba842b07bdcafea85d2b62ad8f0d8f22e11d858fcbfbae14639090c.jpg)
 Figure 3.10a Products and parts.
 
 Another method for data modeling this structure is to consider a PART something separate from a PRODUCT. This really depends on one's perspective as well as the enterprise's needs. If the enterprise buys screws for use in assembling its product, it is buying someone else's product. If one wanted to be more specific and create a
@@ -2175,7 +2175,7 @@ separate entity for the individual pieces or parts that make up a product offeri
 
 Figure 3.10b Product and parts—alternate model.
 
-![](images/08d0f798f6f1af60159fccd2dae8cf949115e1c89ecdd6f56db6f3a16fb37329.jpg)  
+![](images/08d0f798f6f1af60159fccd2dae8cf949115e1c89ecdd6f56db6f3a16fb37329.jpg)
 In Figure 3.10b, the PART entity represents a physical item that exists, as opposed to a PRODUCT that is what is marketed. A PART, and specifically a FINISHED GOOD, may be used to produce one or more PRODUCTS. How can this be? Sometimes, the same physical item can be sold as two different products depending on circumstance of the sale such as to whom the product is sold. A
 
 telecommunications company may sell the same finished good, for example, a telephone line, as two products: a residential line or a business line, depending on whether the customer is an individual or a business. Therefore, the PRODUCT represents the marketing offering, which could vary from the actual item, which is the PART.
@@ -2206,32 +2206,32 @@ The previous chapters focused on information about the parties that conduct busi
 
 Businesses need information to answer many questions about orders; they need to know the terms associated with each order. For instance:
 
-- When is the expected delivery time, and are there consequences for late delivery?  
-Who is responsible for paying for the order?  
-- What is the negotiated price for each product that is ordered?  
-- What people and organizations are involved in the order?  
-- Who placed the order? To whom is the order being shipped?  
-- Was there an approved requirement for the order?  
-- Were there previous quotes for the order?  
+- When is the expected delivery time, and are there consequences for late delivery?
+Who is responsible for paying for the order?
+- What is the negotiated price for each product that is ordered?
+- What people and organizations are involved in the order?
+- Who placed the order? To whom is the order being shipped?
+- Was there an approved requirement for the order?
+- Were there previous quotes for the order?
 - Were there requests to many vendors to bid for the order?
 
 • Are there general agreements in place that govern the terms of the order such as special pricing arrangements?
 
 This chapter discusses the following models:
 
-- Standard order model  
-- Order and order items  
-- Order parties and contact mechanisms  
-- Order adjustments  
-- Order status and terms  
-- Order Item Associations  
-- Requirements  
-- Requests  
-- Quotes  
-- Agreements  
-- Agreement items  
-- Agreement terms  
-- Agreement pricing  
+- Standard order model
+- Order and order items
+- Order parties and contact mechanisms
+- Order adjustments
+- Order status and terms
+- Order Item Associations
+- Requirements
+- Requests
+- Quotes
+- Agreements
+- Agreement items
+- Agreement terms
+- Agreement pricing
 - Agreement to orders
 
 Standard Order Model
@@ -2240,10 +2240,10 @@ Most organizations model orders using the standard data model that is shown thro
 
 more PURCHASE ORDERS, which have PURCHASE ORDER LINE ITEMS that relate to PRODUCT. This model is similar for sales. A CUSTOMER can be related to one or more SALES ORDERS, which have SALES ORDER LINE ITEMS that relate to specific PRODUCTS. Table 4.1 shows the example of a typical sales order. A customer, ACME Company, placed a sales order on June 8, 2001, for several items (or items), each of which is defined in the PRODUCT entity. The sales order stores information such as the date the order was given, the customer placing the order, shipping instructions, and payment terms.
 
-![](images/228065d2205b8416e82519229e8abf7ce80e0497e8a1193a35c5a6eded894ee9.jpg)  
+![](images/228065d2205b8416e82519229e8abf7ce80e0497e8a1193a35c5a6eded894ee9.jpg)
 Figure 4.1 Standard order model.
 
-Table 4.1 Standard Order Model  
+Table 4.1 Standard Order Model
 
 <table><tr><td>ORDER ID</td><td>CUSTOMER</td><td>ORDER
 DATE</td><td>SHIPPING
@@ -2252,7 +2252,7 @@ TERMS</td></tr><tr><td>12560</td><td>ACME Company</td><td>June 8, 2001</td><td>V
 
 Order line items show the individual products or services that were purchased. Table 4.2 shows examples of ORDER LINE ITEMS. In this example, three items are being ordered: 10 reams of paper, 4 pens, and 6 boxes of diskettes.
 
-Table 4.2 Order Item  
+Table 4.2 Order Item
 
 <table><tr><td>ORDER ID</td><td>ITEM ID</td><td>PRODUCT</td><td>QUANTITY</td><td>UNIT PRICE</td></tr><tr><td>12560</td><td>1</td><td>Johnson fine grade 8½ by 11 bond paper</td><td>10</td><td>$8.00</td></tr><tr><td>12560</td><td>2</td><td>Goldstein Elite pen</td><td>4</td><td>$12.00</td></tr><tr><td>12560</td><td>3</td><td>Jerry&#x27;s box of 3½-inch diskettes</td><td>6</td><td>$7.00</td></tr></table>
 
@@ -2280,10 +2280,10 @@ The data model in Figure 4.2 is more flexible, modular, and maintainable than th
 
 Figure 4.2 Orders and order items.
 
-![](images/e26f645b204ccd12fdb872f223b6f15cabb591b0e1bf3fc4e466f8697895b599.jpg)  
+![](images/e26f645b204ccd12fdb872f223b6f15cabb591b0e1bf3fc4e466f8697895b599.jpg)
 Figure 4.2 shows that the ORDER entity is subtyped into SALES ORDER and PURCHASE ORDER to cover both sales and purchase orders. Orders are composed of ORDER ITEMS that specify the product(s) that are to be ordered, hence the relationship to PRODUCT. The ORDER ITEM is also subtyped into PURCHASE ORDER ITEM and SALES ORDER ITEM to accommodate information about the ORDER ITEM that is just for a purchase order item or for a sales order item. Each ORDER ITEM may be for one and only one
 
-PRODUCT or may be for one and only one PRODUCT FEATURE.  
+PRODUCT or may be for one and only one PRODUCT FEATURE.
 PRODUCT FEATURES may be ordered via an ORDER ITEM such as a certain COLOR, SIZE, SOFTWARE FEATURE, or other product variation that may be included in the order. These features can be specified via the recursive relationship ordered with from an ORDER ITEM that is for a product feature that is ordered for an ORDER ITEM that is for a product feature.
 
 The attribute on ORDER named order date specifies the date on which the enterprise received or gave the order. The attribute entry date is the date on which the order was entered into the enterprise's system. The ORDER entity is subtyped into a SALES ORDER and a PURCHASE ORDER entity in order to accommodate specific attributes or relationships related to either a sales order or a purchase order.
@@ -2310,7 +2310,7 @@ ORDER ITEMS may be selected with certain product features that allow customizati
 
 Table 4.4 shows examples of product features that may be selected with sales order 12560 or with purchase order A2395. Only features that are optional or selectable are shown as standard, and required features can be derived through the product model. The feature of choosing the color "gray" is a selectable feature for that product, and "extra glossy paper" is a product quality feature that is optional and has a charge. Notice that more than one feature may be recorded for an order item, as has been done for the "Johnson fine grade  $8 \frac{1}{2}$  by 11 bond paper" item. Each of these features is related to the first item in the order, namely the Johnson paper. Purchase orders may also record features that have been selected such as a billing feature of automatically charging the amounts to a credit card.
 
-Table 4.4 Sales and Purchase Orders  
+Table 4.4 Sales and Purchase Orders
 
 <table><tr><td>ORDERID</td><td>ORDERSUBTYPE</td><td>ORDERITEMSEQ ID</td><td>PRODUCT</td><td>ORDER ITEMFEATURESELECTED</td><td>FEATUREPRICE</td><td>ORDERED FOR(RECURSIVERELATIONSHIP)</td></tr><tr><td>12560</td><td>Salesorder</td><td>1</td><td>Johnson fine grade8 1/2 by 11 bond paper</td><td></td><td></td><td></td></tr><tr><td></td><td></td><td>2</td><td></td><td>Color-gray</td><td></td><td>Order 12560,Item Seq ID 1</td></tr><tr><td></td><td></td><td>3</td><td></td><td>Product quality,Extra glossyfinish</td><td>$2.00</td><td>Order 12560,Item Seq ID 1</td></tr><tr><td></td><td></td><td>4</td><td>Goldstein Elite pen</td><td>Color-blue</td><td></td><td></td></tr><tr><td></td><td></td><td>5</td><td>Jerry&#x27;s box of 3 1/2-inch diskettes</td><td></td><td></td><td></td></tr><tr><td>A2395</td><td>Purchaseorder</td><td>1</td><td>Hourly office cleaning service</td><td>Billing feature,automaticallycharged tocredit card</td><td></td><td></td></tr><tr><td></td><td></td><td>2</td><td>Basic cleaningsupplies kit</td><td></td><td></td><td></td></tr></table>
 
@@ -2322,22 +2322,22 @@ As said previously, many parties are involved in an order. The standard order mo
 
 Each of these facts may be important. It is therefore essential to record each of these roles in association with the order. The key parties involved in an order are the following:
 
-- The party placing the order  
-- The party taking the order  
-- The parties that will receive the delivery of the order  
-- The party that will pay for the order  
-- The party for whom the product is installed and/or set up  
+- The party placing the order
+- The party taking the order
+- The parties that will receive the delivery of the order
+- The party that will pay for the order
+- The party for whom the product is installed and/or set up
 - The people who were involved in various roles regarding the order such as the person entering the order, quality assuring the order, managing the order, and so on
 
 Figure 4.3 illustrates a data model for these order roles and associated contact mechanisms for sales orders. The next section
 
 will address a similar data model for purchase orders (Figure 4.4), and then a model will be presented that can handle either sales or purchase orders (Figure 4.5).
 
-![](images/ee0d28fa0e22b863ad30d96407970a6a460ad3dc8c92b21679105a23ff14088d.jpg)  
-Figure 4.3 Sales order parties and contact mechanisms.  
+![](images/ee0d28fa0e22b863ad30d96407970a6a460ad3dc8c92b21679105a23ff14088d.jpg)
+Figure 4.3 Sales order parties and contact mechanisms.
 Figure 4.4 Purchase order parties and contact mechanisms.
 
-![](images/0c0c6b8883e661e9642defb624236870973d3426c980c901b861694cee113acd.jpg)  
+![](images/0c0c6b8883e661e9642defb624236870973d3426c980c901b861694cee113acd.jpg)
 Figure 4.5 Generic order roles and contact mechanisms.
 
 ![](images/ac6f1ceba33d6e5c9c00d5c9d953ab3bd4e1846656aefb54377a76f52014c28b.jpg)
@@ -2398,7 +2398,7 @@ TO CUSTOMER identifies the party responsible for paying for the invoice. The rel
 
 Table 4.5 gives examples of orders and the associated party addresses or contact mechanisms. Note that the order item seq id 3 order 12560 has a different ship-to than the other order items and is allowable because the ship-to is determined at the order item level. Order 23000 has a different ship-to party and contact mechanism than bill-to. Furthermore, this was an Internet-based order, taken via a contact mechanism that is a web URL. Order 24830 was placed by an e-mail address as the contact mechanism that placed the order.
 
-Table 4.5 Order Roles  
+Table 4.5 Order Roles
 
 <table><tr><td>ORDERID</td><td>PLACING CUSTOMERAND CONTACT MECHANISM</td><td>TAKEN BY INTERNALORGANIZATION ANDCONTACT MECHANISM</td><td>BILL TO CUSTOMERAND CONTACTMECHANISM</td><td>ORDERITEM SEQ</td><td>SHIP TO CUSTOMERAND CONTACT MECHANISM</td></tr><tr><td>12560</td><td>ACME Company234 Stretch Street</td><td>ABC Subsidiary100 Main Street</td><td>ACME Company234 Stretch Street</td><td>1</td><td>ACME Company2300 Drident Avenue</td></tr><tr><td></td><td></td><td></td><td></td><td>2</td><td>ACME Company2300 Drident Avenue</td></tr><tr><td></td><td></td><td></td><td></td><td>3</td><td>ACME Company234 Stretch Street</td></tr><tr><td>23000</td><td>Jones Corporation900 Washington Blvd</td><td>ABC Subsidiarysupplies@ABC.com</td><td>Smith Corporation900 Washington Blvd</td><td>1</td><td>Jones Corporation2300 Drident Avenue</td></tr><tr><td>24830</td><td>Blord@person.com</td><td>ABC Subsidiarysupplies@ABC.com</td><td>Bob Ford2930 Brianwood Avenue</td><td>1</td><td>Bob Ford 2930Briarwood Avenue</td></tr><tr><td>A2395</td><td>ABC Subsidiary100 Main Street</td><td>Ace Cleaning Service3590 Cottage Avenue</td><td>ABC Corporation100 Main Street</td><td>1</td><td>ABC Retail Store2345 Johnson Blvd</td></tr><tr><td></td><td></td><td></td><td></td><td>2</td><td>ABC Retail Store2345 Johnson Blvd</td></tr></table>
 
@@ -2414,7 +2414,7 @@ Table 4.6 gives examples of the various roles that parties could play in an orde
 
 authorized or approved as a valid commitment by John Smith. Notice that the roles dictate the party responsible for accomplishing these functions so even if the function has not been performed yet, a party can still be slotted to play a role.
 
-Table 4.6 Order Roles  
+Table 4.6 Order Roles
 
 <table><tr><td>ORDER ID</td><td>PERSON</td><td>ROLE</td><td>PERCENT CONTRIBUTION</td></tr><tr><td>12560</td><td>John Jones</td><td>Salesperson</td><td>50</td></tr><tr><td>12560</td><td>Nancy Barker</td><td>Salesperson</td><td>50</td></tr><tr><td>12560</td><td>Frank Parks</td><td>Processor</td><td></td></tr><tr><td>12560</td><td>Joe Williams</td><td>Reviewer</td><td></td></tr><tr><td>12560</td><td>John Smith</td><td>Authorizer</td><td></td></tr></table>
 
@@ -2428,7 +2428,7 @@ Figure 4.4 provides a data model with purchase order roles and contact mechanism
 
 Table 4.7 provides an example of the roles involved in purchase order A2395. In addition to these roles there would be additional ORDER ROLES for the people involved in the purchase order, similar to the sales order model.
 
-Table 4.7 Purchase Order Roles  
+Table 4.7 Purchase Order Roles
 
 <table><tr><td>ORDERID</td><td>PLACINGPARTY ANDCONTACTMECHANISM</td><td>SUPPLIERANDCONTACTMECHANISM</td><td>BILL TOPURCHASERAND CONTACTMECHANISM</td><td>ORDERITEMSEQ</td><td>SHIP-TOBUYERSAND CONTACTMECHANISM</td></tr><tr><td>A2395</td><td>ABC Subsidiary100 Main Street</td><td>Ace Cleaning Service3590 Cottage Avenue</td><td>ABC Corporation100 Main Street</td><td>1</td><td>ABC Retail Store2345 JohnsonBlvd</td></tr><tr><td></td><td></td><td></td><td></td><td>2</td><td>ABC Retail Store2345 JohnsonBlvd</td></tr></table>
 
@@ -2478,7 +2478,7 @@ The first three items in Table 4.8 are examples of discounts and a surcharge. Th
 
 that there is a \(10.00 surcharge for delivery outside the normal area.
 
-Table 4.8 Order and Order Item Adjustments  
+Table 4.8 Order and Order Item Adjustments
 
 <table><tr><td>ORDERID</td><td>ORDER ITEMSEQ ID</td><td>PRODUCT</td><td>ADJUSTMENTTYPE</td><td>AMOUNT</td><td>PERCENTAGE</td></tr><tr><td>12560</td><td>3</td><td>Jerry&#x27;s box of 31/2-inch diskettes</td><td>Discount</td><td>$1.00</td><td></td></tr><tr><td>12560</td><td></td><td></td><td>Discount</td><td></td><td>10</td></tr><tr><td>12560</td><td></td><td></td><td>Surcharge-Delivery outside normal geographic area</td><td>$10.00</td><td></td></tr><tr><td>12560</td><td></td><td></td><td>Fee-order processing fee</td><td>$1.50</td><td></td></tr></table>
 
@@ -2496,7 +2496,7 @@ Figure 4.7 builds on the order model by illustrating information needs for the s
 
 The ORDER STATUS TYPE maintains the status of possible order. The ORDER TERM entity tracks the conditions of business associated with the ORDER or ORDER ITEM. The TERM TYPE entity maintains the possible terms available to use.
 
-![](images/9c908b4e117eda0811ec77bda8c3681d2cfa8e4061061a1e63f5ebd6ab2a1af8.jpg)  
+![](images/9c908b4e117eda0811ec77bda8c3681d2cfa8e4061061a1e63f5ebd6ab2a1af8.jpg)
 Figure 4.7 Order status and terms.
 
 # Order Status
@@ -2513,7 +2513,7 @@ The parties involved may agree on many arrangements or terms. Delivery terms, ex
 
 Table 4.9 shows examples of order terms. Order 12560 has three terms defined to it. The first two terms document that if the purchaser cancels the order 10 days after placing it, there is a 25 percent cancellation charge. The third term says there are no refunds or exchanges after this item has been delivered.
 
-Table 4.9 Order Term  
+Table 4.9 Order Term
 
 <table><tr><td>ORDER ID</td><td>ORDER ITEM
 SEQ ID</td><td>PRODUCT</td><td>VALUE</td><td>TERM TYPE</td></tr><tr><td>12560</td><td></td><td></td><td>25</td><td>Percentage cancellation charge</td></tr><tr><td></td><td></td><td></td><td>10</td><td>Days within which one may cancel order without a penalty</td></tr><tr><td></td><td>2</td><td>Goldstein Elite pen</td><td></td><td>No exchanges or refunds once delivered</td></tr><tr><td>A2395</td><td>1</td><td>Hourly office cleaning service</td><td>5</td><td>Percentage penalty paid by supplier for nonperformance</td></tr><tr><td></td><td>1</td><td>Hourly office cleaning service</td><td>30</td><td>Number of days within which delivery must occur</td></tr></table>
@@ -2540,7 +2540,7 @@ A single item on a purchase order may be used to fulfill several items on sales 
 
 The example shown in Table 4.10 illustrates the data that would occur from a purchase order item tied to a sales order item. Order 23490 is a purchase order that has an item that will provide the items needed for sales order 13480, item 1.
 
-Table 4.10 Order Item Association  
+Table 4.10 Order Item Association
 
 <table><tr><td>ORDER ID</td><td>ORDER ITEM SEQ ID</td><td>ORDER ID</td><td>ORDER ITEM SEQ ID</td></tr><tr><td>13480</td><td>1</td><td>23490</td><td>1</td></tr></table>
 
@@ -2568,7 +2568,7 @@ The organization may be interested in tracking either customer or internal needs
 
 Figure 4.9 provides a very flexible data model that handles the capturing of both customer and internal requirements.
 
-![](images/3593f4bf5a43356ae2d59c3dacc283c0421d9435bdc89013e96ca6cefa6a7f7d.jpg)  
+![](images/3593f4bf5a43356ae2d59c3dacc283c0421d9435bdc89013e96ca6cefa6a7f7d.jpg)
 Figure 4.9 Requirements.
 
 A REQUIREMENT is an organization's need for anything. The REQUIREMENT entity represents a need that may be either a CUSTOMER REQUIREMENT or an INTERNAL REQUIREMENT. Similarly, each REQUIREMENT could be either a PRODUCT REQUIREMENT or a WORK REQUIREMENT. A PRODUCT
@@ -2705,7 +2705,7 @@ The QUOTE entity stores header information about the quote. For example, the iss
 
 A QUOTE has a subtype of PROPOSAL that is generally more elaborate and includes many sections, such as statements of need, proposal descriptions, benefits, cost justifications, resources required, and so forth. Another subtype is a PRODUCT QUOTE, which is simpler and just tracks the terms and prices behind the products being quoted. There may be other types of quotes, such as bids or offers, depending on the enterprise and its terminology. Table 4.14 gives some examples of quotes.
 
-Table 4.14 Quotes  
+Table 4.14 Quotes
 
 <table><tr><td>QUOTE ID</td><td>QUOTE TYPE</td><td>ISSUE DATE</td><td>DESCRIPTION</td><td>VALID FROM</td><td>VALID THRU</td></tr><tr><td>35678</td><td>Proposal</td><td>Feb 19, 2002</td><td>Proposal to support the repair of PCs</td><td>Feb 19, 2002</td><td>Mar 19, 2002</td></tr><tr><td>36908</td><td>Product Quote</td><td>Mar 12, 2001</td><td>Bid on pens and pencils</td><td>Mar 12, 2002</td><td>Mar 30, 2002</td></tr></table>
 
@@ -2719,7 +2719,7 @@ QUOTE ITEM has a many-to-one relationship with REQUEST ITEM. When a request is s
 
 Table 4.15 shows examples of quotes that correspond to the requests of Table 4.12. Each quote item corresponds to a request item. The original request ("38967") called for a quote to fix 14 PCs. The corresponding quote in the first row of Table 4.14 ("35678") was for 70 hours of service, which is the estimate for fixing the PCs.
 
-Table 4.15 Quote Item  
+Table 4.15 Quote Item
 
 <table><tr><td>QUOTE
 ID</td><td>QUOTE ITEM
@@ -2761,7 +2761,7 @@ Figure 4.12 provides a few standard types of agreements, and Table 4.16 provides
 
 Corporation acts in the "supplier" agreement role and ACME Company acts in the "customer" agreement role. The agreement represents a contractual commitment and is associated with their party relationship of customer relationship, which was an informal relationship.
 
-Table 4.16 Agreement  
+Table 4.16 Agreement
 
 <table><tr><td>AGREEMENTID</td><td>AGREEMENTTYPE</td><td>DESCRIPTION</td><td>AGREEMENTROLES</td><td>ASSOCIATEDPARTYRELATIONSHIP</td><td>STARTINGDATE</td><td>ENDINGDATE</td></tr><tr><td>10002</td><td>Sales agreement(associated with customer relationship)</td><td>Agreement regarding the pricing and terms of buying inventory items</td><td>ABC Corporation (supplier) ACME Company (customer)</td><td>Customer relationship</td><td>Jan 1, 2002</td><td>Dec 30, 2002</td></tr><tr><td>86749</td><td>Employment agreement</td><td>Hired William as an entry-level information systems programmer</td><td>William Jones (employee) ABC Corporation (employer)</td><td>Employment relationship</td><td>May 7, 1990</td><td></td></tr><tr><td>489589</td><td>Partnership agreement</td><td>Agreement to form an informal partnership with terms designer to compensate partners</td><td>ABC Corporation (partner), Sellers Assistance Corporation (partner) XYZ Corporation (partner)</td><td></td><td>June 1, 2000</td><td>June 1, 2001</td></tr></table>
 
@@ -2803,7 +2803,7 @@ Each AGREEMENT ITEM may be specified for certain geographic boundaries, products
 
 Table 4.17 shows a simple example that agreement 10002 is an agreement that has two agreement items governing the terms for buying two products: "Johnson fine grade  $8 \frac{1}{2}$  by 11 blue bond paper" and "Jerry's box of  $3 \frac{1}{2}$ -inch diskettes."
 
-Table 4.17 Agreement Items  
+Table 4.17 Agreement Items
 
 <table><tr><td>AGREEMENT</td><td>AGREEMENT ITEM</td><td>PRODUCT</td></tr><tr><td>ID</td><td>SEQ ID</td><td></td></tr><tr><td>10002</td><td>1</td><td>Johnson fine grade 8½ by 11 blue bond paper</td></tr><tr><td></td><td>2</td><td>Jerry&#x27;fs box of 3½ inch diskettes</td></tr></table>
 
@@ -2815,7 +2815,7 @@ For example, a product agreement between a supplier and its customer may call fo
 
 example of this exclusive arrangement is found when a consulting firm performs services for its client that involve sensitive proprietary information that needs to be safeguarded from the competition. Therefore, the customer may request that the supplier not do business with the customer's competitors for a specified time in order to protect its confidentiality. In Table 4.18, the first row of data gives an example of an AGREEMENT TERM that is associated with agreement 23884. The term is that the agreement calls for an exclusive arrangement prohibiting the supplier from supplying similar services to the customer's competitors for up to 60 days after the contract ends.
 
-Table 4.18 Agreement Terms  
+Table 4.18 Agreement Terms
 
 <table><tr><td>AGREEMENT ID</td><td>AGREEMENT ITEM SEQ ID</td><td>PRODUCT</td><td>TERM TYPE</td><td>TERM VALUE</td><td>FROM DATE</td><td>THRU DATE</td></tr><tr><td>23884</td><td></td><td></td><td>Exclusive arrangement prohibiting supplier from supplying similar services to customer&#x27;s competitors for specified number of days after contract ends</td><td>60</td><td></td><td></td></tr><tr><td>10002</td><td>1</td><td>Johnson fine grade 81/2 by 11 blue bond paper</td><td>Quantity not to exceed</td><td>1000</td><td>Jan 1, 2002</td><td>Dec 31, 2002</td></tr><tr><td></td><td></td><td>Johnson fine grade 81/2 by 11 blue bond paper</td><td>Dollars not to exceed</td><td>$10,000</td><td>Jan 1, 2002</td><td>June 30, 2002</td></tr><tr><td></td><td>2</td><td>Jerry&#x27;s box of 31/2 inch diskettes</td><td>Customer will exclusively buy from supplier</td><td></td><td>Jan 1, 2002</td><td>Dec 30, 2002</td></tr></table>
 
@@ -2841,7 +2841,7 @@ of AGREEMENT ITEM). Each AGREEMENT PRICING PROGRAM may
 
 have many PRICE COMPONENTs.
 
-![](images/813de568c0f6dc38e47fce5330505f981e8635e68c616ad2d0e4069893ccb5af.jpg)  
+![](images/813de568c0f6dc38e47fce5330505f981e8635e68c616ad2d0e4069893ccb5af.jpg)
 Figure 4.15 Agreement pricing.
 
 As already discussed, these PRICE COMPONENTs may be a base price (BASE PRICE), a discount (DISCOUNT COMPONENT), a surcharge (SURCHARGE COMPONENT), or a MANUFACTURER SUGGESTED PRICE. The attribute price is used to record base prices, flat discounts, or flat surcharges. The attribute percent is used to record percentages for discounts or surcharges to certain agreement items. The relationships to GEOGRAPHIC BOUNDARY, PRODUCT CATEGORY, QUANTITY BREAK, ORDER VALUE, and/or SALE TYPE allow different prices based on different combinations of these factors.
@@ -2850,7 +2850,7 @@ An alternative data model is to have a PRODUCT PRICE COMPONENT entity and a sepa
 
 Table 4.19 gives some examples of the pricing components used within agreements. The three rows are the pricing arrangement for agreement 10002 item 1, which refers to the product "Johnson fine grade  $8 \frac{1}{2}$  by 11 blue bond paper." The agreement says that the price in the eastern region for this product is  $7.00 and in the western region the price is$ 7.50. If more than 1,000 reams are ordered in the same order, then a 2 percent discount is applied to this product.
 
-Table 4.19 Agreement Item Price  
+Table 4.19 Agreement Item Price
 
 <table><tr><td>AGREEMENTID</td><td>AGREEMENTITEM SEQ</td><td>PRODUCT</td><td>PRICE COMPONENTEN SUBTYPE</td><td>GEOGRAPHIC BOUNDARY</td><td>QTY BREAK FROM</td><td>QTY BREAK THRU</td><td>PRICE</td><td>PERCENT</td></tr><tr><td>10002</td><td>1</td><td>Johnson fine grade 81/2×11 blue bond paper</td><td>Base</td><td>Eastern region</td><td></td><td></td><td>$7.00</td><td></td></tr><tr><td></td><td></td><td></td><td>Base</td><td>Western region</td><td></td><td></td><td>$7.50</td><td></td></tr><tr><td></td><td></td><td></td><td>Discount</td><td></td><td>1000</td><td></td><td>2</td><td></td></tr></table>
 
@@ -2878,7 +2878,7 @@ The data model from this chapter provides a way to maintain information about or
 
 agreements (see Figure 4.17). These models incorporate both sales and purchase order perspectives and cover services as well as goods.
 
-![](images/c604e83f58141a1582d4100871af286bddc82a0afabe594a956fca933cff0d7f.jpg)  
+![](images/c604e83f58141a1582d4100871af286bddc82a0afabe594a956fca933cff0d7f.jpg)
 Figure 4.17 Overall order model.
 
 Orders go through a process, beginning with a requirement or a need for a product(s). The requirement may be directly fulfilled by an order, or it may lead to a request to suppliers, a quote, then an order. Agreements may be established in advance that govern relationships and transactions between parties and influence terms and pricing. This chapter models most of the information that many enterprises need to establish commitments between parties.
@@ -2895,14 +2895,14 @@ Please refer to Appendix A for a listing of entities and attributes. SQL scripts
 
 Now that orders have been taken, how do they get to their destinations and, once there, how are they paid for? Other questions to answer are these:
 
-What is being shipped?  
-- When will it ship?  
-- To and from where is it shipped?  
-What is the current status of the shipment?  
-- What inventory receipts and issuances occurred during what times at what locations?  
-- What is the volume and nature of incoming and outgoing shipments?  
-- Was the entire order shipped or only part of it?  
-- What shipping documents have been completed and maintained?  
+What is being shipped?
+- When will it ship?
+- To and from where is it shipped?
+What is the current status of the shipment?
+- What inventory receipts and issuances occurred during what times at what locations?
+- What is the volume and nature of incoming and outgoing shipments?
+- Was the entire order shipped or only part of it?
+- What shipping documents have been completed and maintained?
 - What carrier was used in the shipment and what routes did the shipment take?
 
 This chapter will deal with the shipment of items that are scheduled to be or have been delivered. As will be shown, the information to
@@ -2911,12 +2911,12 @@ support these functions does not, at first glance, seem very complex; however, t
 
 Models discussed in this chapter are the following:
 
-- Shipments  
-Shipping detail  
-- Shipment-to-order relationship  
-- Shipment receipt for incoming shipments  
-- Item issuance for outgoing shipments  
-Shipping documents  
+- Shipments
+Shipping detail
+- Shipment-to-order relationship
+- Shipment receipt for incoming shipments
+- Item issuance for outgoing shipments
+Shipping documents
 - Shipment method
 
 # Shipments
@@ -2925,7 +2925,7 @@ The basic data model for shipments is shown in Figure 5.1. There is the SHIPMENT
 
 as a contact number for the receiver to facilitate delivery just in case the carrier cannot easily access or find the postal address.
 
-![](images/bd792935ce8a609982de960498a7a0faa855affb45040fbbe431875fb178eced.jpg)  
+![](images/bd792935ce8a609982de960498a7a0faa855affb45040fbbe431875fb178eced.jpg)
 Figure 5.1 Shipment definition.
 
 An enterprise may need to know many things about a shipment. Some are critical; some are not so critical. The first thing to record in the SHIPMENT entity is the estimated ship date, which indicates
@@ -2974,7 +2974,7 @@ Table 5.2 highlights possible data for SHIPMENT ITEM. Shipment #9000 details the
 
 Corporation, and Table 5.2 shows that three items are being shipped.
 
-Table 5.2 Shipment Items  
+Table 5.2 Shipment Items
 
 <table><tr><td>SHIPMENT ID</td><td>ITEM SEQ</td><td>QUANTITY</td><td>INVENTORY ITEM</td></tr><tr><td>9000</td><td>1</td><td>1000</td><td>Jones #2 pencils</td></tr><tr><td></td><td>2</td><td>1000</td><td>Goldstein Elite pens</td></tr><tr><td></td><td>3</td><td>100</td><td>Boxes of HD diskettes</td></tr></table>
 
@@ -2984,8 +2984,8 @@ The entity SHIPMENT STATUS in Figure 5.2 allows for the accurate tracking of the
 
 Table 5.3 shows sample data that could be stored with this entity. While the estimated ship date and estimated arrival date are stored as attributes in the SHIPMENT entity, the SHIPMENT STATUS stores the dates (and times, if needed) that activities actually occurred on the shipment. Customer shipment #9000 was scheduled for shipment March 4 (meaning that the shipment was first recorded) and actually shipped out on Mar 7 and received on Mar 7. Drop shipment #4800 was scheduled for shipment on July 9 and then canceled on July 10.
 
-Table 5.3 Shipment Status Data  
-SHIPMENT IDSHIPMENT STATUSSTATUS DATE  
+Table 5.3 Shipment Status Data
+SHIPMENT IDSHIPMENT STATUSSTATUS DATE
 
 <table><tr><td>9000</td><td>Scheduled</td><td>Mar 4, 2001</td></tr><tr><td></td><td>Shipped</td><td>Mar 7, 2001</td></tr><tr><td></td><td>Received</td><td>Mar 7, 2001</td></tr><tr><td>4800</td><td>Scheduled</td><td>July 9, 2002</td></tr><tr><td></td><td>Canceled</td><td>July 10, 2002</td></tr></table>
 
@@ -3003,15 +3003,15 @@ independently of an order—for instance, with transfers of inventory. Second, i
 
 Tables 5.4, 5.5, and 5.6 give some sample data to demonstrate the many-to-many relationship from ORDER ITEMS to SHIPMENT ITEMS. For simplicity purposes, the data represents customer orders #100 and #200 and customer shipments #9000, #9200, and #9400. The data in these tables may seem complex, but there is a very good explanation behind this: In the real world, the relationship between orders and shipments is a complex one.
 
-Table 5.4 Order Item Data  
+Table 5.4 Order Item Data
 
 <table><tr><td>ORDER ID</td><td>ORDER ITEM SEQ ID</td><td>QUANTITY</td><td>PRODUCT</td></tr><tr><td>100</td><td>1</td><td>1500</td><td>Jones #2 pencils</td></tr><tr><td></td><td>2</td><td>2500</td><td>Goldstein Elite pens</td></tr><tr><td></td><td>3</td><td>350</td><td>Standard erasers</td></tr><tr><td>200</td><td>1</td><td>300</td><td>Goldstein Elite pens</td></tr><tr><td></td><td>2</td><td>200</td><td>Boxes of HD diskettes</td></tr></table>
 
-Table 5.5 Shipment Item Data  
+Table 5.5 Shipment Item Data
 
 <table><tr><td>SHIPMENT ID</td><td>SHIPMENT ITEM SEQ ID</td><td>QUANTITY</td><td>PRODUCT</td></tr><tr><td>9000</td><td>1</td><td>1000</td><td>Jones #2 pencils</td></tr><tr><td></td><td>2</td><td>1000</td><td>Goldstein Elite pens</td></tr><tr><td></td><td>3</td><td>100</td><td>Boxes of HD diskettes</td></tr><tr><td>9200</td><td>1</td><td>350</td><td>Standard erasers</td></tr><tr><td></td><td>2</td><td>100</td><td>Boxes of HD diskettes</td></tr><tr><td></td><td>3</td><td>1500</td><td>Jones #2 pencils</td></tr><tr><td>9400</td><td>1</td><td>500</td><td>Jones #2 pencils</td></tr></table>
 
-Table 5.6 Order Shipment Cross-Reference Data  
+Table 5.6 Order Shipment Cross-Reference Data
 
 <table><tr><td>ORDER ID</td><td>ORDER ITEM
 SEQ ID</td><td>SHIPMENT ID</td><td>SHIPMENT ITEM
@@ -3076,7 +3076,7 @@ Outgoing items being shipped need to issued, or in other words pulled, from inve
 
 Figure 5.5 provides a data model to handle the information requirements of the item issuance process. Based on the shipment needs, which could be obtained by reviewing the outstanding SHIPMENTS and SHIPMENT ITEMS, a PICKLIST is generated, identifying the plan for picking from inventory. Each PICKLIST will have a PICKLIST ITEM that stores the quantity of goods needed and are to be picked from each INVENTORY ITEM in order to meet the shipment needs. Various algorithms may have been used to generate this picklist, and once it is generated it is important to record because it represents the plan of action for issuing items out of inventory. Each SHIPMENT ITEM may be obtained via one or more ITEM ISSUANCES, which are each issued from an INVENTORY ITEM. Each ITEM ISSUANCE may have many people involved in this process and therefore may have many ITEM ISSUANCE ROLES for each PARTY involved; each role is described by the ITEM ISSUANCE ROLE TYPE.
 
-![](images/d336f20289828019dedd222cc03e0e875319bff2b71a6e924ce53b818d360bb6.jpg)  
+![](images/d336f20289828019dedd222cc03e0e875319bff2b71a6e924ce53b818d360bb6.jpg)
 Figure 5.5 Item issuance for outgoing shipments.
 
 Notice that the relationship between ITEM ISSUANCE and SHIPMENT ITEM is optional because items may be issued from inventory for other reasons other than from shipments. For instance, an item may be issued for use within the enterprise at the same location that the inventory is stored.
@@ -3111,7 +3111,7 @@ Figure 5.7 provides a data model to track the packages along their routes in ord
 
 SHIPMENT METHOD TYPE, such as by ground, cargo ship, or air. It must be shipped by a particular CARRIER, even if that carrier is part of the enterprise itself. Optionally, the enterprise may want to track the particular VEHICLE involved used in the segment as well as the from and to FACILITYs that maintain each location through which the shipment route segment travels.
 
-![](images/0a6eb619120af3d1f08fd3d9fef9c495d1dc0b4f5ab90f2e72809e869398dd58.jpg)  
+![](images/0a6eb619120af3d1f08fd3d9fef9c495d1dc0b4f5ab90f2e72809e869398dd58.jpg)
 Figure 5.7 Shipment route segments.
 
 The relationship to VEHICLE would usually be tracked in circumstances where the enterprise maintains its own fleet. If the enterprise uses external carriers, the enterprise would probably not need this relationship within its data model. Could more than one vehicle be used in a particular SHIPMENT ROUTE SEGMENT? For instance, could truck #100 be used and then truck #120 take over the route at midpoint? This data model will define this circumstance as two shipment route segments; therefore, each route would have one and only one vehicle.
@@ -3142,7 +3142,7 @@ Information that enterprises may want to keep about the VEHICLE would be the sta
 
 what order multiple vehicles were used to deliver a single shipment and how long it took, including transfers. See Table 5.11 for examples.
 
-Table 5.11 Shipment Vehicle Data  
+Table 5.11 Shipment Vehicle Data
 
 <table><tr><td>SHIPMENT ID</td><td>SHIPMENT METHOD</td><td>VEHICLE NAME</td><td>ACTUAL START DATETIME</td><td>ACTUAL END DATETIME</td><td>START MILEAGE</td><td>END MILEAGE</td><td>FUEL USED</td></tr><tr><td>9000</td><td>Truck</td><td>Truck #1</td><td>Mar 7, 2001 10:00 A.M.</td><td>Mar 7, 2001 11:35 A.M.</td><td>52,000</td><td>52,061</td><td>2 gallons</td></tr><tr><td></td><td></td><td>Truck #25</td><td>Mar 7, 2001 12:05 P.M.</td><td>Mar 7, 2001 8:16 P.M.</td><td>73,525</td><td>74,006</td><td>25 gallons</td></tr><tr><td>9002</td><td>Truck</td><td>Truck #1</td><td>Mar 7, 2001 10:00 A.M.</td><td>Mar 7, 2001 11:35 A.M.</td><td>52,000</td><td>52,061</td><td>2 gallons</td></tr></table>
 
@@ -3160,7 +3160,7 @@ estimated start datetime and estimated arrival datetime attributes as well as th
 
 In this chapter there has been discussion of the details of shipments and how they relate to orders and to each other. The chapter provided models for shipments, shipment items, relationships of shipment items to order items, shipment receipts, item issuances, shipping documents, and shipment route segments. The key entities and relationships are shown in an overall model in Figure 5.8. These data structures, combined with the interrelationships with other aspects of the models, will allow for the development of robust, integrated systems. These models should, once implemented, minimize the occurrence of redundant data and make the maintenance of referential integrity simpler.
 
-![](images/cbce1d215ec4552d0a243f0e8ca8eb2a0f3e297306be352774395eef78ef446c.jpg)  
+![](images/cbce1d215ec4552d0a243f0e8ca8eb2a0f3e297306be352774395eef78ef446c.jpg)
 Figure 5.8 Overall shipments model.
 
 Please refer to Appendix A for a listing of entities and attributes. SQL scripts to build tables and columns derived from the logical models in this book can be found on the full-blown CD-ROM, which is licensed separately. Note that there are some differences in the way service is delivered versus items. Inventory items are things that can
@@ -3177,30 +3177,30 @@ A key component of conducting business is the act of providing various types of 
 
 Some questions that enterprises need to answer in the course of doing business include the following:
 
-What type of work effort is required?  
-- What items need to be produced, or what services need to be delivered?  
-Who will be involved and what are their roles?  
+What type of work effort is required?
+- What items need to be produced, or what services need to be delivered?
+Who will be involved and what are their roles?
 - Where will the work take place?
 
-How long will it take?  
-What is the current status of the effort?  
-• Are the appropriate resources (people, inventory, equipment) available? If not, when will they be?  
-- What standards and metrics are in place to measure work effort effectiveness?  
+How long will it take?
+What is the current status of the effort?
+• Are the appropriate resources (people, inventory, equipment) available? If not, when will they be?
+- What standards and metrics are in place to measure work effort effectiveness?
 What results are work efforts producing and how efficient are they?
 
 This chapter will illustrate the following models that help answer those questions:
 
-Work requirements  
-Work requirement roles  
-- Work effort generation (alternate model also provided)  
-Work effort associations  
-Work effort party assignment  
-Work effort time tracking  
-Work effort rates  
-- Inventory item assignment  
-- Fixed asset assignment  
-- Party fixed asset assignment  
-Work effort type standards  
+Work requirements
+Work requirement roles
+- Work effort generation (alternate model also provided)
+Work effort associations
+Work effort party assignment
+Work effort time tracking
+Work effort rates
+- Inventory item assignment
+- Fixed asset assignment
+- Party fixed asset assignment
+Work effort type standards
 Work effort results
 
 Work Requirement and Work Efforts
@@ -3215,7 +3215,7 @@ Where does a work requirement come from? A work requirement is created when ther
 
 - The need to manufacture a particular item because market research indicates an increased demand for that item beyond previous projections
 
-- The need for a piece of equipment within the enterprise to be repaired  
+- The need for a piece of equipment within the enterprise to be repaired
 - The need for an internal project such as an analysis of existing operations, development of a plan, or creation of a new product or service
 
 Figure 6.1 shows the key entities used to define a work requirement. First, the WORK REQUIREMENT is a subtype of the previously modeled REQUIREMENT entity. The REQUIREMENT TYPE defines the possible categories for requirements, which, of course, includes categorizations for WORK REQUIREMENTS. Possible values for REQUIREMENT TYPE include "project," "maintenance," and "production run." The WORK REQUIREMENT may be for work to be delivered of either a DELIVERABLE, FIXED ASSET, or a PRODUCT.
@@ -3230,7 +3230,7 @@ quantity determines the number of items needed in the requirement. The reason at
 
 Table 6.1 shows some data that could appear in the WORK REQUIREMENT entity.
 
-Table 6.1 Work Requirement Data  
+Table 6.1 Work Requirement Data
 
 <table><tr><td>WORK
 REQUIREMENT
@@ -3299,7 +3299,7 @@ The WORK REQUIREMENT ROLE TYPE entity is used to store all the valid roles defin
 
 uniqueness. Table 6.3 contains sample data to demonstrate some of these possibilities.
 
-Table 6.3 Party Work Requirement Role Data  
+Table 6.3 Party Work Requirement Role Data
 
 <table><tr><td>WORK
 REQUIREMENT
@@ -3325,9 +3325,9 @@ The WORK ORDER ITEM will usually result from WORK REQUIREMENTS; however, it coul
 
 ORDER ITEM. The work effort may result from scenarios such as these:
 
-- A work requirement (as defined in the previous section).  
-- A customer orders an item that needs to be manufactured.  
-- A service that was sold now needs to be performed.  
+- A work requirement (as defined in the previous section).
+- A customer orders an item that needs to be manufactured.
+- A service that was sold now needs to be performed.
 - A customer places an order to repair or service an item that was previously sold to him or her.
 
 In addition to defining the basic information for a WORK EFFORT, the model also keeps track of WORK EFFORT TYPE, WORK EFFORT PURPOSE TYPE, and the FACILITY where the work takes place.
@@ -3360,7 +3360,7 @@ If there was an internal need to complete work—for instance, a repair to a pie
 
 As indicated by the data in Table 6.4, a single work effort may have originated from one or more work requirements, or the corresponding work effort may be originated from an ORDER ITEM or a WORK REQUIREMENT. The ORDER ITEM will typically be from a sales order and not a purchase order because sales orders, especially for services, more typically create a need to track a work effort. The enterprise usually will not track work efforts for items that they have purchased, although it may happen if the work effort is large enough and it is important for the purchaser to track the progress of the delivery.
 
-Table 6.4 Work Efforts from Work Requirement  
+Table 6.4 Work Efforts from Work Requirement
 
 <table><tr><td>WORK EFFORT ID</td><td>NAME</td><td>DESCRIPTION</td><td>SCHEDULED START DATE</td><td>WORK REQUIREMENT</td></tr><tr><td>28045</td><td>Production run</td><td>Production run of 3,500 pencils</td><td>June 1, 2000</td><td>Work Requirement Item #50985 Anticipated demand of 2,000 custom-engraved black pens with gold trim</td></tr><tr><td></td><td></td><td></td><td></td><td>Work Requirement Item #51245 Anticipated demand of 1,500 custom-engraved black pens with gold trim</td></tr><tr><td>51285</td><td>Production run</td><td>Production run of 1,500 pencils</td><td>Dec 5, 2000</td><td>Work Requirement Item #51285 Anticipated demand of 3,000 custom-engraved black pens with gold trim</td></tr><tr><td>51298</td><td>Production run</td><td>Production run of 1,500 pencils</td><td>Dec 6, 2000</td><td></td></tr><tr><td>32898</td><td>Fix engraving machine</td><td>Repair engraving machine #12 because it may not be powered up</td><td>Dec 12, 2000</td><td>Repair of engraving machine</td></tr><tr><td>39409</td><td>Sales and marketing plan development</td><td>Develop a sales and marketing plan for 2002 including sales projections, channel distribution strategy, and competitive analysis</td><td>Dec 15, 2000</td><td>Work Requirement #60102 Develop sales and marketing plan for 2002</td></tr></table>
 
@@ -3390,7 +3390,7 @@ Some organizations do not have a need to maintain which requirements are fulfill
 
 Figure 6.3b Work effort generation—alternate model.
 
-![](images/8336ebba057b5b9f3f0812f4692e5760148ab2477a145c15c8e1791e6124e220.jpg)  
+![](images/8336ebba057b5b9f3f0812f4692e5760148ab2477a145c15c8e1791e6124e220.jpg)
 Work Effort Associations
 
 Work efforts may be defined at various levels of detail and broken down in different ways. Each subtype of WORK EFFORT may be related to different subtypes depending on the circumstances. For instance, to manage programs within an enterprise and associated
@@ -3399,7 +3399,7 @@ internal projects PROGRAMs may be broken down into PROJECTs, which may be broken
 
 Figure 6.4 Work effort breakdown.
 
-![](images/98f34d235263e6fd824adefb7b5bb72cdb2ba58b89e6f417fdc6796600760ca1.jpg)  
+![](images/98f34d235263e6fd824adefb7b5bb72cdb2ba58b89e6f417fdc6796600760ca1.jpg)
 Work Effort Association Definition
 
 Table 6.6 shows the work efforts for a job of producing pencils on a particular production run. Included in the data are the attributes for scheduled start date and scheduled completion date and the estimated hours. These tasks will be useful for planning staff and
@@ -3422,7 +3422,7 @@ An alternative to using the WORK EFFORT ASSOCIATION could be to show a WORK EFFO
 
 In order for the WORK EFFORT to be completed, certain resources need to be made available. Parties, inventory, and equipment may need to be assigned to WORK EFFORTs at different levels of detail. For instance, people may need to be assigned roles at a high level, such as a program or project, and roles may also be assigned at more detailed levels of activity. This section discusses the assignment of parties to WORK EFFORTs. It includes the entities WORK EFFORT PARTY ASSIGNMENT, WORK EFFORT ROLE TYPE, PARTY SKILL, SKILL TYPE, WORK EFFORT STATUS, and WORK EFFORT STATUS TYPE (see Figure 6.5).
 
-![](images/596bd01b20e19b0f35b817012644bc0b1244cdf8906a4fd824671b8e7cdf8b6e.jpg)  
+![](images/596bd01b20e19b0f35b817012644bc0b1244cdf8906a4fd824671b8e7cdf8b6e.jpg)
 Figure 6.5 Work effort party assignment.
 
 # Work Effort Party Assignment
@@ -3431,7 +3431,7 @@ For planning and scheduling purposes, the model includes a means by which people
 
 EFFORT PARTY ASSIGNMENT entity (refer to Figure 6.5). With this it is possible to assign parties to work efforts in various roles as well as at various levels of the work effort. Table 6.7 gives examples of the data available when the relationships are resolved.
 
-Table 6.7 Work Effort Party Assignment Data  
+Table 6.7 Work Effort Party Assignment Data
 
 <table><tr><td>WORK EFFORT ID AND DESCRIPTION</td><td>PARTY</td><td>WORK EFFORT ROLE TYPE</td><td>FROM DATE</td><td>THRU DATE</td><td>COMMENT</td></tr><tr><td>39409 Develop a sales and marketing plan</td><td>Dick Jones</td><td>Project manager</td><td>Jan 2, 2001</td><td>Sept 15, 2001</td><td></td></tr><tr><td></td><td>Bob Jenkins</td><td>Project administrator</td><td></td><td></td><td></td></tr><tr><td></td><td>John Smith</td><td>Team member</td><td>Mar 5, 2001</td><td>Aug 6, 2001</td><td>Leaving for three-week vacation on Aug 7, 2001</td></tr><tr><td></td><td>John Smith</td><td>Team member</td><td>Sept 1, 2001</td><td>Dec 2, 2001</td><td></td></tr><tr><td></td><td>Jane Smith</td><td>Team member</td><td>Aug 6, 2000</td><td>Sept 15, 2001</td><td>Very excited about assignment</td></tr><tr><td>29000 Develop project plan (part of effort 39409)</td><td>Dick Jones</td><td>Creator</td><td>Jan 2, 2001</td><td>Jan 4, 2001</td><td></td></tr><tr><td>29000 Develop project plan (part of effort 39409)</td><td>Bob Jenkins</td><td>Data entry in system</td><td>Jan 4, 2001</td><td>Jan 4, 2001</td><td></td></tr><tr><td>29003 Conduct initial interviews (part of effort 39409)</td><td>John Smith</td><td>Performer</td><td>Jan 5, 2001</td><td>Feb 5, 2001</td><td></td></tr><tr><td>29005 Conduct market research (part of effort 39409)</td><td>USA Consulting</td><td>Outsourcing responsibility</td><td>Mar 1, 2001</td><td>Jul 1, 2001</td><td>Contracted outside</td></tr></table>
 
@@ -3445,7 +3445,7 @@ Additionally, the data indicates that for work effort #39409 there are additiona
 
 When scheduling these assignments, managers need to know the qualifications of prospective parties. This can be handled using the PARTY SKILL and SKILL TYPE entities. PARTY SKILL contains a list of parties, skill types, years of experience, and a skill rating. Table 6.8 contains sample data.
 
-Table 6.8 Party Skill Data  
+Table 6.8 Party Skill Data
 
 <table><tr><td>PARTY</td><td>SKILL TYPE</td><td>YEARS OF EXPERIENCE</td><td>RATING</td></tr><tr><td>John Smith</td><td>Project management</td><td>20</td><td>10</td></tr><tr><td></td><td>Marketing</td><td>5</td><td>6</td></tr><tr><td>Dick Jones</td><td>Project management</td><td>12</td><td>8</td></tr><tr><td>USA Consulting</td><td>Market research</td><td>25</td><td>10</td></tr><tr><td></td><td>Sales analysis</td><td>15</td><td>7</td></tr><tr><td></td><td>Data warehousing</td><td>5</td><td>5</td></tr></table>
 
@@ -3493,7 +3493,7 @@ Work Effort Time Tracking
 
 Tracking time entries is critical to many organizations, and a model for this is shown in Figure 6.6. The TIME ENTRY entity is, of course, very important for payroll, but it is also important for task tracking, cost determination, and perhaps client billing. This entity quite simply holds information about how much time was spent during a given period on various WORK EFFORTs. Included in this information are the from datetime, thru datetime, and the hours worked in order to capture the time frame and amount of hours worked. Each TIME ENTRY may be part of a TIMESHEET that may record many time entries. Each TIME ENTRY may be for a particular WORKER, which is a PARTY ROLE, namely anyone who performs work, and may be an EMPLOYEE or a CONTRACTOR. Each TIMESHEET may have several other PARTYs in various TIME-SHEET ROLES categorized by TIMESHEET ROLE TYPES such as "approver," "manager," "enterer."
 
-![](images/810e29b0b7398db00934fffacdd6f7bebca3b3b5d9472d61618cae63e0f2fe3c.jpg)  
+![](images/810e29b0b7398db00934fffacdd6f7bebca3b3b5d9472d61618cae63e0f2fe3c.jpg)
 Figure 6.6 Work effort time tracking.
 
 The model shows that each WORKER may be submitting many TIME-SHEETs over time, which are each composed of TIME ENTRYs for a particular period of time. Each TIME ENTRY is within a TIMESHEET and also tied back to a WORK EFFORT, which determines the effort to which time is charged.
@@ -3506,7 +3506,7 @@ Table 6.10 contains sample time entry data. Dick Jones submitted a time-sheet co
 
 within the same time period. For instance, if time entries were recorded each day, there may have been several time entries for "Conduct Initial Interviews" for John Smith, one time entry for each day.
 
-Table 6.10 Timesheet and Time Entry Data  
+Table 6.10 Timesheet and Time Entry Data
 
 <table><tr><td>TIMESHEET ID</td><td>TIME SHEET FROM DATE</td><td>TIME SHEET THRU DATE</td><td>PARTY</td><td>WORK EFFORT ID</td><td>TIME ENTRY FROM DATETIME</td><td>TIME ENTRY THRU DATETIME</td><td>HOURS</td></tr><tr><td>1390</td><td>Jan 1, 2001</td><td>Jan 15, 2001</td><td>Dick Jones</td><td>29000 Develop project plan (part of effort 39409)</td><td>Jan 2, 2001</td><td>Jan 4, 2001</td><td>13</td></tr><tr><td></td><td></td><td></td><td></td><td>29005 Identify potential team members for project</td><td>Jan 5, 2001</td><td>Jan 6, 2001</td><td>7</td></tr><tr><td>1200</td><td>Feb 1, 2001</td><td>Feb 15, 2001</td><td>John Smith</td><td>29003 Conduct initial interviews</td><td>Feb 1, 2001</td><td>Feb 5, 2001</td><td>30</td></tr><tr><td></td><td></td><td></td><td></td><td>294395 Facilitate monthly goals Session</td><td>Feb 6, 2001</td><td>Feb 6, 2001</td><td>6</td></tr><tr><td>1450</td><td>Feb 16, 2001</td><td>Mar 1, 2001</td><td>John Smith</td><td>29003 Conduct initial interviews</td><td>Feb 16, 2001</td><td>Mar 1, 2001</td><td>45</td></tr></table>
 
@@ -3518,7 +3518,7 @@ Figure 6.7 shows a model to capture the rates and/or costs associated with work 
 
 line worker" may have a standard rate), or the rate/cost established for the work effort assignment.
 
-![](images/f5b98474410ebfb03c397168dc85806af1559e7de4d604fbd6f390a60a862541.jpg)  
+![](images/f5b98474410ebfb03c397168dc85806af1559e7de4d604fbd6f390a60a862541.jpg)
 Figure 6.7 Work effort rates.
 
 There may be more than one rate/cost for each of these factors because the rates/costs may change over time. Therefore, each
@@ -3561,10 +3561,10 @@ In order to complete certain work efforts, raw materials or other items may be r
 
 type of work effort) within a larger work effort to produce 100 pencils.
 
-![](images/204ce43d99eb5ddaf1dcb6162ffed8f1235cd6a5c81c46189f85d34917e0b0a4.jpg)  
+![](images/204ce43d99eb5ddaf1dcb6162ffed8f1235cd6a5c81c46189f85d34917e0b0a4.jpg)
 Figure 6.8 Inventory assignments.
 
-Table 6.12 Inventory Assignment  
+Table 6.12 Inventory Assignment
 
 <table><tr><td>WORK EFFORT</td><td>INVENTORY</td><td>ITEMQUANTITY</td></tr><tr><td>Assemble pencil componentsPencil cartridges</td><td>100</td><td></td></tr><tr><td>Assemble pencil componentsErasers</td><td>100</td><td></td></tr><tr><td>Assemble pencil componentsLabels</td><td>100</td><td></td></tr></table>
 
@@ -3584,7 +3584,7 @@ Other information stored in FIXED ASSET that may be of interest to an enterprise
 
 date next service, which is when the next service is scheduled. The production capacity maintains a value for the asset's production capabilities and a relationship to UNIT OF MEASURE, that allows this capacity to be maintained in various measurements such as the number of units that can be produced per day. Examples of data that could be found in FIXED ASSET are shown in Table 6.13.
 
-Table 6.13 Fixed Asset Data  
+Table 6.13 Fixed Asset Data
 
 <table><tr><td>FIXED
 ASSET ID</td><td>ASSET
@@ -3605,7 +3605,7 @@ Of course, many kinds of assets may be important to an enterprise for various re
 
 "vehicle" is a "minivan" and that the "minivan" is actually a "Ford Aerostar." Table 6.14 shows sample data for this entity.
 
-Table 6.14 Fixed Asset Type Data  
+Table 6.14 Fixed Asset Type Data
 
 <table><tr><td colspan="3">FIXED ASSET TYPE IDDESCRIPTION PARENT ASSET TYPE</td></tr><tr><td>1000</td><td>Equipment</td><td></td></tr><tr><td>1390</td><td>Pencil-making machineEquipment</td><td></td></tr><tr><td>1458</td><td>Pen-making machine Equipment</td><td></td></tr><tr><td>1532</td><td>Paper-making machineEquipment</td><td></td></tr><tr><td>2000</td><td>Vehicle</td><td></td></tr><tr><td>2019</td><td>Truck</td><td>Vehicle</td></tr><tr><td>2188</td><td>Mac truck-18 wheels</td><td>Truck</td></tr><tr><td>2266</td><td>Fork lift</td><td>Vehicle</td></tr><tr><td>2356</td><td>Jet airplane</td><td>Vehicle</td></tr><tr><td>2567</td><td>Car</td><td>Vehicle</td></tr></table>
 
@@ -3615,8 +3615,8 @@ In the examples, there are three asset types ("pencil making machine," "pen maki
 
 Because a machine or piece of equipment can usually be used only for one effort at a time, it is necessary to tell what is being used and when it is in use. Figure 6.9 shows the model for tracking this information. In it there is the WORK EFFORT FIXED ASSET ASSIGNMENT entity, which is at the intersection of WORK EFFORT and FIXED ASSET. In this entity are attributes for storing the start and end date for the assignment, which are the from date and thru dates. These will be very important for task scheduling purposes. In addition, there is a relationship to WORK EFFAsset ASSIGN STATUS TYPE. The status type will indicate such things as whether the assignment is "requested" or "assigned." The allocated cost attribute provides a record of how much cost was recorded to that work effort for the usage of that fixed asset. This information would be important to capture the costs incurred during any work efforts for usage of fixed assets.
 
-Table 6.15 gives some examples.  
-Table 6.15 Fixed Asset Assignment Data  
+Table 6.15 gives some examples.
+Table 6.15 Fixed Asset Assignment Data
 
 <table><tr><td>WORK EFFORT</td><td>FIXED ASSET</td><td>FROM DATE</td><td>THRU DATE</td><td>COMMENT</td></tr><tr><td>Label pencils</td><td>Pencil labeler #1</td><td>Jun 12, 2000</td><td>Jun 15, 2000</td><td></td></tr><tr><td>Move raw materials in place for production run</td><td>Fork lift #25</td><td>Apr 15, 2000</td><td>May 15, 2000</td><td>May need for longer time</td></tr><tr><td>Test database tool</td><td>Office laptop #2</td><td>Jul 1, 2000</td><td></td><td>Ongoing effort</td></tr></table>
 
@@ -3632,7 +3632,7 @@ Figure 6.10 Party fixed asset assignments.
 
 ![](images/b4c6ec7dfd780cff058908c4bbbd5d15d12850a856e14c0dc51100ec058b107c.jpg)
 
-Table 6.16 Party Fixed Asset Assignment Data  
+Table 6.16 Party Fixed Asset Assignment Data
 
 <table><tr><td>PARTY</td><td>FIXED ASSET</td><td>START DATE</td><td>END DATE</td><td>STATUS</td></tr><tr><td>John Smith</td><td>Car#25</td><td>Jan 1, 2000</td><td>Jan 1, 2001</td><td>Active</td></tr><tr><td>Dick Jones</td><td>Tool set #5</td><td>Mar 15, 2000</td><td>Mar 15, 2000</td><td>Lost</td></tr></table>
 
@@ -3644,7 +3644,7 @@ In order to facilitate planning, this model includes additional entities to reco
 
 Figure 6.11 Work effort type standards.
 
-![](images/6c36e62c0ec5af5fde53ae10d58a4c80ad1f5791296b07bd7750b73cd5727223.jpg)  
+![](images/6c36e62c0ec5af5fde53ae10d58a4c80ad1f5791296b07bd7750b73cd5727223.jpg)
 Figure 6.11 shows the standards that apply to each WORK EFFORT TYPE. Each WORK EFFORT TYPE may have standards regarding the types of skills that are generally needed to accomplish the effort (WORK EFFORT SKILL STANDARD), the type of goods or parts that are needed within the work effort (WORK EFFORT GOOD STANDARD), and the types of fixed assets needed to accomplish the work effort (WORK EFFORT FIXED ASSET STANDARD). These
 
 standards would need to be determined by the enterprise and entered using these structures. This information can then be used for scheduling resources and estimating time and costs for each work effort. Additionally it can be used to compare actual skills, goods, and fixed asset usage against the standards.
@@ -3669,7 +3669,7 @@ Work Effort Good Standards
 
 The WORK EFFORT GOOD STANDARD entity relates WORK EFFORT TYPES to the GOODs that are typically needed for that work effort. If the PARTs model is used (Figure 2.10b), the entity PART would be substituted for GOOD. The entity includes an attribute for the estimated quantity required and an attribute for estimated cost. This information can be used for ensuring that enough of those goods exist in inventory to execute a particular work effort. Table 6.17 contains sample data for this entity.
 
-Table 6.17 Work Effort Good Standard Data  
+Table 6.17 Work Effort Good Standard Data
 
 <table><tr><td>WORK EFFORT TYPE</td><td>ITEM</td><td>ESTIMATED QUANTITY</td><td>ESTIMATED COST</td></tr><tr><td rowspan="2">Large production run of pencils</td><td>Erasers</td><td>1,000</td><td>$2,500</td></tr><tr><td>Labels</td><td>1,000</td><td>$2,000</td></tr><tr><td>Large production run of pens</td><td>Ink cartridges</td><td>2,000</td><td>$3,000</td></tr></table>
 
@@ -3723,24 +3723,24 @@ Ensuring that payment occurs is critical for organizations. Now that items have 
 
 Questions that enterprises need to know about invoicing include the following:
 
-- How does each invoice relate to orders, shipments, and/or work efforts?  
+- How does each invoice relate to orders, shipments, and/or work efforts?
 - What are the products, features, and other charges for which payments are due?
 
-Who owes how much to whom?  
-What is the status of each invoice?  
+Who owes how much to whom?
+What is the status of each invoice?
 What is the payment history of each party?
 
 Models discussed in this chapter are as follows:
 
-- Invoice and invoice items (alternate model also provided)  
-- Invoice roles  
-- Invoice billing account  
-- Invoice specific roles  
-- Invoice status and terms  
-- Billing for shipment items  
-- Invoicing of work efforts and time entries  
-- Billing for order items  
-- Invoice payments (alternate model also provided)  
+- Invoice and invoice items (alternate model also provided)
+- Invoice roles
+- Invoice billing account
+- Invoice specific roles
+- Invoice status and terms
+- Billing for shipment items
+- Invoicing of work efforts and time entries
+- Billing for order items
+- Invoice payments (alternate model also provided)
 - Financial accounts, withdrawals, and deposits
 
 Invoices and Invoice Items
@@ -3759,7 +3759,7 @@ by an INVOICE ITEM TYPE, which could include values such as "invoice adjustment,
 
 As with shipments, many things are needed in order to send a correct bill to customers. The first thing to record about the invoice (besides a unique identifier) is the invoice creation date or invoice date. This will be an important piece of information used in tracking the progress of the invoice when a client calls to discuss his or her bill. Some systems may want to include a specific note or message to the customer on the invoice, so the model includes the attribute message. The description attribute describes the nature of the invoice. Table 7.1 shows sample data for the INVOICE entity.
 
-Table 7.1 Invoice Data  
+Table 7.1 Invoice Data
 
 <table><tr><td>INVOICE ID</td><td>INVOICE DATE</td><td>MESSAGE</td><td>DESCRIPTION</td></tr><tr><td>30002</td><td>May 25, 2001</td><td></td><td>Fulfillment of office supply order</td></tr><tr><td>30005</td><td>June 5, 2001</td><td>Thanks for the business!</td><td></td></tr></table>
 
@@ -3773,7 +3773,7 @@ Table 7.2 provides an example invoice with four items being charged, three for p
 
 bond paper, includes a recursive relationship to the invoice item for the product in order to show that the item is for a feature within the context of a product.
 
-Table 7.2 Invoice Item Data  
+Table 7.2 Invoice Item Data
 
 <table><tr><td>INVOICE
 ID</td><td>INVOICE
@@ -3806,7 +3806,7 @@ added to the INVOICE ITEM to store the percentage of the adjustment, such as .07
 
 Table 7.3 contains examples of adjustment data for an invoice.
 
-Table 7.3 Invoice Item Adjustment Data  
+Table 7.3 Invoice Item Adjustment Data
 
 <table><tr><td>INVOICE ID</td><td>INVOICE ITEM SEQ ID</td><td>INVOICE ITEM TYPE</td><td>AMOUNT</td><td>TAXABLE?</td></tr><tr><td>30002</td><td>5</td><td>Shipping and handling</td><td>$16.00</td><td>N</td></tr><tr><td></td><td>6</td><td>Fee (order processing fee)</td><td>$5.00</td><td>N</td></tr><tr><td></td><td>7</td><td>Tax</td><td>$25.65</td><td>N</td></tr></table>
 
@@ -3828,7 +3828,7 @@ Of course, enterprises also need to know where to send the invoice and where it 
 
 Figure 7.2 provides a basic data model for the parties involved in the invoice. Each INVOICE may be billed to or billed from any PARTY, and therefore it may accommodate both incoming (PURCHASE INVOICE) and outgoing invoices (SALES INVOICES). The billed to and billed from are the two main roles and represent the party owing the money and the party that is requesting payment.
 
-![](images/42458b4bcb553c07fb0af739275d04b8cebc28a3d3fda9321b1cffbe595353a0.jpg)  
+![](images/42458b4bcb553c07fb0af739275d04b8cebc28a3d3fda9321b1cffbe595353a0.jpg)
 Figure 7.2 Invoice parties.
 
 In addition to these two key roles, additional roles may be involved in the invoice. The additional roles are maintained by the INVOICE ROLE, which records each PARTY involved in each INVOICE ROLE TYPE for an INVOICE. For example, invoice role types may include "entered by," "approver," "sender," and "receiver." The datetime attribute indicates the date and time that the person or organization performed the role.
@@ -3837,7 +3837,7 @@ Flexible means of sending and receiving invoices are needed in order to record f
 
 Table 7.4 shows example data for the information maintained about the invoice parties.
 
-Table 7.4 Invoice Parties.  
+Table 7.4 Invoice Parties.
 
 <table><tr><td>INVOICE ID</td><td>INVOICE DATE</td><td>BILLED TO PARTY</td><td>ADDRESSD TO CONTACT MECHANISM</td><td>SENDER OF PARTY</td><td>SENT FROM CONTACT MECHANISM</td></tr><tr><td>30002</td><td>May 25, 2001</td><td>ACME Corporation</td><td>123 Main Street</td><td>ABC Subsidiary</td><td>100 Bridge Street</td></tr><tr><td>30005</td><td>June 5, 2001</td><td>John Smith</td><td>jsmith@us.com</td><td>ABC Subsidiary</td><td>100 Bridge Street</td></tr><tr><td>30010</td><td>June 5, 2001</td><td>Tom Jones</td><td>1235,678@cis.com</td><td>ACME Corporation</td><td>acorp@ acme.com</td></tr></table>
 
@@ -3869,7 +3869,7 @@ from date (when it became active), a thru date, and a description identifying th
 
 Table 7.5 provides the example of ACME Corporation setting up an account for its office supplies and a separate account for using consulting services.
 
-Table 7.5Billing Account Data  
+Table 7.5Billing Account Data
 
 <table><tr><td>BILLING ACCOUNT ID</td><td>FROM DATE</td><td>THRU DATE</td><td>PARTY</td><td>BILLING ACCOUNT ROLE</td><td>MECHANISM</td><td>CONTACT DESCRIPTION</td></tr><tr><td>1295</td><td>Apr 15, 2000</td><td></td><td>ACME Corporation</td><td>Primary payer</td><td>123 Main Street</td><td>All charges for office supplies</td></tr><tr><td>1296</td><td>Apr 15, 2000</td><td></td><td>ACME Corporation</td><td>Primary payer</td><td>123 Main Street</td><td>All charges for consulting services</td></tr></table>
 
@@ -3877,7 +3877,7 @@ Table 7.6 shows sample data for an account with more than one party assigned to 
 
 many individuals on it. Initially the account was opened with both Jane and Joe Smith assigned to the account on April 15, 2000. Jane had primary responsibility for paying for the account and if, for some reason, she did not pay, then John would be held accountable in his role as the secondary payer. Then, on June 16, 2001, Joe Smith was added to the account, replacing John Smith as the secondary payer on the account. Because the thru date is blank, it can be inferred that both Jane and Joe are still active on the account.
 
-Table 7.6 Billing Account with More Than One Party  
+Table 7.6 Billing Account with More Than One Party
 
 <table><tr><td>BILLING ACCOUNT ID</td><td>BILLING ACCOUNT ROLE FROM DATE</td><td>BILLING ACCOUNT ROLE THRU DATE</td><td>PARTY</td><td>BILLING ACCOUNT ROLE TYPE</td></tr><tr><td>1459</td><td>Apr 15, 2000</td><td></td><td>Jane Smith</td><td>Primary payer</td></tr><tr><td>1459</td><td>Apr 15, 2000</td><td>June 15, 2001</td><td>John Smith</td><td>Secondary payer</td></tr><tr><td>1459</td><td>June 16, 2001</td><td></td><td>Joe Smith</td><td>Secondary payer</td></tr></table>
 
@@ -3923,8 +3923,8 @@ Similar to orders, the state of an invoice changes over time. To track this, the
 
 "void," and "approved." "Paid" is not a valid status because it can be determined via payment transactions, which will be discussed later in this chapter. Additionally, the need to know when this status took effect is provided by the attribute status date. Table 7.7 shows how this data might look.
 
-Table 7.7 Invoice Status Data  
-INVOICE IDSTATUS TYPESTATUS DATE  
+Table 7.7 Invoice Status Data
+INVOICE IDSTATUS TYPESTATUS DATE
 
 <table><tr><td>30002</td><td>Approved</td><td>May 25, 2001</td></tr><tr><td></td><td>Sent</td><td>May 30, 2001</td></tr><tr><td>30005</td><td>Sent</td><td>June 5, 2001</td></tr><tr><td></td><td>Void</td><td>June 6, 2001</td></tr></table>
 
@@ -3938,7 +3938,7 @@ INVOICE TERM entity, which must be related to either the INVOICE or INVOICE ITEM
 
 Table 7.8 shows three terms that were applied to an invoice and one term that is applied to only one of the items on that invoice. The first three rows describe terms for payment, late fees, and penalties that apply to the INVOICE. This data indicates that for invoice #30002, the payment is due in 30 days. If it is late, there is a 2 percent late fee added. If the invoice is sent to a collection agency, then there is an additional 5 percent added to the amount due. The last row provides an example of a term that is applied to the INVOICE ITEM, namely that the second item on invoice 30002 is nonrefundable.
 
-Table 7.8 Invoice Term Data  
+Table 7.8 Invoice Term Data
 
 <table><tr><td>INVOICE ID</td><td>INVOICE ITEM SEQ ID</td><td>TERM TYPE DESCRIPTION</td><td>TERM VALUE</td></tr><tr><td>30002</td><td></td><td>Payment–net days</td><td>30</td></tr><tr><td>30002</td><td></td><td>Late fee–percent</td><td>2</td></tr><tr><td>30002</td><td></td><td>Penalty for collection agency–percent</td><td>5</td></tr><tr><td>30002</td><td>2</td><td>Non-returnable sales item</td><td></td></tr></table>
 
@@ -3964,7 +3964,7 @@ Figure 7.5 Billing for shipment items.
 
 Table 7.9 gives some examples of the data held by this entity. The table shows an example of a single shipment that resulted in two invoice items. Observe that the same shipment item (shipment ID #1235, item #1) is related to two invoice items. The first invoice item was a bill for the shipment of 1,000 items. On receipt, the customer found 10 items damaged; therefore, on a subsequent invoice another invoice item was to credit the customer for the 10 damaged items. This adjustment was then linked to the original shipment item to allow for proper tracking. Therefore, there were two invoice items for the same shipment item.
 
-Table 7.9 Shipment Invoice Data  
+Table 7.9 Shipment Invoice Data
 
 <table><tr><td>SHIPMENT
 ID</td><td>SHIPMENT
@@ -4011,7 +4011,7 @@ Figure 7.7 provides an additional data structure to show that ORDER ITEMS may al
 
 the distribution of the amount or quantity from an order item to multiple invoices or vice versa.
 
-![](images/b2f7009781799eb7f5cffa5da910f5eb1fbe1b9cca862568fca34e8465c1280b.jpg)  
+![](images/b2f7009781799eb7f5cffa5da910f5eb1fbe1b9cca862568fca34e8465c1280b.jpg)
 Figure 7.7 Billing for order items.
 
 Take, as an example, a purchase order item for a year's worth of accounting services at a cost of $120,000. The accounting firm invoices monthly. An invoice arrives with an invoice item for $10,000. This is then linked to the appropriate order item on the purchase order (using ORDER ITEM BILLING), and the amount of $10,000 is
@@ -4020,7 +4020,7 @@ entered to show that  $10,000 of the original$ 120,000 has been billed. This all
 
 To show that a single INVOICE ITEM may be for multiple ORDER ITEMS, consider an enterprise in need of hardware support for its internal computer systems. Over the course of time, it executes three separate purchase orders to the same external company to provide this support. Each order has an order item for 40 hours of on-site support, for a total of 120 hours. Again, over time, the services are delivered, but due to the billing cycles at the vendor company, the first invoice has one order item for 100 hours. The final 20 hours are billed on the next invoice. Table 7.10 shows the details for these transactions.
 
-Table 7.10 Billing for Order Items  
+Table 7.10 Billing for Order Items
 
 <table><tr><td>PURCHASEORDER ID</td><td>ORDERITEMSEQ ID</td><td>QUANTITY</td><td>UNITPRICE</td><td>INVOICEID</td><td>INVOICEITEMSEQ ID</td><td>INVOICEQUANTITY</td><td>ORDERITEMBILLINGQUANTITY</td></tr><tr><td>10001</td><td>1</td><td>40 (hours)</td><td>$60</td><td>990023</td><td>1</td><td>100</td><td>40</td></tr><tr><td>10002</td><td>1</td><td>40 (hours)</td><td>$60</td><td></td><td></td><td></td><td>40</td></tr><tr><td>10003</td><td>1</td><td>40 (hours)</td><td>$60</td><td></td><td></td><td></td><td>20</td></tr><tr><td>10003</td><td>1</td><td>40 (hours)</td><td>$60</td><td>990026</td><td>1</td><td>20</td><td>20</td></tr></table>
 
@@ -4050,7 +4050,7 @@ Table 7.11 shows example data for payments. The amount owed on invoice ID #30002
 
 payment check for $182.20 against invoice #30002 because the paying organization had an outstanding issue with the Goldstein Elite pens and did not pay at first. After resolving the issue, they paid the other $12.84 (12.00 plus .84 for the sales tax for the pens) against the same invoice #30002, thus fully paying off the invoice. This example illustrates that when partial payments are issued against an invoice there can be more than one payment for an invoice.
 
-Table 7.11 Invoice Payments  
+Table 7.11 Invoice Payments
 
 <table><tr><td>INVOICEID</td><td>INVOICEITEMSEQ ID</td><td>PRODUCT</td><td>PRODUCTFEATURE</td><td>ADJUSTMENT</td><td>QUANTITY</td><td>UNITPRICE</td><td>PAYMENTAPPLICATIONAMOUNT</td><td>PAYMENTID</td><td>PAYMENTAMOUNT</td></tr><tr><td>30002</td><td></td><td></td><td></td><td></td><td></td><td></td><td>$182.20</td><td>1298398</td><td>$182.20</td></tr><tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>$12.84</td><td>1298412</td><td>$12.84</td></tr><tr><td></td><td>1</td><td>Johnson fine grade8 1/2 by 11 bond paper</td><td></td><td></td><td>10</td><td>$8.00</td><td></td><td></td><td></td></tr><tr><td></td><td>2</td><td></td><td>Product quality,Extra glossy finish</td><td></td><td></td><td>$2.00</td><td></td><td></td><td></td></tr><tr><td></td><td>3</td><td>Goldstein Elite pens</td><td></td><td></td><td>4</td><td>$12.00</td><td></td><td></td><td></td></tr><tr><td></td><td>4</td><td>HD 3 1/2-inch diskettes</td><td></td><td></td><td>6</td><td>$7.00</td><td></td><td></td><td></td></tr><tr><td></td><td>5</td><td></td><td></td><td>Sales tax</td><td></td><td>$12.04</td><td></td><td></td><td></td></tr><tr><td></td><td>6</td><td></td><td></td><td>Shipping andhandling</td><td></td><td>$16.00</td><td></td><td></td><td></td></tr><tr><td></td><td>7</td><td></td><td></td><td>Fee (orderprocessing fee)</td><td></td><td>$5.00</td><td></td><td></td><td></td></tr><tr><td>990023</td><td></td><td></td><td></td><td></td><td></td><td></td><td>$6,000</td><td>488893</td><td>$7,000</td></tr><tr><td></td><td>1</td><td>Accounting services</td><td></td><td></td><td></td><td>$6,000</td><td></td><td></td><td></td></tr><tr><td>990026</td><td></td><td></td><td></td><td></td><td></td><td></td><td>$1,000</td><td></td><td></td></tr><tr><td></td><td>1</td><td>Accounting services</td><td></td><td></td><td></td><td>$1,200</td><td></td><td></td><td></td></tr></table>
 
@@ -4064,7 +4064,7 @@ Figure 7.8b provides an alternate data model to handle tracking payments at an i
 
 for which invoice items they have received moneys and for which invoice items they have disbursed moneys. Of course, with this model, it assumes that the enterprise has the necessary information as well as the desire to record which items corresponded to which payments.
 
-![](images/88d9d1d9086753845d13839e290b6db1f2cd4495b3bd87781990b06cda85d4e1.jpg)  
+![](images/88d9d1d9086753845d13839e290b6db1f2cd4495b3bd87781990b06cda85d4e1.jpg)
 Figure 7.8b Invoice item payments.
 
 A common example of payments is to invoice item charges occurring in the banking industry. When loans are due, invoices may be issued. Then when a partial payment for a loan amount is received, business rules determine which invoice items should be paid off first.
@@ -4089,7 +4089,7 @@ FINANCIAL ACCOUNT TRANSACTION, which also affects a FINANCIAL ACCOUNT, for examp
 
 Table 7.12 provides an example of a typical case of a DEPOSIT, which consists of four RECEIPTs. There are also two withdrawals, which consist of two checks. The first two receipts are the receipts from the previous example in Table 7.11, and two additional receipts that have not previously been shown are included to illustrate the idea of recording each deposit and its corresponding receipts.
 
-Table 7.12 Deposits and Withdrawals.  
+Table 7.12 Deposits and Withdrawals.
 
 <table><tr><td>PAYMENTID</td><td>PAYMENTAMOUNT</td><td>DEPOSITID</td><td>DEPOSITAMOUNT</td><td>WITHDRAWALAMOUNT</td><td>FINANCIAL ACCOUNT ID(BANK ACCOUNT NUMBEROR INVESTMENT ACCOUNT ID)</td></tr><tr><td>1298398</td><td>$182.20</td><td>398749</td><td>$917.04</td><td></td><td>8389309984</td></tr><tr><td>1298412</td><td>$12.84</td><td></td><td></td><td></td><td></td></tr><tr><td>394789</td><td>$343.00</td><td></td><td></td><td></td><td></td></tr><tr><td>97873</td><td>$379.00</td><td></td><td></td><td></td><td></td></tr><tr><td>88394</td><td>$480.00</td><td>398761</td><td></td><td>$480.00</td><td>8389309984</td></tr><tr><td>88756</td><td>$670.00</td><td>398762</td><td></td><td>$670.00</td><td>8389309984</td></tr></table>
 
@@ -4099,7 +4099,7 @@ This chapter has provided models for invoice and invoice items for products, pro
 
 the interrelationships with other parts of the model and the intersection entities that will allow for the development of a robust, integrated solution. These models should, once implemented, minimize the occurrence of redundant data and simplify the maintenance of the database.
 
-![](images/40b682b159e7f0497e1a50f96e75beb405daf39f92d7b66ce76f698f6a62d9a9.jpg)  
+![](images/40b682b159e7f0497e1a50f96e75beb405daf39f92d7b66ce76f698f6a62d9a9.jpg)
 Figure 7.10 Overall invoice model.
 
 Please refer to Appendix A for a listing of entities and attributes. SQL scripts to build tables and columns derived from the logical models in this book can be found on the full-blown CD-ROM, which is licensed separately.
@@ -4116,26 +4116,26 @@ Enterprises need to record transactions, post these transactions to each interna
 
 An accounting and budgeting data model needs to maintain financial information to answer many important questions that affect an enterprise's existence:
 
-- What is the financial position of the enterprise, and how did this change from previous periods?  
-• What types of transactions occurred in each period, and how much of each transaction occurred? For instance, what payments were made to which invoices, and what invoices are still outstanding?  
-- What expenses were incurred during various periods?  
+- What is the financial position of the enterprise, and how did this change from previous periods?
+• What types of transactions occurred in each period, and how much of each transaction occurred? For instance, what payments were made to which invoices, and what invoices are still outstanding?
+- What expenses were incurred during various periods?
 - What effect did transactions such as depreciation, capitalization, and amortization have on the enterprise?
 
 - What budgets were set up, and how did the enterprise perform compared to these budgets?
 
 This chapter illustrates data models with the following types of information:
 
-Chart of accounts  
-- Business transactions versus accounting transactions  
-- Accounting transactions  
-- Accounting transaction detail  
-- General ledger account associations and subsidiary ledger accounts  
-- Asset depreciation  
-Budget definition  
-Budget revision  
-Budget review  
-Budget scenario  
-- Use and sources of budgeted money  
+Chart of accounts
+- Business transactions versus accounting transactions
+- Accounting transactions
+- Accounting transaction detail
+- General ledger account associations and subsidiary ledger accounts
+- Asset depreciation
+Budget definition
+Budget revision
+Budget review
+Budget scenario
+- Use and sources of budgeted money
 Budget versus general ledger
 
 Chart of Accounts for Internal Organizations
@@ -4162,7 +4162,7 @@ and "expense" categories are generally used for the income statement.
 
 Table 8.1 shows examples of general ledger accounts along with the type associated with each account.
 
-Table 8.1 General Ledger Accounts  
+Table 8.1 General Ledger Accounts
 
 <table><tr><td>GL ACCOUNT ID</td><td>NAME</td><td>DESCRIPTION</td><td>GL ACCOUNT TYPE</td></tr><tr><td>110</td><td>Cash</td><td>Liquid amounts of money available</td><td>Asset</td></tr><tr><td>120</td><td>Accounts receivable</td><td>Total amount of moneys due from all sources</td><td>Asset</td></tr><tr><td>240</td><td>Notes Payable</td><td>Amounts due in the form of written contractual promissory notes</td><td>Liability</td></tr><tr><td>300</td><td>Retained Earnings</td><td>Identifies the difference between assets and liabilities that the owners have earned</td><td>Owners Equity</td></tr><tr><td>420</td><td>Interest Income</td><td>Amounts of revenues accumulated for a period due to interest earned</td><td>Revenue</td></tr><tr><td>520</td><td>Advertising expense</td><td>Costs due to all ads placed in newspapers, magazines, etc.</td><td>Expense</td></tr><tr><td>530</td><td>Office Supplies expense</td><td>Expenses for buying supplies needed for the office</td><td>Expense</td></tr></table>
 
@@ -4186,7 +4186,7 @@ Table 8.2 illustrates examples of the chart of accounts for ABC Corporation and 
 
 expense" account whereas the subsidiary doesn't have this account because it is not involved in trade shows.
 
-Table 8.2 Organization GL Account  
+Table 8.2 Organization GL Account
 
 <table><tr><td>INTERNAL ORGANIZATION</td><td>ACCTG PERIOD FROM DATE</td><td>ACCTG PERIOD THRU DATE</td><td>PERIOD TYPE</td><td>GENERAL LEDGER ACCOUNT TYPE</td><td>GENERAL LEDGER ACCOUNT</td><td>GL ACCOUNT FROM DATE</td><td>GL ACCOUNT THRU DATE</td></tr><tr><td>ABC Corporation</td><td>Jan 1, 2001</td><td>Dec 31, 2001</td><td>Fiscal Year</td><td>Asset</td><td>Cash</td><td>Jan 1, 1995</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>Accounts receivable</td><td>Jan 1, 1995</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Liability</td><td>Notes payable</td><td>Jan 1, 1995</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Owners Equity</td><td>Retained earnings</td><td>Jan 1, 1995</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Revenue</td><td>Interest income</td><td>Jan 1, 1995</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Expense</td><td>Marketing expense</td><td>Jan 1, 1995</td><td>Dec 31, 1996</td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>Advertising expense</td><td>Jan 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>Trade show expense</td><td>Jan 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>Office supplies</td><td>Jan 1, 1995</td><td></td></tr><tr><td>ABC Subsidiary</td><td>Jan 1, 2001</td><td>Dec 31, 2001</td><td>Fiscal Year</td><td>Asset</td><td>Cash</td><td>Jun 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>Accounts receivable</td><td>Jun 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Liability</td><td>Notes payable</td><td>Jun 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Owners Equity</td><td>Retained earnings</td><td>Jun 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Revenue</td><td>Interest income</td><td>Jun 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Expense</td><td>Marketing expense</td><td>Jun 1, 1997</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>Office supplies</td><td>Jun 1, 1997</td><td></td></tr></table>
 
@@ -4204,7 +4204,7 @@ Figure 8.2 provides the initial part of the accounting transaction data model. T
 
 RECEIPT ACCTG TRANS for moneys coming in or a DISBURSEMENT ACCTG TRANS for moneys going out.
 
-![](images/f2904ee410e2a9969f377fda053974d1f148c59268b86f2f30fb68e6d307af85.jpg)  
+![](images/f2904ee410e2a9969f377fda053974d1f148c59268b86f2f30fb68e6d307af85.jpg)
 Figure 8.2 Accounting transactions.
 
 Each ACCOUNTING TRANSACTION may be related to its business transaction from which it originated. Thus the SALES ACCTG TRANS
@@ -4245,7 +4245,7 @@ may be either an OBLIGATION ACCTG TRANS or a PAYMENT ACCTG TRANS. An OBLIGATION 
 
 Table 8.3 provides examples of various types of accounting transactions. The first row (transaction ID 32389) is an example of an internal transaction that records a depreciation expense for a piece of equipment. Only one party is affected—the internal organization that owns that piece of equipment, ABC Corporation. The rest of the transactions are various types of external transactions that involve a "to" party and a "from" party. For instance, transaction 39776 describes a receipt (incoming payment) to pay off $700 owed by ACME Company to ABC Corporation.
 
-Table 8.3 Accounting Transaction  
+Table 8.3 Accounting Transaction
 
 <table><tr><td>TRANSACTIONID</td><td>TO PARTY</td><td>FROM PARTY</td><td>TRANSACTIONDATE</td><td>TRANSACTIONAMOUNT</td><td>TRANSACTION TYPE</td><td>DESCRIPTION</td></tr><tr><td>32389</td><td></td><td>ABC Corporation</td><td>Jan 1, 2000</td><td>$200</td><td>Depreciation</td><td>Depreciation on pen engraver</td></tr><tr><td>38948</td><td>ACME Company</td><td>ABC Corporation</td><td>May 31, 2000</td><td>$900</td><td>Invoice</td><td>Invoiced amount due</td></tr><tr><td>39776</td><td>ABC Corporation</td><td>ACME Company</td><td>Jun 13, 2000</td><td>$700</td><td>Payment receipt for invoices</td><td>Payment against invoice</td></tr><tr><td>45783</td><td>ACME Company</td><td>ABC Corporation</td><td>Jul 2, 2000</td><td>$200</td><td>Credit memo</td><td>Credit to invoice #</td></tr><tr><td>45894</td><td>ABC Corporation</td><td>ACME Company</td><td>Aug 13, 2000</td><td>$300</td><td>Payment receipt for invoices</td><td>Payment made on account with invoice in mind</td></tr><tr><td>46325</td><td>ACME Company</td><td>ABC Corporation</td><td>Oct 10, 2000</td><td>-$300</td><td>Payment receipt for invoices</td><td>Returned payment for moneys held with no invoice</td></tr><tr><td>47874</td><td>ABC Corporation</td><td>Johnson Recycling</td><td>Oct 11, 2000</td><td>$1200</td><td>Payment receipt for asset sale</td><td>Payment received for sale of pen engraver</td></tr></table>
 
@@ -4315,7 +4315,7 @@ Even though the modeling of account balance does not represent a "pure" data mod
 
 Figure 8.3b Accounting transactions detail with account balances.
 
-![](images/f91d39d6a947a50088246eee1babb979461d4c48dc72ee6feefe2ffff4c2e13e.jpg)  
+![](images/f91d39d6a947a50088246eee1babb979461d4c48dc72ee6feefe2ffff4c2e13e.jpg)
 Figure 8.3b shows that the ORGANIZATION GL ACCOUNT BALANCE has been inserted between the TRANSACTION Detail and the ORGANIZATION GL ACCOUNT. This allows direct access to the critical attribute amount in the ORGANIZATION GL ACCOUNT BALANCE, which stores the current balance of the ORGANIZATION GL ACCOUNT for a certain ACCOUNTING PERIOD.
 
 # Subsidiary Accounts
@@ -4326,7 +4326,7 @@ Figure 8.4 provides a data model to capture the information requirements of subs
 
 CUSTOMER (a subtype of PARTY ROLE), SUPPLIER (a subtype of PARTY ROLE), PRODUCT, or PRODUCT TYPE. General ledger accounts may be related to particular products in order to track the revenues produced by a specific product, or if there are a great deal of products, then the general ledger accounts may be related to product categories.
 
-![](images/b604831b56bb41d0a14211efda68ed00f97ba73459feb0514cb3fc00c22a1d2a.jpg)  
+![](images/b604831b56bb41d0a14211efda68ed00f97ba73459feb0514cb3fc00c22a1d2a.jpg)
 Figure 8.4 General ledger account associations and subsidiary ledger accounts.
 
 Subsidiary general ledger accounts are related to the roles of BILL TO CUSTOMER and SUPPLIER, which represent very specific roles of
@@ -4357,7 +4357,7 @@ select breed), this information can be found in any accounting book
 
 and is beyond the scope of this book.
 
-Table 8.6 Fixed Asset Depreciation Method  
+Table 8.6 Fixed Asset Depreciation Method
 
 <table><tr><td>FIXED
 ASSET
@@ -4387,7 +4387,7 @@ Table 8.7 illustrates examples of the information in the BUDGET entity. Budget I
 
 of 2002, from the administration department of ABC Corporation for its planned office expenses. Budget 39908 is a capital budget for the purchase of manufacturing machines in 2001.
 
-Table 8.7 Budget Data  
+Table 8.7 Budget Data
 
 <table><tr><td>BUDGET ID</td><td>BUDGET TYPE</td><td>PARTY FOR WHOM BUDGET IS REQUESTED</td><td>BUDGET PERIOD</td><td>PERIOD TYPE</td><td>BUDGET DESCRIPTION</td></tr><tr><td>29839</td><td>Operating budget</td><td>Marketing department</td><td>1/1/2001-12/31/2001</td><td>Year</td><td>Marketing budget</td></tr><tr><td>38576</td><td>Operating budget</td><td>Administration department</td><td>6/1/2002-6/30/2002</td><td>Month</td><td>Office expenses budget</td></tr><tr><td>39908</td><td>Capital budget</td><td>Manufacturing operations</td><td>1/1/2001-12/31/2001</td><td>Year</td><td>New manufacturing machines needed</td></tr></table>
 
@@ -4399,7 +4399,7 @@ Each BUDGET must be composed of one or more BUDGET ITEMS, which store the detail
 
 ITEM is described by a BUDGET ITEM TYPE so that common budget item descriptions can be reused. BUDGET ITEMS may be comprised of other BUDGET ITEMS via the recursive relationship around BUDGET ITEM. Table 8.8 provides two simple examples of budget items within the budgets described in the previous section.
 
-Table 8.8 Budget Item  
+Table 8.8 Budget Item
 
 <table><tr><td>BUDGET ID</td><td>BUDGET DESCRIPTION</td><td>BUDGET ITEM SEQ</td><td>BUDGET ITEM DESCRIPTION</td><td>AMOUNT</td><td>PURPOSE</td><td>JUSTIFICATION</td></tr><tr><td>29839</td><td>Marketing budget</td><td>1</td><td>Trade shows</td><td>$20,000</td><td>Connect directly with various markets</td><td>Last year, this amount was spent and it resulted in three new clients</td></tr><tr><td></td><td></td><td>2</td><td>Advertising</td><td>$30,000</td><td>Create public awareness of products</td><td>Competition demands product recognition</td></tr><tr><td></td><td></td><td>3</td><td>Direct mail</td><td>$15,000</td><td>To generate sales leads</td><td>Experience predicts that one can expect 50 leads for every $5,000 expended</td></tr><tr><td>38576</td><td>Office expenses budget</td><td>1</td><td>Office supplies</td><td>$5,000</td><td>Supplies needed to perform office administration tasks</td><td>This is the amount expended last year and is required again</td></tr><tr><td></td><td></td><td>2</td><td>Furniture</td><td>$10,000</td><td>For new facility on Benjamin Street</td><td>New facility needs some basic items of furniture</td></tr></table>
 
@@ -4411,7 +4411,7 @@ Figure 8.6 shows that each BUDGET has one or more BUDGET STATUSes over time, eac
 
 Table 8.9 illustrates examples of budget statuses. Notice that on November 15 when the budget was sent back to the submitter for modifications, it created the need for a new revision of the budget, which will be discussed in the next section.
 
-Table 8.9 Budget Status  
+Table 8.9 Budget Status
 
 <table><tr><td>BUDGET ID</td><td>STATUS DATE</td><td>BUDGET STATUS
 TYPE DESCRIPTION</td><td>COMMENT</td></tr><tr><td>29839</td><td>Oct 15, 2000</td><td>Created</td><td></td></tr><tr><td>29839</td><td>Nov 1, 2000</td><td>Submitted</td><td></td></tr><tr><td>29839</td><td>Nov 15, 2000</td><td>Sent back for modifications</td><td>Management agreed with the types of items budgeted; however, it asked that all amounts be lowered.</td></tr><tr><td>29839</td><td>Nov 20, 2000</td><td>Submitted</td><td></td></tr><tr><td>29839</td><td>Nov 30, 2000</td><td>Approved</td><td></td></tr></table>
@@ -4422,7 +4422,7 @@ Each budget will usually go through a process whereby several budget revisions a
 
 revision to a budget a whole new budget, then the top model will work. If the enterprise wants to track changes to each budgeted item over time, then the bottom model is needed.
 
-![](images/51ba929e4327ef203443aa49fdd82c12d2b7ea04e7edb35bc4c5c6bf65d2c0a4.jpg)  
+![](images/51ba929e4327ef203443aa49fdd82c12d2b7ea04e7edb35bc4c5c6bf65d2c0a4.jpg)
 Figure 8.7 Budget revisions.
 
 The top model in Figure 8.7 simply shows that budget revisions may simply be handled by creating and maintaining a whole new budget each time a revision is needed. The old budget can then be related to the next budget via the recursive relationship around BUDGET.
@@ -4439,7 +4439,7 @@ entirety. Each BUDGET REVISION is uniquely identified by the budget ID and the r
 
 Table 8.10 illustrates examples of the information in the BUDGET REVISION entity. This example shows that budget 29839 had two revisions, 1.1 and 1.2.
 
-Table 8.10 Budget Revision Impact  
+Table 8.10 Budget Revision Impact
 
 <table><tr><td>BUDGET ID</td><td>BUDGET DESCRIPTION</td><td>REVISION NUMBER</td><td>A REVISION OF</td><td>BUDGET REVISION IMPACT REASON</td><td>BUDGET REVISION IMPACT RELATIONSHIP TO BUDGET ITEM</td><td>BUDGET REVISION IMPACT AMOUNT</td><td>ADD DELETE FLAG</td></tr><tr><td>29839</td><td>Marketing budget</td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>29839</td><td>Marketing budget</td><td>1.1</td><td>29839</td><td>Needed to substantially cut advertising</td><td>29839, item 2</td><td>-$10,000</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Needed to substantially cut direct mail</td><td>29839, item 3</td><td>-$7,000</td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>Need to add budget for internet advertising</td><td>29839, item 4</td><td>+$5,000</td><td>Added</td></tr><tr><td>29839</td><td>Marketing budget</td><td>1.2</td><td>29839</td><td>Direct mail budget still needs to be reduced</td><td>29839, items 3</td><td>-$2,000</td><td></td></tr></table>
 
@@ -4463,7 +4463,7 @@ covered in the review process. Therefore, the BUDGET REVIEW is related to the BU
 
 Table 8.11 illustrates the information that may be contained in the BUDGET REVIEW process. The example provides information on the people involved in the budget review process and their comments and conclusions. This information serves as supporting information regarding budget reviews and could ultimately affect the BUDGET STATUS, which was defined in Figure 8.6.
 
-Table 8.11Budget Review  
+Table 8.11Budget Review
 
 <table><tr><td>BUDGET ID</td><td>BUDGET REVISION PARTY ID</td><td>REVIEW DATE</td><td>BUDGET REVIEW RESULT DESCRIPTION</td><td>COMMENT</td></tr><tr><td>29839</td><td>Susan Jones</td><td>Nov 10, 2000</td><td>Accepted</td><td>Budget seems reasonable</td></tr><tr><td></td><td>John Smith</td><td>Nov 15, 2000</td><td>Rejected</td><td>Budgeted amount is too high</td></tr><tr><td>29839</td><td>Susan Jones</td><td>Nov 22, 2000</td><td>Accepted</td><td>Budget is OK</td></tr><tr><td></td><td>John Smith</td><td>Nov 30, 2000</td><td>Accepted</td><td>Budget is OK</td></tr></table>
 
@@ -4479,7 +4479,7 @@ This means that these amounts or percentages may be applied uniformly across the
 
 may be  $\$ 10,000$ more in the budget item for “marketing” if the BUDGET SCENARIO description is “excellent market conditions,” but there will be - $\$ 5,000$ for the same BUDGET ITEM with a BUDGET SCENARIO of “poor market conditions.”
 
-![](images/a121e05f91444584cd820c7cf4b2c4b74e169c6f4783ed5d01e0a0da504d3c9a.jpg)  
+![](images/a121e05f91444584cd820c7cf4b2c4b74e169c6f4783ed5d01e0a0da504d3c9a.jpg)
 Figure 8.9 Budget scenario.
 
 The BUDGET SCENARIO RULE stores the standard percentage change or amount change with which to raise or lower the amounts or percentages for standard BUDGET ITEM TYPES. These rules may be the default amounts or percentages tied to the BUDGET ITEM SCENARIO; however, they may be different than the values for specific budgeted items because more might be known at budgeting time.
@@ -4568,7 +4568,7 @@ Figure 8.11 shows a data model that relates budget item types to general ledger 
 
 Figure 8.11 Budget relationship to general ledger.
 
-![](images/774e4753f0868aadb09c2e6a1468f42b8713acbe4315975d71ac2920cace5b98.jpg)  
+![](images/774e4753f0868aadb09c2e6a1468f42b8713acbe4315975d71ac2920cace5b98.jpg)
 Table 8.14 illustrates examples of relationships between budget items and general ledger accounts. The first example illustrates a situation that accountants love! When a departmental manager uses the general ledger account name for budgeting purposes, then the budget item ("office supplies") has a one-to-one mapping to the general ledger account ("office supplies expense").
 
 Table 8.14 General Ledger Budget Xref
@@ -4611,40 +4611,40 @@ So far, this book has discussed models for handling much of the information an e
 
 Information that an enterprise may want to keep includes the following:
 
-- Who is employed, and what is the history of employments?  
-What positions exist in the company?  
-• Are they filled? If so, who has what position, and what are his or her responsibilities?  
-Who reports to whom?  
-What is the rate of pay for these positions?  
-Who received raises and when?  
-- What benefits does the enterprise provide and to whom?  
+- Who is employed, and what is the history of employments?
+What positions exist in the company?
+• Are they filled? If so, who has what position, and what are his or her responsibilities?
+Who reports to whom?
+What is the rate of pay for these positions?
+Who received raises and when?
+- What benefits does the enterprise provide and to whom?
 What is the cost of these benefits?
 
-- What is the status of employment applications?  
-What are the skills of employees?  
-What is the performance of employees?  
-- What are the preferences, deductions, and payroll information needed to process payroll?  
-- What applicants have there been, and how many of them have turned into employees?  
+- What is the status of employment applications?
+What are the skills of employees?
+What is the performance of employees?
+- What are the preferences, deductions, and payroll information needed to process payroll?
+- What applicants have there been, and how many of them have turned into employees?
 - What has been the rate of turnover and the causes of turnover?
 
 Why is it necessary to model human resource data given that enterprises usually buy a standard human resources package with its own data structure? One reason is that it is important to know what the information requirements are for the enterprise in order to drive a proper package selection. Another reason is that many enterprises implement a separate HR system, very often through a package that may not integrate well with other in-house systems.
 
 This chapter illustrates a model that allows an enterprise to track basic human resources information and have it tied to other models presented in this book. The models presented in this chapter include the following:
 
-- Standard human resources model (EMP DEPT model)  
-- Employment  
+- Standard human resources model (EMP DEPT model)
+- Employment
 - Position definition
 
-- Position type definition  
-- Position fulfillment  
-- Position reporting  
-- Position fulfillment and tracking  
-- Salary determination and pay history  
-- Benefits tracking  
-Payroll information  
-- Employee application  
-- Employee skills and qualifications  
-- Employee performance (alternate model also provided)  
+- Position type definition
+- Position fulfillment
+- Position reporting
+- Position fulfillment and tracking
+- Salary determination and pay history
+- Benefits tracking
+Payroll information
+- Employee application
+- Employee skills and qualifications
+- Employee performance (alternate model also provided)
 - Employee termination
 
 Standard Human Resources Model
@@ -4653,19 +4653,19 @@ A very basic model for employees, shown in many textbooks, is called the EMP DEP
 
 Figure 9.1 Standard emp dept model.
 
-![](images/a5c9bae275bfcfc39f79b855506d388e0594401a459d34f35c8b47b9e3830ba2.jpg)  
+![](images/a5c9bae275bfcfc39f79b855506d388e0594401a459d34f35c8b47b9e3830ba2.jpg)
 Figure 9.1 is useful to demonstrate data model principles by using this simplified model of human resources. The models shown in this book will illustrate a much more effective human resources data model to maintain real-life human resource information requirements.
 
 There are several simplifying structures in this standard model:
 
-- Employee, manager, and departments are roles that should be ideally maintained as a subtype of PARTY ROLE so that a person or organization is not redundantly stated for each role played.  
-- The employment of an individual to an internal organization is an important PARTY RELATIONSHIP that is not shown.  
-• Positions are shown as an attribute in the standard model. 
+- Employee, manager, and departments are roles that should be ideally maintained as a subtype of PARTY ROLE so that a person or organization is not redundantly stated for each role played.
+- The employment of an individual to an internal organization is an important PARTY RELATIONSHIP that is not shown.
+• Positions are shown as an attribute in the standard model.
 • POSITION is an important entity, which has its own information as
 
 well as a many-to-many relationship with the employee (this will be explained later).
 
-- The reporting structure showing one employee reporting to one and only one other employee is overly simplistic. For one thing, an employee may report to more than one manager through a dotted line or matrix structure. Another issue is whether the reporting structure really is from one employee to another. If John Jones gets promoted, do all the people that John had reporting to him also get promoted at that time? Is the reporting structure based on the person, or do positions really report to other positions?  
+- The reporting structure showing one employee reporting to one and only one other employee is overly simplistic. For one thing, an employee may report to more than one manager through a dotted line or matrix structure. Another issue is whether the reporting structure really is from one employee to another. If John Jones gets promoted, do all the people that John had reporting to him also get promoted at that time? Is the reporting structure based on the person, or do positions really report to other positions?
 - There is no history reflected in these data models. When did each employee have each position? When was he or she in each department? When was he employed with the organization?
 
 The following universal data models for human resources will handle these questions and provide for a much more robust human resources data structure.
@@ -4710,7 +4710,7 @@ the organization. If the position is for an indefinite period, the estimated thr
 
 The various flags included in the entity help to define the particular circumstances under which a person hired for a position will be employed. Will the person be salaried or hourly? Is the position exempt or nonexempt under the Fair Labor Standards Act (FLSA)? Will this be a full-time or part-time position? Is it temporary or permanent? The answers to these questions will be very important for benefits administrators and payroll personnel. Additionally, the model includes an actual from date and actual thru date to allow tracking of this data once it is known. Sample data for some of these attributes is shown in Table 9.1.
 
-Table 9.1 Position Data  
+Table 9.1 Position Data
 
 <table><tr><td>POSITION ID</td><td>ESTIMATED FROM DATE</td><td>ESTIMATED THRU DATE</td><td>SALARY?</td><td>EXEMPT?</td><td>FULL-TIME?</td><td>TEMP?</td></tr><tr><td>101</td><td>Jan 1, 2001</td><td></td><td>Yes</td><td>No</td><td>Yes</td><td>No</td></tr><tr><td>204</td><td>Jun 1, 2001</td><td>Aug 31, 2001</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr></table>
 
@@ -4724,7 +4724,7 @@ then used to fund the multiple programmer positions that the enterprise has. If 
 
 Even though each job opening represents a single occurrence of POSITION, several of these openings could have some characteristics in common, such as a title or description of the type of job. Those common characteristics are represented by a common POSITION TYPE. The entity POSITION TYPE maintains information associated with all the slots that exist for a kind of job. Table 9.2 contains examples of this data.
 
-Table 9.2 Position Type Data  
+Table 9.2 Position Type Data
 
 <table><tr><td>POSITION
 TYPE ID</td><td>DESCRIPTION</td><td>TITLE</td><td>BENEFIT
@@ -4750,7 +4750,7 @@ Figure 9.4 Position type definition.
 
 ![](images/fd137ca48ef03002da03ec8f1e1c7bfcc3b8de552a3bd9d5ac42ad7c96818d31.jpg)
 
-Table 9.3 Position Type Classification Data  
+Table 9.3 Position Type Classification Data
 
 <table><tr><td>POSITION TYPE</td><td>CLASSIFICATION TYPE</td><td>FROM DATE</td><td>THRU DATE</td></tr><tr><td>Programmer</td><td>Computer</td><td>Jan 1, 1995</td><td></td></tr><tr><td></td><td>Technical</td><td>Jan 1, 1995</td><td></td></tr><tr><td>System Administrator</td><td>Computer</td><td>Jan 1, 1995</td><td></td></tr><tr><td></td><td>Admin Support</td><td>Apr 1, 1997</td><td></td></tr><tr><td>Business Analyst</td><td>Computer</td><td>Jan 1, 1995</td><td>Dec 31, 1999</td></tr><tr><td></td><td>MIS</td><td>Jan 1, 2000</td><td></td></tr></table>
 
@@ -4826,7 +4826,7 @@ The model in Figure 9.6 shows the entity POSITION REPORTING STRUCTURE, which lin
 
 In the examples shown in Table 9.4, business analysts, system administrators, and programmer/analysts report to the director of IS. Suppose that the enterprise grows and subsequently creates an IS development manager position and a maintenance manager position that report to the director of IS. Instead of changing the reporting relationship of each of the people, the old reporting relationships of the positions would be expired (using the thru date) and new records could be added to show the revised structure. In this way, the enterprise can more easily implement the new reporting structure and at the same time retain an accurate history of previous structures.
 
-Table 9.4 Position Reporting Relationship Data  
+Table 9.4 Position Reporting Relationship Data
 
 <table><tr><td>REPORTING TO POSITION</td><td>THE MANAGER OF POSITION</td><td>FROM DATE</td><td>THRU DATE</td><td>PRIMARY FLAG</td></tr><tr><td>Director of Business Information Systems</td><td>Business Analyst</td><td>Jan 1, 2000</td><td>Dec 30, 2000</td><td>Yes</td></tr><tr><td></td><td>Systems Administrator</td><td>Jan 1, 2000</td><td>Dec 31, 2000</td><td>Yes</td></tr><tr><td></td><td>Programmer/Analyst</td><td>Jan 1, 2000</td><td>Dec 31, 2000</td><td>Yes</td></tr><tr><td>IS Development Manager</td><td>Business Analyst</td><td>Jan 1, 2001</td><td></td><td>Yes</td></tr><tr><td></td><td>Systems Administrator</td><td>Jan 1, 2001</td><td></td><td>No</td></tr><tr><td></td><td>Programmer/Analyst</td><td>Jan 1, 2001</td><td></td><td>Yes</td></tr><tr><td>Maintenance Manager</td><td>Systems Administrator</td><td>Jan 1, 2001</td><td></td><td>Yes</td></tr><tr><td></td><td>Programmer/Analyst</td><td>Jan 1, 2001</td><td></td><td>No</td></tr></table>
 
@@ -4868,13 +4868,13 @@ Pay Grade and Salary Step
 
 Additional information stored in this entity could also include a PAY GRADE and SALARY STEP for use in enterprises that have a predefined, highly structured pay system (such as the federal government). This is done by reference to a structured pay schedule. These types of schedules normally have two levels: a grade and a step. The SALARY STEP entity includes an amount attribute and is generally described in the context of a PAY GRADE. Table 9.7 includes part of a sample grade schedule.
 
-Table 9.7 Pay Grade System Sample  
+Table 9.7 Pay Grade System Sample
 
 <table><tr><td>GRADE ID</td><td>PAY GRADE NAME</td><td>SALARY STEP SEQ ID</td><td>SALARY STEP AMOUNT</td></tr><tr><td>1</td><td>GG-1</td><td>1</td><td>$10,000</td></tr><tr><td></td><td></td><td>2</td><td>$10,200</td></tr><tr><td></td><td></td><td>3</td><td>$10,400</td></tr><tr><td></td><td></td><td>4</td><td>$10,500</td></tr><tr><td></td><td></td><td>5</td><td>$10,800</td></tr><tr><td>2</td><td>GG-2</td><td>1</td><td>$10,450</td></tr><tr><td></td><td></td><td>2</td><td>$10,780</td></tr><tr><td></td><td></td><td>3</td><td>$11,200</td></tr><tr><td></td><td></td><td>4</td><td>$11,650</td></tr></table>
 
 Notice that there is an overlap in the pay scale between "GG-1" and "GG-2." Step #1 for GG-2 falls between step #3 and step #4 of GG-1. This is not uncommon in these types of pay systems. It allows HR administrators some flexibility in negotiating pay for new employees. Because the grades are basically "set in stone" and tied to specific position types, the administrators are restricted as to what grades can be offered for any given position. To compensate for these restrictions, the range of pay covered by the steps of a grade are often very wide. Table 9.8 gives sample data for POSITION TYPE RATE where a grade system is used.
 
-Table 9.8 Rate of Pay Sample #2  
+Table 9.8 Rate of Pay Sample #2
 
 <table><tr><td>POSITION
 TYPE</td><td>RATE
@@ -4899,7 +4899,7 @@ Salary is not related to POSITION because the position the person occupies can c
 
 Depending on the nature of the enterprise, salary is represented by actual dollar amounts and optionally by the relationship to SALARY STEP. Unlike the POSITION TYPE RATE attribute of rate, amount is always recorded in PAY HISTORY to ensure that there is no confusion on what the person was paid during a given time period. Also, note that because this is a record of the actual rate of pay for a person, not a list of possible rates, there can be only one record for the person for any selected time period. The PERIOD TYPE associated with this record is determined by how the enterprise wants to see this data. See Table 9.9 for examples of this data.
 
-Table 9.9 Pay History Data  
+Table 9.9 Pay History Data
 
 <table><tr><td>EMPLOYER</td><td>EMPLOYEE</td><td>FROM DATE</td><td>THRU DATE</td><td>AMOUNT</td><td>PERIOD TYPE</td></tr><tr><td>ABC Corporation</td><td>John Smith</td><td>Jan 1, 1995</td><td>Dec 31, 1997</td><td>$45,000</td><td>per year</td></tr><tr><td></td><td></td><td>Jan 1, 1998</td><td>Dec 31, 2000</td><td>$55,000</td><td>per year</td></tr><tr><td></td><td></td><td>Jan 1, 2001</td><td></td><td>$62,500</td><td>per year</td></tr></table>
 
@@ -4927,7 +4927,7 @@ For insurance purposes, there may be a need to determine the benefits for a pers
 
 In PARTY BENEFIT there can be several pieces of information that the enterprise may wish to track. First is the from date and thru date. These allow the tracking of benefits through time. Additionally, the enterprise may want to track the actual cost of the benefit and the actual employer paid percentage. With that information it would be possible to calculate the cost not only to the employee but to the enterprise as well. Another attribute, available time, is also included for tracking allowable time off such as vacation and sick leave. Example benefit data is shown in Table 9.10.
 
-Table 9.10 Party Benefit Data  
+Table 9.10 Party Benefit Data
 
 <table><tr><td>EMPLOYER</td><td>EMPLOYEE</td><td>BENEFIT TYPE</td><td>FROM DATE</td><td>THRU DATE</td><td>COST</td><td>PERIOD TYPE</td><td>ACTUAL EMPLOYER PAID %</td><td>AVAILABLE TIME</td></tr><tr><td rowspan="5">ABC Corporation</td><td rowspan="5">John Smith</td><td rowspan="2">Health</td><td>Jan 1, 1998</td><td>Dec 31, 2000</td><td>$1200</td><td>per year</td><td>50</td><td></td></tr><tr><td>Jan 1, 2001</td><td></td><td>$1500</td><td>per year</td><td>60</td><td></td></tr><tr><td>Vacation</td><td></td><td></td><td></td><td>days</td><td>100</td><td>15</td></tr><tr><td>Sick leave</td><td></td><td></td><td></td><td>days</td><td>100</td><td>10</td></tr><tr><td>401k</td><td>Jan 1, 2001</td><td></td><td>$50.00</td><td>per year</td><td>100</td><td></td></tr></table>
 
@@ -4949,8 +4949,8 @@ The various types of benefits provided by the enterprise are listed in the entit
 
 Percentages for employer contribution are included not only in BENEFIT TYPE but also in PARTY BENEFIT and POSITION TYPE to allow recording this information at various levels of detail. Because of this, certain business rules need to be put in place. A likely set of rules would be as follows:
 
-- If actual employer paid percent exists in PARTY BENEFIT, that number takes precedence.  
-- If that is blank, then benefit percent on the POSITION TYPE associated with the person's current position (as indicated in POSITION FULFILLMENT) is used.  
+- If actual employer paid percent exists in PARTY BENEFIT, that number takes precedence.
+- If that is blank, then benefit percent on the POSITION TYPE associated with the person's current position (as indicated in POSITION FULFILLMENT) is used.
 - If both of these values are blank, then the employer paid percentage in BENEFIT TYPE would be the override.
 
 Note that this section has provided a general data structure for handling benefits; if a more comprehensive model is needed for enterprises in the insurance industry, there is a more complete model in Chapter 5 of Volume 2- "Insurance."
@@ -4981,7 +4981,7 @@ In order to handle this type of information, the model includes the entity PAYRO
 
 Sample data is included in Table 9.11.
 
-Table 9.11 Payroll Preference Data  
+Table 9.11 Payroll Preference Data
 
 <table><tr><td>PAYROLL
 PREFERENCE
@@ -5089,7 +5089,7 @@ Unfortunately, or fortunately, depending on how you look at it, there is a need 
 
 Figure 9.13 captures information about employee terminations. As stated previously, the EMPLOYMENT entity is a subtype of PARTY RELATIONSHIP that establishes a relationship between an EMPLOYEE and an INTERNAL ORGANIZATION. When the EMPLOYMENT ends, the thru date of the PARTY RELATIONSHIP stores the date of termination. On termination, the PARTY RELATIONSHIP STATUS TYPE instance of "terminated" is now used to signify that the employment has ended. The TERMINATION TYPE stores what kind of termination happened, such as "resignation," "firing," or "retirement." The TERMINATION REASON maintains the description explaining the circumstances and cause of the termination. Examples include "insubordination," "took new job," "non-performance," "moved," and so on.
 
-![](images/168757add1e2818edb980984c8c349b710246e351619e2ce1a248f8b6028ecb7.jpg)  
+![](images/168757add1e2818edb980984c8c349b710246e351619e2ce1a248f8b6028ecb7.jpg)
 Figure 9.13 Employee termination.
 
 The UNEMPLOYMENT CLAIM maintains information about unemployment claims that may be related to terminations of employees. The claim date shows what date the unemployment claim was filed. The description provides information on the background of the claim, and the relationship to UNEMPLOYMENT
@@ -5104,7 +5104,7 @@ This chapter has discussed one of the more complex aspects of operating a busine
 
 models contain elements for position classifications, reporting structures, determining pay rates, tracking the salary history of those people associated with the enterprise, benefits tracking, payroll information, employment applications, employee skills, employee performance, and employee termination.
 
-![](images/cc85bb23fdf8022193225dd06d782742f5afae4e2b32615aeada851354938090.jpg)  
+![](images/cc85bb23fdf8022193225dd06d782742f5afae4e2b32615aeada851354938090.jpg)
 Figure 9.14 Overall human resources model.
 
 Please refer to Appendix A for a listing of entities and attributes. SQL scripts to build tables and columns derived from the logical models in this book can be found on the full-blown CD-ROM, which is licensed separately.
@@ -5123,8 +5123,8 @@ The Data Warehouse Architecture
 
 Before discussing how to convert the logical data models into a data warehouse, it is important to understand the three types of models involved in the transformation process from the operational environment to a decision support system:
 
-- The enterprise data model  
-- The data warehouse design  
+- The enterprise data model
+- The data warehouse design
 - The departmental data warehouse design or data mart
 
 # The Enterprise Data Model
@@ -5171,18 +5171,18 @@ The enterprise data model is a very good place to start the process of building 
 
 To do the transformation from the enterprise data model to the data warehouse data model, the enterprise data model must have identified and structured, at least, the following:
 
-Major subjects of the enterprise  
+Major subjects of the enterprise
 - Relationships between the subjects
 
-- Definitions of the subject areas  
+- Definitions of the subject areas
 - Logical data models for each subject data area (sometimes referred to as entity relationship diagrams)
 
 Also, for each major logical data model, the following must be identified and structured:
 
-- Entities  
-Key(s) of the entity  
-- Attributes of the entity  
-- Subtypes of the entity  
+- Entities
+Key(s) of the entity
+- Attributes of the entity
+- Subtypes of the entity
 - Relationships between entities
 
 Figure 10.2 identifies the minimum components of the enterprise data model.
@@ -5219,11 +5219,11 @@ Many more design and modeling components may be used in conjunction with an ente
 
 enterprise may model the design and synthesis of processes as well. Process analysis typically consists of the following:
 
-- Functional decomposition  
-Data and process matrices  
-Data flow diagrams  
-State transition diagrams  
-HIPO charts  
+- Functional decomposition
+Data and process matrices
+Data flow diagrams
+State transition diagrams
+HIPO charts
 Pseudocode
 
 These are generally included in an enterprise process model, as opposed to being part of the enterprise data model. This book addresses "universal data models," but there is also a great need for "universal process models"—or templates to help develop these enterprise process models.
@@ -5234,41 +5234,41 @@ High-Level and Logical Data Models
 
 As stated previously, the enterprise data model is usually divided into multiple levels—a high-level model and logical data models for each subject area. The high level of the enterprise data model contains the major subject areas and the relationship between the subject areas. Figure 10.3 shows a simple example of a high-level enterprise data model.
 
-![](images/aa991b743aa802955aaf151c757b909427eda277260e059949280da91d69ff75.jpg)  
+![](images/aa991b743aa802955aaf151c757b909427eda277260e059949280da91d69ff75.jpg)
 Figure 10.3 A simple example of a high-level model.
 
 In Figure 10.3 there are five subject areas: party, order, product, shipment, and work effort. A direct relationship exists between party and order, order and work effort, order and shipment, and order and product. Of course, many indirect relationships are inferred from the highlevel data model, but only the direct relationships are shown. Note that the high-level enterprise data model does not contain any amount of detail at all; at this level, detail only clutters up the model unnecessarily.
 
 The next level of modeling found in the enterprise data model is logical data modeling. Here is where much of the detail of the model is found. These models contain entities, keys, attributes, subtypes, and relationships, and they are fully normalized. Each of the previous chapters generally corresponds to a subject data area and includes a normalized logical data model for that area. There is a relationship between each subject area identified in the high-level model and the logical data models. For each subject area identified, there is a single logical data model, as shown in Figure 10.4
 
-![](images/0ce2fe38beb456b919a1d6e80bde21c320ab239a963e0a3db22d03006de4b8a3.jpg)  
+![](images/0ce2fe38beb456b919a1d6e80bde21c320ab239a963e0a3db22d03006de4b8a3.jpg)
 Figure 10.4 Each major subject area has its own mid-level model.
 
 Note that in many organizations the logical data model is not fleshed out to the same level of detail. Some logical data models are completely designed and fully attributed, while other models are only sketched out, with little or no detail.
 
 The degree of completion of the larger enterprise data model is of little concern to the data warehouse developer because the data warehouse will be developed iteratively, one stage at a time. In other words, it is very unusual to develop the data warehouse on a massive frontal assault, where all logical data models are developed at once. Therefore, the fact that the enterprise data model is in a state of differing degrees of readiness is not a concern to the data warehouse developer. Figure 10.5 shows that the data warehouse will be built one step at a time. First, one part of the data model (perhaps a particular subject data area such as "product") is transformed and readied for data warehouse design, then another part of the data model is transformed, and so forth.
 
-![](images/b97ea93ba3dc0b499fbae484e00088b79b415262962d426fc4dd9a4e24b18eef.jpg)  
-Figure 10.5 Each major subject area will be integrated one step at a time.  
+![](images/b97ea93ba3dc0b499fbae484e00088b79b415262962d426fc4dd9a4e24b18eef.jpg)
+Figure 10.5 Each major subject area will be integrated one step at a time.
 1st subject area to be placed into warehouse
 
-![](images/0507d3c323c86f3d7fc76085719febf5ac548c2284a473486c8d33e54808a57f.jpg)  
+![](images/0507d3c323c86f3d7fc76085719febf5ac548c2284a473486c8d33e54808a57f.jpg)
 2nd subject area to be placed into warehouse
 
-![](images/b40c5523640a3992807f61eb257f78de2441e89813bde8d05c4d202ff91c7ffb.jpg)  
+![](images/b40c5523640a3992807f61eb257f78de2441e89813bde8d05c4d202ff91c7ffb.jpg)
 3rd subject area to be placed into warehouse
 
 # Making the Transformation
 
 Once the enterprise has an enterprise data model, the transformation process into the data warehouse data model can begin. Following are a set of procedures for how to transform the enterprise data model to a data warehouse data model:
 
-- Removal of purely operational data  
-- Addition of an element of time to the key structure of the data warehouse if one is not already present  
-- Addition of appropriate derived data  
-- Transformation of data relationships into data artifacts  
-- Accommodation for the different levels of granularity found in the data warehouse  
-- Merging of like data from different tables together  
-Creation of arrays of data  
+- Removal of purely operational data
+- Addition of an element of time to the key structure of the data warehouse if one is not already present
+- Addition of appropriate derived data
+- Transformation of data relationships into data artifacts
+- Accommodation for the different levels of granularity found in the data warehouse
+- Merging of like data from different tables together
+Creation of arrays of data
 - Separation of data attributes according to their stability characteristics
 
 These activities serve as guidelines in creating the data warehouse data model. Transformation decisions should be based largely on the enterprise's specific decision support requirements. The following sections will discuss each of these aspects in detail.
@@ -5277,7 +5277,7 @@ These activities serve as guidelines in creating the data warehouse data model. 
 
 The first task is to examine the enterprise data model and remove all data that is purely operational, as illustrated in Figure 10.6. The figure shows that some data found in the enterprise data model finds its way into the data model for the data warehouse. Some data, such as message, description, terms and status, usually apply to the operational environment. These should be removed as a first step in building the data warehouse data model. They are not removed from the logical data models; they are simply not useful in the data warehouse. Note that the box represents information about the INVOICE within the corporate data model and may be either an attribute such as message or description, or related information such as INVOICE TERM or INVOICE STATUS.
 
-![](images/e64dc9e43a501eb6f1d673b6431f06d86e531141b64071fdbb298d85558346fb.jpg)  
+![](images/e64dc9e43a501eb6f1d673b6431f06d86e531141b64071fdbb298d85558346fb.jpg)
 Figure 10.6 Removing data that will not be used for DSS processing.
 
 The removal of operational data is seldom a straightforward decision. It always centers around the question, "What is the chance the data will be used for DSS?" Unfortunately, circumstances can be contrived such that almost any data can be used for DSS. A more
@@ -5290,7 +5290,7 @@ Adding an Element of Time to the Warehouse Key
 
 The second necessary modification to the enterprise data model is the addition of an element of time to the data warehouse key if one does not already exist, as shown in Figure 10.7.
 
-![](images/d9c87651a5248323c6d26b1b7f76692b449f0c0186fc87f50fc501de3b50561a.jpg)  
+![](images/d9c87651a5248323c6d26b1b7f76692b449f0c0186fc87f50fc501de3b50561a.jpg)
 Figure 10.7 Adding an element of time to the data warehouse data model.
 
 In the figure, snapshot_date has been added as a key to the customer record. The enterprise data model has specified party information with only a party ID as the key. But in the warehouse,
@@ -5305,7 +5305,7 @@ Adding Derived Data
 
 The next transformation to the logical data models is the addition of derived data to the data warehouse data model where it is appropriate, as shown in Figure 10.8. The total_amount field is derived by multiplying the quantity times the amount field of the INVOICE.
 
-![](images/8e947fc5259c65488e69584028d9b4fc78b2074d08774460002ffc2094f11c2a.jpg)  
+![](images/8e947fc5259c65488e69584028d9b4fc78b2074d08774460002ffc2094f11c2a.jpg)
 Figure 10.8 Adding appropriate derived data.
 
 ![](images/c4b2f9674f3b9c3a698b8fc5ed402c8484f330a92bebd2a224d9c8f206e2964d.jpg)
@@ -5330,8 +5330,8 @@ The artifact may include foreign keys and other relevant data, such as columns f
 
 Figure 10.9 An operational relationship between product and supplier.
 
-Figure 10.10 Artifacts of the operational data relationship.  
-![](images/d04e0b7461394aeddf46e369acf5ecde67b3124b24061f8f1e40500e1dd1ef07.jpg)  
+Figure 10.10 Artifacts of the operational data relationship.
+![](images/d04e0b7461394aeddf46e369acf5ecde67b3124b24061f8f1e40500e1dd1ef07.jpg)
 Figure 10.9 shows that there is a relationship between a PRODUCT and a SUPPLIER. This information is shown in Chapter 3, Figure 3.5, in the entities PRODUCT, SUPPLIER PRODUCT, and PREFERENCE TYPE. In the example, each PRODUCT has a primary SUPPLIER (a PREFERENCE TYPE of primary). Integrity constraints dictate that if a SUPPLIER (or organization) is deleted, a SUPPLIER PRODUCT record may not exist that has that SUPPLIER as the primary source. In other words, the information about who was the primary supplier is lost because the supplier record was deleted. The relationship represents an ongoing relationship of data that is active and accurate as of the moment of access.
 
 Now consider how snapshots of data might be made and how the relationship information might be captured. Figure 10.10 shows a snapshot of PRODUCT and SUPPLIER data that might appear in the data warehouse.
@@ -5378,7 +5378,7 @@ In the PRODUCT HISTORY table, a shipment has been received at the loading dock a
 
 One of the features of a data warehouse is the different levels of granularity. In some cases, the level of granularity does not change as data passes from the operational environment to the data warehouse environment. In other cases, the level of granularity does change as data is passed into the data warehouse. When there is a change in the level of granularity, the data warehouse data model needs to reflect those changes, as shown in Figure 10.12
 
-![](images/314b7e825b730bd43f2455091e33ef4afe622a6c3b2b6d1ebbfdc52193377a2c.jpg)  
+![](images/314b7e825b730bd43f2455091e33ef4afe622a6c3b2b6d1ebbfdc52193377a2c.jpg)
 Figure 10.12 Accommodating the different changes in granularity in going from the operations environment to the data warehouse environment.
 
 In the figure, the enterprise data model shows shipment activity data that is gathered each time a shipment is made. Due to the requirements specified by end users, data granularity is changed as the data passes into the data warehouse. Two summarizations of
@@ -5387,24 +5387,24 @@ shipment data are made-the monthly summarization of total shipments and the summ
 
 The issues in the changing of granularity (insofar as the data warehouse data modeler is concerned) revolve around the following questions:
 
-• What period of time should be used to summarize the data (i.e., summarized by day, by week, by month, etc.)?  
-- What elements of data should be in the summarized table?  
-- Will the operational environment support the summarized data elements (i.e., has the data warehouse designer specified data in the warehouse that cannot be calculated from the operational data source)?  
+• What period of time should be used to summarize the data (i.e., summarized by day, by week, by month, etc.)?
+- What elements of data should be in the summarized table?
+- Will the operational environment support the summarized data elements (i.e., has the data warehouse designer specified data in the warehouse that cannot be calculated from the operational data source)?
 - What is the trade-off between keeping lower levels of granularity for detailed analysis versus the cost of storing those details? The costs include disk space, performance, and database management overhead, especially for very large databases (VLDB).
 
 # Merging Tables
 
 The next transformation consideration involves merging corporate tables into one data warehouse table, as illustrated in Figure 10.13.
 
-![](images/ee9470935bcd928d3ff77fb13399fece78ab270ac7f3f2bab1f14cfb5741411f.jpg)  
+![](images/ee9470935bcd928d3ff77fb13399fece78ab270ac7f3f2bab1f14cfb5741411f.jpg)
 Figure 10.13 Merging corporate data tables into a warehouse data model.
 
 The figure shows two tables, INVOICEs and INVOICE_ ITEMS (the top two boxes), from an operational environment (see Chapter 7). The tables are normalized. As they are placed in the data warehouse environment, they are merged together. The merge can greatly improve query performance and can simplify the data structure by eliminating a commonly required join.
 
 The conditions under which a merge makes sense are when the following situations occur:
 
-- The tables share a common key (or partial key).  
-- The data from the different tables is used together frequently.  
+- The tables share a common key (or partial key).
+- The data from the different tables is used together frequently.
 - The pattern of insertion is roughly the same.
 
 If any one of these conditions is not met, it may not make sense to merge the tables together.

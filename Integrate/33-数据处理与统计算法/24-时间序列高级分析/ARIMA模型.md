@@ -26,9 +26,25 @@
     - [4.2 模型识别](#42-模型识别)
   - [5. 预测](#5-预测)
     - [5.1 点预测](#51-点预测)
-  - [📚 参考资源](#-参考资源)
+    - [5.2 多步预测](#52-多步预测)
+    - [5.3 销售预测](#53-销售预测)
+    - [5.4 库存管理](#54-库存管理)
   - [📊 性能优化建议](#-性能优化建议)
+    - [模型选择优化](#模型选择优化)
+    - [并行计算](#并行计算)
+    - [索引优化](#索引优化)
+    - [物化视图缓存](#物化视图缓存)
   - [🎯 最佳实践](#-最佳实践)
+    - [平稳性处理](#平稳性处理)
+    - [模型诊断](#模型诊断)
+    - [参数选择](#参数选择)
+    - [SQL实现注意事项](#sql实现注意事项)
+  - [📈 ARIMA模型变体对比](#-arima模型变体对比)
+  - [🔍 常见问题与解决方案](#-常见问题与解决方案)
+    - [问题1：序列不平稳](#问题1序列不平稳)
+    - [问题2：模型选择困难](#问题2模型选择困难)
+    - [问题3：预测精度低](#问题3预测精度低)
+  - [📚 参考资源](#-参考资源)
 
 ---
 
@@ -240,23 +256,347 @@ CROSS JOIN ar_model;
 
 ---
 
-## 📚 参考资源
+### 5.2 多步预测
 
-1. **Box, G.E.P., Jenkins, G.M. (1976)**: "Time Series Analysis: Forecasting and Control"
-2. **Hamilton, J.D. (1994)**: "Time Series Analysis"
+```sql
+-- ARIMA多步预测（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'arima_forecast') THEN
+            CREATE TABLE arima_forecast (
+                forecast_step INTEGER PRIMARY KEY,
+                forecast_value NUMERIC NOT NULL,
+                lower_bound NUMERIC,
+                upper_bound NUMERIC
+            );
+
+            RAISE NOTICE 'ARIMA预测表创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'ARIMA多步预测准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 多步预测（AR(1)模型）
+WITH ar_coefficient AS (
+    SELECT 0.8 AS phi1
+),
+forecast_steps AS (
+    SELECT generate_series(1, 10) AS step
+),
+recursive_forecast AS (
+    SELECT
+        1 AS step,
+        (SELECT value FROM arima_data ORDER BY time_point DESC LIMIT 1) AS forecast_value
+    UNION ALL
+    SELECT
+        rf.step + 1,
+        (SELECT phi1 FROM ar_coefficient) * rf.forecast_value
+    FROM recursive_forecast rf
+    WHERE rf.step < 10
+)
+SELECT
+    step,
+    ROUND(forecast_value::numeric, 4) AS forecast_value
+FROM recursive_forecast
+ORDER BY step;
+```
+
+### 5.3 销售预测
+
+```sql
+-- ARIMA销售预测应用
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sales_data') THEN
+            CREATE TABLE sales_data (
+                date DATE PRIMARY KEY,
+                sales_amount NUMERIC NOT NULL
+            );
+
+            -- 插入销售数据
+            INSERT INTO sales_data (date, sales_amount) VALUES
+                ('2024-01-01', 1000), ('2024-01-02', 1100), ('2024-01-03', 1050),
+                ('2024-01-04', 1200), ('2024-01-05', 1150);
+
+            RAISE NOTICE '销售数据表创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '销售预测应用准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+```
+
+### 5.4 库存管理
+
+```sql
+-- ARIMA库存管理应用
+WITH inventory_forecast AS (
+    SELECT
+        date,
+        inventory_level,
+        -- ARIMA预测未来库存需求
+        forecast_demand AS predicted_demand
+    FROM inventory_data
+)
+SELECT
+    date,
+    inventory_level,
+    ROUND(predicted_demand::numeric, 2) AS forecasted_demand,
+    CASE
+        WHEN inventory_level < predicted_demand THEN 'Reorder Needed'
+        ELSE 'Sufficient Stock'
+    END AS inventory_status
+FROM inventory_forecast
+ORDER BY date;
+```
+
+---
 
 ## 📊 性能优化建议
 
-1. **模型选择**: 使用AIC/BIC选择最优模型
-2. **参数估计**: 使用最大似然估计
-3. **验证**: 使用交叉验证评估模型
+### 模型选择优化
+
+```sql
+-- AIC/BIC模型选择
+WITH model_comparison AS (
+    SELECT
+        p, d, q,
+        aic_value,
+        bic_value,
+        ROW_NUMBER() OVER (ORDER BY aic_value) AS aic_rank,
+        ROW_NUMBER() OVER (ORDER BY bic_value) AS bic_rank
+    FROM arima_model_results
+)
+SELECT
+    p, d, q,
+    aic_value,
+    bic_value,
+    CASE
+        WHEN aic_rank = 1 THEN 'Best AIC'
+        WHEN bic_rank = 1 THEN 'Best BIC'
+        ELSE ''
+    END AS recommendation
+FROM model_comparison
+ORDER BY aic_value;
+```
+
+### 并行计算
+
+```sql
+-- 启用并行查询
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 100;
+SET parallel_tuple_cost = 0.01;
+
+-- 并行参数估计
+WITH parallel_estimation AS (
+    SELECT
+        p_value,
+        d_value,
+        q_value,
+        estimate_arima_parameters(p_value, d_value, q_value) AS model_params
+    FROM parameter_grid
+)
+SELECT * FROM parallel_estimation;
+```
+
+### 索引优化
+
+```sql
+-- 创建时间索引
+CREATE INDEX IF NOT EXISTS idx_time_point ON arima_data(time_point);
+CREATE INDEX IF NOT EXISTS idx_date ON sales_data(date);
+```
+
+### 物化视图缓存
+
+```sql
+-- 缓存模型参数
+CREATE MATERIALIZED VIEW IF NOT EXISTS arima_model_cache AS
+SELECT
+    p, d, q,
+    phi_values,
+    theta_values,
+    sigma_squared
+FROM arima_model_parameters
+WHERE model_id = (SELECT model_id FROM best_arima_model);
+
+REFRESH MATERIALIZED VIEW CONCURRENTLY arima_model_cache;
+```
+
+---
 
 ## 🎯 最佳实践
 
-1. **平稳性**: 确保序列平稳
-2. **模型诊断**: 检查残差
-3. **参数选择**: 使用信息准则
-4. **预测评估**: 评估预测准确性
+### 平稳性处理
+
+1. **ADF检验**: 使用Augmented Dickey-Fuller检验
+
+   ```sql
+   -- ADF检验（简化）
+   WITH adf_test AS (
+       SELECT
+           -- 计算ADF统计量
+           AVG(value) AS mean_value,
+           STDDEV(value) AS std_value
+       FROM arima_data
+   )
+   SELECT
+       CASE
+           WHEN std_value / mean_value < 0.1 THEN 'Stationary'
+           ELSE 'Non-stationary, need differencing'
+       END AS stationarity_status
+   FROM adf_test;
+   ```
+
+2. **差分处理**: 使用差分使序列平稳
+
+   ```sql
+   -- 一阶差分
+   SELECT
+       time_point,
+       value - LAG(value) OVER (ORDER BY time_point) AS diff_value
+   FROM arima_data
+   ORDER BY time_point;
+   ```
+
+### 模型诊断
+
+1. **残差检验**: 检查残差是否白噪声
+
+   ```sql
+   -- 残差自相关检验
+   WITH residuals AS (
+       SELECT
+           time_point,
+           value - predicted_value AS residual
+       FROM arima_predictions
+   )
+   SELECT
+       LAG,
+       CORR(residual, LAG(residual, LAG) OVER (ORDER BY time_point)) AS autocorrelation
+   FROM residuals
+   CROSS JOIN generate_series(1, 5) AS LAG
+   WHERE LAG(residual, LAG) OVER (ORDER BY time_point) IS NOT NULL
+   GROUP BY LAG;
+   ```
+
+2. **Ljung-Box检验**: 检验残差独立性
+
+   ```sql
+   -- Ljung-Box统计量（简化）
+   WITH lb_statistic AS (
+       SELECT
+           SUM(POWER(autocorrelation, 2) / (n - lag)) AS lb_value
+       FROM residual_autocorrelations
+   )
+   SELECT
+       CASE
+           WHEN lb_value < 20.0 THEN 'Residuals are white noise'
+           ELSE 'Residuals are correlated'
+       END AS lb_test_result
+   FROM lb_statistic;
+   ```
+
+### 参数选择
+
+1. **信息准则**: 使用AIC/BIC选择最优参数
+   - AIC：$AIC = 2k - 2\ln(L)$，倾向于选择更复杂模型
+   - BIC：$BIC = k\ln(n) - 2\ln(L)$，倾向于选择更简单模型
+
+2. **网格搜索**: 搜索最优(p,d,q)组合
+
+   ```sql
+   -- 参数网格搜索
+   WITH parameter_grid AS (
+       SELECT p, d, q
+       FROM generate_series(0, 3) AS p
+       CROSS JOIN generate_series(0, 2) AS d
+       CROSS JOIN generate_series(0, 3) AS q
+   )
+   SELECT * FROM parameter_grid;
+   ```
+
+### SQL实现注意事项
+
+1. **错误处理**: 使用DO块和EXCEPTION进行错误处理
+2. **数值精度**: 注意参数估计的精度问题
+3. **性能优化**: 使用索引和物化视图优化性能
+4. **模型验证**: 使用交叉验证评估模型性能
+
+---
+
+## 📈 ARIMA模型变体对比
+
+| 模型 | 适用场景 | 优点 | 缺点 |
+|------|---------|------|------|
+| **ARIMA** | 单变量时间序列 | 经典方法，成熟 | 需要平稳性 |
+| **SARIMA** | 季节性时间序列 | 处理季节性 | 参数多 |
+| **ARIMAX** | 带外生变量 | 考虑外部因素 | 需要外生变量数据 |
+| **VARIMA** | 多变量时间序列 | 考虑变量关系 | 复杂度高 |
+
+---
+
+## 🔍 常见问题与解决方案
+
+### 问题1：序列不平稳
+
+**原因**：
+
+- 趋势存在
+- 季节性存在
+- 方差非恒定
+
+**解决方案**：
+
+- 使用差分去除趋势
+- 使用季节性差分
+- 对数变换稳定方差
+
+### 问题2：模型选择困难
+
+**原因**：
+
+- 参数空间大
+- 信息准则不一致
+- 样本量小
+
+**解决方案**：
+
+- 使用网格搜索
+- 结合AIC和BIC
+- 使用交叉验证
+
+### 问题3：预测精度低
+
+**原因**：
+
+- 模型不合适
+- 参数估计不准
+- 数据质量差
+
+**解决方案**：
+
+- 重新选择模型
+- 增加样本量
+- 提高数据质量
+- 使用集成方法
+
+---
+
+## 📚 参考资源
+
+1. **Box, G.E.P., Jenkins, G.M., Reinsel, G.C. (2015)**: "Time Series Analysis: Forecasting and Control", 5th Edition, Wiley
+2. **Hamilton, J.D. (1994)**: "Time Series Analysis", Princeton University Press
+3. **Hyndman, R.J., Athanasopoulos, G. (2021)**: "Forecasting: principles and practice", 3rd Edition, OTexts
+4. **Shumway, R.H., Stoffer, D.S. (2017)**: "Time Series Analysis and Its Applications", 4th Edition, Springer
 
 ---
 

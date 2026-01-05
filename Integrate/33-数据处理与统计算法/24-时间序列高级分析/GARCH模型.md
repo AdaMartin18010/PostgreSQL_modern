@@ -19,6 +19,21 @@
     - [1.1 ARCH原理](#11-arch原理)
   - [2. GARCH模型](#2-garch模型)
     - [2.1 GARCH(p,q)](#21-garchpq)
+  - [3. 实际应用案例](#3-实际应用案例)
+    - [3.1 金融波动率预测](#31-金融波动率预测)
+    - [3.2 风险管理](#32-风险管理)
+  - [📊 性能优化建议](#-性能优化建议)
+    - [参数估计优化](#参数估计优化)
+    - [并行计算](#并行计算)
+    - [索引优化](#索引优化)
+  - [🎯 最佳实践](#-最佳实践)
+    - [模型选择](#模型选择)
+    - [参数约束](#参数约束)
+    - [SQL实现注意事项](#sql实现注意事项)
+  - [📈 GARCH模型变体对比](#-garch模型变体对比)
+  - [🔍 常见问题与解决方案](#-常见问题与解决方案)
+    - [问题1：参数估计不收敛](#问题1参数估计不收敛)
+    - [问题2：波动率预测不准确](#问题2波动率预测不准确)
   - [📚 参考资源](#-参考资源)
 
 ---
@@ -157,10 +172,191 @@ ORDER BY date;
 
 ---
 
+---
+
+## 3. 实际应用案例
+
+### 3.1 金融波动率预测
+
+```sql
+-- 金融波动率预测应用（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'financial_returns') THEN
+            CREATE TABLE financial_returns (
+                date DATE PRIMARY KEY,
+                asset_return NUMERIC NOT NULL,
+                market_return NUMERIC NOT NULL
+            );
+
+            -- 插入金融收益率数据
+            INSERT INTO financial_returns (date, asset_return, market_return) VALUES
+                ('2024-01-01', 0.02, 0.015),
+                ('2024-01-02', -0.01, -0.008),
+                ('2024-01-03', 0.015, 0.012);
+
+            RAISE NOTICE '金融收益率数据表创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '金融波动率预测应用准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- GARCH波动率预测
+WITH garch_forecast AS (
+    SELECT
+        date,
+        asset_return,
+        -- GARCH(1,1)条件方差预测
+        SQRT(conditional_var) AS forecasted_volatility
+    FROM garch_data
+    ORDER BY date DESC
+    LIMIT 10
+)
+SELECT
+    date,
+    ROUND(asset_return::numeric, 4) AS return_rate,
+    ROUND(forecasted_volatility::numeric, 4) AS volatility_forecast
+FROM garch_forecast
+ORDER BY date;
+```
+
+### 3.2 风险管理
+
+```sql
+-- GARCH在风险管理中的应用
+WITH var_calculation AS (
+    SELECT
+        date,
+        asset_return,
+        conditional_volatility,
+        -- VaR计算（95%置信水平）
+        -1.645 * conditional_volatility AS var_95
+    FROM garch_forecast
+)
+SELECT
+    date,
+    ROUND(asset_return::numeric, 4) AS return_rate,
+    ROUND(conditional_volatility::numeric, 4) AS volatility,
+    ROUND(var_95::numeric, 4) AS var_95_percent,
+    CASE
+        WHEN asset_return < var_95 THEN 'VaR Breach'
+        ELSE 'Within VaR'
+    END AS risk_status
+FROM var_calculation
+ORDER BY date;
+```
+
+---
+
+## 📊 性能优化建议
+
+### 参数估计优化
+
+```sql
+-- 使用物化视图缓存GARCH参数
+CREATE MATERIALIZED VIEW IF NOT EXISTS garch_parameters_cache AS
+SELECT
+    omega,
+    alpha,
+    beta,
+    log_likelihood
+FROM garch_estimation_results
+WHERE model_id = (SELECT model_id FROM best_garch_model);
+
+REFRESH MATERIALIZED VIEW CONCURRENTLY garch_parameters_cache;
+```
+
+### 并行计算
+
+```sql
+-- 启用并行查询
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 100;
+SET parallel_tuple_cost = 0.01;
+```
+
+### 索引优化
+
+```sql
+-- 创建时间索引
+CREATE INDEX IF NOT EXISTS idx_garch_date ON garch_data(date);
+```
+
+---
+
+## 🎯 最佳实践
+
+### 模型选择
+
+1. **GARCH(1,1)**: 最常用，通常足够
+2. **EGARCH**: 处理杠杆效应
+3. **GJR-GARCH**: 处理非对称波动率
+
+### 参数约束
+
+1. **平稳性**: $\alpha + \beta < 1$
+2. **非负性**: $\omega > 0, \alpha \geq 0, \beta \geq 0$
+
+### SQL实现注意事项
+
+1. **错误处理**: 使用DO块和EXCEPTION进行错误处理
+2. **数值稳定性**: 注意递归计算的精度
+3. **性能优化**: 使用索引和物化视图优化性能
+
+---
+
+## 📈 GARCH模型变体对比
+
+| 模型 | 特点 | 适用场景 |
+|------|------|---------|
+| **GARCH** | 标准模型 | 一般波动率建模 |
+| **EGARCH** | 处理杠杆效应 | 股票市场 |
+| **GJR-GARCH** | 非对称波动率 | 金融市场 |
+| **TGARCH** | 阈值GARCH | 极端事件 |
+
+---
+
+## 🔍 常见问题与解决方案
+
+### 问题1：参数估计不收敛
+
+**原因**：
+
+- 初始值选择不当
+- 数据质量差
+- 模型不适合
+
+**解决方案**：
+
+- 使用更好的初始值
+- 提高数据质量
+- 尝试其他GARCH变体
+
+### 问题2：波动率预测不准确
+
+**原因**：
+
+- 模型参数估计不准
+- 模型假设不满足
+- 样本量不足
+
+**解决方案**：
+
+- 增加样本量
+- 使用滚动窗口估计
+- 结合其他方法
+
+---
+
 ## 📚 参考资源
 
-1. **Engle, R.F. (1982)**: "Autoregressive Conditional Heteroscedasticity"
-2. **Bollerslev, T. (1986)**: "Generalized Autoregressive Conditional Heteroskedasticity"
+1. **Engle, R.F. (1982)**: "Autoregressive Conditional Heteroscedasticity with Estimates of the Variance of United Kingdom Inflation", Econometrica, 50(4), 987-1007
+2. **Bollerslev, T. (1986)**: "Generalized Autoregressive Conditional Heteroskedasticity", Journal of Econometrics, 31(3), 307-327
+3. **Nelson, D.B. (1991)**: "Conditional Heteroskedasticity in Asset Returns: A New Approach", Econometrica, 59(2), 347-370
 
 ---
 

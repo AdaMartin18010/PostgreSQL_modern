@@ -12,6 +12,14 @@
 - [IoT监控系统案例](#iot监控系统案例)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+  - [1.1 理论基础](#11-理论基础)
+    - [1.1.1 IoT数据模型设计理论](#111-iot数据模型设计理论)
+    - [1.1.2 设备孪生理论](#112-设备孪生理论)
+    - [1.1.3 时序数据理论](#113-时序数据理论)
+    - [1.1.4 TimescaleDB理论](#114-timescaledb理论)
+    - [1.1.5 实时监控理论](#115-实时监控理论)
+    - [1.1.6 数据压缩理论](#116-数据压缩理论)
+    - [1.1.7 复杂度分析](#117-复杂度分析)
   - [2. 业务需求](#2-业务需求)
     - [2.1 核心业务功能](#21-核心业务功能)
     - [2.2 性能要求](#22-性能要求)
@@ -62,6 +70,108 @@ IoT监控系统案例展示如何设计支持大规模设备监控的数据模�
 
 ---
 
+## 1.1 理论基础
+
+### 1.1.1 IoT数据模型设计理论
+
+**IoT数据模型**:
+
+- **设备模型**: 设备元数据和状态管理
+- **时序数据**: 设备传感器时序数据
+- **实时监控**: 实时数据采集和告警
+
+**模型设计原则**:
+
+- **设备管理**: 使用设备孪生模型管理设备
+- **时序存储**: 使用时序数据库存储时序数据
+- **实时处理**: 实时数据处理和告警
+
+### 1.1.2 设备孪生理论
+
+**设备孪生（Digital Twin）**:
+
+- **设备模型**: 设备在数字世界的完整映射
+- **状态同步**: 实时同步物理设备状态
+- **远程控制**: 通过数字孪生控制物理设备
+
+**设备孪生特点**:
+
+- **状态管理**: 设备状态实时同步
+- **命令控制**: 设备命令可靠执行
+- **历史追溯**: 设备完整生命周期记录
+
+### 1.1.3 时序数据理论
+
+**时序数据**:
+
+- **数据特征**: 时间有序、高频写入、不可变
+- **数据模型**: 时间戳+指标值+标签
+- **存储优化**: 时序数据压缩和分区
+
+**时序数据处理**:
+
+- **数据采集**: 高频数据采集
+- **数据存储**: 时序数据压缩存储
+- **数据查询**: 时间范围查询和聚合
+
+### 1.1.4 TimescaleDB理论
+
+**TimescaleDB**:
+
+- **Hypertable**: 自动分区的时序表
+- **连续聚合**: 自动维护的物化视图
+- **数据压缩**: 时序数据压缩
+
+**TimescaleDB优势**:
+
+- **自动分区**: 自动按时间分区
+- **查询优化**: 分区剪枝优化查询
+- **压缩优化**: 时序数据高效压缩
+
+### 1.1.5 实时监控理论
+
+**实时监控**:
+
+- **数据采集**: 实时数据采集
+- **异常检测**: 实时异常检测
+- **告警通知**: 实时告警通知
+
+**实时监控方法**:
+
+- **流式处理**: 流式数据处理
+- **规则引擎**: 基于规则的异常检测
+- **机器学习**: 基于机器学习的异常检测
+
+### 1.1.6 数据压缩理论
+
+**时序数据压缩**:
+
+- **压缩算法**: Delta Encoding、Gorilla Encoding
+- **压缩率**: 通常5-10倍压缩率
+- **查询性能**: 压缩后查询性能略有下降
+
+**压缩策略**:
+
+- **时间压缩**: 时间戳差值压缩
+- **值压缩**: 数值差值压缩
+- **标签压缩**: 标签去重和编码
+
+### 1.1.7 复杂度分析
+
+**存储复杂度**:
+
+- **设备存储**: $O(D)$ where D is number of devices
+- **时序存储**: $O(D \times T)$ where T is average telemetry per device
+- **压缩存储**: $O(D \times T \times C)$ where C is compression ratio
+
+**查询复杂度**:
+
+- **设备查询**: $O(\log D)$ with index
+- **时序查询**: $O(\log T)$ with time index
+- **聚合查询**: $O(\log A)$ with continuous aggregates
+
+---
+
 ## 2. 业务需求
 
 ### 2.1 核心业务功能
@@ -104,55 +214,91 @@ IoT监控系统案例展示如何设计支持大规模设备监控的数据模�
 **设备模型**:
 
 ```sql
--- 设备类型表
-CREATE TABLE device_types (
-    type_id SERIAL PRIMARY KEY,
-    type_code VARCHAR(50) UNIQUE NOT NULL,
-    type_name VARCHAR(200) NOT NULL,
-    description TEXT,
-    -- 设备属性定义
-    attributes_schema JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 设备类型表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS device_types (
+        type_id SERIAL PRIMARY KEY,
+        type_code VARCHAR(50) UNIQUE NOT NULL,
+        type_name VARCHAR(200) NOT NULL,
+        description TEXT,
+        -- 设备属性定义
+        attributes_schema JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    RAISE NOTICE '表 device_types 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 device_types 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 device_types 失败: %', SQLERRM;
+END $$;
 
--- 设备表（设备孪生）
-CREATE TABLE devices (
-    device_id VARCHAR(50) PRIMARY KEY,
-    device_name VARCHAR(200) NOT NULL,
-    device_type_id INT NOT NULL REFERENCES device_types(type_id),
-    -- 设备属性
-    properties JSONB DEFAULT '{}',
-    -- 设备配置
-    configuration JSONB DEFAULT '{}',
-    -- 设备状态
-    status VARCHAR(50) DEFAULT 'offline', -- 'online', 'offline', 'error'
-    -- 位置信息
-    location JSONB,
-    -- 元数据
-    manufacturer VARCHAR(100),
-    model_number VARCHAR(100),
-    firmware_version VARCHAR(50),
-    -- 时间戳
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    last_seen_at TIMESTAMPTZ
-);
+-- 设备表（设备孪生，带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS devices (
+        device_id VARCHAR(50) PRIMARY KEY,
+        device_name VARCHAR(200) NOT NULL,
+        device_type_id INT NOT NULL REFERENCES device_types(type_id),
+        -- 设备属性
+        properties JSONB DEFAULT '{}',
+        -- 设备配置
+        configuration JSONB DEFAULT '{}',
+        -- 设备状态
+        status VARCHAR(50) DEFAULT 'offline', -- 'online', 'offline', 'error'
+        -- 位置信息
+        location JSONB,
+        -- 元数据
+        manufacturer VARCHAR(100),
+        model_number VARCHAR(100),
+        firmware_version VARCHAR(50),
+        -- 时间戳
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        last_seen_at TIMESTAMPTZ
+    );
+    RAISE NOTICE '表 devices 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 devices 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 devices 失败: %', SQLERRM;
+END $$;
 
--- 设备分组表
-CREATE TABLE device_groups (
-    group_id SERIAL PRIMARY KEY,
-    group_name VARCHAR(200) NOT NULL,
-    parent_group_id INT REFERENCES device_groups(group_id),
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 设备分组表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS device_groups (
+        group_id SERIAL PRIMARY KEY,
+        group_name VARCHAR(200) NOT NULL,
+        parent_group_id INT REFERENCES device_groups(group_id),
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    RAISE NOTICE '表 device_groups 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 device_groups 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 device_groups 失败: %', SQLERRM;
+END $$;
 
--- 设备分组关联表
-CREATE TABLE device_group_members (
-    device_id VARCHAR(50) REFERENCES devices(device_id),
-    group_id INT REFERENCES device_groups(group_id),
-    PRIMARY KEY (device_id, group_id)
-);
+-- 设备分组关联表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS device_group_members (
+        device_id VARCHAR(50) REFERENCES devices(device_id),
+        group_id INT REFERENCES device_groups(group_id),
+        PRIMARY KEY (device_id, group_id)
+    );
+    RAISE NOTICE '表 device_group_members 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 device_group_members 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 device_group_members 失败: %', SQLERRM;
+END $$;
 ```
 
 ### 3.2 设备状态管理
@@ -160,21 +306,41 @@ CREATE TABLE device_group_members (
 **状态历史表**:
 
 ```sql
--- 设备状态历史表（分区表）
-CREATE TABLE device_state_history (
-    state_id BIGSERIAL,
-    device_id VARCHAR(50) NOT NULL REFERENCES devices(device_id),
-    status VARCHAR(50) NOT NULL,
-    state_data JSONB,
-    change_reason VARCHAR(200),
-    timestamp TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (state_id, timestamp)
-) PARTITION BY RANGE (timestamp);
+-- 设备状态历史表（分区表，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'device_state_history') THEN
+        CREATE TABLE device_state_history (
+            state_id BIGSERIAL,
+            device_id VARCHAR(50) NOT NULL REFERENCES devices(device_id),
+            status VARCHAR(50) NOT NULL,
+            state_data JSONB,
+            change_reason VARCHAR(200),
+            timestamp TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (state_id, timestamp)
+        ) PARTITION BY RANGE (timestamp);
+        RAISE NOTICE '分区表 device_state_history 创建成功';
+    ELSE
+        RAISE NOTICE '表 device_state_history 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区表 device_state_history 失败: %', SQLERRM;
+END $$;
 
--- 创建分区（按月）
-CREATE TABLE device_state_history_2025_01
-    PARTITION OF device_state_history
-    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+-- 创建分区（按月，带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS device_state_history_2025_01
+        PARTITION OF device_state_history
+        FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+    RAISE NOTICE '分区 device_state_history_2025_01 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区 device_state_history_2025_01 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建分区失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -186,40 +352,85 @@ CREATE TABLE device_state_history_2025_01
 **时序数据表**:
 
 ```sql
--- 安装TimescaleDB扩展
-CREATE EXTENSION IF NOT EXISTS timescaledb;
+-- 安装TimescaleDB扩展（带错误处理）
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    RAISE NOTICE 'TimescaleDB扩展已安装';
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'TimescaleDB扩展已存在，跳过安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '安装TimescaleDB扩展失败: %', SQLERRM;
+END $$;
 
--- 设备遥测数据表（Hypertable）
-CREATE TABLE device_telemetry (
-    time TIMESTAMPTZ NOT NULL,
-    device_id VARCHAR(50) NOT NULL REFERENCES devices(device_id),
-    -- 遥测数据（JSONB存储灵活结构）
-    telemetry_data JSONB NOT NULL,
-    -- 数据质量
-    quality_code INT DEFAULT 0, -- 0=good, 1=uncertain, 2=bad
-    -- 元数据
-    metadata JSONB
-);
+-- 设备遥测数据表（Hypertable，带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS device_telemetry (
+        time TIMESTAMPTZ NOT NULL,
+        device_id VARCHAR(50) NOT NULL REFERENCES devices(device_id),
+        -- 遥测数据（JSONB存储灵活结构）
+        telemetry_data JSONB NOT NULL,
+        -- 数据质量
+        quality_code INT DEFAULT 0, -- 0=good, 1=uncertain, 2=bad
+        -- 元数据
+        metadata JSONB
+    );
+    RAISE NOTICE '表 device_telemetry 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 device_telemetry 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 device_telemetry 失败: %', SQLERRM;
+END $$;
 
--- 转换为Hypertable
-SELECT create_hypertable('device_telemetry', 'time',
-    chunk_time_interval => INTERVAL '1 day');
+-- 转换为Hypertable（带错误处理）
+DO $$
+BEGIN
+    PERFORM create_hypertable('device_telemetry', 'time',
+        chunk_time_interval => INTERVAL '1 day');
+    RAISE NOTICE 'Hypertable创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建Hypertable失败: %', SQLERRM;
+END $$;
 
--- 创建索引
-CREATE INDEX idx_telemetry_device_time ON device_telemetry(device_id, time DESC);
-CREATE INDEX idx_telemetry_data ON device_telemetry USING GIN(telemetry_data);
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_telemetry_device_time ON device_telemetry(device_id, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_data ON device_telemetry USING GIN(telemetry_data);
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 
--- 启用压缩（7天前的数据自动压缩）
-ALTER TABLE device_telemetry SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'device_id',
-    timescaledb.compress_orderby = 'time DESC'
-);
+-- 启用压缩（7天前的数据自动压缩，带错误处理）
+DO $$
+BEGIN
+    ALTER TABLE device_telemetry SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = 'device_id',
+        timescaledb.compress_orderby = 'time DESC'
+    );
+    PERFORM add_compression_policy('device_telemetry', INTERVAL '7 days');
+    RAISE NOTICE '压缩策略已配置';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '配置压缩策略失败: %', SQLERRM;
+END $$;
 
-SELECT add_compression_policy('device_telemetry', INTERVAL '7 days');
-
--- 数据保留策略（原始数据保留1年）
-SELECT add_retention_policy('device_telemetry', INTERVAL '1 year');
+-- 数据保留策略（原始数据保留1年，带错误处理）
+DO $$
+BEGIN
+    PERFORM add_retention_policy('device_telemetry', INTERVAL '1 year');
+    RAISE NOTICE '数据保留策略已配置';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '配置数据保留策略失败: %', SQLERRM;
+END $$;
 ```
 
 ### 4.2 连续聚合视图
@@ -227,45 +438,78 @@ SELECT add_retention_policy('device_telemetry', INTERVAL '1 year');
 **聚合视图**:
 
 ```sql
--- 小时聚合视图
-CREATE MATERIALIZED VIEW device_telemetry_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', time) AS hour,
-    device_id,
-    -- 聚合指标
-    COUNT(*) AS data_points,
-    AVG((telemetry_data->>'temperature')::NUMERIC) AS avg_temperature,
-    MAX((telemetry_data->>'temperature')::NUMERIC) AS max_temperature,
-    MIN((telemetry_data->>'temperature')::NUMERIC) AS min_temperature,
-    AVG((telemetry_data->>'humidity')::NUMERIC) AS avg_humidity,
-    AVG((telemetry_data->>'pressure')::NUMERIC) AS avg_pressure
-FROM device_telemetry
-GROUP BY hour, device_id;
+-- 小时聚合视图（带错误处理）
+DO $$
+BEGIN
+    CREATE MATERIALIZED VIEW IF NOT EXISTS device_telemetry_hourly
+    WITH (timescaledb.continuous) AS
+    SELECT
+        time_bucket('1 hour', time) AS hour,
+        device_id,
+        -- 聚合指标
+        COUNT(*) AS data_points,
+        AVG((telemetry_data->>'temperature')::NUMERIC) AS avg_temperature,
+        MAX((telemetry_data->>'temperature')::NUMERIC) AS max_temperature,
+        MIN((telemetry_data->>'temperature')::NUMERIC) AS min_temperature,
+        AVG((telemetry_data->>'humidity')::NUMERIC) AS avg_humidity,
+        AVG((telemetry_data->>'pressure')::NUMERIC) AS avg_pressure
+    FROM device_telemetry
+    GROUP BY hour, device_id;
+    RAISE NOTICE '连续聚合视图 device_telemetry_hourly 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '连续聚合视图 device_telemetry_hourly 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建连续聚合视图失败: %', SQLERRM;
+END $$;
 
--- 自动刷新策略
-SELECT add_continuous_aggregate_policy('device_telemetry_hourly',
-    start_offset => INTERVAL '3 hours',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+-- 自动刷新策略（带错误处理）
+DO $$
+BEGIN
+    PERFORM add_continuous_aggregate_policy('device_telemetry_hourly',
+        start_offset => INTERVAL '3 hours',
+        end_offset => INTERVAL '1 hour',
+        schedule_interval => INTERVAL '1 hour');
+    RAISE NOTICE '刷新策略已配置';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '配置刷新策略失败: %', SQLERRM;
+END $$;
 
--- 日聚合视图
-CREATE MATERIALIZED VIEW device_telemetry_daily
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 day', time) AS day,
-    device_id,
-    COUNT(*) AS data_points,
-    AVG((telemetry_data->>'temperature')::NUMERIC) AS avg_temperature,
-    MAX((telemetry_data->>'temperature')::NUMERIC) AS max_temperature,
-    MIN((telemetry_data->>'temperature')::NUMERIC) AS min_temperature
-FROM device_telemetry
-GROUP BY day, device_id;
+-- 日聚合视图（带错误处理）
+DO $$
+BEGIN
+    CREATE MATERIALIZED VIEW IF NOT EXISTS device_telemetry_daily
+    WITH (timescaledb.continuous) AS
+    SELECT
+        time_bucket('1 day', time) AS day,
+        device_id,
+        COUNT(*) AS data_points,
+        AVG((telemetry_data->>'temperature')::NUMERIC) AS avg_temperature,
+        MAX((telemetry_data->>'temperature')::NUMERIC) AS max_temperature,
+        MIN((telemetry_data->>'temperature')::NUMERIC) AS min_temperature
+    FROM device_telemetry
+    GROUP BY day, device_id;
+    RAISE NOTICE '连续聚合视图 device_telemetry_daily 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '连续聚合视图 device_telemetry_daily 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建连续聚合视图失败: %', SQLERRM;
+END $$;
 
-SELECT add_continuous_aggregate_policy('device_telemetry_daily',
-    start_offset => INTERVAL '3 days',
-    end_offset => INTERVAL '1 day',
-    schedule_interval => INTERVAL '1 day');
+-- 自动刷新策略（带错误处理）
+DO $$
+BEGIN
+    PERFORM add_continuous_aggregate_policy('device_telemetry_daily',
+        start_offset => INTERVAL '3 days',
+        end_offset => INTERVAL '1 day',
+        schedule_interval => INTERVAL '1 day');
+    RAISE NOTICE '刷新策略已配置';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '配置刷新策略失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -277,45 +521,63 @@ SELECT add_continuous_aggregate_policy('device_telemetry_daily',
 **告警配置**:
 
 ```sql
--- 告警规则表
-CREATE TABLE alert_rules (
-    rule_id SERIAL PRIMARY KEY,
-    rule_name VARCHAR(200) NOT NULL,
-    device_type_id INT REFERENCES device_types(type_id),
-    device_id VARCHAR(50) REFERENCES devices(device_id),
-    -- 告警条件
-    metric_name VARCHAR(100) NOT NULL,
-    condition_type VARCHAR(50) NOT NULL, -- 'gt', 'lt', 'eq', 'between'
-    threshold_value NUMERIC(10,2),
-    threshold_min NUMERIC(10,2),
-    threshold_max NUMERIC(10,2),
-    -- 告警配置
-    severity VARCHAR(50) DEFAULT 'medium', -- 'low', 'medium', 'high', 'critical'
-    enabled BOOLEAN DEFAULT TRUE,
-    -- 通知配置
-    notification_channels TEXT[], -- ['email', 'sms', 'webhook']
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 告警规则表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS alert_rules (
+        rule_id SERIAL PRIMARY KEY,
+        rule_name VARCHAR(200) NOT NULL,
+        device_type_id INT REFERENCES device_types(type_id),
+        device_id VARCHAR(50) REFERENCES devices(device_id),
+        -- 告警条件
+        metric_name VARCHAR(100) NOT NULL,
+        condition_type VARCHAR(50) NOT NULL, -- 'gt', 'lt', 'eq', 'between'
+        threshold_value NUMERIC(10,2),
+        threshold_min NUMERIC(10,2),
+        threshold_max NUMERIC(10,2),
+        -- 告警配置
+        severity VARCHAR(50) DEFAULT 'medium', -- 'low', 'medium', 'high', 'critical'
+        enabled BOOLEAN DEFAULT TRUE,
+        -- 通知配置
+        notification_channels TEXT[], -- ['email', 'sms', 'webhook']
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    RAISE NOTICE '表 alert_rules 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 alert_rules 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 alert_rules 失败: %', SQLERRM;
+END $$;
 
--- 告警事件表
-CREATE TABLE alert_events (
-    alert_id BIGSERIAL PRIMARY KEY,
-    rule_id INT NOT NULL REFERENCES alert_rules(rule_id),
-    device_id VARCHAR(50) NOT NULL REFERENCES devices(device_id),
-    -- 告警信息
-    alert_time TIMESTAMPTZ DEFAULT NOW(),
-    metric_name VARCHAR(100),
-    metric_value NUMERIC(10,2),
-    threshold_value NUMERIC(10,2),
-    -- 告警状态
-    status VARCHAR(50) DEFAULT 'active', -- 'active', 'acknowledged', 'resolved'
-    acknowledged_by VARCHAR(100),
-    acknowledged_at TIMESTAMPTZ,
-    resolved_at TIMESTAMPTZ,
-    -- 通知状态
-    notifications_sent BOOLEAN DEFAULT FALSE,
-    notification_status JSONB
-);
+-- 告警事件表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS alert_events (
+        alert_id BIGSERIAL PRIMARY KEY,
+        rule_id INT NOT NULL REFERENCES alert_rules(rule_id),
+        device_id VARCHAR(50) NOT NULL REFERENCES devices(device_id),
+        -- 告警信息
+        alert_time TIMESTAMPTZ DEFAULT NOW(),
+        metric_name VARCHAR(100),
+        metric_value NUMERIC(10,2),
+        threshold_value NUMERIC(10,2),
+        -- 告警状态
+        status VARCHAR(50) DEFAULT 'active', -- 'active', 'acknowledged', 'resolved'
+        acknowledged_by VARCHAR(100),
+        acknowledged_at TIMESTAMPTZ,
+        resolved_at TIMESTAMPTZ,
+        -- 通知状态
+        notifications_sent BOOLEAN DEFAULT FALSE,
+        notification_status JSONB
+    );
+    RAISE NOTICE '表 alert_events 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 alert_events 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 alert_events 失败: %', SQLERRM;
+END $$;
 ```
 
 ### 5.2 实时监控函数
@@ -426,7 +688,8 @@ $$ LANGUAGE plpgsql;
 **实时查询**:
 
 ```sql
--- 查询设备最新数据
+-- 查询设备最新数据（带性能测试）
+EXPLAIN ANALYZE
 SELECT DISTINCT ON (device_id)
     device_id,
     time,
@@ -436,7 +699,8 @@ FROM device_telemetry
 WHERE device_id IN ('device_001', 'device_002')
 ORDER BY device_id, time DESC;
 
--- 查询告警事件
+-- 查询告警事件（带性能测试）
+EXPLAIN ANALYZE
 SELECT
     ae.alert_id,
     d.device_name,
@@ -452,7 +716,8 @@ JOIN devices d ON ae.device_id = d.device_id
 WHERE ae.status = 'active'
 ORDER BY ae.alert_time DESC;
 
--- 查询历史趋势（使用连续聚合）
+-- 查询历史趋势（使用连续聚合，带性能测试）
+EXPLAIN ANALYZE
 SELECT
     hour,
     device_id,
@@ -503,7 +768,8 @@ FROM '/path/to/data.csv' WITH CSV HEADER;
 **写入性能监控**:
 
 ```sql
--- 监控写入速率
+-- 监控写入速率（带性能测试）
+EXPLAIN ANALYZE
 SELECT
     time_bucket('1 minute', time) AS minute,
     COUNT(*) AS data_points,

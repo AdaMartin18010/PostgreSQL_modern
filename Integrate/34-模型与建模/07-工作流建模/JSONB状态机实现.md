@@ -12,6 +12,13 @@
 - [JSONB状态机实现](#jsonb状态机实现)
   - [📑 目录](#-目录)
   - [1. 概述](#1-概述)
+  - [1.1 理论基础](#11-理论基础)
+    - [1.1.1 JSONB状态机基本概念](#111-jsonb状态机基本概念)
+    - [1.1.2 JSONB状态存储理论](#112-jsonb状态存储理论)
+    - [1.1.3 JSONB索引理论](#113-jsonb索引理论)
+    - [1.1.4 JSONB状态转换理论](#114-jsonb状态转换理论)
+    - [1.1.5 JSONB vs 传统表对比](#115-jsonb-vs-传统表对比)
+    - [1.1.6 复杂度分析](#116-复杂度分析)
   - [2. JSONB状态存储](#2-jsonb状态存储)
     - [2.1 状态数据结构设计](#21-状态数据结构设计)
     - [2.2 状态定义存储](#22-状态定义存储)
@@ -63,6 +70,90 @@ JSONB提供了灵活的文档存储能力，可以存储状态机的完整定义
 
 ---
 
+## 1.1 理论基础
+
+### 1.1.1 JSONB状态机基本概念
+
+**JSONB状态机**使用JSONB类型存储状态机定义和状态数据：
+
+- **状态定义**: 存储在JSONB中的状态机定义
+- **状态数据**: 存储在JSONB中的当前状态和历史
+- **动态性**: 支持动态添加状态和转换
+
+**JSONB优势**:
+
+- **灵活性**: 支持动态结构
+- **性能**: GIN索引支持高效查询
+- **简洁性**: 单一字段存储完整信息
+
+### 1.1.2 JSONB状态存储理论
+
+**状态JSONB结构**:
+
+- **当前状态**: `state.current`
+- **状态历史**: `state.history[]`
+- **元数据**: `state.metadata{}`
+
+**JSONB查询**:
+
+- **路径查询**: `state->'current'`
+- **数组查询**: `state->'history'->0`
+- **包含查询**: `state @> '{"current": "active"}'`
+
+### 1.1.3 JSONB索引理论
+
+**GIN索引**:
+
+- **索引类型**: Generalized Inverted Index
+- **适用场景**: JSONB字段查询
+- **索引大小**: $O(N \times K)$ where N is rows, K is average keys
+
+**索引优化**:
+
+- **路径索引**: 为常用路径创建索引
+- **表达式索引**: 为常用表达式创建索引
+- **部分索引**: 为部分数据创建索引
+
+### 1.1.4 JSONB状态转换理论
+
+**状态转换函数**:
+
+- **验证**: 验证转换是否合法
+- **执行**: 执行状态转换
+- **记录**: 记录状态历史
+
+**原子性**:
+
+- **事务**: 状态转换在事务中执行
+- **锁**: 使用行锁保证并发安全
+- **一致性**: 保证状态一致性
+
+### 1.1.5 JSONB vs 传统表对比
+
+**存储方式对比**:
+
+| 特性 | JSONB | 传统表 |
+|------|-------|--------|
+| **灵活性** | 高 | 低 |
+| **查询性能** | 中 | 高 |
+| **索引支持** | GIN索引 | B-Tree索引 |
+| **扩展性** | 高 | 低 |
+
+### 1.1.6 复杂度分析
+
+**存储复杂度**:
+
+- **JSONB存储**: $O(N \times S)$ where N is entities, S is average state size
+- **索引存储**: $O(N \times K)$ where K is average keys
+
+**查询复杂度**:
+
+- **路径查询**: $O(\log N)$ with GIN index
+- **包含查询**: $O(\log N)$ with GIN index
+- **数组查询**: $O(N)$ (worst case)
+
+---
+
 ## 2. JSONB状态存储
 
 ### 2.1 状态数据结构设计
@@ -70,19 +161,28 @@ JSONB提供了灵活的文档存储能力，可以存储状态机的完整定义
 **状态JSONB结构**:
 
 ```sql
--- 使用JSONB存储状态的表
-CREATE TABLE workflow_entity (
-    entity_id BIGSERIAL PRIMARY KEY,
-    entity_type VARCHAR(100) NOT NULL,
-    -- JSONB状态存储
-    state JSONB NOT NULL DEFAULT '{
-        "current": "initial",
-        "history": [],
-        "metadata": {}
-    }'::JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 使用JSONB存储状态的表（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS workflow_entity (
+        entity_id BIGSERIAL PRIMARY KEY,
+        entity_type VARCHAR(100) NOT NULL,
+        -- JSONB状态存储
+        state JSONB NOT NULL DEFAULT '{
+            "current": "initial",
+            "history": [],
+            "metadata": {}
+        }'::JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    RAISE NOTICE '表 workflow_entity 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 workflow_entity 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 workflow_entity 失败: %', SQLERRM;
+END $$;
 
 -- 状态JSONB结构说明
 -- {
@@ -101,44 +201,60 @@ CREATE TABLE workflow_entity (
 **状态机定义表（JSONB）**:
 
 ```sql
--- 状态机定义表（使用JSONB存储完整定义）
-CREATE TABLE state_machine_definition (
-    machine_id SERIAL PRIMARY KEY,
-    machine_name VARCHAR(100) UNIQUE NOT NULL,
-    -- JSONB存储完整状态机定义
-    definition JSONB NOT NULL,
-    version INT DEFAULT 1,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 状态机定义表（使用JSONB存储完整定义，带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS state_machine_definition (
+        machine_id SERIAL PRIMARY KEY,
+        machine_name VARCHAR(100) UNIQUE NOT NULL,
+        -- JSONB存储完整状态机定义
+        definition JSONB NOT NULL,
+        version INT DEFAULT 1,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    RAISE NOTICE '表 state_machine_definition 创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 state_machine_definition 已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 state_machine_definition 失败: %', SQLERRM;
+END $$;
 
--- 状态机定义JSONB结构示例
-INSERT INTO state_machine_definition (machine_name, definition) VALUES (
-    'order_workflow',
-    '{
-        "states": {
-            "pending": {
-                "type": "initial",
-                "transitions": {
-                    "start": "processing",
-                    "cancel": "cancelled"
-                }
+-- 状态机定义JSONB结构示例（带错误处理）
+DO $$
+BEGIN
+    INSERT INTO state_machine_definition (machine_name, definition) VALUES (
+        'order_workflow',
+        '{
+            "states": {
+                "pending": {
+                    "type": "initial",
+                    "transitions": {
+                        "start": "processing",
+                        "cancel": "cancelled"
+                    }
+                },
+                "processing": {
+                    "type": "normal",
+                    "transitions": {
+                        "complete": "completed",
+                        "cancel": "cancelled",
+                        "error": "error"
+                    }
+                },
+                "completed": {"type": "final"},
+                "cancelled": {"type": "final"},
+                "error": {"type": "error"}
             },
-            "processing": {
-                "type": "normal",
-                "transitions": {
-                    "complete": "completed",
-                    "cancel": "cancelled",
-                    "error": "error"
-                }
-            },
-            "completed": {"type": "final"},
-            "cancelled": {"type": "final"},
-            "error": {"type": "error"}
-        },
-        "initial_state": "pending"
-    }'::JSONB
-);
+            "initial_state": "pending"
+        }'::JSONB
+    ) ON CONFLICT DO NOTHING;
+    RAISE NOTICE '状态机定义数据插入成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '插入状态机定义数据失败: %', SQLERRM;
+END $$;
 ```
 
 ### 2.3 索引优化
@@ -146,17 +262,25 @@ INSERT INTO state_machine_definition (machine_name, definition) VALUES (
 **JSONB索引创建**:
 
 ```sql
--- GIN索引：支持JSONB查询
-CREATE INDEX idx_workflow_state_current ON workflow_entity USING GIN((state->'current'));
-CREATE INDEX idx_workflow_state_metadata ON workflow_entity USING GIN((state->'metadata'));
+-- GIN索引：支持JSONB查询（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_workflow_state_current ON workflow_entity USING GIN((state->'current'));
+    CREATE INDEX IF NOT EXISTS idx_workflow_state_metadata ON workflow_entity USING GIN((state->'metadata'));
 
--- 表达式索引：状态查询优化
-CREATE INDEX idx_workflow_current_state ON workflow_entity((state->>'current'))
-    WHERE (state->>'current') IS NOT NULL;
+    -- 表达式索引：状态查询优化
+    CREATE INDEX IF NOT EXISTS idx_workflow_current_state ON workflow_entity((state->>'current'))
+        WHERE (state->>'current') IS NOT NULL;
 
--- 部分索引：特定状态查询
-CREATE INDEX idx_workflow_pending ON workflow_entity(entity_id)
-    WHERE (state->>'current') = 'pending';
+    -- 部分索引：特定状态查询
+    CREATE INDEX IF NOT EXISTS idx_workflow_pending ON workflow_entity(entity_id)
+        WHERE (state->>'current') = 'pending';
+
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 ---

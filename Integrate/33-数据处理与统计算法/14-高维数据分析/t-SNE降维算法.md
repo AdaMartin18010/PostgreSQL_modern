@@ -27,9 +27,24 @@
   - [4. 复杂度分析](#4-复杂度分析)
   - [5. 实际应用案例](#5-实际应用案例)
     - [5.1 数据可视化](#51-数据可视化)
-  - [📚 参考资源](#-参考资源)
+    - [5.2 高维特征可视化](#52-高维特征可视化)
+    - [5.3 聚类结果可视化](#53-聚类结果可视化)
   - [📊 性能优化建议](#-性能优化建议)
+    - [Barnes-Hut t-SNE优化](#barnes-hut-t-sne优化)
+    - [PCA预降维](#pca预降维)
+    - [并行化处理](#并行化处理)
+    - [采样策略](#采样策略)
   - [🎯 最佳实践](#-最佳实践)
+    - [数据预处理](#数据预处理)
+    - [参数选择](#参数选择)
+    - [结果解释](#结果解释)
+    - [SQL实现注意事项](#sql实现注意事项)
+  - [📈 t-SNE vs UMAP vs PCA对比](#-t-sne-vs-umap-vs-pca对比)
+  - [🔍 常见问题与解决方案](#-常见问题与解决方案)
+    - [问题1：t-SNE计算慢](#问题1t-sne计算慢)
+    - [问题2：结果不稳定](#问题2结果不稳定)
+    - [问题3：全局结构扭曲](#问题3全局结构扭曲)
+  - [📚 参考资源](#-参考资源)
 
 ---
 
@@ -233,23 +248,288 @@ ORDER BY label, id;
 
 ---
 
-## 📚 参考资源
+### 5.2 高维特征可视化
 
-1. **van der Maaten, L., Hinton, G. (2008)**: "Visualizing Data using t-SNE"
-2. **van der Maaten, L. (2014)**: "Accelerating t-SNE using Tree-Based Algorithms"
+```sql
+-- 高维特征可视化应用（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'high_dim_features') THEN
+            CREATE TABLE high_dim_features (
+                sample_id SERIAL PRIMARY KEY,
+                feature_vector NUMERIC[] NOT NULL,
+                category VARCHAR(50)
+            );
+
+            -- 插入高维特征数据（20维）
+            INSERT INTO high_dim_features (feature_vector, category)
+            SELECT
+                ARRAY[
+                    RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10,
+                    RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10,
+                    RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10,
+                    RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10, RANDOM() * 10
+                ] AS feature_vector,
+                CASE (i % 4)
+                    WHEN 0 THEN 'Type A'
+                    WHEN 1 THEN 'Type B'
+                    WHEN 2 THEN 'Type C'
+                    ELSE 'Type D'
+                END AS category
+            FROM generate_series(1, 200) i;
+
+            RAISE NOTICE '表 high_dim_features 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '高维特征可视化准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+```
+
+### 5.3 聚类结果可视化
+
+```sql
+-- 聚类结果可视化
+WITH cluster_labels AS (
+    SELECT
+        sample_id,
+        feature_vector,
+        category,
+        -- 使用k-means聚类结果（简化）
+        NTILE(4) OVER (ORDER BY sample_id) AS cluster_id
+    FROM high_dim_features
+),
+tsne_coords AS (
+    SELECT
+        sample_id,
+        category,
+        cluster_id,
+        -- t-SNE坐标（简化版）
+        (RANDOM() - 0.5) * 4 AS x_coord,
+        (RANDOM() - 0.5) * 4 AS y_coord
+    FROM cluster_labels
+)
+SELECT
+    sample_id,
+    category,
+    cluster_id,
+    ROUND(x_coord::numeric, 4) AS x,
+    ROUND(y_coord::numeric, 4) AS y
+FROM tsne_coords
+ORDER BY cluster_id, category;
+```
+
+---
 
 ## 📊 性能优化建议
 
-1. **Barnes-Hut t-SNE**: 使用树结构加速计算
-2. **早期压缩**: 使用PCA预降维
-3. **并行化**: 利用PostgreSQL并行处理
+### Barnes-Hut t-SNE优化
+
+```sql
+-- Barnes-Hut树结构优化（概念示例）
+-- 使用空间分区树加速最近邻搜索
+WITH spatial_partition AS (
+    SELECT
+        id,
+        feature_vector,
+        -- 空间分区索引
+        FLOOR(feature_vector[1] / 10) AS partition_x,
+        FLOOR(feature_vector[2] / 10) AS partition_y
+    FROM tsne_data
+)
+SELECT
+    partition_x,
+    partition_y,
+    COUNT(*) AS point_count
+FROM spatial_partition
+GROUP BY partition_x, partition_y
+ORDER BY partition_x, partition_y;
+```
+
+### PCA预降维
+
+```sql
+-- 使用PCA预降维减少计算量
+WITH pca_reduced AS (
+    SELECT
+        id,
+        -- PCA降维到50维（简化）
+        feature_vector[1:50] AS reduced_vector
+    FROM tsne_data
+)
+SELECT * FROM pca_reduced;
+```
+
+### 并行化处理
+
+```sql
+-- 启用并行查询
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 100;
+SET parallel_tuple_cost = 0.01;
+
+-- 分块处理大数据集
+WITH data_chunks AS (
+    SELECT
+        id,
+        feature_vector,
+        NTILE(4) OVER (ORDER BY id) AS chunk_id
+    FROM tsne_data
+)
+SELECT
+    chunk_id,
+    COUNT(*) AS chunk_size
+FROM data_chunks
+GROUP BY chunk_id
+ORDER BY chunk_id;
+```
+
+### 采样策略
+
+```sql
+-- 大数据集采样
+SELECT *
+FROM tsne_data TABLESAMPLE SYSTEM(10)  -- 10%采样
+LIMIT 1000;
+```
+
+---
 
 ## 🎯 最佳实践
 
-1. **数据预处理**: 标准化特征
-2. **参数选择**: 根据数据规模选择困惑度
-3. **多次运行**: t-SNE结果可能不同
-4. **解释**: 注意t-SNE可能扭曲全局结构
+### 数据预处理
+
+1. **标准化特征**: 确保特征在同一量级
+
+   ```sql
+   -- 特征标准化
+   WITH stats AS (
+       SELECT
+           AVG(unnest(feature_vector)) AS mean_val,
+           STDDEV(unnest(feature_vector)) AS std_val
+       FROM tsne_data
+   )
+   SELECT
+       id,
+       ARRAY(
+           SELECT (val - mean_val) / std_val
+           FROM unnest(feature_vector) AS val
+       ) AS normalized_vector
+   FROM tsne_data
+   CROSS JOIN stats;
+   ```
+
+2. **去除异常值**: 使用IQR方法去除异常值
+
+   ```sql
+   -- 异常值检测
+   WITH outlier_detection AS (
+       SELECT
+           id,
+           feature_vector,
+           PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY unnest(feature_vector)) AS q1,
+           PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY unnest(feature_vector)) AS q3
+       FROM tsne_data
+       GROUP BY id, feature_vector
+   )
+   SELECT * FROM outlier_detection
+   WHERE feature_vector[1] BETWEEN q1 - 1.5 * (q3 - q1) AND q3 + 1.5 * (q3 - q1);
+   ```
+
+### 参数选择
+
+1. **困惑度（Perplexity）**: 通常设置为5-50
+   - 小数据集：5-15
+   - 中等数据集：15-30
+   - 大数据集：30-50
+
+2. **学习率**: 通常设置为10-1000
+   - 小数据集：10-100
+   - 大数据集：100-1000
+
+3. **迭代次数**: 通常设置为1000-5000
+
+### 结果解释
+
+1. **多次运行**: t-SNE结果可能不同，建议多次运行取平均
+2. **局部结构**: t-SNE保持局部结构，但可能扭曲全局结构
+3. **距离解释**: 低维空间中的距离不能直接解释为高维距离
+
+### SQL实现注意事项
+
+1. **错误处理**: 使用DO块和EXCEPTION进行错误处理
+2. **数组操作**: 注意数组操作和NULL值处理
+3. **性能优化**: 使用采样和索引优化性能
+4. **数值精度**: 注意距离计算和概率计算的精度
+
+---
+
+## 📈 t-SNE vs UMAP vs PCA对比
+
+| 特性 | t-SNE | UMAP | PCA |
+|------|-------|------|-----|
+| **线性性** | 非线性 | 非线性 | 线性 |
+| **局部结构** | 保持 | 保持 | 不保持 |
+| **全局结构** | 可能扭曲 | 保持 | 保持 |
+| **速度** | 慢 | 快 | 快 |
+| **计算复杂度** | $O(n^2)$ | $O(n \log n)$ | $O(n^3)$ |
+| **参数** | 较多 | 较少 | 较少 |
+| **可扩展性** | 差 | 好 | 好 |
+
+---
+
+## 🔍 常见问题与解决方案
+
+### 问题1：t-SNE计算慢
+
+**原因**：
+
+- 数据量大
+- 维度高
+- 未使用优化算法
+
+**解决方案**：
+
+- 使用Barnes-Hut t-SNE
+- 先进行PCA预降维
+- 使用采样减少数据量
+
+### 问题2：结果不稳定
+
+**原因**：
+
+- 随机初始化
+- 参数选择不当
+
+**解决方案**：
+
+- 多次运行取平均
+- 固定随机种子
+- 调整学习率和迭代次数
+
+### 问题3：全局结构扭曲
+
+**原因**：
+
+- t-SNE主要保持局部结构
+- 困惑度设置不当
+
+**解决方案**：
+
+- 使用UMAP替代
+- 增加困惑度参数
+- 结合PCA使用
+
+---
+
+## 📚 参考资源
+
+1. **van der Maaten, L., Hinton, G. (2008)**: "Visualizing Data using t-SNE", Journal of Machine Learning Research, 9, 2579-2605
+2. **van der Maaten, L. (2014)**: "Accelerating t-SNE using Tree-Based Algorithms", Journal of Machine Learning Research, 15, 3221-3245
+3. **McInnes, L., Healy, J., Melville, J. (2018)**: "UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction"
 
 ---
 

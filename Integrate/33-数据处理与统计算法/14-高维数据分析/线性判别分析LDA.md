@@ -34,9 +34,24 @@
   - [5. 实际应用案例](#5-实际应用案例)
     - [5.1 人脸识别](#51-人脸识别)
     - [5.2 文本分类](#52-文本分类)
-  - [📚 参考资源](#-参考资源)
+    - [5.3 客户分类](#53-客户分类)
+    - [5.4 医学诊断](#54-医学诊断)
   - [📊 性能优化建议](#-性能优化建议)
+    - [索引优化](#索引优化)
+    - [矩阵运算优化](#矩阵运算优化)
+    - [并行计算](#并行计算)
+    - [采样策略](#采样策略)
   - [🎯 最佳实践](#-最佳实践)
+    - [数据预处理](#数据预处理)
+    - [模型选择](#模型选择)
+    - [结果验证](#结果验证)
+    - [SQL实现注意事项](#sql实现注意事项)
+  - [📈 LDA vs PCA对比](#-lda-vs-pca对比)
+  - [🔍 常见问题与解决方案](#-常见问题与解决方案)
+    - [问题1：类内散度矩阵奇异](#问题1类内散度矩阵奇异)
+    - [问题2：类别不平衡](#问题2类别不平衡)
+    - [问题3：计算复杂度高](#问题3计算复杂度高)
+  - [📚 参考资源](#-参考资源)
 
 ---
 
@@ -411,24 +426,294 @@ GROUP BY class_label;
 
 ---
 
+### 5.3 客户分类
+
+```sql
+-- 客户分类LDA应用示例（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'customer_features') THEN
+            RAISE WARNING '表 customer_features 不存在，创建示例表';
+
+            CREATE TABLE customer_features (
+                customer_id SERIAL PRIMARY KEY,
+                age NUMERIC NOT NULL,
+                income NUMERIC NOT NULL,
+                spending_score NUMERIC NOT NULL,
+                customer_segment VARCHAR(50) NOT NULL,
+                class_label INTEGER NOT NULL
+            );
+
+            -- 插入客户数据
+            INSERT INTO customer_features (age, income, spending_score, customer_segment, class_label) VALUES
+                (25, 50000, 80, 'High Value', 1),
+                (30, 60000, 85, 'High Value', 1),
+                (35, 70000, 90, 'High Value', 1),
+                (40, 30000, 40, 'Low Value', 2),
+                (45, 35000, 45, 'Low Value', 2);
+
+            RAISE NOTICE '表 customer_features 创建成功';
+        END IF;
+        RAISE NOTICE '开始执行客户分类LDA分析';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '客户分类LDA分析准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- LDA客户分类投影
+WITH class_stats AS (
+    SELECT
+        class_label,
+        AVG(age) AS mean_age,
+        AVG(income) AS mean_income,
+        AVG(spending_score) AS mean_score,
+        COUNT(*) AS n
+    FROM customer_features
+    GROUP BY class_label
+),
+lda_projection AS (
+    SELECT
+        cf.customer_id,
+        cf.customer_segment,
+        cf.class_label,
+        -- 简化投影（实际应通过特征值分解计算）
+        (cf.age * 0.5 + cf.income * 0.3 + cf.spending_score * 0.2) AS projected_value
+    FROM customer_features cf
+)
+SELECT
+    customer_id,
+    customer_segment,
+    class_label,
+    ROUND(projected_value::numeric, 4) AS lda_score
+FROM lda_projection
+ORDER BY class_label, lda_score DESC;
+```
+
+### 5.4 医学诊断
+
+```sql
+-- 医学诊断LDA应用示例
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'medical_features') THEN
+            CREATE TABLE medical_features (
+                patient_id SERIAL PRIMARY KEY,
+                feature1 NUMERIC NOT NULL,  -- 例如：血压
+                feature2 NUMERIC NOT NULL,  -- 例如：血糖
+                feature3 NUMERIC NOT NULL,  -- 例如：胆固醇
+                diagnosis VARCHAR(50) NOT NULL,
+                class_label INTEGER NOT NULL
+            );
+
+            INSERT INTO medical_features (feature1, feature2, feature3, diagnosis, class_label) VALUES
+                (120, 100, 200, 'Healthy', 1),
+                (130, 110, 220, 'Healthy', 1),
+                (150, 150, 250, 'Disease A', 2),
+                (160, 160, 280, 'Disease A', 2);
+
+            RAISE NOTICE '表 medical_features 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '医学诊断LDA分析准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+```
+
+---
+
+## 📊 性能优化建议
+
+### 索引优化
+
+```sql
+-- 创建关键索引
+CREATE INDEX IF NOT EXISTS idx_class_label ON lda_data(class_label);
+CREATE INDEX IF NOT EXISTS idx_features ON lda_data(feature1, feature2, feature3);
+```
+
+### 矩阵运算优化
+
+```sql
+-- 使用物化视图缓存散度矩阵
+CREATE MATERIALIZED VIEW IF NOT EXISTS lda_scatter_matrices AS
+WITH class_stats AS (
+    SELECT
+        class_label,
+        AVG(feature1) AS mean_f1,
+        AVG(feature2) AS mean_f2,
+        AVG(feature3) AS mean_f3,
+        COUNT(*) AS n
+    FROM lda_data
+    GROUP BY class_label
+)
+SELECT * FROM class_stats;
+
+-- 定期刷新
+REFRESH MATERIALIZED VIEW CONCURRENTLY lda_scatter_matrices;
+```
+
+### 并行计算
+
+```sql
+-- 启用并行查询
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 100;
+SET parallel_tuple_cost = 0.01;
+```
+
+### 采样策略
+
+```sql
+-- 大数据集采样
+SELECT *
+FROM lda_data TABLESAMPLE SYSTEM(10)  -- 10%采样
+WHERE class_label IN (SELECT DISTINCT class_label FROM lda_data);
+```
+
+---
+
+## 🎯 最佳实践
+
+### 数据预处理
+
+1. **数据标准化**: 确保特征在同一量级
+
+   ```sql
+   -- 标准化特征
+   WITH stats AS (
+       SELECT
+           AVG(feature1) AS mean_f1,
+           STDDEV(feature1) AS std_f1
+       FROM lda_data
+   )
+   SELECT
+       id,
+       (feature1 - mean_f1) / std_f1 AS normalized_f1
+   FROM lda_data
+   CROSS JOIN stats;
+   ```
+
+2. **类别平衡**: 处理不平衡数据集
+
+   ```sql
+   -- 类别平衡采样
+   WITH balanced_data AS (
+       SELECT *
+       FROM lda_data
+       WHERE class_label IN (
+           SELECT class_label
+           FROM lda_data
+           GROUP BY class_label
+           HAVING COUNT(*) >= (
+               SELECT MIN(COUNT(*))
+               FROM lda_data
+               GROUP BY class_label
+           )
+       )
+   )
+   SELECT * FROM balanced_data;
+   ```
+
+### 模型选择
+
+1. **维度选择**: 根据特征值选择主成分数量
+   - 对于c个类别，最多可以提取c-1个判别向量
+   - 选择特征值最大的前k个向量
+
+2. **正则化**: 处理奇异矩阵问题
+
+   ```sql
+   -- 添加正则化项（简化示例）
+   SELECT
+       class_label,
+       -- 添加小的正则化项避免奇异矩阵
+       AVG(feature1) + 0.001 AS regularized_mean_f1
+   FROM lda_data
+   GROUP BY class_label;
+   ```
+
+### 结果验证
+
+1. **交叉验证**: 使用交叉验证评估模型性能
+2. **特征重要性**: 分析判别向量的权重
+3. **可视化**: 可视化投影后的数据分布
+
+### SQL实现注意事项
+
+1. **错误处理**: 使用DO块和EXCEPTION进行错误处理
+2. **数值精度**: 注意矩阵运算的精度问题
+3. **性能优化**: 使用物化视图和索引优化性能
+4. **内存管理**: 注意大规模矩阵运算的内存占用
+
+---
+
+## 📈 LDA vs PCA对比
+
+| 特性 | LDA | PCA |
+|------|-----|-----|
+| **监督性** | 有监督 | 无监督 |
+| **目标** | 最大化类间分离度 | 最大化方差 |
+| **使用标签** | 需要 | 不需要 |
+| **降维数量** | 最多c-1维 | 无限制 |
+| **应用** | 分类任务 | 降维、可视化 |
+| **数据假设** | 正态分布 | 无特殊假设 |
+
+---
+
+## 🔍 常见问题与解决方案
+
+### 问题1：类内散度矩阵奇异
+
+**原因**：
+
+- 样本数小于特征数
+- 特征间存在线性相关
+
+**解决方案**：
+
+- 使用正则化：$S_w + \lambda I$
+- 先进行PCA降维
+- 增加样本数
+
+### 问题2：类别不平衡
+
+**原因**：
+
+- 不同类别的样本数差异大
+
+**解决方案**：
+
+- 使用类别权重
+- 平衡采样
+- 使用SMOTE等过采样技术
+
+### 问题3：计算复杂度高
+
+**原因**：
+
+- 数据量大
+- 特征维度高
+
+**解决方案**：
+
+- 使用采样减少数据量
+- 先进行PCA降维
+- 使用并行计算
+
+---
+
 ## 📚 参考资源
 
 1. **Fisher, R.A. (1936)**: "The Use of Multiple Measurements in Taxonomic Problems"
 2. **Duda, R.O., Hart, P.E., Stork, D.G. (2012)**: "Pattern Classification"
 3. **Bishop, C.M. (2006)**: "Pattern Recognition and Machine Learning"
-
-## 📊 性能优化建议
-
-1. **矩阵运算优化**: 使用数组类型和矩阵运算函数
-2. **并行计算**: 利用PostgreSQL并行查询处理大规模数据
-3. **缓存中间结果**: 缓存散度矩阵计算结果
-
-## 🎯 最佳实践
-
-1. **数据标准化**: 确保特征在同一量级
-2. **类别平衡**: 处理不平衡数据集
-3. **维度选择**: 根据特征值选择主成分数量
-4. **正则化**: 处理奇异矩阵问题
+4. **Fukunaga, K. (1990)**: "Introduction to Statistical Pattern Recognition"
 
 ---
 

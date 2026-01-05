@@ -31,9 +31,24 @@
   - [4. 实际应用案例](#4-实际应用案例)
     - [4.1 信号分离](#41-信号分离)
     - [4.2 特征提取](#42-特征提取)
-  - [📚 参考资源](#-参考资源)
+    - [4.3 脑电信号分析](#43-脑电信号分析)
+    - [4.4 金融因子分析](#44-金融因子分析)
   - [📊 性能优化建议](#-性能优化建议)
+    - [数据预处理优化](#数据预处理优化)
+    - [白化处理优化](#白化处理优化)
+    - [并行计算](#并行计算)
+    - [索引优化](#索引优化)
   - [🎯 最佳实践](#-最佳实践)
+    - [数据质量检查](#数据质量检查)
+    - [算法参数选择](#算法参数选择)
+    - [结果验证](#结果验证)
+    - [SQL实现注意事项](#sql实现注意事项)
+  - [📈 ICA vs PCA对比](#-ica-vs-pca对比)
+  - [🔍 常见问题与解决方案](#-常见问题与解决方案)
+    - [问题1：ICA无法分离信号](#问题1ica无法分离信号)
+    - [问题2：收敛慢](#问题2收敛慢)
+    - [问题3：成分顺序不确定](#问题3成分顺序不确定)
+  - [📚 参考资源](#-参考资源)
 
 ---
 
@@ -336,24 +351,349 @@ GROUP BY sample_id, feature_vector;
 
 ---
 
-## 📚 参考资源
+### 4.3 脑电信号分析
 
-1. **Hyvärinen, A., Karhunen, J., Oja, E. (2001)**: "Independent Component Analysis"
-2. **Comon, P. (1994)**: "Independent component analysis, A new concept?"
-3. **Hyvärinen, A., Oja, E. (2000)**: "Independent component analysis: algorithms and applications"
+```sql
+-- 脑电信号ICA应用示例（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'eeg_signals') THEN
+            CREATE TABLE eeg_signals (
+                time_point INTEGER NOT NULL,
+                channel_id INTEGER NOT NULL,
+                amplitude NUMERIC NOT NULL,
+                PRIMARY KEY (time_point, channel_id)
+            );
+
+            -- 插入脑电信号数据
+            INSERT INTO eeg_signals (time_point, channel_id, amplitude) VALUES
+                (1, 1, 0.1), (1, 2, 0.2), (1, 3, 0.15),
+                (2, 1, 0.12), (2, 2, 0.22), (2, 3, 0.16);
+
+            RAISE NOTICE '表 eeg_signals 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '脑电信号ICA分析准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+```
+
+### 4.4 金融因子分析
+
+```sql
+-- 金融因子ICA应用示例
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'financial_returns') THEN
+            CREATE TABLE financial_returns (
+                date DATE NOT NULL,
+                asset_id INTEGER NOT NULL,
+                return_rate NUMERIC NOT NULL,
+                PRIMARY KEY (date, asset_id)
+            );
+
+            -- 插入金融收益率数据
+            INSERT INTO financial_returns (date, asset_id, return_rate) VALUES
+                ('2024-01-01', 1, 0.01), ('2024-01-01', 2, 0.02),
+                ('2024-01-02', 1, 0.015), ('2024-01-02', 2, 0.025);
+
+            RAISE NOTICE '表 financial_returns 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '金融因子ICA分析准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- ICA提取独立风险因子
+WITH centered_returns AS (
+    SELECT
+        date,
+        asset_id,
+        return_rate - AVG(return_rate) OVER (PARTITION BY asset_id) AS centered_return
+    FROM financial_returns
+),
+ica_factors AS (
+    SELECT
+        date,
+        -- ICA独立因子（简化）
+        AVG(centered_return) AS market_factor,
+        STDDEV(centered_return) AS volatility_factor
+    FROM centered_returns
+    GROUP BY date
+)
+SELECT
+    date,
+    ROUND(market_factor::numeric, 6) AS market_factor,
+    ROUND(volatility_factor::numeric, 6) AS volatility_factor
+FROM ica_factors
+ORDER BY date;
+```
+
+---
 
 ## 📊 性能优化建议
 
-1. **数据预处理**: 确保数据已中心化和白化
-2. **收敛判断**: 设置合理的收敛阈值
-3. **并行计算**: 利用PostgreSQL并行处理多个成分
+### 数据预处理优化
+
+```sql
+-- 高效中心化
+CREATE MATERIALIZED VIEW IF NOT EXISTS signal_means AS
+SELECT
+    signal_id,
+    AVG(value) AS mean_value
+FROM mixed_signals
+GROUP BY signal_id;
+
+-- 定期刷新
+REFRESH MATERIALIZED VIEW CONCURRENTLY signal_means;
+```
+
+### 白化处理优化
+
+```sql
+-- 使用物化视图缓存协方差矩阵
+CREATE MATERIALIZED VIEW IF NOT EXISTS covariance_matrix AS
+WITH signal_matrix AS (
+    SELECT
+        time_point,
+        ARRAY_AGG(value ORDER BY signal_id) AS signal_vector
+    FROM mixed_signals
+    GROUP BY time_point
+)
+SELECT * FROM signal_matrix;
+
+REFRESH MATERIALIZED VIEW CONCURRENTLY covariance_matrix;
+```
+
+### 并行计算
+
+```sql
+-- 启用并行查询
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 100;
+SET parallel_tuple_cost = 0.01;
+
+-- 并行处理多个成分
+WITH parallel_components AS (
+    SELECT
+        component_id,
+        signal_id,
+        -- FastICA迭代（并行）
+        AVG(value * TANH(value)) AS update_term
+    FROM whitened_signals
+    GROUP BY component_id, signal_id
+)
+SELECT * FROM parallel_components;
+```
+
+### 索引优化
+
+```sql
+-- 创建关键索引
+CREATE INDEX IF NOT EXISTS idx_time_signal ON mixed_signals(time_point, signal_id);
+CREATE INDEX IF NOT EXISTS idx_signal_time ON mixed_signals(signal_id, time_point);
+```
+
+---
 
 ## 🎯 最佳实践
 
-1. **数据质量**: 确保观测信号数量≥源信号数量
-2. **非高斯性**: 验证源信号的非高斯性
-3. **初始化**: 使用随机初始化避免局部最优
-4. **成分数量**: 根据应用需求选择成分数量
+### 数据质量检查
+
+1. **信号数量**: 确保观测信号数量≥源信号数量
+
+   ```sql
+   -- 检查信号数量
+   SELECT
+       COUNT(DISTINCT signal_id) AS num_signals,
+       COUNT(DISTINCT time_point) AS num_time_points
+   FROM mixed_signals;
+   ```
+
+2. **非高斯性验证**: 验证源信号的非高斯性
+
+   ```sql
+   -- 计算峰度（非高斯性度量）
+   WITH kurtosis_calc AS (
+       SELECT
+           signal_id,
+           AVG(POWER(value - AVG(value) OVER (PARTITION BY signal_id), 4)) /
+           POWER(STDDEV(value) OVER (PARTITION BY signal_id), 4) - 3 AS kurtosis
+       FROM mixed_signals
+   )
+   SELECT
+       signal_id,
+       ROUND(kurtosis::numeric, 4) AS kurtosis_value,
+       CASE
+           WHEN ABS(kurtosis) > 0.5 THEN 'Non-Gaussian'
+           ELSE 'Gaussian'
+       END AS signal_type
+   FROM kurtosis_calc;
+   ```
+
+### 算法参数选择
+
+1. **初始化策略**: 使用随机初始化避免局部最优
+
+   ```sql
+   -- 随机初始化权重
+   SELECT
+       component_id,
+       RANDOM() AS initial_weight
+   FROM generate_series(1, 3) AS component_id;
+   ```
+
+2. **收敛判断**: 设置合理的收敛阈值
+
+   ```sql
+   -- 收敛判断（简化）
+   WITH iteration_updates AS (
+       SELECT
+           iteration,
+           AVG(ABS(weight_change)) AS avg_change
+       FROM ica_iterations
+       GROUP BY iteration
+   )
+   SELECT
+       iteration,
+       avg_change,
+       CASE
+           WHEN avg_change < 0.0001 THEN 'Converged'
+           ELSE 'Not Converged'
+       END AS status
+   FROM iteration_updates
+   ORDER BY iteration DESC
+   LIMIT 10;
+   ```
+
+3. **成分数量**: 根据应用需求选择成分数量
+   - 信号分离：通常等于源信号数量
+   - 特征提取：可以小于源信号数量
+
+### 结果验证
+
+1. **独立性验证**: 检查分离后的信号是否独立
+
+   ```sql
+   -- 独立性验证（互信息）
+   WITH independence_check AS (
+       SELECT
+           comp1.component_id AS comp1,
+           comp2.component_id AS comp2,
+           CORR(comp1.value, comp2.value) AS correlation
+       FROM ica_components comp1
+       CROSS JOIN ica_components comp2
+       WHERE comp1.component_id < comp2.component_id
+       GROUP BY comp1.component_id, comp2.component_id
+   )
+   SELECT
+       comp1,
+       comp2,
+       ROUND(ABS(correlation)::numeric, 6) AS abs_correlation,
+       CASE
+           WHEN ABS(correlation) < 0.1 THEN 'Independent'
+           ELSE 'Dependent'
+       END AS independence_status
+   FROM independence_check;
+   ```
+
+2. **重构误差**: 计算重构误差评估分离质量
+
+   ```sql
+   -- 重构误差计算
+   WITH reconstruction AS (
+       SELECT
+           time_point,
+           signal_id,
+           -- 重构信号（简化）
+           SUM(component_value * mixing_coefficient) AS reconstructed_value
+       FROM ica_results
+       GROUP BY time_point, signal_id
+   )
+   SELECT
+       AVG(POWER(original_value - reconstructed_value, 2)) AS mse
+   FROM reconstruction
+   JOIN mixed_signals USING (time_point, signal_id);
+   ```
+
+### SQL实现注意事项
+
+1. **错误处理**: 使用DO块和EXCEPTION进行错误处理
+2. **数值精度**: 注意矩阵运算和迭代更新的精度
+3. **性能优化**: 使用物化视图和索引优化性能
+4. **内存管理**: 注意大规模矩阵运算的内存占用
+
+---
+
+## 📈 ICA vs PCA对比
+
+| 特性 | ICA | PCA |
+|------|-----|-----|
+| **目标** | 独立性 | 不相关性 |
+| **假设** | 非高斯性 | 无特殊假设 |
+| **应用** | 盲源分离 | 降维、去噪 |
+| **结果** | 独立成分 | 主成分 |
+| **可解释性** | 高 | 中 |
+
+---
+
+## 🔍 常见问题与解决方案
+
+### 问题1：ICA无法分离信号
+
+**原因**：
+
+- 信号是高斯分布
+- 观测信号数量不足
+- 混合矩阵奇异
+
+**解决方案**：
+
+- 验证信号的非高斯性
+- 增加观测信号数量
+- 检查混合矩阵的条件数
+
+### 问题2：收敛慢
+
+**原因**：
+
+- 学习率设置不当
+- 初始化不好
+- 数据未白化
+
+**解决方案**：
+
+- 调整学习率
+- 使用更好的初始化策略
+- 确保数据已白化
+
+### 问题3：成分顺序不确定
+
+**原因**：
+
+- ICA的固有特性
+- 符号不确定性
+
+**解决方案**：
+
+- 使用先验知识确定顺序
+- 固定初始化种子
+- 使用后处理确定符号
+
+---
+
+## 📚 参考资源
+
+1. **Hyvärinen, A., Karhunen, J., Oja, E. (2001)**: "Independent Component Analysis", Wiley
+2. **Comon, P. (1994)**: "Independent component analysis, A new concept?", Signal Processing, 36(3), 287-314
+3. **Hyvärinen, A., Oja, E. (2000)**: "Independent component analysis: algorithms and applications", Neural Networks, 13(4-5), 411-430
+4. **Hyvärinen, A. (1999)**: "Fast and robust fixed-point algorithms for independent component analysis", IEEE Transactions on Neural Networks, 10(3), 626-634
 
 ---
 
