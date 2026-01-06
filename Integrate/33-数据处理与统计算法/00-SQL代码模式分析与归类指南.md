@@ -119,29 +119,36 @@
 **核心SQL模式**:
 
 ```sql
--- 模式1: 基础四则运算
+-- 模式1: 基础四则运算（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     value1 + value2 AS addition,
     value1 - value2 AS subtraction,
     value1 * value2 AS multiplication,
     value1 / NULLIF(value2, 0) AS division  -- 避免除零错误
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式2: 幂运算和开方
+-- 模式2: 幂运算和开方（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     POWER(value, exponent) AS power_result,
     SQRT(value) AS square_root,
     CBRT(value) AS cube_root
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式3: 对数运算
+-- 模式3: 对数运算（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     LN(value) AS natural_log,
     LOG(10, value) AS log_base_10,
     LOG(2, value) AS log_base_2
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式4: 三角函数
+-- 模式4: 三角函数（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     SIN(angle) AS sine,
     COS(angle) AS cosine,
@@ -149,7 +156,8 @@ SELECT
     ASIN(value) AS arc_sine,
     ACOS(value) AS arc_cosine,
     ATAN(value) AS arc_tangent
-FROM table_name;
+FROM table_name
+LIMIT 100;
 ```
 
 **归类标签**: `数学函数` `基础运算` `科学计算` `O(1)`
@@ -165,7 +173,8 @@ FROM table_name;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 向量点积（使用数组）
+-- 模式1: 向量点积（使用数组）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     array1,
     array2,
@@ -174,16 +183,19 @@ SELECT
         FROM unnest(array1) WITH ORDINALITY AS t1(a, idx)
         JOIN unnest(array2) WITH ORDINALITY AS t2(b, idx) USING (idx)
     ) AS dot_product
-FROM vectors;
+FROM vectors
+LIMIT 100;
 
--- 模式2: 向量范数（L2范数）
+-- 模式2: 向量范数（L2范数）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     array_value,
     SQRT(SUM(x * x)) AS l2_norm
 FROM (
     SELECT unnest(array_value) AS x
     FROM vectors
-) AS expanded;
+) AS expanded
+LIMIT 100;
 
 -- 模式3: 矩阵转置（使用数组）
 SELECT
@@ -221,32 +233,40 @@ FROM (
 **核心SQL模式**:
 
 ```sql
--- 模式1: 四舍五入
+-- 模式1: 四舍五入（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     ROUND(value, 2) AS rounded_2_decimal,
     ROUND(value, -2) AS rounded_hundreds,
     ROUND(value::numeric, 4) AS rounded_numeric
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式2: 截断
+-- 模式2: 截断（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     TRUNC(value, 2) AS truncated_2_decimal,
     TRUNC(value, -2) AS truncated_hundreds
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式3: 精度控制
+-- 模式3: 精度控制（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     value,
     CAST(value AS NUMERIC(10, 2)) AS fixed_precision,
     value::DECIMAL(10, 4) AS decimal_precision
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式4: 科学计数法
+-- 模式4: 科学计数法（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     value,
     value::TEXT AS text_format,
     TO_CHAR(value, '9.99EEEE') AS scientific_notation
-FROM table_name;
+FROM table_name
+LIMIT 100;
 ```
 
 **归类标签**: `精度处理` `金融计算` `数据格式化` `O(1)`
@@ -266,29 +286,36 @@ FROM table_name;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 中心趋势度量
+-- 模式1: 中心趋势度量（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     AVG(value) AS mean,
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value) AS median,
     MODE() WITHIN GROUP (ORDER BY value) AS mode
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式2: 离散程度度量
+-- 模式2: 离散程度度量（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     STDDEV(value) AS standard_deviation,
     VARIANCE(value) AS variance,
     MAX(value) - MIN(value) AS range,
     PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY value) -
     PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY value) AS iqr
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式3: 分位数统计
+-- 模式3: 分位数统计（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     PERCENTILE_CONT(ARRAY[0.25, 0.5, 0.75, 0.9, 0.95, 0.99])
     WITHIN GROUP (ORDER BY value) AS percentiles
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式4: 综合统计报告
+-- 模式4: 综合统计报告（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*) AS count,
     AVG(value) AS mean,
@@ -298,7 +325,8 @@ SELECT
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value) AS median,
     PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY value) AS q3,
     MAX(value) AS max_value
-FROM table_name;
+FROM table_name
+LIMIT 100;
 ```
 
 **归类标签**: `描述性统计` `中心趋势` `离散程度` `O(n)`
@@ -314,7 +342,8 @@ FROM table_name;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 基础聚合
+-- 模式1: 基础聚合（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*) AS total_count,
     COUNT(DISTINCT column) AS distinct_count,
@@ -323,16 +352,20 @@ SELECT
     MIN(value) AS minimum,
     MAX(value) AS maximum
 FROM table_name
-WHERE condition;
+WHERE condition
+LIMIT 100;
 
--- 模式2: 条件聚合
+-- 模式2: 条件聚合（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*) FILTER (WHERE status = 'active') AS active_count,
     SUM(amount) FILTER (WHERE status = 'completed') AS completed_amount,
     AVG(price) FILTER (WHERE category = 'A') AS category_a_avg
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式3: 分组聚合
+-- 模式3: 分组聚合（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     category,
     COUNT(*) AS count,
@@ -340,15 +373,18 @@ SELECT
     AVG(amount) AS avg_amount
 FROM table_name
 GROUP BY category
-ORDER BY total_amount DESC;
+ORDER BY total_amount DESC
+LIMIT 100;
 
--- 模式4: 多维度聚合（ROLLUP）
+-- 模式4: 多维度聚合（ROLLUP）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     region,
     category,
     SUM(amount) AS total_amount
 FROM table_name
-GROUP BY ROLLUP(region, category);
+GROUP BY ROLLUP(region, category)
+LIMIT 100;
 ```
 
 **归类标签**: `聚合统计` `分组分析` `多维分析` `O(n)`
@@ -364,7 +400,8 @@ GROUP BY ROLLUP(region, category);
 **核心SQL模式**:
 
 ```sql
--- 模式1: 排名函数
+-- 模式1: 排名函数（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     value,
@@ -372,17 +409,21 @@ SELECT
     RANK() OVER (ORDER BY value DESC) AS rank,
     DENSE_RANK() OVER (ORDER BY value DESC) AS dense_rank,
     PERCENT_RANK() OVER (ORDER BY value DESC) AS percent_rank
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式2: 窗口聚合
+-- 模式2: 窗口聚合（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date,
     value,
     SUM(value) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS moving_sum_7,
     AVG(value) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS moving_avg_7
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式3: 前后值比较（LAG/LEAD）
+-- 模式3: 前后值比较（LAG/LEAD）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date,
     value,
@@ -390,16 +431,19 @@ SELECT
     LEAD(value, 1) OVER (ORDER BY date) AS next_value,
     value - LAG(value, 1) OVER (ORDER BY date) AS diff_from_prev,
     (value - LAG(value, 1) OVER (ORDER BY date)) / NULLIF(LAG(value, 1) OVER (ORDER BY date), 0) * 100 AS pct_change
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式4: 累计统计
+-- 模式4: 累计统计（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date,
     value,
     SUM(value) OVER (ORDER BY date) AS cumulative_sum,
     AVG(value) OVER (ORDER BY date) AS cumulative_avg,
     COUNT(*) OVER (ORDER BY date) AS cumulative_count
-FROM table_name;
+FROM table_name
+LIMIT 100;
 ```
 
 **归类标签**: `窗口函数` `排名分析` `趋势分析` `O(n log n)`
@@ -419,13 +463,15 @@ FROM table_name;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 基础排序
+-- 模式1: 基础排序（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
 ORDER BY column1 ASC, column2 DESC
 LIMIT 100;
 
--- 模式2: 自定义排序（CASE WHEN）
+-- 模式2: 自定义排序（CASE WHEN）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
 ORDER BY
@@ -434,16 +480,20 @@ ORDER BY
         WHEN 'high' THEN 2
         WHEN 'medium' THEN 3
         WHEN 'low' THEN 4
-    END;
+    END
+LIMIT 100;
 
--- 模式3: 窗口排序
+-- 模式3: 窗口排序（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     *,
     ROW_NUMBER() OVER (PARTITION BY category ORDER BY value DESC) AS rank_in_category
 FROM table_name
-WHERE rank_in_category <= 10;  -- Top 10 per category
+WHERE ROW_NUMBER() OVER (PARTITION BY category ORDER BY value DESC) <= 10  -- Top 10 per category
+LIMIT 100;
 
--- 模式4: 分页排序
+-- 模式4: 分页排序（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM (
     SELECT
@@ -451,7 +501,8 @@ FROM (
         ROW_NUMBER() OVER (ORDER BY id) AS rn
     FROM table_name
 ) AS ranked
-WHERE rn BETWEEN 101 AND 200;  -- Page 2 (每页100条)
+WHERE rn BETWEEN 101 AND 200  -- Page 2 (每页100条)
+LIMIT 100;
 ```
 
 **归类标签**: `排序算法` `Top N查询` `分页` `O(n log n)`
@@ -467,37 +518,48 @@ WHERE rn BETWEEN 101 AND 200;  -- Page 2 (每页100条)
 **核心SQL模式**:
 
 ```sql
--- 模式1: 精确搜索（索引优化）
+-- 模式1: 精确搜索（索引优化）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
-WHERE id = 123;  -- 使用主键索引，O(log n)
+WHERE id = 123  -- 使用主键索引，O(log n)
+LIMIT 100;
 
--- 模式2: 范围搜索
+-- 模式2: 范围搜索（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
 WHERE value BETWEEN 100 AND 200
 ORDER BY value
 LIMIT 100;
 
--- 模式3: 模糊搜索（LIKE）
+-- 模式3: 模糊搜索（LIKE）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
-WHERE name LIKE '%keyword%';  -- 注意：前导通配符无法使用索引
+WHERE name LIKE '%keyword%'  -- 注意：前导通配符无法使用索引
+LIMIT 100;
 
--- 模式4: 全文搜索（tsvector）
+-- 模式4: 全文搜索（tsvector）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
-WHERE to_tsvector('english', content) @@ to_tsquery('english', 'keyword & search');
+WHERE to_tsvector('english', content) @@ to_tsquery('english', 'keyword & search')
+LIMIT 100;
 
--- 模式5: 正则表达式搜索
+-- 模式5: 正则表达式搜索（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
-WHERE column ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$';  -- 日期格式匹配
+WHERE column ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'  -- 日期格式匹配
+LIMIT 100;
 
--- 模式6: 数组包含搜索
+-- 模式6: 数组包含搜索（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name
-WHERE tags @> ARRAY['tag1', 'tag2'];  -- 数组包含所有指定元素
+WHERE tags @> ARRAY['tag1', 'tag2']  -- 数组包含所有指定元素
+LIMIT 100;
 ```
 
 **归类标签**: `搜索算法` `全文搜索` `模式匹配` `O(log n)`
@@ -513,20 +575,25 @@ WHERE tags @> ARRAY['tag1', 'tag2'];  -- 数组包含所有指定元素
 **核心SQL模式**:
 
 ```sql
--- 模式1: DISTINCT去重
+-- 模式1: DISTINCT去重（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT DISTINCT column1, column2
-FROM table_name;
+FROM table_name
+LIMIT 100;
 
--- 模式2: GROUP BY去重（保留其他列）
+-- 模式2: GROUP BY去重（保留其他列）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     column1,
     column2,
     MAX(column3) AS column3,  -- 或其他聚合函数
     MAX(column4) AS column4
 FROM table_name
-GROUP BY column1, column2;
+GROUP BY column1, column2
+LIMIT 100;
 
--- 模式3: 窗口函数去重（保留第一条）
+-- 模式3: 窗口函数去重（保留第一条）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM (
     SELECT
@@ -534,9 +601,11 @@ FROM (
         ROW_NUMBER() OVER (PARTITION BY column1, column2 ORDER BY id) AS rn
     FROM table_name
 ) AS ranked
-WHERE rn = 1;
+WHERE rn = 1
+LIMIT 100;
 
--- 模式4: EXISTS去重（相关子查询）
+-- 模式4: EXISTS去重（相关子查询）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM table_name t1
 WHERE NOT EXISTS (
@@ -545,7 +614,8 @@ WHERE NOT EXISTS (
     WHERE t2.column1 = t1.column1
       AND t2.column2 = t1.column2
       AND t2.id < t1.id
-);
+)
+LIMIT 100;
 ```
 
 **归类标签**: `去重算法` `数据清洗` `唯一值` `O(n log n)`
@@ -565,12 +635,13 @@ WHERE NOT EXISTS (
 **核心SQL模式**:
 
 ```sql
--- 模式1: 频繁项集统计
+-- 模式1: 频繁项集统计（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     item1,
     item2,
     COUNT(*) AS support_count,
-    COUNT(*) * 100.0 / (SELECT COUNT(*) FROM transactions) AS support_pct
+    COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM transactions), 0) AS support_pct
 FROM (
     SELECT DISTINCT
         t1.transaction_id,
@@ -582,7 +653,8 @@ FROM (
 ) AS pairs
 GROUP BY item1, item2
 HAVING COUNT(*) >= 10  -- 最小支持度阈值
-ORDER BY support_count DESC;
+ORDER BY support_count DESC
+LIMIT 100;
 
 -- 模式2: 关联规则计算（置信度）
 WITH frequent_itemsets AS (
@@ -632,7 +704,8 @@ ORDER BY confidence_pct DESC;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 简单K-means（使用窗口函数）
+-- 模式1: 简单K-means（使用窗口函数）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH initial_centroids AS (
     SELECT
         id,
@@ -674,7 +747,8 @@ SELECT
     y,
     cluster_id
 FROM closest_clusters
-WHERE rn = 1;
+WHERE rn = 1
+LIMIT 100;
 ```
 
 **归类标签**: `聚类分析` `K-means` `用户分群` `O(n²)`
@@ -694,7 +768,8 @@ WHERE rn = 1;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 按时间分组聚合
+-- 模式1: 按时间分组聚合（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     DATE_TRUNC('day', timestamp) AS date,
     COUNT(*) AS count,
@@ -702,7 +777,8 @@ SELECT
     AVG(amount) AS avg_amount
 FROM table_name
 GROUP BY DATE_TRUNC('day', timestamp)
-ORDER BY date;
+ORDER BY date
+LIMIT 100;
 
 -- 模式2: 时间桶聚合（自定义时间间隔）
 SELECT
@@ -750,7 +826,8 @@ ORDER BY ts.date;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 简单移动平均
+-- 模式1: 简单移动平均（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date,
     value,
@@ -759,7 +836,8 @@ SELECT
         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
     ) AS moving_avg_7
 FROM table_name
-ORDER BY date;
+ORDER BY date
+LIMIT 100;
 
 -- 模式2: 指数移动平均（EMA）
 WITH ema_calc AS (
@@ -822,7 +900,8 @@ ORDER BY date;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 全文搜索（tsvector）
+-- 模式1: 全文搜索（tsvector）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     title,
@@ -831,7 +910,8 @@ SELECT
 FROM documents,
      to_tsquery('english', 'keyword1 & keyword2') AS query
 WHERE to_tsvector('english', content) @@ query
-ORDER BY rank DESC;
+ORDER BY rank DESC
+LIMIT 100;
 
 -- 模式2: 模糊搜索（相似度）
 SELECT
@@ -866,13 +946,15 @@ WHERE tags && ARRAY['tag1', 'tag2'];  -- 数组重叠
 **核心SQL模式**:
 
 ```sql
--- 模式1: 编辑距离（Levenshtein）
+-- 模式1: 编辑距离（Levenshtein）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     text1,
     text2,
     levenshtein(text1, text2) AS edit_distance,
-    1.0 - levenshtein(text1, text2)::float / GREATEST(length(text1), length(text2)) AS similarity
-FROM text_pairs;
+    1.0 - levenshtein(text1, text2)::float / NULLIF(GREATEST(length(text1), length(text2)), 0) AS similarity
+FROM text_pairs
+LIMIT 100;
 
 -- 模式2: Jaccard相似度（基于词集合）
 WITH words1 AS (
@@ -914,7 +996,8 @@ FROM intersection i, union_set u;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 递归CTE深度优先搜索
+-- 模式1: 递归CTE深度优先搜索（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE dfs AS (
     -- 起始节点
     SELECT
@@ -936,7 +1019,8 @@ WITH RECURSIVE dfs AS (
     WHERE e.target_id != ALL(d.path)  -- 避免循环
       AND d.depth < 10  -- 最大深度限制
 )
-SELECT * FROM dfs;
+SELECT * FROM dfs
+LIMIT 100;
 
 -- 模式2: 广度优先搜索（使用队列）
 WITH RECURSIVE bfs AS (
@@ -984,7 +1068,8 @@ ORDER BY level, id;
 **核心SQL模式**:
 
 ```sql
--- 模式1: Dijkstra算法（递归CTE实现）
+-- 模式1: Dijkstra算法（递归CTE实现）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH RECURSIVE dijkstra AS (
     SELECT
         1 AS start_node,
@@ -1017,7 +1102,8 @@ SELECT
        AND total_distance = MIN(d.total_distance)
      LIMIT 1) AS shortest_path
 FROM dijkstra d
-GROUP BY start_node, current_node;
+GROUP BY start_node, current_node
+LIMIT 100;
 ```
 
 **归类标签**: `最短路径` `Dijkstra` `路径规划` `O(V²)`
@@ -1037,7 +1123,8 @@ GROUP BY start_node, current_node;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 简单线性回归（最小二乘法）
+-- 模式1: 简单线性回归（最小二乘法）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH stats AS (
     SELECT
         AVG(x) AS avg_x,
@@ -1051,7 +1138,8 @@ SELECT
     (sum_xy - n * avg_x * avg_y) / NULLIF(sum_x2 - n * avg_x * avg_x, 0) AS slope,
     avg_y - (sum_xy - n * avg_x * avg_y) / NULLIF(sum_x2 - n * avg_x * avg_x, 0) * avg_x AS intercept,
     CORR(x, y) AS correlation
-FROM stats;
+FROM stats
+LIMIT 100;
 
 -- 模式2: 预测值计算
 WITH regression AS (
@@ -1094,14 +1182,16 @@ CROSS JOIN regression r;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 简单收益率
+-- 模式1: 简单收益率（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date,
     price,
     LAG(price) OVER (ORDER BY date) AS prev_price,
     (price - LAG(price) OVER (ORDER BY date)) / NULLIF(LAG(price) OVER (ORDER BY date), 0) AS simple_return
 FROM prices
-ORDER BY date;
+ORDER BY date
+LIMIT 100;
 
 -- 模式2: 对数收益率
 SELECT
@@ -1142,14 +1232,16 @@ WHERE daily_return IS NOT NULL;
 **核心SQL模式**:
 
 ```sql
--- 模式1: TPS/QPS计算
+-- 模式1: TPS/QPS计算（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     DATE_TRUNC('second', timestamp) AS time_bucket,
     COUNT(*) AS request_count,
     COUNT(*) / 1.0 AS tps  -- 每秒事务数
 FROM requests
 GROUP BY DATE_TRUNC('second', timestamp)
-ORDER BY time_bucket;
+ORDER BY time_bucket
+LIMIT 100;
 
 -- 模式2: 延迟统计
 SELECT
@@ -1252,7 +1344,8 @@ ORDER BY timestamp;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 索引使用分析
+-- 模式1: 索引使用分析（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -1262,9 +1355,11 @@ SELECT
     idx_tup_fetch AS tuples_fetched
 FROM pg_stat_user_indexes
 WHERE schemaname = 'public'
-ORDER BY idx_scan DESC;
+ORDER BY idx_scan DESC
+LIMIT 100;
 
--- 模式2: 未使用索引检测
+-- 模式2: 未使用索引检测（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -1273,7 +1368,8 @@ SELECT
 FROM pg_stat_user_indexes
 WHERE idx_scan = 0
   AND schemaname = 'public'
-ORDER BY pg_relation_size(indexrelid) DESC;
+ORDER BY pg_relation_size(indexrelid) DESC
+LIMIT 100;
 ```
 
 **归类标签**: `索引优化` `查询优化` `性能调优` `O(log n)`
@@ -1293,15 +1389,17 @@ ORDER BY pg_relation_size(indexrelid) DESC;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 缺失值检测
+-- 模式1: 缺失值检测（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     column_name,
     COUNT(*) AS total_rows,
     COUNT(column_name) AS non_null_rows,
     COUNT(*) - COUNT(column_name) AS null_rows,
-    (COUNT(*) - COUNT(column_name)) * 100.0 / COUNT(*) AS null_percentage
+    (COUNT(*) - COUNT(column_name)) * 100.0 / NULLIF(COUNT(*), 0) AS null_percentage
 FROM table_name
-GROUP BY column_name;
+GROUP BY column_name
+LIMIT 100;
 
 -- 模式2: 异常值检测（IQR方法）
 WITH quartiles AS (
@@ -1327,7 +1425,8 @@ SELECT
 FROM table_name t
 CROSS JOIN bounds b;
 
--- 模式3: 重复值检测
+-- 模式3: 重复值检测（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     column1,
     column2,
@@ -1335,7 +1434,8 @@ SELECT
 FROM table_name
 GROUP BY column1, column2
 HAVING COUNT(*) > 1
-ORDER BY duplicate_count DESC;
+ORDER BY duplicate_count DESC
+LIMIT 100;
 ```
 
 **归类标签**: `数据清洗` `缺失值` `异常值` `重复值` `O(n)`
@@ -1355,7 +1455,8 @@ ORDER BY duplicate_count DESC;
 **核心SQL模式**:
 
 ```sql
--- 模式1: 销售趋势分析
+-- 模式1: 销售趋势分析（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     DATE_TRUNC('day', order_date) AS date,
     COUNT(DISTINCT order_id) AS order_count,
@@ -1365,7 +1466,8 @@ SELECT
 FROM orders
 WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY DATE_TRUNC('day', order_date)
-ORDER BY date;
+ORDER BY date
+LIMIT 100;
 
 -- 模式2: 用户行为分析（RFM模型）
 WITH rfm AS (
@@ -1451,7 +1553,8 @@ END $$;
 **代码格式化标准**:
 
 ```sql
--- 1. 使用有意义的别名
+-- 1. 使用有意义的别名（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     o.order_id,
     o.order_date,
@@ -1460,9 +1563,11 @@ SELECT
 FROM orders o
 JOIN customers c ON o.customer_id = c.customer_id
 JOIN order_items oi ON o.order_id = oi.order_id
-GROUP BY o.order_id, o.order_date, c.customer_name;
+GROUP BY o.order_id, o.order_date, c.customer_name
+LIMIT 100;
 
--- 2. 使用CTE提高可读性
+-- 2. 使用CTE提高可读性（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH filtered_orders AS (
     SELECT *
     FROM orders
@@ -1476,7 +1581,8 @@ aggregated AS (
     FROM filtered_orders
     GROUP BY customer_id
 )
-SELECT * FROM aggregated;
+SELECT * FROM aggregated
+LIMIT 100;
 ```
 
 ---
