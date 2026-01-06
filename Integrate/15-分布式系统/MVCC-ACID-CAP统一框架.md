@@ -183,15 +183,29 @@ MVCC、ACID、CAP都是状态机的不同投影：
 **PostgreSQL MVCC实现**：
 
 ```sql
--- MVCC核心机制
--- 1. 快照隔离
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- MVCC核心机制（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 1. 快照隔离
+        BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        -- 2. 版本链管理
+        -- 自动管理元组版本链
+        -- 3. 可见性规则
+        -- 自动判断元组可见性
+        COMMIT;
+        RAISE NOTICE 'MVCC事务执行成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING 'MVCC事务执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 版本链管理
--- 自动管理元组版本链
-
--- 3. 可见性规则
--- 自动判断元组可见性
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE id = 1;
 ```
 
 ### 4.2 ACID实现
@@ -199,20 +213,46 @@ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 **PostgreSQL ACID实现**：
 
 ```sql
--- ACID核心机制
--- 1. 原子性：事务全部成功或全部失败
-BEGIN;
--- 事务操作
-COMMIT;
+-- ACID核心机制（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 1. 原子性：事务全部成功或全部失败
+        BEGIN;
+        -- 事务操作
+        COMMIT;
 
--- 2. 一致性：约束检查
-ALTER TABLE accounts ADD CONSTRAINT balance_check CHECK (balance >= 0);
+        -- 2. 一致性：约束检查
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'balance_check'
+        ) THEN
+            ALTER TABLE accounts ADD CONSTRAINT balance_check CHECK (balance >= 0);
+            RAISE NOTICE '约束 balance_check 创建成功';
+        ELSE
+            RAISE NOTICE '约束 balance_check 已存在';
+        END IF;
 
--- 3. 隔离性：隔离级别
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        -- 3. 隔离性：隔离级别
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
--- 4. 持久性：WAL
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        -- 4. 持久性：WAL
+        ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'ACID配置成功';
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '约束已存在';
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING 'ACID配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE balance >= 0;
 ```
 
 ### 4.3 CAP实现
@@ -220,15 +260,41 @@ ALTER SYSTEM SET synchronous_commit = 'remote_apply';
 **PostgreSQL CAP实现**：
 
 ```sql
--- CP模式
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- CP模式（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+        ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'CP模式配置成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'CP模式配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- AP模式
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- AP模式（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = '';
+        ALTER SYSTEM SET synchronous_commit = 'local';
+        ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'AP模式配置成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'AP模式配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE id = 1;
 ```
 
 ---

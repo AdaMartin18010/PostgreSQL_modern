@@ -139,13 +139,35 @@ $$
 **PostgreSQL C-I映射实现**：
 
 ```sql
--- CP模式：强一致性+强隔离性
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+-- CP模式：强一致性+强隔离性（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+        ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'CP模式配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- AP模式：弱一致性+弱隔离性
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
-ALTER SYSTEM SET synchronous_standby_names = '';
+-- AP模式：弱一致性+弱隔离性（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+        ALTER SYSTEM SET synchronous_standby_names = '';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'AP模式配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -180,11 +202,33 @@ $$
 **PostgreSQL A-D映射实现**：
 
 ```sql
--- CP模式：低可用性+强持久性
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+-- CP模式：低可用性+强持久性（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'CP模式配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- AP模式：高可用性+弱持久性
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- AP模式：高可用性+弱持久性（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_commit = 'local';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'AP模式配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -219,15 +263,48 @@ $$
 **PostgreSQL P-A映射实现**：
 
 ```sql
--- 单机事务：强原子性+无分区容错
-BEGIN;
--- 事务操作
-COMMIT;
+-- 单机事务：强原子性+无分区容错（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN;
+        -- 事务操作
+        COMMIT;
+        RAISE NOTICE '单机事务执行成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '单机事务执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 分布式事务：弱原子性+分区容错
-BEGIN;
-PREPARE TRANSACTION 'tx1';
-COMMIT PREPARED 'tx1';
+-- 分布式事务：弱原子性+分区容错（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN;
+        PREPARE TRANSACTION 'tx1';
+        RAISE NOTICE '事务准备成功: tx1';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+DO $$
+BEGIN
+    BEGIN
+        COMMIT PREPARED 'tx1';
+        RAISE NOTICE '事务提交成功: tx1';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '事务提交失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---

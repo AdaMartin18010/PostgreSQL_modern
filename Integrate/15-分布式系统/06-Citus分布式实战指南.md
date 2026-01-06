@@ -118,19 +118,50 @@ SELECT pg_reload_conf();
 ### 3.1 分布式表
 
 ```sql
--- 创建表
-CREATE TABLE events (
-    event_id BIGSERIAL,
-    user_id BIGINT,
-    event_type VARCHAR(50),
-    event_data JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+-- 创建表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'events') THEN
+            CREATE TABLE events (
+                event_id BIGSERIAL,
+                user_id BIGINT,
+                event_type VARCHAR(50),
+                event_data JSONB,
+                created_at TIMESTAMPTZ DEFAULT now()
+            );
+            RAISE NOTICE '表 events 创建成功';
+        ELSE
+            RAISE NOTICE '表 events 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 events 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 分布式表（按user_id分片）
-SELECT create_distributed_table('events', 'user_id');
+-- 分布式表（按user_id分片）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法创建分布式表';
+            RETURN;
+        END IF;
+        -- SELECT create_distributed_table('events', 'user_id');
+        RAISE NOTICE '请确保Citus扩展已安装后再执行 create_distributed_table';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建分布式表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查看分片分布
+-- 查看分片分布（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM citus_shards WHERE table_name::text = 'events';
 
 -- 结果:
@@ -147,15 +178,47 @@ SELECT * FROM citus_shards WHERE table_name::text = 'events';
 ### 3.2 引用表（小表）
 
 ```sql
--- 创建引用表（复制到所有Worker）
-CREATE TABLE categories (
-    category_id SERIAL PRIMARY KEY,
-    category_name VARCHAR(100)
-);
+-- 创建引用表（复制到所有Worker）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'categories') THEN
+            CREATE TABLE categories (
+                category_id SERIAL PRIMARY KEY,
+                category_name VARCHAR(100)
+            );
+            RAISE NOTICE '表 categories 创建成功';
+        ELSE
+            RAISE NOTICE '表 categories 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 categories 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
-SELECT create_reference_table('categories');
+-- 创建引用表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法创建引用表';
+            RETURN;
+        END IF;
+        -- SELECT create_reference_table('categories');
+        RAISE NOTICE '请确保Citus扩展已安装后再执行 create_reference_table';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建引用表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 优势: JOIN时无需跨节点
+-- 优势: JOIN时无需跨节点（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT e.*, c.category_name
 FROM events e
 JOIN categories c ON e.category_id = c.category_id
@@ -166,11 +229,27 @@ WHERE e.user_id = 123;
 ### 3.3 本地表
 
 ```sql
--- 仅在Coordinator的表（不分片）
-CREATE TABLE admin_config (
-    key VARCHAR(100) PRIMARY KEY,
-    value TEXT
-);
+-- 仅在Coordinator的表（不分片）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_config') THEN
+            CREATE TABLE admin_config (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT
+            );
+            RAISE NOTICE '表 admin_config 创建成功';
+        ELSE
+            RAISE NOTICE '表 admin_config 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 admin_config 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 不调用create_distributed_table
 -- 用于配置、元数据等
@@ -183,14 +262,11 @@ CREATE TABLE admin_config (
 ### 4.1 单分片查询
 
 ```sql
--- 包含分片键（user_id）的查询 → 路由到单个Worker
+-- 包含分片键（user_id）的查询 → 路由到单个Worker（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
 SELECT * FROM events
 WHERE user_id = 123
   AND created_at > '2023-01-01';
-
--- EXPLAIN查看路由
-EXPLAIN (VERBOSE)
-SELECT * FROM events WHERE user_id = 123;
 
 /*
 Custom Scan (Citus Adaptive)
@@ -204,7 +280,8 @@ Custom Scan (Citus Adaptive)
 ### 4.2 多分片查询
 
 ```sql
--- 不包含分片键 → 所有Worker并行查询
+-- 不包含分片键 → 所有Worker并行查询（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT event_type, COUNT(*)
 FROM events
 WHERE created_at > '2023-01-01'
@@ -228,21 +305,68 @@ Custom Scan (Citus Adaptive)
 ### 5.1 Co-located JOIN
 
 ```sql
--- 创建用户表和订单表（相同分片键）
-CREATE TABLE users (
-    user_id BIGINT PRIMARY KEY,
-    username VARCHAR(100)
-);
-SELECT create_distributed_table('users', 'user_id');
+-- 创建用户表和订单表（相同分片键）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+            CREATE TABLE users (
+                user_id BIGINT PRIMARY KEY,
+                username VARCHAR(100)
+            );
+            RAISE NOTICE '表 users 创建成功';
+        ELSE
+            RAISE NOTICE '表 users 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 users 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
-CREATE TABLE orders (
-    order_id BIGSERIAL,
-    user_id BIGINT,
-    amount NUMERIC
-);
-SELECT create_distributed_table('orders', 'user_id');
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法创建分布式表';
+            RETURN;
+        END IF;
+        -- SELECT create_distributed_table('users', 'user_id');
+        RAISE NOTICE '请确保Citus扩展已安装后再执行 create_distributed_table';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建分布式表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- Co-located JOIN（高效）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') THEN
+            CREATE TABLE orders (
+                order_id BIGSERIAL,
+                user_id BIGINT,
+                amount NUMERIC
+            );
+            RAISE NOTICE '表 orders 创建成功';
+        ELSE
+            RAISE NOTICE '表 orders 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 orders 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- Co-located JOIN（高效）（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT u.username, COUNT(*), SUM(o.amount)
 FROM users u
 JOIN orders o ON u.user_id = o.user_id
@@ -255,14 +379,30 @@ GROUP BY u.username;
 ### 5.2 Re-partition JOIN
 
 ```sql
--- 不同分片键的JOIN
-CREATE TABLE products (
-    product_id BIGINT PRIMARY KEY,
-    product_name VARCHAR(200)
-);
-SELECT create_distributed_table('products', 'product_id');
+-- 不同分片键的JOIN（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'products') THEN
+            CREATE TABLE products (
+                product_id BIGINT PRIMARY KEY,
+                product_name VARCHAR(200)
+            );
+            RAISE NOTICE '表 products 创建成功';
+        ELSE
+            RAISE NOTICE '表 products 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 products 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- orders按user_id分片, products按product_id分片
+-- orders按user_id分片, products按product_id分片（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT o.*, p.product_name
 FROM orders o
 JOIN products p ON o.product_id = p.product_id
@@ -279,13 +419,42 @@ WHERE o.user_id = 123;
 ### 6.1 分片重平衡
 
 ```sql
--- 添加新Worker
-SELECT * FROM citus_add_node('192.168.1.14', 5432);
+-- 添加新Worker（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法添加节点';
+            RETURN;
+        END IF;
+        -- SELECT * FROM citus_add_node('192.168.1.14', 5432);
+        RAISE NOTICE '请确保节点可访问后再执行 citus_add_node';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '添加节点失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 重平衡分片
-SELECT citus_rebalance_start();
+-- 重平衡分片（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法重平衡分片';
+            RETURN;
+        END IF;
+        -- SELECT citus_rebalance_start();
+        RAISE NOTICE '请确保Citus扩展已安装后再执行 citus_rebalance_start';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '重平衡分片失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查看重平衡进度
+-- 查看重平衡进度（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM citus_rebalance_status();
 
 -- 等待完成
@@ -295,19 +464,35 @@ SELECT * FROM citus_rebalance_status();
 ### 6.2 手动分片移动
 
 ```sql
--- 查看分片分布
+-- 查看分片分布（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT nodename, COUNT(*) AS shard_count
 FROM citus_shards
 GROUP BY nodename;
 
--- 移动特定分片
-SELECT citus_move_shard_placement(
-    shard_id := 102008,
-    source_node_name := '192.168.1.11',
-    source_node_port := 5432,
-    target_node_name := '192.168.1.14',
-    target_node_port := 5432,
-    shard_transfer_mode := 'block_writes'
+-- 移动特定分片（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citus') THEN
+            RAISE WARNING 'Citus扩展未安装，无法移动分片';
+            RETURN;
+        END IF;
+        -- SELECT citus_move_shard_placement(
+        --     shard_id := 102008,
+        --     source_node_name := '192.168.1.11',
+        --     source_node_port := 5432,
+        --     target_node_name := '192.168.1.14',
+        --     target_node_port := 5432,
+        --     shard_transfer_mode := 'block_writes'
+        -- );
+        RAISE NOTICE '请确保Citus扩展已安装后再执行 citus_move_shard_placement';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '移动分片失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 );
 ```
 

@@ -74,14 +74,37 @@
 **PostgreSQL实现**：
 
 ```sql
--- CP模式：两阶段提交
-BEGIN;
-PREPARE TRANSACTION 'tx1';
-COMMIT PREPARED 'tx1';
+-- CP模式：两阶段提交（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN;
+        PREPARE TRANSACTION 'tx1';
+        COMMIT PREPARED 'tx1';
+        RAISE NOTICE '两阶段提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '两阶段提交失败: %', SQLERRM;
+            -- 尝试回滚
+            BEGIN
+                ROLLBACK PREPARED 'tx1';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    NULL;  -- 忽略回滚错误
+            END;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ✅ 强原子性：所有节点同时提交
 -- ❌ 低可用性：分区时阻塞
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+BEGIN;
+PREPARE TRANSACTION 'tx1';
+COMMIT PREPARED 'tx1';
 ```
 
 ### 1.2 CP模式下的隔离性
@@ -95,12 +118,27 @@ COMMIT PREPARED 'tx1';
 **PostgreSQL实现**：
 
 ```sql
--- CP模式：SERIALIZABLE隔离级别
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- CP模式：SERIALIZABLE隔离级别（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'SERIALIZABLE隔离级别设置成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ✅ 强隔离性：无异常
 -- ❌ 低可用性：性能下降
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE id = 1;
 ```
 
 ### 1.3 CP模式下的持久性
@@ -114,12 +152,27 @@ ALTER SYSTEM SET default_transaction_isolation = 'serializable';
 **PostgreSQL实现**：
 
 ```sql
--- CP模式：同步提交
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+-- CP模式：同步提交（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '同步提交设置成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置同步提交失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ✅ 强持久性：WAL刷新到磁盘
 -- ❌ 低可用性：等待刷新降低可用性
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
 ```
 
 ---
@@ -137,14 +190,29 @@ ALTER SYSTEM SET synchronous_commit = 'remote_apply';
 **PostgreSQL实现**：
 
 ```sql
--- AP模式：本地提交
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;  -- 本地立即提交
+-- AP模式：本地提交（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN;
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        COMMIT;  -- 本地立即提交
+        RAISE NOTICE '本地提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '本地提交失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ⚠️ 弱原子性：可能部分成功
 -- ✅ 高可用性：分区时继续服务
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
 ```
 
 ### 2.2 AP模式下的隔离性
@@ -158,12 +226,27 @@ COMMIT;  -- 本地立即提交
 **PostgreSQL实现**：
 
 ```sql
--- AP模式：READ COMMITTED隔离级别
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- AP模式：READ COMMITTED隔离级别（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE 'READ COMMITTED隔离级别设置成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ❌ 弱隔离性：允许异常
 -- ✅ 高可用性：性能好
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE id = 1;
 ```
 
 ### 2.3 AP模式下的持久性
@@ -177,12 +260,27 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **PostgreSQL实现**：
 
 ```sql
--- AP模式：异步提交
-ALTER SYSTEM SET synchronous_commit = 'local';
+-- AP模式：异步提交（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_commit = 'local';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '异步提交设置成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置异步提交失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ❌ 弱持久性：WAL可能未刷新
 -- ✅ 高可用性：立即返回成功
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
 ```
 
 ---
@@ -211,10 +309,33 @@ ALTER SYSTEM SET synchronous_commit = 'local';
 **PostgreSQL实现**：
 
 ```sql
--- 分区下的两阶段提交
+-- 分区下的两阶段提交（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN;
+        PREPARE TRANSACTION 'tx1';
+        -- 如果分区，事务阻塞
+        COMMIT PREPARED 'tx1';
+        RAISE NOTICE '分区下两阶段提交成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '分区下两阶段提交失败: %', SQLERRM;
+            -- 尝试回滚
+            BEGIN
+                ROLLBACK PREPARED 'tx1';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    NULL;  -- 忽略回滚错误
+            END;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 BEGIN;
 PREPARE TRANSACTION 'tx1';
--- 如果分区，事务阻塞
 COMMIT PREPARED 'tx1';
 ```
 

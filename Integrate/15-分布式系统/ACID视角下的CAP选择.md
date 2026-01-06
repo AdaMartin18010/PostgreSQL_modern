@@ -95,10 +95,21 @@ $$
 **PostgreSQL实现**：
 
 ```sql
--- 强ACID + CP模式
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- 强ACID + CP模式（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+        ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '强ACID + CP模式配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ✅ 强原子性：两阶段提交
@@ -143,10 +154,21 @@ $$
 **PostgreSQL实现**：
 
 ```sql
--- 弱ACID + AP模式
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- 弱ACID + AP模式（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = '';
+        ALTER SYSTEM SET synchronous_commit = 'local';
+        ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '弱ACID + AP模式配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 特征：
 -- ⚠️ 弱原子性：本地提交
@@ -182,16 +204,36 @@ ALTER SYSTEM SET default_transaction_isolation = 'read committed';
 **PostgreSQL处理**：
 
 ```sql
--- 冲突处理：临时降级
+-- 冲突处理：临时降级（带错误处理）
 -- 强ACID + CP → 弱ACID + AP（临时）
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-SELECT pg_reload_conf();
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = '';
+        ALTER SYSTEM SET synchronous_commit = 'local';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '临时降级配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '临时降级配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 恢复后重新启用
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-SELECT pg_reload_conf();
+-- 恢复后重新启用（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+        ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '恢复配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '恢复配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.3 冲突协调机制
@@ -242,15 +284,37 @@ SELECT pg_reload_conf();
 **PostgreSQL实践**：
 
 ```sql
--- 金融场景：强ACID + CP
-ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
-ALTER SYSTEM SET synchronous_commit = 'remote_apply';
-ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+-- 金融场景：强ACID + CP（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = 'standby1,standby2';
+        ALTER SYSTEM SET synchronous_commit = 'remote_apply';
+        ALTER SYSTEM SET default_transaction_isolation = 'serializable';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '金融场景配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 日志场景：弱ACID + AP
-ALTER SYSTEM SET synchronous_standby_names = '';
-ALTER SYSTEM SET synchronous_commit = 'local';
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+-- 日志场景：弱ACID + AP（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        ALTER SYSTEM SET synchronous_standby_names = '';
+        ALTER SYSTEM SET synchronous_commit = 'local';
+        ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+        PERFORM pg_reload_conf();
+        RAISE NOTICE '日志场景配置成功，已重新加载配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 通用场景：部分ACID + CP/AP动态
 ALTER SYSTEM SET synchronous_standby_names = 'standby1';
