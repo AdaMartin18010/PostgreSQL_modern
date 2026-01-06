@@ -889,25 +889,94 @@ EOF
 ```
 
 ```sql
--- PostgreSQL配置
-CREATE DATABASE llamaindex_db;
-\c llamaindex_db
+-- PostgreSQL配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 注意：CREATE DATABASE 需要在数据库外部执行
+        -- CREATE DATABASE llamaindex_db;
+        RAISE NOTICE '请在数据库外部执行 CREATE DATABASE llamaindex_db';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '数据库创建失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 安装pgvector
-CREATE EXTENSION IF NOT EXISTS vector;
+-- 安装pgvector（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+            CREATE EXTENSION vector;
+            RAISE NOTICE '扩展 vector 创建成功';
+        ELSE
+            RAISE NOTICE '扩展 vector 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '扩展 vector 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- LlamaIndex会自动创建表，这里展示结构
-CREATE TABLE IF NOT EXISTS data_llamaindex (
-    id TEXT PRIMARY KEY,
-    embedding VECTOR(1536),
-    text TEXT,
-    metadata_ JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- LlamaIndex会自动创建表，这里展示结构（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'data_llamaindex') THEN
+            CREATE TABLE data_llamaindex (
+                id TEXT PRIMARY KEY,
+                embedding VECTOR(1536),
+                text TEXT,
+                metadata_ JSONB,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            RAISE NOTICE '表 data_llamaindex 创建成功';
+        ELSE
+            RAISE NOTICE '表 data_llamaindex 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 data_llamaindex 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 创建索引
-CREATE INDEX ON data_llamaindex USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX ON data_llamaindex USING gin (metadata_);
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes
+            WHERE indexname LIKE '%data_llamaindex_embedding%'
+        ) THEN
+            CREATE INDEX ON data_llamaindex USING hnsw (embedding vector_cosine_ops);
+            RAISE NOTICE 'HNSW索引创建成功';
+        ELSE
+            RAISE NOTICE 'HNSW索引已存在';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes
+            WHERE indexname LIKE '%data_llamaindex_metadata%'
+        ) THEN
+            CREATE INDEX ON data_llamaindex USING gin (metadata_);
+            RAISE NOTICE 'GIN索引创建成功';
+        ELSE
+            RAISE NOTICE 'GIN索引已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.2 向量索引构建

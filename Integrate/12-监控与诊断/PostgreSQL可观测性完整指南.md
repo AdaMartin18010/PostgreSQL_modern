@@ -359,10 +359,42 @@ FROM pg_statio_user_tables;
 **pg_stat_statements配置**:
 
 ```sql
--- 启用pg_stat_statements
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+-- 启用pg_stat_statements（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+            CREATE EXTENSION pg_stat_statements;
+            RAISE NOTICE '扩展 pg_stat_statements 创建成功';
+        ELSE
+            RAISE NOTICE '扩展 pg_stat_statements 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '扩展 pg_stat_statements 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查询性能指标
+-- 查询性能指标（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements') THEN
+            RAISE WARNING '扩展 pg_stat_statements 不存在，无法查询性能指标';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询性能指标';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     query,
     calls,
@@ -380,17 +412,27 @@ LIMIT 10;
 **慢查询监控**:
 
 ```sql
--- 创建慢查询视图
-CREATE VIEW slow_queries AS
-SELECT
-    query,
-    calls,
-    mean_exec_time,
-    max_exec_time,
-    total_exec_time
-FROM pg_stat_statements
-WHERE mean_exec_time > 1000  -- 超过1秒的查询
-ORDER BY mean_exec_time DESC;
+-- 创建慢查询视图（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        CREATE OR REPLACE VIEW slow_queries AS
+        SELECT
+            query,
+            calls,
+            mean_exec_time,
+            max_exec_time,
+            total_exec_time
+        FROM pg_stat_statements
+        WHERE mean_exec_time > 1000  -- 超过1秒的查询
+        ORDER BY mean_exec_time DESC;
+        RAISE NOTICE '慢查询视图创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建慢查询视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 2.3.3 性能论证
