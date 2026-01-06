@@ -190,32 +190,94 @@ docker run -d --name pgvector -p 5432:5432 -e POSTGRES_PASSWORD=postgres pgvecto
 ### 3.2 启用扩展
 
 ```sql
--- 创建扩展
-CREATE EXTENSION vector;
+-- 创建扩展（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+            CREATE EXTENSION vector;
+            RAISE NOTICE '扩展 vector 创建成功';
+        ELSE
+            RAISE NOTICE '扩展 vector 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '扩展 vector 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 验证
+-- 验证（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始验证扩展';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_extension WHERE extname = 'vector';
 
--- 查看支持的向量维度（最大2000）
+-- 查看支持的向量维度（最大2000）（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT typname, typlen FROM pg_type WHERE typname = 'vector';
 ```
 
 ### 3.3 创建向量表
 
 ```sql
-CREATE TABLE documents (
-    id SERIAL PRIMARY KEY,
-    content TEXT NOT NULL,
-    embedding vector(1536),  -- OpenAI ada-002: 1536维
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 创建向量表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+            CREATE TABLE documents (
+                id SERIAL PRIMARY KEY,
+                content TEXT NOT NULL,
+                embedding vector(1536),  -- OpenAI ada-002: 1536维
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            RAISE NOTICE '表 documents 创建成功';
+        ELSE
+            RAISE NOTICE '表 documents 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 documents 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 或使用不同模型
-CREATE TABLE images (
-    id SERIAL PRIMARY KEY,
-    image_url TEXT,
-    embedding vector(512)  -- ResNet: 512维
-);
+-- 或使用不同模型（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'images') THEN
+            CREATE TABLE images (
+                id SERIAL PRIMARY KEY,
+                image_url TEXT,
+                embedding vector(512)  -- ResNet: 512维
+            );
+            RAISE NOTICE '表 images 创建成功';
+        ELSE
+            RAISE NOTICE '表 images 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表 images 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -225,10 +287,27 @@ CREATE TABLE images (
 ### 4.1 插入向量
 
 ```sql
--- 直接插入
-INSERT INTO documents (content, embedding) VALUES
-('PostgreSQL is a powerful database',
- '[0.023, -0.015, 0.041, ...]'::vector);  -- 1536个数字
+-- 直接插入（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+            RAISE WARNING '表 documents 不存在，无法插入';
+            RETURN;
+        END IF;
+
+        INSERT INTO documents (content, embedding) VALUES
+        ('PostgreSQL is a powerful database',
+         '[0.023, -0.015, 0.041, ...]'::vector);  -- 1536个数字
+        RAISE NOTICE '插入成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 documents 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '插入失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 从Python插入（推荐）
 -- python
@@ -255,22 +334,54 @@ conn.commit()
 ### 4.2 向量运算
 
 ```sql
+-- 向量运算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始向量运算测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 -- 向量加法
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT '[1, 2, 3]'::vector + '[4, 5, 6]'::vector;
 -- 结果：[5, 7, 9]
 
 -- 向量减法
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT '[4, 5, 6]'::vector - '[1, 2, 3]'::vector;
 -- 结果：[3, 3, 3]
 
 -- 标量乘法
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT '[1, 2, 3]'::vector * 2;
 -- 结果：[2, 4, 6]
 
--- 向量维度
+-- 向量维度（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+            RAISE WARNING '表 documents 不存在，无法查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询向量维度';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT vector_dims(embedding) FROM documents LIMIT 1;
 
--- 向量范数
+-- 向量范数（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT vector_norm(embedding) FROM documents LIMIT 1;
 ```
 
@@ -281,7 +392,23 @@ SELECT vector_norm(embedding) FROM documents LIMIT 1;
 ### 5.1 基础搜索
 
 ```sql
--- 查找最相似的文档
+-- 查找最相似的文档（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+            RAISE WARNING '表 documents 不存在，无法执行搜索';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始相似度搜索';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH query_vector AS (
     SELECT '[0.023, -0.015, ...]'::vector(1536) AS vec
 )

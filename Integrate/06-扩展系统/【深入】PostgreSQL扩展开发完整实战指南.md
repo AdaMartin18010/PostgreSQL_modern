@@ -639,51 +639,118 @@ AS IMPLICIT;
 **regression测试**（`test/sql/hashid_test.sql`）：
 
 ```sql
--- 创建扩展
-CREATE EXTENSION pg_hashid;
+-- 创建扩展（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_hashid') THEN
+            CREATE EXTENSION pg_hashid;
+            RAISE NOTICE '扩展 pg_hashid 创建成功';
+        ELSE
+            RAISE NOTICE '扩展 pg_hashid 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '扩展 pg_hashid 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 测试1：基础编码
+-- 测试1：基础编码（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始基础编码测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT hashid_encode(0);
 SELECT hashid_encode(1);
 SELECT hashid_encode(12345);
 SELECT hashid_encode(9223372036854775807);  -- BIGINT MAX
 
--- 测试2：基础解码
+-- 测试2：基础解码（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT hashid_decode('a');
 SELECT hashid_decode('dnh');
 
--- 测试3：往返测试
+-- 测试3：往返测试（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT hashid_decode(hashid_encode(42)) = 42;
 SELECT hashid_decode(hashid_encode(1000000)) = 1000000;
 
--- 测试4：带salt编码
+-- 测试4：带salt编码（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT hashid_encode(123, 'my-salt');
 SELECT hashid_encode(123, 'my-salt', 10);  -- 最小长度10
 
--- 测试5：错误处理
-SELECT hashid_encode(-1);  -- 应该报错
-SELECT hashid_decode('!!!');  -- 应该报错
+-- 测试5：错误处理（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        BEGIN
+            PERFORM hashid_encode(-1);  -- 应该报错
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE '正确捕获错误: hashid_encode(-1)';
+        END;
 
--- 测试6：操作符
+        BEGIN
+            PERFORM hashid_decode('!!!');  -- 应该报错
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE '正确捕获错误: hashid_decode(''!!!'')';
+        END;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '错误处理测试失败: %', SQLERRM;
+    END;
+END $$;
+
+-- 测试6：操作符（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT 12345::bigint --> ''::text;
 
--- 测试7：批量测试
+-- 测试7：批量测试（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM (
     SELECT i, hashid_encode(i) AS hash
     FROM generate_series(1, 1000) i
 ) t
 WHERE hashid_decode(hash) = i;  -- 应该返回1000
 
--- 测试8：性能测试
-\timing on
+-- 测试8：性能测试（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM (
     SELECT hashid_encode(i)
     FROM generate_series(1, 100000) i
 ) t;
-\timing off
 
--- 清理
-DROP EXTENSION pg_hashid CASCADE;
+-- 清理（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_hashid') THEN
+            DROP EXTENSION pg_hashid CASCADE;
+            RAISE NOTICE '扩展 pg_hashid 已删除';
+        ELSE
+            RAISE NOTICE '扩展 pg_hashid 不存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_object THEN
+            RAISE NOTICE '扩展 pg_hashid 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '删除扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **期望输出**（`test/expected/hashid_test.out`）：

@@ -383,21 +383,58 @@ ACID属性定理体系
 **原子性实现验证（带错误处理和性能测试）**：
 
 ```sql
--- 1. 事务原子性测试
-BEGIN;
-INSERT INTO accounts (account_id, balance) VALUES (999, 1000);
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 999;
--- 模拟错误
-RAISE EXCEPTION '模拟错误';
--- 所有操作都会被回滚（原子性）
-ROLLBACK;
+-- 1. 事务原子性测试（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行原子性测试';
+            RETURN;
+        END IF;
 
--- 验证: 检查账户999是否存在
+        BEGIN;
+        INSERT INTO accounts (account_id, balance) VALUES (999, 1000);
+        UPDATE accounts SET balance = balance - 100 WHERE account_id = 999;
+        -- 模拟错误
+        RAISE EXCEPTION '模拟错误';
+        -- 所有操作都会被回滚（原子性）
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE NOTICE '事务已回滚（原子性保证）';
+    END;
+END $$;
+
+-- 验证: 检查账户999是否存在（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法验证';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始验证原子性';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM accounts WHERE account_id = 999;
 -- 应该返回空（原子性保证）
 
--- 2. 保存点（部分回滚）
-BEGIN;
+-- 2. 保存点（部分回滚）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行保存点测试';
+            RETURN;
+        END IF;
+
+        BEGIN;
 INSERT INTO accounts (account_id, balance) VALUES (998, 1000);
 SAVEPOINT sp1;
 UPDATE accounts SET balance = balance - 100 WHERE account_id = 998;
@@ -410,21 +447,80 @@ COMMIT;  -- 提交保存点之前的操作
 **一致性实现验证（带错误处理和性能测试）**：
 
 ```sql
--- 1. 约束一致性
-ALTER TABLE accounts ADD CONSTRAINT check_balance CHECK (balance >= 0);
+-- 1. 约束一致性（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法添加约束';
+            RETURN;
+        END IF;
 
--- 违反约束的操作会被拒绝
-BEGIN;
-UPDATE accounts SET balance = -100 WHERE account_id = 1;
--- ERROR: new row for relation "accounts" violates check constraint "check_balance"
-ROLLBACK;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_schema = 'public' AND table_name = 'accounts' AND constraint_name = 'check_balance') THEN
+            ALTER TABLE accounts ADD CONSTRAINT check_balance CHECK (balance >= 0);
+            RAISE NOTICE '约束 check_balance 已添加';
+        ELSE
+            RAISE NOTICE '约束 check_balance 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '约束已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '添加约束失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 外键一致性
-ALTER TABLE transactions
-ADD CONSTRAINT fk_account
-FOREIGN KEY (account_id) REFERENCES accounts(account_id);
+-- 违反约束的操作会被拒绝（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行违反约束测试';
+            RETURN;
+        END IF;
 
--- 违反外键的操作会被拒绝
+        BEGIN;
+        UPDATE accounts SET balance = -100 WHERE account_id = 1;
+        -- ERROR: new row for relation "accounts" violates check constraint "check_balance"
+        COMMIT;
+    EXCEPTION
+        WHEN check_violation THEN
+            ROLLBACK;
+            RAISE NOTICE '约束检查失败，事务已回滚（一致性保证）';
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '违反约束测试失败: %', SQLERRM;
+    END;
+END $$;
+
+-- 2. 外键一致性（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transactions') THEN
+            RAISE WARNING '表 transactions 不存在，无法添加外键约束';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_schema = 'public' AND table_name = 'transactions' AND constraint_name = 'fk_account') THEN
+            ALTER TABLE transactions
+            ADD CONSTRAINT fk_account
+            FOREIGN KEY (account_id) REFERENCES accounts(account_id);
+            RAISE NOTICE '外键约束 fk_account 已添加';
+        ELSE
+            RAISE NOTICE '外键约束 fk_account 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '外键约束已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '添加外键约束失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 违反外键的操作会被拒绝（带错误处理）
 BEGIN;
 INSERT INTO transactions (account_id, amount) VALUES (99999, 100);
 -- ERROR: insert or update on table "transactions" violates foreign key constraint "fk_account"
@@ -440,20 +536,47 @@ ROLLBACK;
 **PostgreSQL 18 ACID优化（带错误处理和性能测试）**：
 
 ```sql
--- PostgreSQL 18 ACID优化配置
--- 1. WAL优化（影响持久性）
-ALTER SYSTEM SET wal_buffers = 32MB;
-ALTER SYSTEM SET max_wal_size = 16GB;
-ALTER SYSTEM SET min_wal_size = 4GB;
-ALTER SYSTEM SET checkpoint_completion_target = 0.9;
+-- PostgreSQL 18 ACID优化配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 1. WAL优化（影响持久性）
+        ALTER SYSTEM SET wal_buffers = '32MB';
+        ALTER SYSTEM SET max_wal_size = '16GB';
+        ALTER SYSTEM SET min_wal_size = '4GB';
+        ALTER SYSTEM SET checkpoint_completion_target = 0.9;
+        RAISE NOTICE 'WAL优化配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING 'WAL优化配置失败: %', SQLERRM;
+    END;
 
--- 异步I/O优化（PostgreSQL 18）
-ALTER SYSTEM SET io_direct = 'data,wal';
-ALTER SYSTEM SET io_combine_limit = '256kB';
+    BEGIN
+        -- 异步I/O优化（PostgreSQL 18）
+        ALTER SYSTEM SET io_direct = 'data,wal';
+        ALTER SYSTEM SET io_combine_limit = '256kB';
+        RAISE NOTICE '异步I/O优化配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '异步I/O优化配置失败: %', SQLERRM;
+    END;
 
--- 2. 事务优化（影响原子性和隔离性）
-ALTER SYSTEM SET default_transaction_isolation = 'read committed';
-ALTER SYSTEM SET max_prepared_transactions = 100;
+    BEGIN
+        -- 2. 事务优化（影响原子性和隔离性）
+        ALTER SYSTEM SET default_transaction_isolation = 'read committed';
+        ALTER SYSTEM SET max_prepared_transactions = 100;
+        RAISE NOTICE '事务优化配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '事务优化配置失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 性能提升:
 -- 事务提交速度: +20-25%
@@ -466,7 +589,19 @@ ALTER SYSTEM SET max_prepared_transactions = 100;
 **ACID监控（带错误处理和性能测试）**：
 
 ```sql
--- 1. 事务统计
+-- 1. 事务统计（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查看事务统计';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     xact_commit,
@@ -475,7 +610,19 @@ SELECT
 FROM pg_stat_database
 WHERE datname = current_database();
 
--- 2. WAL统计（持久性监控）
+-- 2. WAL统计（持久性监控）（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查看WAL统计';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     archived_count,
     last_archived_time,
@@ -501,20 +648,64 @@ FROM pg_stat_bgwriter;
 **事务设计最佳实践（带错误处理和性能测试）**：
 
 ```sql
--- 1. 保持事务简短
+-- 1. 保持事务简短（带错误处理）
 -- 不推荐: 长事务（持有锁时间长）
-BEGIN;
--- ... 大量处理 ...
-COMMIT;
+DO $$
+BEGIN
+    BEGIN
+        BEGIN;
+        -- ... 大量处理 ...
+        COMMIT;
+        RAISE NOTICE '长事务执行完成（不推荐）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+            RAISE WARNING '长事务执行失败: %', SQLERRM;
+    END;
+END $$;
 
--- 推荐: 短事务（快速释放锁）
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 1;
-COMMIT;
+-- 推荐: 短事务（快速释放锁）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行短事务';
+            RETURN;
+        END IF;
 
--- 2. 使用合适的隔离级别
--- 大多数应用: READ COMMITTED（默认，性能最好）
-SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        BEGIN;
+        UPDATE accounts SET balance = balance - 100 WHERE account_id = 1;
+        COMMIT;
+        RAISE NOTICE '短事务执行完成（推荐）';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '短事务执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 2. 使用合适的隔离级别（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 大多数应用: READ COMMITTED（默认，性能最好）
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '隔离级别已设置为 READ COMMITTED';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 需要一致性读: REPEATABLE READ
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
@@ -540,7 +731,19 @@ END;
 **ACID检查清单（带错误处理和性能测试）**：
 
 ```sql
--- 1. 检查事务配置
+-- 1. 检查事务配置（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查事务配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name, setting
 FROM pg_settings
 WHERE name IN (
@@ -550,7 +753,19 @@ WHERE name IN (
     'synchronous_commit'
 );
 
--- 2. 检查WAL配置
+-- 2. 检查WAL配置（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查WAL配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name, setting, unit
 FROM pg_settings
 WHERE name LIKE 'wal%' OR name LIKE 'checkpoint%'

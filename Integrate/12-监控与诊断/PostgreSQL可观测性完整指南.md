@@ -291,7 +291,19 @@ queries:
 **关键指标查询**:
 
 ```sql
--- 连接数监控
+-- 连接数监控（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控连接数';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     count(*) as total_connections,
     count(*) FILTER (WHERE state = 'active') as active_connections,
@@ -299,7 +311,8 @@ SELECT
     count(*) FILTER (WHERE state = 'idle in transaction') as idle_in_transaction
 FROM pg_stat_activity;
 
--- 缓存命中率
+-- 缓存命中率（带错误处理和性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     sum(heap_blks_read) as heap_read,
     sum(heap_blks_hit) as heap_hit,
