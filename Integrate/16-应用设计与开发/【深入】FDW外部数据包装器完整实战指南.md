@@ -123,30 +123,104 @@
 ### 2.1 核心概念
 
 ```sql
--- 1. 安装扩展
-CREATE EXTENSION postgres_fdw;
+-- 1. 安装扩展（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+            CREATE EXTENSION postgres_fdw;
+            RAISE NOTICE '扩展 postgres_fdw 创建成功';
+        ELSE
+            RAISE NOTICE '扩展 postgres_fdw 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '扩展 postgres_fdw 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 创建服务器（Server）
-CREATE SERVER foreign_server
-FOREIGN DATA WRAPPER postgres_fdw
-OPTIONS (host 'remote-host', port '5432', dbname 'remotedb');
+-- 2. 创建服务器（Server）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'foreign_server') THEN
+            CREATE SERVER foreign_server
+            FOREIGN DATA WRAPPER postgres_fdw
+            OPTIONS (host 'remote-host', port '5432', dbname 'remotedb');
+            RAISE NOTICE '外部服务器 foreign_server 创建成功';
+        ELSE
+            RAISE NOTICE '外部服务器 foreign_server 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '外部服务器已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部服务器失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 3. 创建用户映射（User Mapping）
-CREATE USER MAPPING FOR postgres
-SERVER foreign_server
-OPTIONS (user 'remote_user', password 'remote_password');
+-- 3. 创建用户映射（User Mapping）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'foreign_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_user_mappings WHERE srvname = 'foreign_server' AND usename = 'postgres') THEN
+                CREATE USER MAPPING FOR postgres
+                SERVER foreign_server
+                OPTIONS (user 'remote_user', password 'remote_password');
+                RAISE NOTICE '用户映射创建成功';
+            ELSE
+                RAISE NOTICE '用户映射已存在';
+            END IF;
+        ELSE
+            RAISE NOTICE '外部服务器不存在，跳过用户映射创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '用户映射已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建用户映射失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 4. 创建外部表（Foreign Table）
-CREATE FOREIGN TABLE remote_users (
-    id INT,
-    username TEXT,
-    email TEXT
-)
-SERVER foreign_server
-OPTIONS (schema_name 'public', table_name 'users');
+-- 4. 创建外部表（Foreign Table）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'foreign_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'remote_users') THEN
+                CREATE FOREIGN TABLE remote_users (
+                    id INT,
+                    username TEXT,
+                    email TEXT
+                )
+                SERVER foreign_server
+                OPTIONS (schema_name 'public', table_name 'users');
+                RAISE NOTICE '外部表 remote_users 创建成功';
+            ELSE
+                RAISE NOTICE '外部表 remote_users 已存在';
+            END IF;
+        ELSE
+            RAISE NOTICE '外部服务器不存在，跳过外部表创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '外部表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 5. 查询外部表（如本地表）
-SELECT * FROM remote_users WHERE id > 100;
+-- 5. 查询外部表（如本地表）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM remote_users WHERE id > 100
+LIMIT 100;
 ```
 
 ### 2.2 FDW工作原理
@@ -182,69 +256,175 @@ SELECT * FROM remote_users WHERE id > 100;
 ### 3.1 基础使用
 
 ```sql
--- 完整示例
-CREATE EXTENSION postgres_fdw;
+-- 完整示例（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 安装扩展
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+            CREATE EXTENSION postgres_fdw;
+            RAISE NOTICE '扩展 postgres_fdw 创建成功';
+        END IF;
 
-CREATE SERVER remote_pg
-FOREIGN DATA WRAPPER postgres_fdw
-OPTIONS (host '192.168.1.100', port '5432', dbname 'app_db');
+        -- 创建服务器
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_pg') THEN
+            CREATE SERVER remote_pg
+            FOREIGN DATA WRAPPER postgres_fdw
+            OPTIONS (host '192.168.1.100', port '5432', dbname 'app_db');
+            RAISE NOTICE '外部服务器 remote_pg 创建成功';
+        END IF;
 
-CREATE USER MAPPING FOR current_user
-SERVER remote_pg
-OPTIONS (user 'app_user', password 'app_password');
+        -- 创建用户映射
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_pg') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_user_mappings WHERE srvname = 'remote_pg') THEN
+                CREATE USER MAPPING FOR current_user
+                SERVER remote_pg
+                OPTIONS (user 'app_user', password 'app_password');
+                RAISE NOTICE '用户映射创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '对象已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建FDW对象失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 导入整个schema
-IMPORT FOREIGN SCHEMA public
-FROM SERVER remote_pg
-INTO public;
+-- 导入整个schema（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_pg') THEN
+            IMPORT FOREIGN SCHEMA public
+            FROM SERVER remote_pg
+            INTO public;
+            RAISE NOTICE 'Schema导入成功';
+        ELSE
+            RAISE NOTICE '外部服务器不存在，跳过schema导入';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '导入schema失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 或导入特定表
-IMPORT FOREIGN SCHEMA public
-LIMIT TO (users, orders)
-FROM SERVER remote_pg
-INTO public;
+-- 或导入特定表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_pg') THEN
+            IMPORT FOREIGN SCHEMA public
+            LIMIT TO (users, orders)
+            FROM SERVER remote_pg
+            INTO public;
+            RAISE NOTICE '特定表导入成功';
+        ELSE
+            RAISE NOTICE '外部服务器不存在，跳过表导入';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '导入表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 3.2 跨库JOIN
 
 ```sql
--- 本地表 JOIN 远程表
+-- 本地表 JOIN 远程表（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     lu.name AS local_user,
     ru.username AS remote_user,
     lu.total_orders
 FROM local_users lu
 JOIN remote_users ru ON lu.email = ru.email
-WHERE lu.total_orders > 10;
+WHERE lu.total_orders > 10
+LIMIT 100;
 
--- 性能优化：本地表小、远程表大时，先过滤
+-- 性能优化：本地表小、远程表大时，先过滤（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH local_emails AS (
     SELECT email FROM local_users WHERE total_orders > 10
 )
 SELECT ru.*
 FROM remote_users ru
-WHERE ru.email IN (SELECT email FROM local_emails);
+WHERE ru.email IN (SELECT email FROM local_emails)
+LIMIT 100;
 ```
 
 ### 3.3 写入操作
 
 ```sql
--- FDW支持INSERT、UPDATE、DELETE
-INSERT INTO remote_users (username, email)
-VALUES ('newuser', 'new@example.com');
+-- FDW支持INSERT、UPDATE、DELETE（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'remote_users') THEN
+            -- INSERT（带错误处理）
+            BEGIN
+                INSERT INTO remote_users (username, email)
+                VALUES ('newuser', 'new@example.com');
+                RAISE NOTICE 'INSERT成功';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING 'INSERT失败: %', SQLERRM;
+            END;
 
-UPDATE remote_users
-SET email = 'updated@example.com'
-WHERE id = 123;
+            -- UPDATE（带错误处理）
+            BEGIN
+                UPDATE remote_users
+                SET email = 'updated@example.com'
+                WHERE id = 123;
+                RAISE NOTICE 'UPDATE成功';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING 'UPDATE失败: %', SQLERRM;
+            END;
 
-DELETE FROM remote_users WHERE id = 456;
+            -- DELETE（带错误处理）
+            BEGIN
+                DELETE FROM remote_users WHERE id = 456;
+                RAISE NOTICE 'DELETE成功';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING 'DELETE失败: %', SQLERRM;
+            END;
+        ELSE
+            RAISE NOTICE '外部表 remote_users 不存在，跳过写入操作';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 事务支持
-BEGIN;
-INSERT INTO remote_users (username) VALUES ('user1');
-INSERT INTO local_users (name) VALUES ('user1');
-COMMIT;
--- 两阶段提交（2PC）保证一致性
+-- 事务支持（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'remote_users') AND
+           EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'local_users') THEN
+            BEGIN;
+            INSERT INTO remote_users (username) VALUES ('user1');
+            INSERT INTO local_users (name) VALUES ('user1');
+            COMMIT;
+            RAISE NOTICE '事务提交成功（两阶段提交（2PC）保证一致性）';
+        ELSE
+            RAISE NOTICE '表不存在，跳过事务操作';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE WARNING '事务失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -254,60 +434,121 @@ COMMIT;
 ### 4.1 读取CSV文件
 
 ```sql
-CREATE EXTENSION file_fdw;
+-- file_fdw扩展和服务器（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'file_fdw') THEN
+            CREATE EXTENSION file_fdw;
+            RAISE NOTICE '扩展 file_fdw 创建成功';
+        END IF;
 
-CREATE SERVER file_server
-FOREIGN DATA WRAPPER file_fdw;
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'file_server') THEN
+            CREATE SERVER file_server
+            FOREIGN DATA WRAPPER file_fdw;
+            RAISE NOTICE '外部服务器 file_server 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '对象已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建file_fdw对象失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 创建外部表映射CSV
-CREATE FOREIGN TABLE sales_data (
-    date DATE,
-    product_id INT,
-    quantity INT,
-    amount NUMERIC(10,2)
-)
-SERVER file_server
-OPTIONS (filename '/data/sales_2024.csv', format 'csv', header 'true');
+-- 创建外部表映射CSV（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'file_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'sales_data') THEN
+                CREATE FOREIGN TABLE sales_data (
+                    date DATE,
+                    product_id INT,
+                    quantity INT,
+                    amount NUMERIC(10,2)
+                )
+                SERVER file_server
+                OPTIONS (filename '/data/sales_2024.csv', format 'csv', header 'true');
+                RAISE NOTICE '外部表 sales_data 创建成功';
+            ELSE
+                RAISE NOTICE '外部表 sales_data 已存在';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '外部表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查询CSV（如普通表）
+-- 查询CSV（如普通表）（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     DATE_TRUNC('month', date) AS month,
     SUM(amount) AS total_sales
 FROM sales_data
 WHERE date >= '2024-01-01'
 GROUP BY month
-ORDER BY month;
+ORDER BY month
+LIMIT 100;
 
--- JOIN CSV + 数据库表
+-- JOIN CSV + 数据库表（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     p.product_name,
     s.quantity,
     s.amount
 FROM sales_data s
 JOIN products p ON s.product_id = p.id
-WHERE s.date = CURRENT_DATE;
+WHERE s.date = CURRENT_DATE
+LIMIT 100;
 ```
 
 ### 4.2 读取日志文件
 
 ```sql
-CREATE FOREIGN TABLE app_logs (
-    timestamp TEXT,
-    level TEXT,
-    message TEXT,
-    details TEXT
-)
-SERVER file_server
-OPTIONS (filename '/var/log/app.log', format 'csv', delimiter '|');
+-- 创建外部表映射日志文件（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'file_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'app_logs') THEN
+                CREATE FOREIGN TABLE app_logs (
+                    timestamp TEXT,
+                    level TEXT,
+                    message TEXT,
+                    details TEXT
+                )
+                SERVER file_server
+                OPTIONS (filename '/var/log/app.log', format 'csv', delimiter '|');
+                RAISE NOTICE '外部表 app_logs 创建成功';
+            ELSE
+                RAISE NOTICE '外部表 app_logs 已存在';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '外部表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 分析日志
+-- 分析日志（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     level,
     COUNT(*) AS count,
     COUNT(*) FILTER (WHERE message LIKE '%ERROR%') AS error_count
 FROM app_logs
 WHERE timestamp::TIMESTAMPTZ >= NOW() - INTERVAL '1 hour'
-GROUP BY level;
+GROUP BY level
+LIMIT 100;
 ```
 
 ---
@@ -326,26 +567,64 @@ sudo make USE_PGXS=1 install
 ```
 
 ```sql
-CREATE EXTENSION mysql_fdw;
+-- mysql_fdw配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'mysql_fdw') THEN
+            CREATE EXTENSION mysql_fdw;
+            RAISE NOTICE '扩展 mysql_fdw 创建成功';
+        END IF;
 
-CREATE SERVER mysql_server
-FOREIGN DATA WRAPPER mysql_fdw
-OPTIONS (host '192.168.1.200', port '3306');
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mysql_server') THEN
+            CREATE SERVER mysql_server
+            FOREIGN DATA WRAPPER mysql_fdw
+            OPTIONS (host '192.168.1.200', port '3306');
+            RAISE NOTICE '外部服务器 mysql_server 创建成功';
+        END IF;
 
-CREATE USER MAPPING FOR postgres
-SERVER mysql_server
-OPTIONS (username 'mysql_user', password 'mysql_password');
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mysql_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_user_mappings WHERE srvname = 'mysql_server') THEN
+                CREATE USER MAPPING FOR postgres
+                SERVER mysql_server
+                OPTIONS (username 'mysql_user', password 'mysql_password');
+                RAISE NOTICE '用户映射创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '对象已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建mysql_fdw对象失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 导入MySQL表
-IMPORT FOREIGN SCHEMA mydb
-FROM SERVER mysql_server
-INTO public;
+-- 导入MySQL表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mysql_server') THEN
+            IMPORT FOREIGN SCHEMA mydb
+            FROM SERVER mysql_server
+            INTO public;
+            RAISE NOTICE 'MySQL schema导入成功';
+        ELSE
+            RAISE NOTICE '外部服务器不存在，跳过schema导入';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '导入schema失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.2 跨数据库查询
 
 ```sql
--- PostgreSQL JOIN MySQL
+-- PostgreSQL JOIN MySQL（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pg.order_id,
     pg.created_at,
@@ -353,13 +632,29 @@ SELECT
     mysql.customer_email
 FROM pg_orders pg
 JOIN mysql_customers mysql ON pg.customer_id = mysql.id
-WHERE pg.created_at >= '2025-01-01';
+WHERE pg.created_at >= '2025-01-01'
+LIMIT 100;
 
--- 数据迁移
-INSERT INTO pg_orders (id, amount, customer_id)
-SELECT id, amount, customer_id
-FROM mysql_orders
-WHERE created_at >= '2024-01-01';
+-- 数据迁移（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pg_orders') AND
+           EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'mysql_orders') THEN
+            INSERT INTO pg_orders (id, amount, customer_id)
+            SELECT id, amount, customer_id
+            FROM mysql_orders
+            WHERE created_at >= '2024-01-01';
+            RAISE NOTICE '数据迁移成功';
+        ELSE
+            RAISE NOTICE '表不存在，跳过数据迁移';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '数据迁移失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -377,31 +672,73 @@ sudo make USE_PGXS=1 install
 ```
 
 ```sql
-CREATE EXTENSION mongo_fdw;
+-- mongo_fdw配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'mongo_fdw') THEN
+            CREATE EXTENSION mongo_fdw;
+            RAISE NOTICE '扩展 mongo_fdw 创建成功';
+        END IF;
 
-CREATE SERVER mongo_server
-FOREIGN DATA WRAPPER mongo_fdw
-OPTIONS (address '192.168.1.300', port '27017');
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mongo_server') THEN
+            CREATE SERVER mongo_server
+            FOREIGN DATA WRAPPER mongo_fdw
+            OPTIONS (address '192.168.1.300', port '27017');
+            RAISE NOTICE '外部服务器 mongo_server 创建成功';
+        END IF;
 
-CREATE USER MAPPING FOR postgres
-SERVER mongo_server
-OPTIONS (username 'mongo_user', password 'mongo_password');
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mongo_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_user_mappings WHERE srvname = 'mongo_server') THEN
+                CREATE USER MAPPING FOR postgres
+                SERVER mongo_server
+                OPTIONS (username 'mongo_user', password 'mongo_password');
+                RAISE NOTICE '用户映射创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '对象已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建mongo_fdw对象失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 创建外部表映射MongoDB集合
-CREATE FOREIGN TABLE mongo_products (
-    _id NAME,
-    name TEXT,
-    price NUMERIC,
-    specs JSONB
-)
-SERVER mongo_server
-OPTIONS (database 'shop', collection 'products');
+-- 创建外部表映射MongoDB集合（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mongo_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'mongo_products') THEN
+                CREATE FOREIGN TABLE mongo_products (
+                    _id NAME,
+                    name TEXT,
+                    price NUMERIC,
+                    specs JSONB
+                )
+                SERVER mongo_server
+                OPTIONS (database 'shop', collection 'products');
+                RAISE NOTICE '外部表 mongo_products 创建成功';
+            ELSE
+                RAISE NOTICE '外部表 mongo_products 已存在';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '外部表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 6.2 MongoDB + PostgreSQL混合查询
 
 ```sql
--- PostgreSQL关系表 JOIN MongoDB文档
+-- PostgreSQL关系表 JOIN MongoDB文档（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     o.order_id,
     o.amount,
@@ -409,9 +746,11 @@ SELECT
     mp.specs ->> 'brand' AS brand
 FROM orders o
 JOIN mongo_products mp ON o.product_id = mp._id::TEXT
-WHERE o.created_at >= '2025-01-01';
+WHERE o.created_at >= '2025-01-01'
+LIMIT 100;
 
--- 聚合分析
+-- 聚合分析（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     mp.specs ->> 'category' AS category,
     COUNT(*) AS order_count,
@@ -419,7 +758,8 @@ SELECT
 FROM orders o
 JOIN mongo_products mp ON o.product_id = mp._id::TEXT
 GROUP BY category
-ORDER BY total_revenue DESC;
+ORDER BY total_revenue DESC
+LIMIT 100;
 ```
 
 ---
@@ -429,42 +769,89 @@ ORDER BY total_revenue DESC;
 ### 7.1 redis_fdw
 
 ```sql
--- 访问Redis数据
-CREATE EXTENSION redis_fdw;
+-- 访问Redis数据（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'redis_fdw') THEN
+            CREATE EXTENSION redis_fdw;
+            RAISE NOTICE '扩展 redis_fdw 创建成功';
+        END IF;
 
-CREATE SERVER redis_server
-FOREIGN DATA WRAPPER redis_fdw
-OPTIONS (address '127.0.0.1', port '6379');
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'redis_server') THEN
+            CREATE SERVER redis_server
+            FOREIGN DATA WRAPPER redis_fdw
+            OPTIONS (address '127.0.0.1', port '6379');
+            RAISE NOTICE '外部服务器 redis_server 创建成功';
+        END IF;
 
-CREATE FOREIGN TABLE redis_cache (
-    key TEXT,
-    value TEXT
-)
-SERVER redis_server
-OPTIONS (database '0');
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'redis_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'redis_cache') THEN
+                CREATE FOREIGN TABLE redis_cache (
+                    key TEXT,
+                    value TEXT
+                )
+                SERVER redis_server
+                OPTIONS (database '0');
+                RAISE NOTICE '外部表 redis_cache 创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '对象已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建redis_fdw对象失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查询Redis
-SELECT * FROM redis_cache WHERE key LIKE 'user:%';
+-- 查询Redis（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM redis_cache WHERE key LIKE 'user:%'
+LIMIT 100;
 ```
 
 ### 7.2 http_fdw
 
 ```sql
--- 访问REST API
-CREATE EXTENSION http_fdw;
+-- 访问REST API（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'http_fdw') THEN
+            CREATE EXTENSION http_fdw;
+            RAISE NOTICE '扩展 http_fdw 创建成功';
+        END IF;
 
-CREATE SERVER api_server
-FOREIGN DATA WRAPPER http_fdw;
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'api_server') THEN
+            CREATE SERVER api_server
+            FOREIGN DATA WRAPPER http_fdw;
+            RAISE NOTICE '外部服务器 api_server 创建成功';
+        END IF;
 
-CREATE FOREIGN TABLE github_users (
-    login TEXT,
-    id INT,
-    avatar_url TEXT
-)
-SERVER api_server
-OPTIONS (uri 'https://api.github.com/users');
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'api_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'github_users') THEN
+                CREATE FOREIGN TABLE github_users (
+                    login TEXT,
+                    id INT,
+                    avatar_url TEXT
+                )
+                SERVER api_server
+                OPTIONS (uri 'https://api.github.com/users');
+                RAISE NOTICE '外部表 github_users 创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '对象已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建http_fdw对象失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查询API数据
+-- 查询API数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM github_users LIMIT 10;
 ```
 
@@ -487,8 +874,8 @@ SELECT * FROM github_users LIMIT 10;
 ### 8.1 查询下推（Push Down）
 
 ```sql
--- postgres_fdw支持完整下推
-EXPLAIN (VERBOSE)
+-- postgres_fdw支持完整下推（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
 SELECT * FROM remote_users
 WHERE age > 25 AND city = 'Beijing'
 ORDER BY created_at DESC
@@ -508,31 +895,110 @@ LIMIT 10;
 ### 8.2 批量获取
 
 ```sql
--- 设置批量获取大小
-ALTER SERVER remote_pg
-OPTIONS (ADD fetch_size '10000');
+-- 设置批量获取大小（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_pg') THEN
+            ALTER SERVER remote_pg
+            OPTIONS (ADD fetch_size '10000');
+            RAISE NOTICE '服务器批量获取大小设置成功';
+        ELSE
+            RAISE NOTICE '外部服务器不存在，跳过设置';
+        END IF;
 
--- 或在表级别设置
-ALTER FOREIGN TABLE remote_users
-OPTIONS (ADD fetch_size '10000');
-
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'remote_users') THEN
+            ALTER FOREIGN TABLE remote_users
+            OPTIONS (ADD fetch_size '10000');
+            RAISE NOTICE '外部表批量获取大小设置成功';
+        ELSE
+            RAISE NOTICE '外部表不存在，跳过设置';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置批量获取大小失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 -- 默认100行，增加到10000提升批量查询性能
 ```
 
 ### 8.3 连接池
 
 ```sql
--- 使用连接池避免频繁建立连接
-CREATE EXTENSION postgres_fdw;
+-- 使用连接池避免频繁建立连接（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+            CREATE EXTENSION postgres_fdw;
+            RAISE NOTICE '扩展 postgres_fdw 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '扩展已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建扩展失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查看当前连接
-SELECT * FROM postgres_fdw_get_connections();
+-- 查看当前连接（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+            SELECT * FROM postgres_fdw_get_connections() LIMIT 100;
+            RAISE NOTICE '连接查询成功';
+        ELSE
+            RAISE NOTICE '扩展 postgres_fdw 未安装，跳过连接查询';
+        END IF;
+    EXCEPTION
+        WHEN undefined_function THEN
+            RAISE WARNING '函数 postgres_fdw_get_connections 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '查询连接失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 断开空闲连接
-SELECT postgres_fdw_disconnect('remote_pg');
+-- 断开空闲连接（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+            SELECT postgres_fdw_disconnect('remote_pg');
+            RAISE NOTICE '断开连接成功';
+        ELSE
+            RAISE NOTICE '扩展 postgres_fdw 未安装，跳过断开连接';
+        END IF;
+    EXCEPTION
+        WHEN undefined_function THEN
+            RAISE WARNING '函数 postgres_fdw_disconnect 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '断开连接失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 断开所有连接
-SELECT postgres_fdw_disconnect_all();
+-- 断开所有连接（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+            SELECT postgres_fdw_disconnect_all();
+            RAISE NOTICE '断开所有连接成功';
+        ELSE
+            RAISE NOTICE '扩展 postgres_fdw 未安装，跳过断开连接';
+        END IF;
+    EXCEPTION
+        WHEN undefined_function THEN
+            RAISE WARNING '函数 postgres_fdw_disconnect_all 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '断开所有连接失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -542,24 +1008,37 @@ SELECT postgres_fdw_disconnect_all();
 ### 9.1 案例1：数据仓库整合
 
 ```sql
--- 整合3个数据源：PostgreSQL + MySQL + MongoDB
--- PostgreSQL（订单）
-CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    customer_id INT,
-    amount NUMERIC,
-    created_at TIMESTAMPTZ
-);
+-- 整合3个数据源：PostgreSQL + MySQL + MongoDB（带错误处理）
 
--- MySQL（客户）
-CREATE SERVER mysql_server FOREIGN DATA WRAPPER mysql_fdw ...;
-CREATE FOREIGN TABLE mysql_customers (...) SERVER mysql_server;
+-- PostgreSQL（订单）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') THEN
+            CREATE TABLE orders (
+                id SERIAL PRIMARY KEY,
+                customer_id INT,
+                amount NUMERIC,
+                created_at TIMESTAMPTZ
+            );
+            RAISE NOTICE '表 orders 创建成功';
+        ELSE
+            RAISE NOTICE '表 orders 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- MongoDB（产品）
-CREATE SERVER mongo_server FOREIGN DATA WRAPPER mongo_fdw ...;
-CREATE FOREIGN TABLE mongo_products (...) SERVER mongo_server;
+-- MySQL（客户）和MongoDB（产品）的FDW配置需要单独创建
+-- 注意：这里省略了具体的FDW创建代码，实际使用时需要完整配置
 
--- 统一查询
+-- 统一查询（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     o.id AS order_id,
     mc.name AS customer_name,
@@ -571,43 +1050,112 @@ FROM orders o
 JOIN mysql_customers mc ON o.customer_id = mc.id
 JOIN mongo_products mp ON o.product_id = mp._id::TEXT
 WHERE o.created_at >= '2025-01-01'
-ORDER BY o.created_at DESC;
-
+ORDER BY o.created_at DESC
+LIMIT 100;
 -- 单一SQL，整合3个数据库！
 ```
 
 ### 9.2 案例2：渐进式数据迁移
 
 ```sql
--- 从MySQL迁移到PostgreSQL
+-- 从MySQL迁移到PostgreSQL（带错误处理）
 
--- 第1步：创建FDW连接
-CREATE SERVER mysql_legacy FOREIGN DATA WRAPPER mysql_fdw
-OPTIONS (host 'legacy-mysql', port '3306');
+-- 第1步：创建FDW连接（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mysql_legacy') THEN
+            CREATE SERVER mysql_legacy FOREIGN DATA WRAPPER mysql_fdw
+            OPTIONS (host 'legacy-mysql', port '3306');
+            RAISE NOTICE '外部服务器 mysql_legacy 创建成功';
+        END IF;
 
-CREATE USER MAPPING FOR postgres SERVER mysql_legacy
-OPTIONS (username 'root', password 'password');
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'mysql_legacy') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_user_mappings WHERE srvname = 'mysql_legacy') THEN
+                CREATE USER MAPPING FOR postgres SERVER mysql_legacy
+                OPTIONS (username 'root', password 'password');
+                RAISE NOTICE '用户映射创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '对象已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建FDW连接失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 第2步：映射MySQL表
-CREATE FOREIGN TABLE mysql_orders (...) SERVER mysql_legacy;
-CREATE FOREIGN TABLE mysql_customers (...) SERVER mysql_legacy;
+-- 第2步：映射MySQL表（需要根据实际表结构创建）
+-- 第3步：创建PostgreSQL表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'mysql_orders') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pg_orders') THEN
+                CREATE TABLE pg_orders (LIKE mysql_orders);
+                RAISE NOTICE '表 pg_orders 创建成功';
+            END IF;
+        END IF;
 
--- 第3步：创建PostgreSQL表
-CREATE TABLE pg_orders (LIKE mysql_orders);
-CREATE TABLE pg_customers (LIKE mysql_customers);
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'mysql_customers') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pg_customers') THEN
+                CREATE TABLE pg_customers (LIKE mysql_customers);
+                RAISE NOTICE '表 pg_customers 创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 第4步：历史数据迁移
-INSERT INTO pg_orders SELECT * FROM mysql_orders
-WHERE created_at < '2025-01-01';
+-- 第4步：历史数据迁移（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pg_orders') AND
+           EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'mysql_orders') THEN
+            INSERT INTO pg_orders SELECT * FROM mysql_orders
+            WHERE created_at < '2025-01-01';
+            RAISE NOTICE '历史订单数据迁移成功';
+        END IF;
 
-INSERT INTO pg_customers SELECT * FROM mysql_customers;
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pg_customers') AND
+           EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'mysql_customers') THEN
+            INSERT INTO pg_customers SELECT * FROM mysql_customers;
+            RAISE NOTICE '客户数据迁移成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '数据迁移失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 第5步：创建联合视图（过渡期）
-CREATE VIEW orders_unified AS
-SELECT * FROM pg_orders          -- 新数据
-UNION ALL
-SELECT * FROM mysql_orders       -- 历史数据
-WHERE created_at >= '2025-01-01';
+-- 第5步：创建联合视图（过渡期）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pg_orders') AND
+           EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'mysql_orders') THEN
+            DROP VIEW IF EXISTS orders_unified;
+            CREATE VIEW orders_unified AS
+            SELECT * FROM pg_orders          -- 新数据
+            UNION ALL
+            SELECT * FROM mysql_orders       -- 历史数据
+            WHERE created_at >= '2025-01-01';
+            RAISE NOTICE '联合视图 orders_unified 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 第6步：应用切换到unified视图
 -- 应用无感知，渐进式迁移！
@@ -616,27 +1164,64 @@ WHERE created_at >= '2025-01-01';
 ### 9.3 案例3：实时报表系统
 
 ```sql
--- 整合多个微服务数据库
+-- 整合多个微服务数据库（带错误处理）
 
--- 服务1：用户服务（PostgreSQL）
-CREATE SERVER user_service_db FOREIGN DATA WRAPPER postgres_fdw
-OPTIONS (host 'user-service-db', dbname 'users');
+-- 服务1：用户服务（PostgreSQL）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'user_service_db') THEN
+            CREATE SERVER user_service_db FOREIGN DATA WRAPPER postgres_fdw
+            OPTIONS (host 'user-service-db', dbname 'users');
+            RAISE NOTICE '外部服务器 user_service_db 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '外部服务器已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部服务器失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
-CREATE FOREIGN TABLE svc_users (...) SERVER user_service_db;
+-- 服务2：订单服务（MySQL）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'order_service_db') THEN
+            CREATE SERVER order_service_db FOREIGN DATA WRAPPER mysql_fdw
+            OPTIONS (host 'order-service-db');
+            RAISE NOTICE '外部服务器 order_service_db 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '外部服务器已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部服务器失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 服务2：订单服务（MySQL）
-CREATE SERVER order_service_db FOREIGN DATA WRAPPER mysql_fdw
-OPTIONS (host 'order-service-db');
+-- 服务3：产品服务（MongoDB）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'product_service_db') THEN
+            CREATE SERVER product_service_db FOREIGN DATA WRAPPER mongo_fdw
+            OPTIONS (address 'product-service-db');
+            RAISE NOTICE '外部服务器 product_service_db 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '外部服务器已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建外部服务器失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
-CREATE FOREIGN TABLE svc_orders (...) SERVER order_service_db;
-
--- 服务3：产品服务（MongoDB）
-CREATE SERVER product_service_db FOREIGN DATA WRAPPER mongo_fdw
-OPTIONS (address 'product-service-db');
-
-CREATE FOREIGN TABLE svc_products (...) SERVER product_service_db;
-
--- 实时报表查询
+-- 实时报表查询（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     DATE(so.created_at) AS date,
     COUNT(DISTINCT su.id) AS active_users,
@@ -647,7 +1232,8 @@ FROM svc_orders so
 JOIN svc_users su ON so.user_id = su.id
 WHERE so.created_at >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY DATE(so.created_at)
-ORDER BY date DESC;
+ORDER BY date DESC
+LIMIT 100;
 ```
 
 ---
@@ -657,59 +1243,173 @@ ORDER BY date DESC;
 ### 10.1 性能优化
 
 ```sql
--- ✅ 1. 启用查询下推
-ALTER SERVER remote_pg
-OPTIONS (ADD extensions 'postgres_fdw');
+-- ✅ 1. 启用查询下推（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_pg') THEN
+            ALTER SERVER remote_pg
+            OPTIONS (ADD extensions 'postgres_fdw');
+            RAISE NOTICE '查询下推启用成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '启用查询下推失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- ✅ 2. 使用异步执行（PostgreSQL 14+）
-ALTER SERVER remote_pg
-OPTIONS (ADD async_capable 'true');
+-- ✅ 2. 使用异步执行（PostgreSQL 14+）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_pg') THEN
+            ALTER SERVER remote_pg
+            OPTIONS (ADD async_capable 'true');
+            RAISE NOTICE '异步执行启用成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '启用异步执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- ✅ 3. 增加批量大小
-ALTER FOREIGN TABLE remote_table
-OPTIONS (ADD fetch_size '10000');
+-- ✅ 3. 增加批量大小（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'remote_table') THEN
+            ALTER FOREIGN TABLE remote_table
+            OPTIONS (ADD fetch_size '10000');
+            RAISE NOTICE '批量大小设置成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置批量大小失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- ✅ 4. 在远程创建索引
 -- 在远程数据库为外部表查询列创建索引
 
--- ✅ 5. 物化外部数据（频繁访问）
-CREATE MATERIALIZED VIEW mv_remote_data AS
-SELECT * FROM remote_table WHERE active = TRUE;
+-- ✅ 5. 物化外部数据（频繁访问）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'remote_table') THEN
+            DROP MATERIALIZED VIEW IF EXISTS mv_remote_data;
+            CREATE MATERIALIZED VIEW mv_remote_data AS
+            SELECT * FROM remote_table WHERE active = TRUE;
+            RAISE NOTICE '物化视图创建成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建物化视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
-REFRESH MATERIALIZED VIEW CONCURRENTLY mv_remote_data;
+-- 刷新物化视图（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'mv_remote_data') THEN
+            REFRESH MATERIALIZED VIEW CONCURRENTLY mv_remote_data;
+            RAISE NOTICE '物化视图刷新成功';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '刷新物化视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 10.2 安全建议
 
 ```sql
 -- ❌ 不要在USER MAPPING中硬编码密码
-CREATE USER MAPPING FOR postgres
-SERVER remote_server
-OPTIONS (user 'remote_user', password 'plain_text_password');  -- 危险！
+-- CREATE USER MAPPING FOR postgres
+-- SERVER remote_server
+-- OPTIONS (user 'remote_user', password 'plain_text_password');  -- 危险！
 
 -- ✅ 使用.pgpass文件
 -- ~/.pgpass
 -- hostname:port:database:username:password
 -- remote-host:5432:remotedb:remote_user:secure_password
 
--- ✅ 或使用证书认证
-CREATE USER MAPPING FOR postgres
-SERVER remote_server
-OPTIONS (sslcert '/path/to/client-cert.pem', sslkey '/path/to/client-key.pem');
+-- ✅ 或使用证书认证（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_server') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_user_mappings WHERE srvname = 'remote_server') THEN
+                CREATE USER MAPPING FOR postgres
+                SERVER remote_server
+                OPTIONS (sslcert '/path/to/client-cert.pem', sslkey '/path/to/client-key.pem');
+                RAISE NOTICE '证书认证用户映射创建成功';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '用户映射已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建用户映射失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- ✅ 限制访问权限
-GRANT USAGE ON FOREIGN SERVER remote_server TO app_user;
-GRANT SELECT ON remote_users TO app_user;
--- 不授予INSERT/UPDATE/DELETE
+-- ✅ 限制访问权限（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_server') THEN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+                GRANT USAGE ON FOREIGN SERVER remote_server TO app_user;
+                RAISE NOTICE '服务器权限授予成功';
+            END IF;
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM information_schema.foreign_tables WHERE foreign_table_name = 'remote_users') THEN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+                GRANT SELECT ON remote_users TO app_user;
+                RAISE NOTICE '表权限授予成功（不授予INSERT/UPDATE/DELETE）';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '授予权限失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 10.3 监控
 
 ```sql
--- 查看FDW连接
-SELECT * FROM postgres_fdw_get_connections();
+-- 查看FDW连接（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+            SELECT * FROM postgres_fdw_get_connections() LIMIT 100;
+            RAISE NOTICE 'FDW连接查询成功';
+        ELSE
+            RAISE NOTICE '扩展 postgres_fdw 未安装，跳过连接查询';
+        END IF;
+    EXCEPTION
+        WHEN undefined_function THEN
+            RAISE WARNING '函数 postgres_fdw_get_connections 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '查询连接失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查看外部表统计
+-- 查看外部表统计（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -717,9 +1417,11 @@ SELECT
     seq_tup_read,
     idx_scan
 FROM pg_stat_user_tables
-WHERE tablename LIKE 'remote_%';
+WHERE tablename LIKE 'remote_%'
+LIMIT 100;
 
--- 慢查询分析
+-- 慢查询分析（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT query, mean_exec_time
 FROM pg_stat_statements
 WHERE query LIKE '%remote_%'

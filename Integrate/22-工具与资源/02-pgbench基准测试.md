@@ -128,21 +128,51 @@ pgbench -c 1000 -j 20 -T 300 testdb
 ### 电商下单场景
 
 ```sql
--- custom_script.sql
+-- custom_script.sql（带错误处理）
+-- 注意：pgbench脚本中的变量设置和事务处理
 \set aid random(1, 100000000)
 \set bid random(1, 1000)
 \set delta random(-5000, 5000)
 
 BEGIN;
--- 扣减库存
-UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid;
--- 记录订单
-INSERT INTO pgbench_history (tid, bid, aid, delta, mtime)
-VALUES (:aid, :bid, :aid, :delta, CURRENT_TIMESTAMP);
--- 更新统计
-UPDATE pgbench_tellers SET tbalance = tbalance + :delta WHERE tid = :bid;
-UPDATE pgbench_branches SET bbalance = bbalance + :delta WHERE bid = :bid;
-END;
+-- 扣减库存（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '更新账户余额失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 记录订单（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO pgbench_history (tid, bid, aid, delta, mtime)
+        VALUES (:aid, :bid, :aid, :delta, CURRENT_TIMESTAMP);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入订单历史失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 更新统计（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        UPDATE pgbench_tellers SET tbalance = tbalance + :delta WHERE tid = :bid;
+        UPDATE pgbench_branches SET bbalance = bbalance + :delta WHERE bid = :bid;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '更新统计失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+COMMIT;
 ```
 
 ### 测试结果

@@ -415,43 +415,71 @@ LIMIT 100;
 **网络成本查询**:
 
 ```sql
--- 网络成本分析
-CREATE VIEW network_cost_analysis AS
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'data_transfer_in' AS transfer_type,
-    sum(transfer_gb) AS total_gb,
-    sum(transfer_gb * 0.00) AS transfer_cost  -- 入站免费
-FROM network_metrics
-WHERE direction = 'in'
-  AND timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+-- 网络成本分析（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否存在
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'network_metrics'
+        ) THEN
+            RAISE EXCEPTION '表 network_metrics 不存在，请先创建该表';
+        END IF;
 
-UNION ALL
+        -- 删除已存在的视图（如果存在）
+        DROP VIEW IF EXISTS network_cost_analysis;
 
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'data_transfer_out' AS transfer_type,
-    sum(transfer_gb) AS total_gb,
-    sum(transfer_gb * 0.09) AS transfer_cost  -- 出站：$0.09/GB
-FROM network_metrics
-WHERE direction = 'out'
-  AND timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+        -- 创建网络成本分析视图
+        CREATE VIEW network_cost_analysis AS
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'data_transfer_in' AS transfer_type,
+            sum(transfer_gb) AS total_gb,
+            sum(transfer_gb * 0.00) AS transfer_cost  -- 入站免费
+        FROM network_metrics
+        WHERE direction = 'in'
+          AND timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
 
-UNION ALL
+        UNION ALL
 
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'cross_region_transfer' AS transfer_type,
-    sum(transfer_gb) AS total_gb,
-    sum(transfer_gb * 0.02) AS transfer_cost  -- 跨区域：$0.02/GB
-FROM network_metrics
-WHERE cross_region = true
-  AND timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'data_transfer_out' AS transfer_type,
+            sum(transfer_gb) AS total_gb,
+            sum(transfer_gb * 0.09) AS transfer_cost  -- 出站：$0.09/GB
+        FROM network_metrics
+        WHERE direction = 'out'
+          AND timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
 
-ORDER BY day DESC, transfer_type;
+        UNION ALL
+
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'cross_region_transfer' AS transfer_type,
+            sum(transfer_gb) AS total_gb,
+            sum(transfer_gb * 0.02) AS transfer_cost  -- 跨区域：$0.02/GB
+        FROM network_metrics
+        WHERE cross_region = true
+          AND timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
+
+        ORDER BY day DESC, transfer_type;
+
+        RAISE NOTICE '网络成本分析视图 network_cost_analysis 创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建网络成本分析视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：查询网络成本分析视图
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM network_cost_analysis
+LIMIT 100;
 ```
 
 #### 2.3.3 成本论证
@@ -773,15 +801,18 @@ END $$;
 **存储使用分析**:
 
 ```sql
--- 数据库大小分析
+-- 数据库大小分析（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     pg_size_pretty(pg_database_size(datname)) AS size,
     pg_database_size(datname) AS size_bytes
 FROM pg_database
-ORDER BY size_bytes DESC;
+ORDER BY size_bytes DESC
+LIMIT 100;
 
--- 表大小分析
+-- 表大小分析（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -967,37 +998,79 @@ END $$;
 **成本监控仪表板**:
 
 ```sql
--- 创建成本监控视图
-CREATE VIEW cost_monitoring_dashboard AS
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'compute' AS cost_type,
-    sum(compute_cost) AS cost
-FROM compute_cost_metrics
-WHERE timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+-- 创建成本监控视图（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查表是否存在
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'compute_cost_metrics'
+        ) THEN
+            RAISE EXCEPTION '表 compute_cost_metrics 不存在，请先创建该表';
+        END IF;
 
-UNION ALL
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'storage_cost_metrics'
+        ) THEN
+            RAISE EXCEPTION '表 storage_cost_metrics 不存在，请先创建该表';
+        END IF;
 
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'storage' AS cost_type,
-    sum(storage_cost) AS cost
-FROM storage_cost_metrics
-WHERE timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'network_cost_metrics'
+        ) THEN
+            RAISE EXCEPTION '表 network_cost_metrics 不存在，请先创建该表';
+        END IF;
 
-UNION ALL
+        -- 删除已存在的视图（如果存在）
+        DROP VIEW IF EXISTS cost_monitoring_dashboard;
 
-SELECT
-    date_trunc('day', timestamp) AS day,
-    'network' AS cost_type,
-    sum(network_cost) AS cost
-FROM network_cost_metrics
-WHERE timestamp > NOW() - INTERVAL '30 days'
-GROUP BY day
+        -- 创建成本监控视图
+        CREATE VIEW cost_monitoring_dashboard AS
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'compute' AS cost_type,
+            sum(compute_cost) AS cost
+        FROM compute_cost_metrics
+        WHERE timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
 
-ORDER BY day DESC, cost_type;
+        UNION ALL
+
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'storage' AS cost_type,
+            sum(storage_cost) AS cost
+        FROM storage_cost_metrics
+        WHERE timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
+
+        UNION ALL
+
+        SELECT
+            date_trunc('day', timestamp) AS day,
+            'network' AS cost_type,
+            sum(network_cost) AS cost
+        FROM network_cost_metrics
+        WHERE timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY day
+
+        ORDER BY day DESC, cost_type;
+
+        RAISE NOTICE '成本监控视图 cost_monitoring_dashboard 创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建成本监控视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 性能测试：查询成本监控视图
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM cost_monitoring_dashboard
+LIMIT 100;
 ```
 
 **Grafana成本仪表板**:
@@ -1338,25 +1411,130 @@ Resources:
 **存储分层配置**:
 
 ```sql
--- 创建表空间
-CREATE TABLESPACE hot_data LOCATION '/data/hot';
-CREATE TABLESPACE warm_data LOCATION '/data/warm';
-CREATE TABLESPACE cold_data LOCATION '/data/cold';
+-- 创建表空间（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 检查目录是否存在（需要超级用户权限）
+        IF NOT current_setting('is_superuser')::boolean THEN
+            RAISE EXCEPTION '需要超级用户权限才能创建表空间';
+        END IF;
 
--- 热数据表（SSD）
-CREATE TABLE hot_orders (
-    LIKE orders INCLUDING ALL
-) TABLESPACE hot_data;
+        -- 创建热数据表空间
+        IF NOT EXISTS (SELECT 1 FROM pg_tablespace WHERE spcname = 'hot_data') THEN
+            CREATE TABLESPACE hot_data LOCATION '/data/hot';
+            RAISE NOTICE '表空间 hot_data 创建成功';
+        ELSE
+            RAISE NOTICE '表空间 hot_data 已存在';
+        END IF;
 
--- 温数据表（标准存储）
-CREATE TABLE warm_orders (
-    LIKE orders INCLUDING ALL
-) TABLESPACE warm_data;
+        -- 创建温数据表空间
+        IF NOT EXISTS (SELECT 1 FROM pg_tablespace WHERE spcname = 'warm_data') THEN
+            CREATE TABLESPACE warm_data LOCATION '/data/warm';
+            RAISE NOTICE '表空间 warm_data 创建成功';
+        ELSE
+            RAISE NOTICE '表空间 warm_data 已存在';
+        END IF;
 
--- 冷数据表（归档存储）
-CREATE TABLE cold_orders (
-    LIKE orders INCLUDING ALL
-) TABLESPACE cold_data;
+        -- 创建冷数据表空间
+        IF NOT EXISTS (SELECT 1 FROM pg_tablespace WHERE spcname = 'cold_data') THEN
+            CREATE TABLESPACE cold_data LOCATION '/data/cold';
+            RAISE NOTICE '表空间 cold_data 创建成功';
+        ELSE
+            RAISE NOTICE '表空间 cold_data 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE NOTICE '表空间已存在';
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法创建表空间';
+            RAISE;
+        WHEN OTHERS THEN
+            RAISE WARNING '创建表空间失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 热数据表（SSD）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_tablespace WHERE spcname = 'hot_data') THEN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') THEN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'hot_orders') THEN
+                    CREATE TABLE hot_orders (
+                        LIKE orders INCLUDING ALL
+                    ) TABLESPACE hot_data;
+                    RAISE NOTICE '热数据表 hot_orders 创建成功';
+                ELSE
+                    RAISE NOTICE '热数据表 hot_orders 已存在';
+                END IF;
+            ELSE
+                RAISE WARNING '源表 orders 不存在，跳过创建';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建热数据表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 温数据表（标准存储）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_tablespace WHERE spcname = 'warm_data') THEN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') THEN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'warm_orders') THEN
+                    CREATE TABLE warm_orders (
+                        LIKE orders INCLUDING ALL
+                    ) TABLESPACE warm_data;
+                    RAISE NOTICE '温数据表 warm_orders 创建成功';
+                ELSE
+                    RAISE NOTICE '温数据表 warm_orders 已存在';
+                END IF;
+            ELSE
+                RAISE WARNING '源表 orders 不存在，跳过创建';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建温数据表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 冷数据表（归档存储）（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_tablespace WHERE spcname = 'cold_data') THEN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') THEN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'cold_orders') THEN
+                    CREATE TABLE cold_orders (
+                        LIKE orders INCLUDING ALL
+                    ) TABLESPACE cold_data;
+                    RAISE NOTICE '冷数据表 cold_orders 创建成功';
+                ELSE
+                    RAISE NOTICE '冷数据表 cold_orders 已存在';
+                END IF;
+            ELSE
+                RAISE WARNING '源表 orders 不存在，跳过创建';
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '表已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建冷数据表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 **S3生命周期策略**:
