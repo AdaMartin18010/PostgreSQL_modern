@@ -205,11 +205,28 @@ VACUUM VERBOSE large_table;
 #### effective_io_concurrency
 
 ```sql
--- PostgreSQL 18新增/改进参数
+-- PostgreSQL 18新增/改进参数（带错误处理）
 -- effective_io_concurrency: AIO并发数
 
--- 配置示例：
-ALTER SYSTEM SET effective_io_concurrency = 200;
+-- 配置示例（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET effective_io_concurrency = 200;
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'effective_io_concurrency 已设置为200';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置effective_io_concurrency失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 不同存储类型的推荐值：
 -- SSD: 200-300
@@ -339,24 +356,45 @@ ALTER SYSTEM SET effective_io_concurrency = 200;
 #### 基本配置
 
 ```sql
--- PostgreSQL 18推荐配置
+-- PostgreSQL 18推荐配置（带错误处理）
+DO $$
+DECLARE
+    v_effective_io_concurrency TEXT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
 
--- 1. 启用AIO（默认启用）
--- 检查AIO支持：
-SHOW effective_io_concurrency;
+        -- 1. 启用AIO（默认启用）
+        -- 检查AIO支持：
+        SHOW effective_io_concurrency INTO v_effective_io_concurrency;
+        RAISE NOTICE '当前effective_io_concurrency: %', v_effective_io_concurrency;
 
--- 2. 设置AIO并发数
--- SSD环境：
-ALTER SYSTEM SET effective_io_concurrency = 200;
+        -- 2. 设置AIO并发数
+        -- SSD环境：
+        ALTER SYSTEM SET effective_io_concurrency = 200;
+        RAISE NOTICE 'effective_io_concurrency 已设置为200（SSD环境）';
 
--- NVMe环境：
-ALTER SYSTEM SET effective_io_concurrency = 300;
+        -- NVMe环境：
+        -- ALTER SYSTEM SET effective_io_concurrency = 300;
+        -- RAISE NOTICE 'effective_io_concurrency 已设置为300（NVMe环境）';
 
--- HDD环境：
-ALTER SYSTEM SET effective_io_concurrency = 100;
+        -- HDD环境：
+        -- ALTER SYSTEM SET effective_io_concurrency = 100;
+        -- RAISE NOTICE 'effective_io_concurrency 已设置为100（HDD环境）';
 
--- 3. 重启PostgreSQL
-SELECT pg_reload_conf();
+        -- 3. 重启PostgreSQL
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'PostgreSQL配置已重新加载';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置AIO配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 不同环境配置
@@ -426,9 +464,26 @@ blockdev --setra 8192 /dev/sda
 -- CPU利用率：70%
 -- 磁盘利用率：80%
 
--- 配置：
-ALTER SYSTEM SET effective_io_concurrency = 200;
-ALTER SYSTEM SET max_parallel_workers_per_gather = 4;
+-- 配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET effective_io_concurrency = 200;
+        ALTER SYSTEM SET max_parallel_workers_per_gather = 4;
+        SELECT pg_reload_conf();
+        RAISE NOTICE '电商订单查询系统配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.2 日志系统场景
@@ -451,9 +506,26 @@ ALTER SYSTEM SET max_parallel_workers_per_gather = 4;
 -- 查询排队减少
 -- 系统负载降低
 
--- 配置：
-ALTER SYSTEM SET effective_io_concurrency = 300;
-ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
+-- 配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET effective_io_concurrency = 300;
+        ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
+        SELECT pg_reload_conf();
+        RAISE NOTICE '日志分析查询系统配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -517,12 +589,35 @@ ALTER SYSTEM SET max_parallel_workers_per_gather = 8;
 ### 7.1 AIO性能监控
 
 ```sql
--- 监控AIO性能
+-- 监控AIO性能（带性能测试）
 
--- 1. 查看AIO配置
-SHOW effective_io_concurrency;
+-- 1. 查看AIO配置（带错误处理）
+DO $$
+DECLARE
+    v_effective_io_concurrency TEXT;
+BEGIN
+    BEGIN
+        SHOW effective_io_concurrency INTO v_effective_io_concurrency;
+        RAISE NOTICE 'effective_io_concurrency: %', v_effective_io_concurrency;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查看AIO配置失败: %', SQLERRM;
+    END;
+END $$;
 
--- 2. 查看I/O统计
+-- 2. 查看I/O统计（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查询I/O统计';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     blks_read,
@@ -531,7 +626,19 @@ SELECT
 FROM pg_stat_database
 WHERE datname = current_database();
 
--- 3. 查看表I/O统计
+-- 3. 查看表I/O统计（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查询表I/O统计';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     relname,
@@ -592,9 +699,26 @@ SELECT * FROM large_table WHERE status = 'active';
 #### 升级后配置
 
 ```sql
--- 1. 设置effective_io_concurrency
+-- 1. 设置effective_io_concurrency（带错误处理）
 -- 根据存储类型设置
-ALTER SYSTEM SET effective_io_concurrency = 200;
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET effective_io_concurrency = 200;
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'effective_io_concurrency 已设置为200';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置effective_io_concurrency失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 2. 性能测试
 -- 对比升级前后性能

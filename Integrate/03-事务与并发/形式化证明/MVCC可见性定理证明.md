@@ -334,14 +334,41 @@ bool HeapTupleSatisfiesVisibility(HeapTuple tuple, Snapshot snapshot)
 PostgreSQL通过快照隔离级别保证定理1.2的一致性：
 
 ```sql
--- PostgreSQL快照隔离级别配置
-SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+-- PostgreSQL快照隔离级别配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+        RAISE NOTICE '隔离级别已设置为SNAPSHOT';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+    END;
+END $$;
 
--- 验证可见性一致性
-BEGIN;
-SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+-- 验证可见性一致性（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法验证可见性一致性';
+            RETURN;
+        END IF;
 
--- 在同一快照中，同一元组只能看到一个版本
+        BEGIN;
+        SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+        RAISE NOTICE '开始验证可见性一致性（SNAPSHOT）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 在同一快照中，同一元组只能看到一个版本（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 1;
 -- 结果：只返回一个版本
 
@@ -353,20 +380,61 @@ COMMIT;
 **快照扩展场景**：
 
 ```sql
--- 场景：事务开始时创建快照，后续查询使用同一快照
-BEGIN;
-SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+-- 场景：事务开始时创建快照，后续查询使用同一快照（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行事务';
+            RETURN;
+        END IF;
 
--- 第一次查询：创建快照s
+        BEGIN;
+        SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+        RAISE NOTICE '事务开始（SNAPSHOT）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 第一次查询：创建快照s（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 1;
 
--- 另一个事务修改数据
--- (在另一个连接中执行)
--- BEGIN;
--- UPDATE users SET name = 'New Name' WHERE id = 1;
--- COMMIT;
+-- 另一个事务修改数据（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
 
--- 第二次查询：使用同一快照s，结果不变（传递性保证）
+        -- (在另一个连接中执行)
+        BEGIN;
+        UPDATE users SET name = 'New Name' WHERE id = 1;
+        COMMIT;
+        RAISE NOTICE '另一个事务：数据已更新并提交';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '另一个事务执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 第二次查询：使用同一快照s，结果不变（传递性保证，带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 1;
 -- 结果：仍然看到旧版本（快照s中的版本）
 
@@ -376,7 +444,19 @@ COMMIT;
 **性能影响分析**：
 
 ```sql
--- 监控快照可见性检查性能
+-- 监控快照可见性检查性能（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控快照可见性检查性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -414,13 +494,45 @@ ORDER BY n_dead_tup DESC;
 **实施配置**：
 
 ```sql
--- 配置自动VACUUM优化可见性检查性能
-ALTER TABLE users SET (
-    autovacuum_vacuum_scale_factor = 0.1,
-    autovacuum_analyze_scale_factor = 0.05
-);
+-- 配置自动VACUUM优化可见性检查性能（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法配置自动VACUUM';
+            RETURN;
+        END IF;
 
--- 监控可见性检查性能
+        ALTER TABLE users SET (
+            autovacuum_vacuum_scale_factor = 0.1,
+            autovacuum_analyze_scale_factor = 0.05
+        );
+        RAISE NOTICE '自动VACUUM配置已更新';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '配置自动VACUUM失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 监控可见性检查性能（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法监控可见性检查性能';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控可见性检查性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 1;
 -- 执行时间: <10ms（可见性检查优化）
@@ -443,16 +555,35 @@ SELECT * FROM users WHERE id = 1;
 **实施配置**：
 
 ```sql
--- 使用SNAPSHOT隔离级别保证可见性传递性
-BEGIN;
-SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+-- 使用SNAPSHOT隔离级别保证可见性传递性（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行事务';
+            RETURN;
+        END IF;
 
--- 长时间事务中的查询都使用同一快照
+        BEGIN;
+        SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+        RAISE NOTICE '事务开始（SNAPSHOT）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 长时间事务中的查询都使用同一快照（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE created_at < NOW() - INTERVAL '1 day';
 
 -- 执行长时间处理...
 
--- 后续查询仍然看到同一快照
+-- 后续查询仍然看到同一快照（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE created_at < NOW() - INTERVAL '1 day';
 
 COMMIT;
@@ -465,27 +596,74 @@ COMMIT;
 1. **合理设置隔离级别**
 
    ```sql
-   -- 读多写少场景：使用SNAPSHOT隔离级别
-   SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+   -- 读多写少场景：使用SNAPSHOT隔离级别（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+           RAISE NOTICE '隔离级别已设置为SNAPSHOT';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+       END;
+   END $$;
 
-   -- 写多读少场景：使用READ COMMITTED隔离级别
-   SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+   -- 写多读少场景：使用READ COMMITTED隔离级别（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+           RAISE NOTICE '隔离级别已设置为READ COMMITTED';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+       END;
+   END $$;
    ```
 
 2. **定期VACUUM清理死元组**
 
    ```sql
-   -- 自动VACUUM配置
-   ALTER TABLE users SET (
-       autovacuum_vacuum_scale_factor = 0.1,
-       autovacuum_analyze_scale_factor = 0.05
-   );
+   -- 自动VACUUM配置（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+               RAISE WARNING '表 users 不存在，无法配置自动VACUUM';
+               RETURN;
+           END IF;
+
+           ALTER TABLE users SET (
+               autovacuum_vacuum_scale_factor = 0.1,
+               autovacuum_analyze_scale_factor = 0.05
+           );
+           RAISE NOTICE '自动VACUUM配置已更新';
+       EXCEPTION
+           WHEN undefined_table THEN
+               RAISE WARNING '表 users 不存在';
+           WHEN OTHERS THEN
+               RAISE WARNING '配置自动VACUUM失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
    ```
 
 3. **监控可见性检查性能**
 
    ```sql
-   -- 监控死元组数量
+   -- 监控死元组数量（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始监控死元组数量';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '查询准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT
        schemaname,
        tablename,

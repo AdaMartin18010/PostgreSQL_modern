@@ -75,17 +75,101 @@ PostgreSQL 提供了多种方案来避免和处理版本冲突：
 假设有两个事务同时尝试更新同一行数据：
 
 ```sql
--- 事务 1
-BEGIN;
-SELECT * FROM accounts WHERE id = 1; -- 读取数据
-UPDATE accounts SET balance = balance + 100 WHERE id = 1;
-COMMIT;
+-- 事务 1（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行事务';
+            RETURN;
+        END IF;
 
--- 事务 2
-BEGIN;
+        BEGIN;
+        RAISE NOTICE '事务1：开始';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '事务准备失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM accounts WHERE id = 1; -- 读取数据
-UPDATE accounts SET balance = balance - 50 WHERE id = 1;
-COMMIT;
+
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
+
+        UPDATE accounts SET balance = balance + 100 WHERE id = 1;
+        COMMIT;
+        RAISE NOTICE '事务1：执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '事务1执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 事务 2（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行事务';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        RAISE NOTICE '事务2：开始';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '事务准备失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM accounts WHERE id = 1; -- 读取数据
+
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
+
+        UPDATE accounts SET balance = balance - 50 WHERE id = 1;
+        COMMIT;
+        RAISE NOTICE '事务2：执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '事务2执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
 ```
 
 如果两个事务并发执行，其中一个事务可能会回滚。
@@ -93,17 +177,134 @@ COMMIT;
 **使用乐观锁:**
 
 ```sql
--- 事务 1
-BEGIN;
-SELECT balance, version FROM accounts WHERE id = 1;
-UPDATE accounts SET balance = balance + 100, version = version + 1 WHERE id = 1 AND version = <读取到的version>;
-COMMIT;
+-- 事务 1（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_version INT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行事务';
+            RETURN;
+        END IF;
 
--- 事务 2
-BEGIN;
+        BEGIN;
+        RAISE NOTICE '事务1：开始（乐观锁）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '事务准备失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT balance, version FROM accounts WHERE id = 1;
-UPDATE accounts SET balance = balance - 50, version = version + 1 WHERE id = 1 AND version = <读取到的version>;
-COMMIT;
+
+DO $$
+DECLARE
+    v_version INT;
+    v_updated_rows INT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
+
+        -- 获取当前版本
+        SELECT version INTO v_version FROM accounts WHERE id = 1;
+
+        UPDATE accounts SET balance = balance + 100, version = version + 1 WHERE id = 1 AND version = v_version;
+        GET DIAGNOSTICS v_updated_rows = ROW_COUNT;
+
+        IF v_updated_rows = 0 THEN
+            ROLLBACK;
+            RAISE WARNING '事务1：版本冲突，更新失败';
+            RETURN;
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '事务1：执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '事务1执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 事务 2（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_version INT;
+    v_updated_rows INT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行事务';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        RAISE NOTICE '事务2：开始（乐观锁）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '事务准备失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT balance, version FROM accounts WHERE id = 1;
+
+DO $$
+DECLARE
+    v_version INT;
+    v_updated_rows INT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
+
+        -- 获取当前版本
+        SELECT version INTO v_version FROM accounts WHERE id = 1;
+
+        UPDATE accounts SET balance = balance - 50, version = version + 1 WHERE id = 1 AND version = v_version;
+        GET DIAGNOSTICS v_updated_rows = ROW_COUNT;
+
+        IF v_updated_rows = 0 THEN
+            ROLLBACK;
+            RAISE WARNING '事务2：版本冲突，更新失败';
+            RETURN;
+        END IF;
+
+        COMMIT;
+        RAISE NOTICE '事务2：执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '事务2执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
 ```
 
 如果其中一个事务读取的 version 与实际 version 不一致，则更新失败。

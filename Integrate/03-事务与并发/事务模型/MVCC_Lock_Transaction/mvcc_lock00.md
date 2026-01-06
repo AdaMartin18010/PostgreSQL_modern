@@ -437,10 +437,97 @@ graph LR
 **Write Skew Example**:
 
 ```sql
--- T1: SELECT * FROM seats WHERE booked = false; -- finds seat A
--- T2: SELECT * FROM seats WHERE booked = false; -- finds seat B
--- T1: UPDATE seats SET booked = true WHERE id = A; -- commits
--- T2: UPDATE seats SET booked = true WHERE id = B; -- commits
+-- T1: SELECT * FROM seats WHERE booked = false; -- finds seat A（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'seats') THEN
+            RAISE WARNING '表 seats 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE 'T1：开始查询可用座位';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM seats WHERE booked = false; -- finds seat A
+
+-- T2: SELECT * FROM seats WHERE booked = false; -- finds seat B（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'seats') THEN
+            RAISE WARNING '表 seats 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE 'T2：开始查询可用座位';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM seats WHERE booked = false; -- finds seat B
+
+-- T1: UPDATE seats SET booked = true WHERE id = A; -- commits（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'seats') THEN
+            RAISE WARNING '表 seats 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        UPDATE seats SET booked = true WHERE id = 'A';
+        COMMIT;
+        RAISE NOTICE 'T1：座位A已预订';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 seats 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING 'T1执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- T2: UPDATE seats SET booked = true WHERE id = B; -- commits（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'seats') THEN
+            RAISE WARNING '表 seats 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        UPDATE seats SET booked = true WHERE id = 'B';
+        COMMIT;
+        RAISE NOTICE 'T2：座位B已预订';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 seats 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING 'T2执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
 -- Result: Both think they booked the last seat (application bug)
 ```
 

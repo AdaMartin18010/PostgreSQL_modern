@@ -85,13 +85,48 @@ PostgreSQL 17增强了逻辑复制的故障转移控制能力，引入了`max_sl
 ```sql
 -- PostgreSQL 16及之前的问题场景
 
--- 主库配置
-wal_level = logical
-max_replication_slots = 4
+-- 主库配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
 
--- 创建逻辑复制
-CREATE PUBLICATION pub FOR ALL TABLES;
+        ALTER SYSTEM SET wal_level = logical;
+        ALTER SYSTEM SET max_replication_slots = 4;
+        SELECT pg_reload_conf();
+        RAISE NOTICE '主库配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置主库配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 创建逻辑复制（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'pub') THEN
+            CREATE PUBLICATION pub FOR ALL TABLES;
+            RAISE NOTICE '逻辑复制发布 pub 创建成功';
+        ELSE
+            RAISE NOTICE '逻辑复制发布 pub 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE WARNING '逻辑复制发布 pub 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建逻辑复制发布失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 -- 从库：CREATE SUBSCRIPTION sub CONNECTION '...' PUBLICATION pub;
+-- 注意：从库订阅需要在从库上执行，这里仅作示例
 
 -- 问题场景：从库网络中断24小时
 -- 主库持续更新：1000万行/小时
@@ -110,7 +145,19 @@ CREATE PUBLICATION pub FOR ALL TABLES;
 ```sql
 -- 复制槽xmin机制
 
--- 复制槽状态
+-- 复制槽状态（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查询复制槽状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     active,
@@ -161,13 +208,30 @@ FROM pg_replication_slots;
 #### 参数说明
 
 ```sql
--- PostgreSQL 17新增参数
+-- PostgreSQL 17新增参数（带错误处理）
 -- max_slot_wal_keep_size: 复制槽最大WAL保留大小
 -- 默认值：-1 (无限制，兼容旧行为)
 -- 单位：字节（支持KB, MB, GB单位）
 
--- 配置示例：
-ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+-- 配置示例（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'max_slot_wal_keep_size 已设置为10GB';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置max_slot_wal_keep_size失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 工作原理：
 -- 1. 监控每个复制槽的WAL保留量
@@ -180,23 +244,44 @@ ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
 #### 参数配置建议
 
 ```sql
--- 不同场景的配置建议
+-- 不同场景的配置建议（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
 
--- 1. 高可用环境（从库延迟<1小时）
-ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
--- 说明：10GB足够1小时的WAL保留
+        -- 1. 高可用环境（从库延迟<1小时）
+        ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+        -- 说明：10GB足够1小时的WAL保留
+        RAISE NOTICE '高可用环境配置：max_slot_wal_keep_size = 10GB';
 
--- 2. 跨地域复制（从库延迟<24小时）
-ALTER SYSTEM SET max_slot_wal_keep_size = '100GB';
--- 说明：100GB足够24小时的WAL保留
+        -- 2. 跨地域复制（从库延迟<24小时）
+        -- ALTER SYSTEM SET max_slot_wal_keep_size = '100GB';
+        -- 说明：100GB足够24小时的WAL保留
+        -- RAISE NOTICE '跨地域复制配置：max_slot_wal_keep_size = 100GB';
 
--- 3. 归档环境（从库延迟<7天）
-ALTER SYSTEM SET max_slot_wal_keep_size = '500GB';
--- 说明：500GB足够7天的WAL保留
+        -- 3. 归档环境（从库延迟<7天）
+        -- ALTER SYSTEM SET max_slot_wal_keep_size = '500GB';
+        -- 说明：500GB足够7天的WAL保留
+        -- RAISE NOTICE '归档环境配置：max_slot_wal_keep_size = 500GB';
 
--- 4. 测试环境（从库可能长期中断）
-ALTER SYSTEM SET max_slot_wal_keep_size = '1GB';
--- 说明：1GB足够测试，避免磁盘满
+        -- 4. 测试环境（从库可能长期中断）
+        -- ALTER SYSTEM SET max_slot_wal_keep_size = '1GB';
+        -- 说明：1GB足够测试，避免磁盘满
+        -- RAISE NOTICE '测试环境配置：max_slot_wal_keep_size = 1GB';
+
+        SELECT pg_reload_conf();
+        RAISE NOTICE '系统参数配置完成';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置系统参数失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 2.2 自动WAL清理机制
@@ -313,21 +398,38 @@ ALTER SYSTEM SET max_slot_wal_keep_size = '1GB';
 ### 4.1 主库配置
 
 ```sql
--- PostgreSQL 17主库推荐配置
+-- PostgreSQL 17主库推荐配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
 
--- 1. 基本配置
-wal_level = logical
-max_replication_slots = 4
+        -- 1. 基本配置
+        ALTER SYSTEM SET wal_level = logical;
+        ALTER SYSTEM SET max_replication_slots = 4;
 
--- 2. WAL保留配置（新增）
-max_slot_wal_keep_size = '10GB'  -- 根据从库延迟调整
+        -- 2. WAL保留配置（新增）
+        ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';  -- 根据从库延迟调整
 
--- 3. 监控配置
-log_replication_commands = on  -- 记录复制命令
-log_min_messages = warning  -- 记录警告日志
+        -- 3. 监控配置
+        ALTER SYSTEM SET log_replication_commands = on;  -- 记录复制命令
+        ALTER SYSTEM SET log_min_messages = warning;  -- 记录警告日志
 
--- 4. 性能配置
-wal_keep_size = '1GB'  -- 流复制WAL保留（可选）
+        -- 4. 性能配置
+        ALTER SYSTEM SET wal_keep_size = '1GB';  -- 流复制WAL保留（可选）
+
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'PostgreSQL 17主库推荐配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置主库配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 4.2 从库配置
@@ -335,19 +437,48 @@ wal_keep_size = '1GB'  -- 流复制WAL保留（可选）
 ```sql
 -- PostgreSQL 17从库推荐配置
 
--- 1. 订阅配置
-CREATE SUBSCRIPTION sub
-CONNECTION 'host=primary port=5432 dbname=mydb user=replicator'
-PUBLICATION pub
-WITH (
-    copy_data = true,
-    create_slot = true,
-    enabled = true,
-    slot_name = 'sub'
-);
+-- 1. 订阅配置（带错误处理）
+-- 注意：订阅需要在从库上执行，这里仅作示例
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub') THEN
+            -- CREATE SUBSCRIPTION sub
+            -- CONNECTION 'host=primary port=5432 dbname=mydb user=replicator'
+            -- PUBLICATION pub
+            -- WITH (
+            --     copy_data = true,
+            --     create_slot = true,
+            --     enabled = true,
+            --     slot_name = 'sub'
+            -- );
+            RAISE NOTICE '订阅配置示例（需要在从库上执行）';
+        ELSE
+            RAISE NOTICE '订阅 sub 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE WARNING '订阅 sub 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建订阅失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 监控配置
+-- 2. 监控配置（带性能测试）
 -- 监控复制延迟
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控复制延迟';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     active,
@@ -361,16 +492,45 @@ FROM pg_replication_slots;
 ```sql
 -- 高可用环境（主从延迟<1小时）
 
--- 主库
-ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
-ALTER SYSTEM SET wal_keep_size = '1GB';
+-- 主库配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+        ALTER SYSTEM SET wal_keep_size = '1GB';
+        SELECT pg_reload_conf();
+        RAISE NOTICE '高可用环境主库配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置主库配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 从库
 -- 配置自动故障转移
 -- 监控复制延迟
 -- 设置告警规则
 
--- 监控查询
+-- 监控查询（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控高可用环境复制状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     active,
@@ -409,8 +569,25 @@ FROM pg_replication_slots;
 -- - 表膨胀：部分可VACUUM
 -- - 主库磁盘：稳定
 
--- 配置：
-ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+-- 配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+        SELECT pg_reload_conf();
+        RAISE NOTICE '电商订单系统配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 5.2 日志系统场景
@@ -435,8 +612,25 @@ ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
 -- - 表膨胀：部分可VACUUM
 -- - 主库磁盘：安全
 
--- 配置：
-ALTER SYSTEM SET max_slot_wal_keep_size = '100GB';
+-- 配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET max_slot_wal_keep_size = '100GB';
+        SELECT pg_reload_conf();
+        RAISE NOTICE '应用日志系统配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -491,9 +685,21 @@ ALTER SYSTEM SET max_slot_wal_keep_size = '100GB';
 ### 7.1 复制槽监控
 
 ```sql
--- 监控复制槽状态
+-- 监控复制槽状态（带性能测试）
 
--- 1. 查看复制槽WAL保留量
+-- 1. 查看复制槽WAL保留量（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查询复制槽WAL保留量';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     active,
@@ -503,14 +709,26 @@ SELECT
     pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) as lag_size
 FROM pg_replication_slots;
 
--- 2. 检查是否超过限制
+-- 2. 检查是否超过限制（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查WAL保留量是否超过限制';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     slot_name,
     pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) / 1024 / 1024 / 1024 as wal_retained_gb,
-    current_setting('max_slot_wal_keep_size')::bigint / 1024 / 1024 / 1024 as max_wal_gb,
+    current_setting('max_slot_wal_keep_size', TRUE)::bigint / 1024 / 1024 / 1024 as max_wal_gb,
     CASE
         WHEN pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) >
-             current_setting('max_slot_wal_keep_size')::bigint
+             current_setting('max_slot_wal_keep_size', TRUE)::bigint
         THEN 'EXCEEDED'
         ELSE 'OK'
     END as status
@@ -589,15 +807,52 @@ FROM pg_replication_slots;
 #### 升级后配置
 
 ```sql
--- 1. 设置max_slot_wal_keep_size
+-- 1. 设置max_slot_wal_keep_size（带错误处理）
 -- 根据从库最大延迟设置
-ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET max_slot_wal_keep_size = '10GB';
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'max_slot_wal_keep_size 已设置为10GB';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置max_slot_wal_keep_size失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 2. 监控WAL清理
 -- 观察日志，确认WAL清理正常工作
 
--- 3. 监控表膨胀
+-- 3. 监控表膨胀（带性能测试）
 -- 确认表膨胀率降低
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控表膨胀情况';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '监控准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT
+    schemaname,
+    relname,
+    round(n_dead_tup * 100.0 / NULLIF(n_live_tup, 0), 2) as dead_ratio
+FROM pg_stat_user_tables
+WHERE n_dead_tup > 1000
+ORDER BY dead_ratio DESC
+LIMIT 10;
 
 -- 4. 调整配置
 -- 根据实际情况调整max_slot_wal_keep_size

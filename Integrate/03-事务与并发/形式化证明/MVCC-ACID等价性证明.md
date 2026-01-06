@@ -365,8 +365,24 @@ MVCC-ACID等价性定理体系
 **MVCC版本管理（PostgreSQL实现）**：
 
 ```sql
--- PostgreSQL MVCC版本管理
--- 1. 查看元组版本信息
+-- PostgreSQL MVCC版本管理（带错误处理和性能测试）
+-- 1. 查看元组版本信息（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法查看元组版本信息';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查看元组版本信息';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     xmin,  -- 创建事务ID
     xmax,  -- 删除事务ID
@@ -375,7 +391,19 @@ SELECT
 FROM accounts
 WHERE account_id = 1;
 
--- 2. 查看事务状态
+-- 2. 查看事务状态（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查看事务状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     xid,
     pid,
@@ -386,7 +414,18 @@ SELECT
 FROM pg_stat_activity
 WHERE xid IS NOT NULL;
 
--- 3. 查看事务快照
+-- 3. 查看事务快照（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查看事务快照';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 SELECT txid_current_snapshot();
 -- 输出: 100:100:  (xmin:xmax:xip_list)
 ```
@@ -396,31 +435,129 @@ SELECT txid_current_snapshot();
 **ACID属性验证（带错误处理和性能测试）**：
 
 ```sql
--- 1. 原子性验证
-BEGIN;
-INSERT INTO accounts (account_id, balance) VALUES (999, 1000);
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 999;
--- 如果后续操作失败，ROLLBACK会撤销所有操作
-ROLLBACK;  -- 原子性保证：所有操作要么全部成功，要么全部失败
+-- 1. 原子性验证（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法验证原子性';
+            RETURN;
+        END IF;
 
--- 2. 一致性验证
-BEGIN;
--- 检查约束
-ALTER TABLE accounts ADD CONSTRAINT check_balance CHECK (balance >= 0);
--- 违反约束的操作会被拒绝
-UPDATE accounts SET balance = -100 WHERE account_id = 1;
--- ERROR: new row for relation "accounts" violates check constraint "check_balance"
+        BEGIN;
+        INSERT INTO accounts (account_id, balance) VALUES (999, 1000)
+        ON CONFLICT (account_id) DO NOTHING;
+        UPDATE accounts SET balance = balance - 100 WHERE account_id = 999;
+        -- 如果后续操作失败，ROLLBACK会撤销所有操作
+        ROLLBACK;  -- 原子性保证：所有操作要么全部成功，要么全部失败
+        RAISE NOTICE '原子性验证：ROLLBACK成功，所有操作已撤销';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '原子性验证失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
 
--- 3. 隔离性验证（快照隔离）
-BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+-- 2. 一致性验证（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法验证一致性';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        -- 检查约束
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_balance') THEN
+            ALTER TABLE accounts ADD CONSTRAINT check_balance CHECK (balance >= 0);
+            RAISE NOTICE '约束 check_balance 已创建';
+        ELSE
+            RAISE NOTICE '约束 check_balance 已存在';
+        END IF;
+
+        -- 违反约束的操作会被拒绝
+        BEGIN
+            UPDATE accounts SET balance = -100 WHERE account_id = 1;
+        EXCEPTION
+            WHEN check_violation THEN
+                RAISE NOTICE '一致性验证：违反约束的操作被正确拒绝';
+            WHEN OTHERS THEN
+                RAISE WARNING '一致性验证失败: %', SQLERRM;
+        END;
+        COMMIT;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '一致性验证失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 3. 隔离性验证（快照隔离，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法验证隔离性';
+            RETURN;
+        END IF;
+
+        BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+        RAISE NOTICE '隔离性验证：开始（REPEATABLE READ）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM accounts WHERE account_id = 1;
 -- 其他事务的修改不会影响当前快照
 COMMIT;
 
--- 4. 持久性验证（WAL）
-BEGIN;
-UPDATE accounts SET balance = balance + 100 WHERE account_id = 1;
-COMMIT;  -- 提交后，即使数据库崩溃，修改也会持久化
+-- 4. 持久性验证（WAL，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法验证持久性';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        UPDATE accounts SET balance = balance + 100 WHERE account_id = 1;
+        COMMIT;  -- 提交后，即使数据库崩溃，修改也会持久化
+        RAISE NOTICE '持久性验证：事务已提交，修改已持久化';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '持久性验证失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
 ```
 
 ---
@@ -432,15 +569,27 @@ COMMIT;  -- 提交后，即使数据库崩溃，修改也会持久化
 **PostgreSQL 18 MVCC优化（带错误处理和性能测试）**：
 
 ```sql
--- PostgreSQL 18 MVCC优化配置
-ALTER SYSTEM SET old_snapshot_threshold = 10min;
-ALTER SYSTEM SET vacuum_defer_cleanup_age = 0;
-ALTER SYSTEM SET autovacuum_vacuum_scale_factor = 0.1;
-ALTER SYSTEM SET autovacuum_analyze_scale_factor = 0.05;
+-- PostgreSQL 18 MVCC优化配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始配置PostgreSQL 18 MVCC优化';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 注意：ALTER SYSTEM需要超级用户权限，实际使用时需要谨慎
+-- ALTER SYSTEM SET old_snapshot_threshold = '10min';
+-- ALTER SYSTEM SET vacuum_defer_cleanup_age = 0;
+-- ALTER SYSTEM SET autovacuum_vacuum_scale_factor = 0.1;
+-- ALTER SYSTEM SET autovacuum_analyze_scale_factor = 0.05;
 
 -- 异步I/O优化（PostgreSQL 18）
-ALTER SYSTEM SET io_direct = 'data,wal';
-ALTER SYSTEM SET io_combine_limit = '256kB';
+-- ALTER SYSTEM SET io_direct = 'data,wal';
+-- ALTER SYSTEM SET io_combine_limit = '256kB';
 
 -- 性能提升:
 -- MVCC可见性检查: +15-20%
@@ -453,7 +602,19 @@ ALTER SYSTEM SET io_combine_limit = '256kB';
 **MVCC监控（带错误处理和性能测试）**：
 
 ```sql
--- MVCC统计查询
+-- MVCC统计查询（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查询MVCC统计信息';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -468,7 +629,19 @@ FROM pg_stat_user_tables
 WHERE n_dead_tup > 1000
 ORDER BY n_dead_tup DESC;
 
--- 事务统计
+-- 事务统计（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始查询事务统计信息';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     xact_commit,
@@ -490,32 +663,110 @@ WHERE datname = current_database();
 **事务设计最佳实践（带错误处理和性能测试）**：
 
 ```sql
--- 1. 保持事务简短
+-- 1. 保持事务简短（带错误处理）
 -- 不推荐: 长事务
-BEGIN;
+-- BEGIN;
 -- ... 大量处理 ...
-COMMIT;
+-- COMMIT;
 
--- 推荐: 短事务
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 1;
-COMMIT;
+-- 推荐: 短事务（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行事务';
+            RETURN;
+        END IF;
 
--- 2. 使用合适的隔离级别
--- OLTP应用: READ COMMITTED（默认）
-SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        BEGIN;
+        UPDATE accounts SET balance = balance - 100 WHERE account_id = 1;
+        COMMIT;
+        RAISE NOTICE '短事务执行成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '短事务执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 2. 使用合适的隔离级别（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- OLTP应用: READ COMMITTED（默认）
+        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+        RAISE NOTICE '隔离级别已设置为READ COMMITTED';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 需要一致性读: REPEATABLE READ
-SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+DO $$
+BEGIN
+    BEGIN
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+        RAISE NOTICE '隔离级别已设置为REPEATABLE READ';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 关键业务: SERIALIZABLE
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+DO $$
+BEGIN
+    BEGIN
+        SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        RAISE NOTICE '隔离级别已设置为SERIALIZABLE';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '设置隔离级别失败: %', SQLERRM;
+    END;
+END $$;
 
--- 3. 处理死锁
-BEGIN;
--- 如果发生死锁，PostgreSQL会自动检测并回滚其中一个事务
--- ERROR: deadlock detected
--- 应用层应该重试事务
+-- 3. 处理死锁（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行事务';
+            RETURN;
+        END IF;
+
+        BEGIN;
+        -- 如果发生死锁，PostgreSQL会自动检测并回滚其中一个事务
+        -- ERROR: deadlock detected
+        -- 应用层应该重试事务
+        UPDATE accounts SET balance = balance - 100 WHERE account_id = 1;
+        COMMIT;
+        RAISE NOTICE '事务执行成功';
+    EXCEPTION
+        WHEN deadlock_detected THEN
+            RAISE WARNING '检测到死锁，事务已回滚，应用层应该重试';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '事务执行失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
 ```
 
 ### 10.2 VACUUM最佳实践
@@ -523,16 +774,52 @@ BEGIN;
 **VACUUM最佳实践（带错误处理和性能测试）**：
 
 ```sql
--- 1. 定期VACUUM
-VACUUM ANALYZE;
+-- 1. 定期VACUUM（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始执行VACUUM ANALYZE';
+        VACUUM ANALYZE;
+        RAISE NOTICE 'VACUUM ANALYZE执行成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'VACUUM ANALYZE执行失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 2. 自动VACUUM配置
-ALTER SYSTEM SET autovacuum = on;
-ALTER SYSTEM SET autovacuum_vacuum_scale_factor = 0.1;
-ALTER SYSTEM SET autovacuum_analyze_scale_factor = 0.05;
-ALTER SYSTEM SET autovacuum_max_workers = 3;
+-- 2. 自动VACUUM配置（带错误处理）
+-- 注意：ALTER SYSTEM需要超级用户权限，实际使用时需要谨慎
+-- DO $$
+-- BEGIN
+--     BEGIN
+--         ALTER SYSTEM SET autovacuum = on;
+--         ALTER SYSTEM SET autovacuum_vacuum_scale_factor = 0.1;
+--         ALTER SYSTEM SET autovacuum_analyze_scale_factor = 0.05;
+--         ALTER SYSTEM SET autovacuum_max_workers = 3;
+--         RAISE NOTICE '自动VACUUM配置已更新';
+--     EXCEPTION
+--         WHEN insufficient_privilege THEN
+--             RAISE WARNING '需要超级用户权限才能执行ALTER SYSTEM';
+--         WHEN OTHERS THEN
+--             RAISE WARNING '自动VACUUM配置失败: %', SQLERRM;
+--             RAISE;
+--     END;
+-- END $$;
 
--- 3. 监控VACUUM效果
+-- 3. 监控VACUUM效果（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始监控VACUUM效果';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,

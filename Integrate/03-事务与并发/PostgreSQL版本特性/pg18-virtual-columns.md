@@ -85,22 +85,54 @@ PostgreSQL 18支持虚拟生成列（Virtual Generated Columns），这是Postgr
 ```sql
 -- PostgreSQL 18支持两种生成列：
 
--- 1. 存储生成列（STORED）- PostgreSQL 12+
-CREATE TABLE orders (
-    id INT PRIMARY KEY,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED
-);
+-- 1. 存储生成列（STORED）- PostgreSQL 12+（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders_stored') THEN
+            CREATE TABLE orders_stored (
+                id INT PRIMARY KEY,
+                amount DECIMAL,
+                tax_rate DECIMAL,
+                total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED
+            );
+            RAISE NOTICE '存储生成列表 orders_stored 创建成功';
+        ELSE
+            RAISE NOTICE '存储生成列表 orders_stored 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '存储生成列表 orders_stored 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建存储生成列表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 -- 特点：占用存储空间，写入时计算，查询时直接读取
 
--- 2. 虚拟生成列（VIRTUAL）- PostgreSQL 18新增
-CREATE TABLE orders (
-    id INT PRIMARY KEY,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL
-);
+-- 2. 虚拟生成列（VIRTUAL）- PostgreSQL 18新增（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders_virtual') THEN
+            CREATE TABLE orders_virtual (
+                id INT PRIMARY KEY,
+                amount DECIMAL,
+                tax_rate DECIMAL,
+                total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL
+            );
+            RAISE NOTICE '虚拟生成列表 orders_virtual 创建成功';
+        ELSE
+            RAISE NOTICE '虚拟生成列表 orders_virtual 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '虚拟生成列表 orders_virtual 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建虚拟生成列表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 -- 特点：不占用存储空间，查询时计算，写入时不存储
 ```
 
@@ -137,24 +169,44 @@ CREATE TABLE orders (
 ```sql
 -- 场景：订单表，频繁更新订单状态
 
--- 表结构（存储列）：
-CREATE TABLE orders_stored (
-    id INT PRIMARY KEY,
-    order_no TEXT,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED,
-    status TEXT,
-    updated_at TIMESTAMP
-);
+-- 表结构（存储列，带错误处理）：
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders_stored') THEN
+            CREATE TABLE orders_stored (
+                id INT PRIMARY KEY,
+                order_no TEXT,
+                amount DECIMAL,
+                tax_rate DECIMAL,
+                total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED,
+                status TEXT,
+                updated_at TIMESTAMP
+            );
+            RAISE NOTICE '存储列表 orders_stored 创建成功';
+        ELSE
+            RAISE NOTICE '存储列表 orders_stored 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '存储列表 orders_stored 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建存储列表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 表结构（虚拟列）：
-CREATE TABLE orders_virtual (
-    id INT PRIMARY KEY,
-    order_no TEXT,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL,
+-- 表结构（虚拟列，带错误处理）：
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders_virtual') THEN
+            CREATE TABLE orders_virtual (
+                id INT PRIMARY KEY,
+                order_no TEXT,
+                amount DECIMAL,
+                tax_rate DECIMAL,
+                total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL,
     status TEXT,
     updated_at TIMESTAMP
 );
@@ -345,12 +397,29 @@ CREATE TABLE orders (
 ```sql
 -- 场景：日志表，存储空间有限
 
-CREATE TABLE logs (
-    id BIGSERIAL PRIMARY KEY,
-    message TEXT,
-    created_at TIMESTAMP,
-    hash_value TEXT GENERATED ALWAYS AS (md5(message)) VIRTUAL
-);
+-- 创建日志表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            CREATE TABLE logs (
+                id BIGSERIAL PRIMARY KEY,
+                message TEXT,
+                created_at TIMESTAMP,
+                hash_value TEXT GENERATED ALWAYS AS (md5(message)) VIRTUAL
+            );
+            RAISE NOTICE '日志表 logs 创建成功';
+        ELSE
+            RAISE NOTICE '日志表 logs 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '日志表 logs 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建日志表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 优势：
 -- 1. 节省存储空间
@@ -363,13 +432,30 @@ CREATE TABLE logs (
 ```sql
 -- 场景：订单状态表，频繁更新
 
-CREATE TABLE order_status (
-    id INT PRIMARY KEY,
-    order_no TEXT,
-    status TEXT,
-    updated_at TIMESTAMP,
-    status_hash TEXT GENERATED ALWAYS AS (md5(status)) VIRTUAL
-);
+-- 创建订单状态表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_status') THEN
+            CREATE TABLE order_status (
+                id INT PRIMARY KEY,
+                order_no TEXT,
+                status TEXT,
+                updated_at TIMESTAMP,
+                status_hash TEXT GENERATED ALWAYS AS (md5(status)) VIRTUAL
+            );
+            RAISE NOTICE '订单状态表 order_status 创建成功';
+        ELSE
+            RAISE NOTICE '订单状态表 order_status 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '订单状态表 order_status 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建订单状态表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 优势：
 -- 1. 减少版本链大小
@@ -405,15 +491,32 @@ CREATE TABLE orders (
 ```sql
 -- 场景：复杂计算，性能敏感
 
-CREATE TABLE products (
-    id INT PRIMARY KEY,
-    price DECIMAL,
-    discount DECIMAL,
-    final_price DECIMAL GENERATED ALWAYS AS (
-        price * (1 - discount) *
-        CASE WHEN price > 100 THEN 0.95 ELSE 1.0 END
-    ) VIRTUAL
-);
+-- 创建产品表（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            CREATE TABLE products (
+                id INT PRIMARY KEY,
+                price DECIMAL,
+                discount DECIMAL,
+                final_price DECIMAL GENERATED ALWAYS AS (
+                    price * (1 - discount) *
+                    CASE WHEN price > 100 THEN 0.95 ELSE 1.0 END
+                ) VIRTUAL
+            );
+            RAISE NOTICE '产品表 products 创建成功';
+        ELSE
+            RAISE NOTICE '产品表 products 已存在';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE WARNING '产品表 products 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建产品表失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 问题：
 -- 1. 计算复杂，性能影响大

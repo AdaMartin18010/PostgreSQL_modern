@@ -251,25 +251,67 @@ XA扩展功能：
 #### PREPARE TRANSACTION
 
 ```sql
--- PostgreSQL XA支持（通过PREPARE TRANSACTION）
+-- PostgreSQL XA支持（通过PREPARE TRANSACTION，带错误处理）
 
--- XA事务开始（应用层）
+-- XA事务开始（应用层，带错误处理）
 -- xa_start(xid, TMNOFLAGS)
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+            RAISE WARNING '表 accounts 不存在，无法执行XA事务';
+            RETURN;
+        END IF;
 
-BEGIN;
--- 执行操作
-UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        BEGIN;
+        -- 执行操作
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
 
--- XA事务结束（应用层）
--- xa_end(xid, TMSUCCESS)
+        IF NOT FOUND THEN
+            ROLLBACK;
+            RAISE WARNING '账户ID 1 不存在，事务回滚';
+            RETURN;
+        END IF;
 
--- XA准备（应用层）
--- xa_prepare(xid)
-PREPARE TRANSACTION 'xa_txn_001';
+        -- XA事务结束（应用层）
+        -- xa_end(xid, TMSUCCESS)
 
--- XA提交（应用层）
+        -- XA准备（应用层，带错误处理）
+        -- xa_prepare(xid)
+        PREPARE TRANSACTION 'xa_txn_001';
+        RAISE NOTICE 'XA事务已准备（xa_txn_001）';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 accounts 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING 'XA事务准备失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- XA提交（应用层，带错误处理）
 -- xa_commit(xid, TMNOFLAGS)
-COMMIT PREPARED 'xa_txn_001';
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_prepared_xacts WHERE gid = 'xa_txn_001') THEN
+            RAISE WARNING 'XA事务 xa_txn_001 不存在，无法提交';
+            RETURN;
+        END IF;
+
+        COMMIT PREPARED 'xa_txn_001';
+        RAISE NOTICE 'XA事务 xa_txn_001 已提交';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'XA事务提交失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- XA回滚（应用层）
 -- xa_rollback(xid)

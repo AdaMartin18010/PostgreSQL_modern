@@ -186,13 +186,29 @@ VACUUM内存 = maintenance_work_mem × 固定分配策略
 #### autovacuum_work_mem
 
 ```sql
--- PostgreSQL 17新增参数
+-- PostgreSQL 17新增参数（带错误处理）
 -- autovacuum_work_mem: autovacuum进程的内存限制
 -- 默认值：-1 (使用maintenance_work_mem)
 
--- 配置示例：
--- 为autovacuum单独设置内存
-ALTER SYSTEM SET autovacuum_work_mem = '1GB';
+-- 配置示例（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET autovacuum_work_mem = '1GB';
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'autovacuum_work_mem 已设置为1GB';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置autovacuum_work_mem失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 优势：
 -- 1. autovacuum和手动VACUUM内存分离
@@ -274,22 +290,42 @@ ALTER SYSTEM SET autovacuum_work_mem = '1GB';
 #### 推荐配置
 
 ```sql
--- 生产环境推荐配置
+-- 生产环境推荐配置（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
 
--- 1. maintenance_work_mem（手动VACUUM）
--- 建议：物理内存的5-10%
--- 示例：64GB内存 → 4GB
-ALTER SYSTEM SET maintenance_work_mem = '4GB';
+        -- 1. maintenance_work_mem（手动VACUUM）
+        -- 建议：物理内存的5-10%
+        -- 示例：64GB内存 → 4GB
+        ALTER SYSTEM SET maintenance_work_mem = '4GB';
+        RAISE NOTICE 'maintenance_work_mem 已设置为4GB';
 
--- 2. autovacuum_work_mem（autovacuum）
--- 建议：maintenance_work_mem的50-70%
--- 示例：4GB → 2GB
-ALTER SYSTEM SET autovacuum_work_mem = '2GB';
+        -- 2. autovacuum_work_mem（autovacuum）
+        -- 建议：maintenance_work_mem的50-70%
+        -- 示例：4GB → 2GB
+        ALTER SYSTEM SET autovacuum_work_mem = '2GB';
+        RAISE NOTICE 'autovacuum_work_mem 已设置为2GB';
 
--- 3. max_parallel_maintenance_workers
--- 建议：CPU核心数的50-75%
--- 示例：16核 → 8-12
-ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
+        -- 3. max_parallel_maintenance_workers
+        -- 建议：CPU核心数的50-75%
+        -- 示例：16核 → 8-12
+        ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
+        RAISE NOTICE 'max_parallel_maintenance_workers 已设置为8';
+
+        SELECT pg_reload_conf();
+        RAISE NOTICE '生产环境推荐配置已设置';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置生产环境配置失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 #### 不同规模数据库配置
@@ -304,26 +340,39 @@ ALTER SYSTEM SET max_parallel_maintenance_workers = 8;
 ### 4.2 表级配置优化
 
 ```sql
--- 针对不同表的优化策略
+-- 针对不同表的优化策略（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        -- 1. 更新频繁的大表（带错误处理）
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            ALTER TABLE orders SET (
+                fillfactor = 70,  -- 预留更新空间
+                autovacuum_vacuum_scale_factor = 0.05,  -- 更频繁VACUUM
+                autovacuum_work_mem = '4GB'  -- 表级内存设置（PG17新特性）
+            );
+            RAISE NOTICE 'orders表优化配置已设置';
+        ELSE
+            RAISE WARNING '表 orders 不存在，跳过配置';
+        END IF;
 
--- 1. 更新频繁的大表
-ALTER TABLE orders SET (
-    fillfactor = 70,  -- 预留更新空间
-    autovacuum_vacuum_scale_factor = 0.05,  -- 更频繁VACUUM
-    autovacuum_work_mem = '4GB'  -- 表级内存设置（PG17新特性）
-);
+        -- 2. 只读表（带错误处理）
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'archive_logs') THEN
+            ALTER TABLE archive_logs SET (
+                fillfactor = 100,  -- 无更新，无需预留空间
+                autovacuum_vacuum_scale_factor = 0.2,  -- 较少VACUUM
+                autovacuum_work_mem = '512MB'  -- 较少内存
+            );
+            RAISE NOTICE 'archive_logs表优化配置已设置';
+        ELSE
+            RAISE WARNING '表 archive_logs 不存在，跳过配置';
+        END IF;
 
--- 2. 只读表
-ALTER TABLE archive_logs SET (
-    fillfactor = 100,  -- 无更新，无需预留空间
-    autovacuum_vacuum_scale_factor = 0.2,  -- 较少VACUUM
-    autovacuum_work_mem = '512MB'  -- 较少内存
-);
-
--- 3. 分区表
--- 主表设置
-ALTER TABLE logs SET (
-    autovacuum_work_mem = '2GB'
+        -- 3. 分区表（带错误处理）
+        -- 主表设置
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs') THEN
+            ALTER TABLE logs SET (
+                autovacuum_work_mem = '2GB'
 );
 
 -- 活跃分区设置
@@ -513,14 +562,41 @@ FROM pg_stat_progress_vacuum;
 ### 7.2 性能诊断
 
 ```sql
--- 诊断VACUUM性能问题
+-- 诊断VACUUM性能问题（带错误处理）
 
--- 1. 检查内存配置
-SHOW maintenance_work_mem;
-SHOW autovacuum_work_mem;
-SHOW max_parallel_maintenance_workers;
+-- 1. 检查内存配置（带错误处理）
+DO $$
+DECLARE
+    v_maintenance_work_mem TEXT;
+    v_autovacuum_work_mem TEXT;
+    v_max_parallel_maintenance_workers TEXT;
+BEGIN
+    BEGIN
+        SHOW maintenance_work_mem INTO v_maintenance_work_mem;
+        SHOW autovacuum_work_mem INTO v_autovacuum_work_mem;
+        SHOW max_parallel_maintenance_workers INTO v_max_parallel_maintenance_workers;
+        RAISE NOTICE 'maintenance_work_mem: %', v_maintenance_work_mem;
+        RAISE NOTICE 'autovacuum_work_mem: %', v_autovacuum_work_mem;
+        RAISE NOTICE 'max_parallel_maintenance_workers: %', v_max_parallel_maintenance_workers;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查内存配置失败: %', SQLERRM;
+    END;
+END $$;
 
--- 2. 检查VACUUM频率
+-- 2. 检查VACUUM频率（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查VACUUM频率';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     relname,

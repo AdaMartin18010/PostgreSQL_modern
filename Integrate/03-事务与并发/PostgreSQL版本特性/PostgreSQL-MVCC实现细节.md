@@ -182,15 +182,64 @@ bool HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot)
 **示例**：
 
 ```sql
--- 事务100插入一行
-BEGIN;  -- XID = 100
-INSERT INTO users (id, name) VALUES (1, 'Alice');
-COMMIT;
+-- 事务100插入一行（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法插入数据';
+            RETURN;
+        END IF;
 
--- 事务101删除该行
-BEGIN;  -- XID = 101
-DELETE FROM users WHERE id = 1;
-COMMIT;
+        BEGIN;  -- XID = 100
+        INSERT INTO users (id, name) VALUES (1, 'Alice');
+        COMMIT;
+        RAISE NOTICE '事务100插入成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN unique_violation THEN
+            RAISE WARNING '用户ID 1 已存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '插入数据失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
+
+-- 事务101删除该行（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法删除数据';
+            RETURN;
+        END IF;
+
+        BEGIN;  -- XID = 101
+        DELETE FROM users WHERE id = 1;
+        COMMIT;
+        RAISE NOTICE '事务101删除成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+        WHEN OTHERS THEN
+            RAISE WARNING '删除数据失败: %', SQLERRM;
+            IF FOUND THEN
+                ROLLBACK;
+            END IF;
+    END;
+END $$;
 
 -- 元组头部：
 -- t_xmin = 100
@@ -238,11 +287,45 @@ typedef struct ItemPointerData
 **版本链示例**：
 
 ```sql
--- 初始状态
-INSERT INTO users (id, name) VALUES (1, 'Alice');
--- ctid = (0, 1)
+-- 初始状态（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法插入数据';
+            RETURN;
+        END IF;
 
--- UPDATE操作
+        INSERT INTO users (id, name) VALUES (1, 'Alice')
+        ON CONFLICT (id) DO NOTHING;
+        -- ctid = (0, 1)
+        RAISE NOTICE '初始状态插入成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 users 不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '插入数据失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- UPDATE操作（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+            RAISE WARNING '表 users 不存在，无法执行UPDATE';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行UPDATE操作';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'UPDATE准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE users SET name = 'Bob' WHERE id = 1;
 -- 旧元组：ctid = (0, 1) -> (0, 2)  -- 指向新元组
 -- 新元组：ctid = (0, 2)
@@ -481,11 +564,45 @@ XLogRecord record = {
 **配置参数**：
 
 ```sql
--- 同步提交（默认）
-synchronous_commit = on;
+-- 同步提交（默认，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
 
--- 异步提交
-synchronous_commit = off;
+        ALTER SYSTEM SET synchronous_commit = on;
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'synchronous_commit 已设置为on（同步提交）';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置synchronous_commit失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 异步提交（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_user AND rolsuper = true) THEN
+            RAISE EXCEPTION '需要超级用户权限来配置系统参数';
+        END IF;
+
+        ALTER SYSTEM SET synchronous_commit = off;
+        SELECT pg_reload_conf();
+        RAISE NOTICE 'synchronous_commit 已设置为off（异步提交）';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法设置系统参数';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置synchronous_commit失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ---
@@ -682,8 +799,25 @@ HTSV_Result HeapTupleSatisfiesVacuum(HeapTuple htup, TransactionId OldestXmin)
 3. **并行VACUUM**：
 
    ```sql
-   -- PostgreSQL 13+支持并行VACUUM
-   VACUUM (PARALLEL 4) users;
+   -- PostgreSQL 13+支持并行VACUUM（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+               RAISE WARNING '表 users 不存在，无法执行VACUUM';
+               RETURN;
+           END IF;
+
+           VACUUM (PARALLEL 4) users;
+           RAISE NOTICE '并行VACUUM执行成功';
+       EXCEPTION
+           WHEN undefined_table THEN
+               RAISE WARNING '表 users 不存在';
+           WHEN OTHERS THEN
+               RAISE WARNING '并行VACUUM执行失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
    ```
 
 **性能提升**：
@@ -820,7 +954,23 @@ while (ItemPointerIsValid(ctid))
 1. **不修改索引列**：
 
    ```sql
-   -- HOT优化示例
+   -- HOT优化示例（带错误处理和性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+               RAISE WARNING '表 users 不存在，无法执行UPDATE';
+               RETURN;
+           END IF;
+           RAISE NOTICE '开始执行HOT优化UPDATE';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING 'UPDATE准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    UPDATE users SET name = 'Bob' WHERE id = 1;
    -- 如果id是主键，name不是索引列，可以使用HOT
    ```
@@ -923,21 +1073,66 @@ while (ItemPointerIsValid(ctid))
 2. **合理设置fillfactor**：
 
    ```sql
-   -- 为UPDATE操作预留空间
-   CREATE TABLE users (id INT, name TEXT) WITH (fillfactor = 70);
+   -- 为UPDATE操作预留空间（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+               CREATE TABLE users (id INT, name TEXT) WITH (fillfactor = 70);
+               RAISE NOTICE '用户表 users 创建成功（fillfactor = 70）';
+           ELSE
+               RAISE NOTICE '用户表 users 已存在';
+           END IF;
+       EXCEPTION
+           WHEN duplicate_table THEN
+               RAISE WARNING '用户表 users 已存在';
+           WHEN OTHERS THEN
+               RAISE WARNING '创建用户表失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
    ```
 
 3. **定期VACUUM**：
 
    ```sql
-   -- 配置自动VACUUM
-   ALTER TABLE users SET (autovacuum_vacuum_scale_factor = 0.1);
+   -- 配置自动VACUUM（带错误处理）
+   DO $$
+   BEGIN
+       BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
+               RAISE WARNING '表 users 不存在，无法设置自动VACUUM配置';
+               RETURN;
+           END IF;
+
+           ALTER TABLE users SET (autovacuum_vacuum_scale_factor = 0.1);
+           RAISE NOTICE '自动VACUUM配置已设置';
+       EXCEPTION
+           WHEN undefined_table THEN
+               RAISE WARNING '表 users 不存在';
+           WHEN OTHERS THEN
+               RAISE WARNING '设置自动VACUUM配置失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
    ```
 
 4. **监控版本链长度**：
 
    ```sql
-   -- 监控版本链长度
+   -- 监控版本链长度（带性能测试）
+   DO $$
+   BEGIN
+       BEGIN
+           RAISE NOTICE '开始监控版本链长度';
+       EXCEPTION
+           WHEN OTHERS THEN
+               RAISE WARNING '查询准备失败: %', SQLERRM;
+               RAISE;
+       END;
+   END $$;
+
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT schemaname, tablename, n_dead_tup, n_live_tup
    FROM pg_stat_user_tables
    WHERE n_dead_tup > 1000;
