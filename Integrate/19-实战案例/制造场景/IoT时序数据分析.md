@@ -812,7 +812,7 @@ IoT时序数据查询性能慢，影响实时监控。
 
 ```sql
 -- 1. 检查时序查询性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     device_id,
     AVG(value) as avg_value,

@@ -335,11 +335,11 @@ SSL/TLS配置是保护数据传输安全的关键措施，确保数据在传输�
 
 ```sql
 -- 检查SSL连接状态（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT ssl_is_used();
 
 -- 查看SSL连接信息（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     usename,

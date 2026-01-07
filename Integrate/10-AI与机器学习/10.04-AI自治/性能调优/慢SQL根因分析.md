@@ -113,6 +113,20 @@ WHERE mean_time > 1000  -- 平均执行时间 > 1秒
 ORDER BY mean_time DESC;
 ```
 
+-- 性能测试：慢查询分析查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT
+    query,
+    calls,
+    total_time,
+    mean_time,
+    max_time,
+    stddev_time
+FROM pg_stat_statements
+WHERE mean_time > 1000
+ORDER BY mean_time DESC
+LIMIT 20;
+
 ---
 
 ## 3. 根因定位
@@ -121,7 +135,7 @@ ORDER BY mean_time DESC;
 
 ```sql
 -- 分析执行计划
-EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM table_name WHERE condition;
 ```
 

@@ -1720,7 +1720,7 @@ FROM generate_series(1, 10000) i;
 COMMIT;
 
 -- 检查性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO test_documents (content, metadata)
 SELECT
     json_build_object('title', 'Test', 'body', '...'),
@@ -5674,7 +5674,7 @@ ALTER SYSTEM SET effective_cache_size = '96GB';
 ```sql
 -- OLAP工作负载测试查询
 -- 测试1: 大表聚合查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date_trunc('day', created_at) as day,
     COUNT(*) as count,
@@ -5686,7 +5686,7 @@ GROUP BY day
 ORDER BY day;
 
 -- 测试2: 窗口函数查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     value,
@@ -5696,7 +5696,7 @@ FROM large_table
 WHERE category = 'A';
 
 -- 测试3: 多表JOIN查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     t1.id,
     t1.value,
@@ -6556,11 +6556,11 @@ ALTER SYSTEM SET enable_parallel_append = on;
 
    ```sql
    -- 测试大表扫描
-   EXPLAIN ANALYZE
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT COUNT(*) FROM large_table;
 
    -- 测试复杂查询
-   EXPLAIN ANALYZE
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT ... FROM table1 JOIN table2 ...;
    ```
 

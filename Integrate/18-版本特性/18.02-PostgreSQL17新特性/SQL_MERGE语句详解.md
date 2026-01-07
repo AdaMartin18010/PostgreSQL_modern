@@ -618,7 +618,7 @@ WHEN NOT MATCHED AND s.status = 'active' THEN
 
    ```sql
    -- ✅ 好：分析 MERGE 执行计划
-   EXPLAIN ANALYZE
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    MERGE INTO users AS target
    USING new_users AS source
    ON target.user_id = source.user_id

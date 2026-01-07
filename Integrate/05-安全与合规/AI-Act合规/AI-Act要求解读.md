@@ -462,7 +462,7 @@ EXCEPTION
         RAISE WARNING '查询模型决策解释失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     mdl.model_name,
     mdl.output_result,

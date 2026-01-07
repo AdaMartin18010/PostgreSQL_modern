@@ -1347,7 +1347,7 @@ SET hnsw.ef_search = 40;  -- HNSW 搜索范围
 SET ivfflat.probes = 10;   -- IVFFlat 搜索聚类数
 
 -- 4. 检查索引使用情况
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM documents
 ORDER BY embedding <=> query_vector::vector
 LIMIT 10;
@@ -1407,7 +1407,7 @@ WHERE tablename = 'documents';
 
 ```sql
 -- 1. 测试向量查询性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     content,
@@ -1421,7 +1421,7 @@ LIMIT 10;
 -- - 是否使用索引（应该显示 Index Scan）
 
 -- 2. 测试批量查询性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     content,
@@ -1432,7 +1432,7 @@ ORDER BY embedding <=> query_vector::vector
 LIMIT 100;
 
 -- 3. 测试混合搜索性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     content,

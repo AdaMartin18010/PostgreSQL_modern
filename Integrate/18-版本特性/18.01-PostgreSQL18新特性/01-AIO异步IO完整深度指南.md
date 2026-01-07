@@ -715,7 +715,7 @@ fi
 ```sql
 -- 性能测试：查询性能（带错误处理）
 BEGIN;
--- 执行EXPLAIN ANALYZE
+-- 执行EXPLAIN (ANALYZE, BUFFERS, TIMING)
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*) FROM large_table;
 
@@ -813,7 +813,8 @@ LIMIT 10;
 
 -- 测试不同值
 SET effective_io_concurrency = 50;
-EXPLAIN (ANALYZE, BUFFERS) SELECT COUNT(*) FROM large_table;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT COUNT(*) FROM large_table;
 -- 记录时间
 
 SET effective_io_concurrency = 100;

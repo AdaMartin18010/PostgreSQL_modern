@@ -169,7 +169,7 @@ Winner: PostgreSQL +27% TPS
 -- PostgreSQL: 原生并行查询
 SET max_parallel_workers_per_gather = 4;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM large_table WHERE condition;
 
 /*

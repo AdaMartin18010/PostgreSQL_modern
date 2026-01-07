@@ -295,6 +295,10 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM agent_data WHERE agent_id = 'agent_1';
 -- Agent 2的分支
 SELECT * FROM agent_data WHERE agent_id = 'agent_2';
+
+-- 性能测试：分支数据查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM agent_data WHERE agent_id = 'agent_1';
 ```
 
 1. **分支生命周期管理**：

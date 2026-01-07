@@ -836,7 +836,7 @@ DO $$
 BEGIN
     SET LOCAL enable_indexskipscan = off;  -- 禁用
     RAISE NOTICE 'Skip Scan已禁用，执行查询...';
-    -- EXPLAIN ANALYZE SELECT ...;
+    -- EXPLAIN (ANALYZE, BUFFERS, TIMING) SELECT ...;
 EXCEPTION
     WHEN OTHERS THEN
         RAISE NOTICE '禁用Skip Scan测试失败: %', SQLERRM;
@@ -849,7 +849,7 @@ DO $$
 BEGIN
     SET LOCAL enable_indexskipscan = on;   -- 启用（默认）
     RAISE NOTICE 'Skip Scan已启用，执行查询...';
-    -- EXPLAIN ANALYZE SELECT ...;
+    -- EXPLAIN (ANALYZE, BUFFERS, TIMING) SELECT ...;
 EXCEPTION
     WHEN OTHERS THEN
         RAISE NOTICE '启用Skip Scan测试失败: %', SQLERRM;

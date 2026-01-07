@@ -135,8 +135,22 @@ SELECT
 FROM generate_series(1, 10000) i;
 COMMIT;
 
--- 检查性能
-EXPLAIN ANALYZE
+-- 检查性能（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_documents') THEN
+            RAISE WARNING '表 test_documents 不存在，无法执行性能测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始性能测试：批量插入性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '性能测试准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO test_documents (content, metadata)
 SELECT
     json_build_object('title', 'Test', 'body', '...'),

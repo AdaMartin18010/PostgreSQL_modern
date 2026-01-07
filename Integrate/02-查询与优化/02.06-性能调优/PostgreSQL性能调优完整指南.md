@@ -372,7 +372,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：分析查询计划
-EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE customer_id = 123
   AND order_date >= '2024-01-01';

@@ -578,7 +578,7 @@ WHERE hypertable_name = 'sensor_readings'
 ORDER BY compression_ratio_pct DESC;
 
 -- 3. 压缩性能测试
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT AVG(value)
 FROM sensor_readings
 WHERE device_id = 123

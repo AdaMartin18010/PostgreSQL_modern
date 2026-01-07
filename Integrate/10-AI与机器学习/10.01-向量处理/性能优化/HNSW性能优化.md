@@ -415,7 +415,7 @@ ALTER SYSTEM SET work_mem = '256MB';  -- 限制每个查询的内存
 4. **查询优化**:
 
 ```sql
--- 使用 EXPLAIN ANALYZE 分析查询计划
+-- 使用 EXPLAIN (ANALYZE, BUFFERS, TIMING) 分析查询计划
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
 SELECT
     id,
@@ -448,7 +448,7 @@ LIMIT 10;
 1. **硬件选择**: SSD 对于向量索引至关重要，I/O 性能直接影响查询速度
 2. **参数调优**: 根据数据规模调整 `m` 和 `ef_construction` 参数
 3. **缓存配置**: 合理配置 `shared_buffers` 和 `effective_cache_size`
-4. **查询分析**: 使用 `EXPLAIN ANALYZE` 分析查询计划，确保使用索引
+4. **查询分析**: 使用 `EXPLAIN (ANALYZE, BUFFERS, TIMING)` 分析查询计划，确保使用索引
 
 ---
 

@@ -520,7 +520,7 @@ time psql -c "INSERT INTO events SELECT ... FROM generate_series(1, 10000000);"
 
 ```sql
 -- 聚合查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     DATE(created_at) AS day,
     COUNT(*) AS event_count,

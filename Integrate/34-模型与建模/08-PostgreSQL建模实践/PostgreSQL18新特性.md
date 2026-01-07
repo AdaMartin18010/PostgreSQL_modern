@@ -321,7 +321,7 @@ EXCEPTION
 END $$;
 
 -- 查询时自动使用虚拟生成列索引（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT id, name, final_price
 FROM products
 WHERE final_price BETWEEN 50 AND 100;
@@ -425,7 +425,7 @@ oauth_audience = 'postgresql-server'
 -- PostgreSQL 18改进了多表JOIN的优化
 -- 自动选择最优的JOIN顺序和算法（带性能测试）
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
 FROM orders o
 JOIN customers c ON o.customer_id = c.customer_id
@@ -450,7 +450,7 @@ EXCEPTION
 END $$;
 
 -- 并行查询性能测试
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*), customer_id
 FROM orders
 GROUP BY customer_id;
@@ -526,7 +526,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：查询性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE order_date >= '2025-01-01'
 ORDER BY order_date DESC
@@ -565,7 +565,7 @@ END $$;
 
 ```sql
 -- 18版本改进了分区剪枝算法（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE order_date BETWEEN '2024-01-01' AND '2024-01-31';
 -- 分区剪枝更准确，性能提升约10-20%
@@ -612,7 +612,7 @@ EXCEPTION
 END $$;
 
 -- JSONB查询性能测试
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM table_name
 WHERE jsonb_column @> '{"key": "value"}';
 -- 查询性能提升约10-15%
@@ -624,7 +624,7 @@ WHERE jsonb_column @> '{"key": "value"}';
 
 ```sql
 -- 18版本新增了更多JSONB操作函数（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT jsonb_path_query_array(
     jsonb_column,
     '$.items[*].price'
@@ -665,7 +665,7 @@ END $$;
 
 ```sql
 -- 18版本改进了NUMERIC类型的计算性能（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT SUM(amount) FROM orders;
 -- 计算性能提升约10-20%
 ```

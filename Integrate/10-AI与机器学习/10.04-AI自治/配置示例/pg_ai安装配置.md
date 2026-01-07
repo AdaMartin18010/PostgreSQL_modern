@@ -514,7 +514,7 @@ SELECT * FROM pg_ai.model_status;
 SET pg_ai.show_plans = on;
 
 -- 执行测试查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM large_table
 WHERE column1 = 'value'
 ORDER BY column2

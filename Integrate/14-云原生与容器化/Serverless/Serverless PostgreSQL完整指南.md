@@ -440,7 +440,7 @@ EXCEPTION
         RAISE WARNING '连接数扩缩容监控失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*) as current_connections,
     (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') as max_connections,
@@ -506,7 +506,7 @@ EXCEPTION
         RAISE WARNING '查询负载扩缩容监控失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*) FILTER (WHERE state = 'active') as active_queries,
     AVG(EXTRACT(EPOCH FROM (NOW() - query_start))) FILTER (WHERE state = 'active' AND query_start IS NOT NULL) as avg_query_duration
@@ -571,7 +571,7 @@ EXCEPTION
         RAISE WARNING '零流量检测失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(*) FILTER (WHERE state IN ('active', 'idle in transaction')) as active_connections,
     COUNT(*) FILTER (WHERE state = 'active') as active_queries,
@@ -787,7 +787,7 @@ EXCEPTION
         RAISE WARNING '资源使用监控失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     numbackends as connections,
@@ -850,7 +850,7 @@ BEGIN
         RAISE NOTICE '';
         RAISE NOTICE '发现 % 个慢查询，总执行时间: % ms', slow_query_count, ROUND(total_query_time, 2);
         RAISE NOTICE '优化建议:';
-        RAISE NOTICE '  1. 使用EXPLAIN ANALYZE分析查询计划';
+        RAISE NOTICE '  1. 使用EXPLAIN (ANALYZE, BUFFERS, TIMING)分析查询计划';
         RAISE NOTICE '  2. 创建合适的索引';
         RAISE NOTICE '  3. 优化查询逻辑';
         RAISE NOTICE '  4. 使用物化视图预聚合';
@@ -866,7 +866,7 @@ END $$;
 **查询优化最佳实践**：
 
 1. **使用索引** - 为常用查询创建索引
-2. **优化查询计划** - 使用EXPLAIN ANALYZE分析查询计划
+2. **优化查询计划** - 使用EXPLAIN (ANALYZE, BUFFERS, TIMING)分析查询计划
 3. **使用物化视图** - 预聚合常用查询结果
 4. **批量操作** - 使用批量操作减少查询次数
 5. **查询缓存** - 使用应用层缓存减少数据库查询

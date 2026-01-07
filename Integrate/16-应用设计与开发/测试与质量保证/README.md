@@ -62,7 +62,7 @@
 - pgTAP
 - pg_prove
 - pgbench
-- EXPLAIN ANALYZE
+- EXPLAIN (ANALYZE, BUFFERS, TIMING)
 
 ### 质量保证
 

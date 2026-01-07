@@ -684,7 +684,7 @@ FROM generate_series(1, 100000000);
 -- 列存储：2.5GB（-83%） ✅
 
 -- 查询性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date,
     event_type,

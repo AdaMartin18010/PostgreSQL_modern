@@ -761,7 +761,7 @@ USING GIST (ST_Centroid(boundary));
 
 ```sql
 -- 测试查询性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM points
 WHERE ST_DWithin(
     location,
@@ -884,7 +884,30 @@ AND ST_DWithin(
     5000  -- 5km精确过滤
 );
 
+-- 性能测试：边界框预过滤查询性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM points
+WHERE location && ST_MakeEnvelope(
+    116.38, 39.89,  -- 左下角
+    116.42, 39.93,  -- 右上角
+    4326
+)::geography
+AND ST_DWithin(
+    location,
+    ST_GeogFromText('POINT(116.4 39.9)'),
+    5000  -- 5km精确过滤
+);
+
 -- ❌ 不推荐：直接使用ST_DWithin（不使用边界框过滤）
+SELECT * FROM points
+WHERE ST_DWithin(
+    location,
+    ST_GeogFromText('POINT(116.4 39.9)'),
+    5000
+);
+
+-- 性能测试：直接ST_DWithin查询性能（对比）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM points
 WHERE ST_DWithin(
     location,
@@ -997,6 +1020,13 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 SELECT * FROM points
 WHERE location && get_bbox(ST_GeogFromText('POINT(116.4 39.9)'), 5000)::geography
 ORDER BY location <-> ST_GeogFromText('POINT(116.4 39.9)')  -- <-> 运算符计算距离
+LIMIT 10;
+
+-- 性能测试：距离排序查询性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM points
+WHERE location && get_bbox(ST_GeogFromText('POINT(116.4 39.9)'), 5000)::geography
+ORDER BY location <-> ST_GeogFromText('POINT(116.4 39.9)')
 LIMIT 10;
 
 -- <-> 运算符使用索引，比ST_Distance快
@@ -1347,6 +1377,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 使用函数
+SELECT * FROM check_geofence(
+    ST_GeogFromText('POINT(116.39 39.90)')
+);
+
+-- 性能测试：地理围栏查询性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM check_geofence(
     ST_GeogFromText('POINT(116.39 39.90)')
 );

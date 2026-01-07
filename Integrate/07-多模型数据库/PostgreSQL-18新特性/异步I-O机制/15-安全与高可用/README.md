@@ -332,13 +332,35 @@ ALTER SYSTEM SET max_standby_streaming_delay = 30s;
 **安全配置检查清单**：
 
 ```sql
--- 1. 检查SSL配置
+-- 1. 检查SSL配置（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查SSL配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查SSL配置准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name, setting
 FROM pg_settings
 WHERE name LIKE 'ssl%'
 ORDER BY name;
 
--- 2. 检查访问控制
+-- 2. 检查访问控制（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查访问控制';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查访问控制准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     datname,
     datacl,
@@ -349,7 +371,18 @@ SELECT
 FROM pg_database
 WHERE datname NOT IN ('template0', 'template1', 'postgres');
 
--- 3. 检查审计日志
+-- 3. 检查审计日志（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查审计日志配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '检查审计日志准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name, setting
 FROM pg_settings
 WHERE name LIKE 'log%'

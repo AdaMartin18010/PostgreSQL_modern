@@ -390,9 +390,32 @@ ensemble_retriever = EnsembleRetriever(
 #### **相似度计算**
 
 ```sql
--- PostgreSQL中的向量相似度计算
+-- PostgreSQL中的向量相似度计算（带错误处理和性能测试）
 
 -- 1. 余弦相似度（cosine similarity）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE WARNING 'pgvector扩展未安装，向量操作可能失败';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'documents'
+    ) THEN
+        RAISE WARNING '表documents不存在';
+    END IF;
+
+    RAISE NOTICE '开始执行余弦相似度查询';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '查询准备失败: %', SQLERRM;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     content,
     1 - (embedding <=> query_embedding) AS cosine_similarity
@@ -401,6 +424,7 @@ ORDER BY embedding <=> query_embedding
 LIMIT 10;
 
 -- 2. 欧氏距离（L2 distance）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     content,
     embedding <-> query_embedding AS l2_distance
@@ -420,20 +444,94 @@ LIMIT 10;
 #### **索引优化**
 
 ```sql
--- HNSW索引（推荐）
-CREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
+-- HNSW索引（推荐，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装: CREATE EXTENSION vector;';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'documents'
+    ) THEN
+        RAISE EXCEPTION '表documents不存在，请先创建表';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'documents'
+        AND indexname LIKE '%hnsw%'
+    ) THEN
+        DROP INDEX IF EXISTS documents_embedding_hnsw_idx;
+        RAISE NOTICE '已删除现有HNSW索引';
+    END IF;
+
+    CREATE INDEX documents_embedding_hnsw_idx ON documents
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+
+    RAISE NOTICE 'HNSW索引创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'hnsw索引方法不存在，请检查pgvector扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建HNSW索引失败: %', SQLERRM;
+END $$;
 
 -- 参数说明：
 -- m: 每个节点的最大连接数（16是默认值，越大精度越高但索引越大）
 -- ef_construction: 构建索引时的搜索深度（64是默认值，越大构建越慢但精度越高）
 
--- IVFFlat索引（大规模数据）
-CREATE INDEX ON documents USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+-- IVFFlat索引（大规模数据，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        RAISE EXCEPTION 'pgvector扩展未安装，请先安装: CREATE EXTENSION vector;';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'documents'
+        AND indexname LIKE '%ivfflat%'
+    ) THEN
+        DROP INDEX IF EXISTS documents_embedding_ivfflat_idx;
+        RAISE NOTICE '已删除现有IVFFlat索引';
+    END IF;
+
+    CREATE INDEX documents_embedding_ivfflat_idx ON documents
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+    RAISE NOTICE 'IVFFlat索引创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表documents不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION 'ivfflat索引方法不存在，请检查pgvector扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建IVFFlat索引失败: %', SQLERRM;
+END $$;
 
 -- 查询时调整精度
-SET hnsw.ef_search = 40;  -- 查询时的搜索深度
+DO $$
+BEGIN
+    SET hnsw.ef_search = 40;  -- 查询时的搜索深度
+    RAISE NOTICE 'HNSW搜索深度已设置为: 40';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '设置搜索深度失败: %', SQLERRM;
+END $$;
 ```
 
 ### 2.4 上下文管理与优化
@@ -855,28 +953,127 @@ EOF
 #### **PostgreSQL配置**
 
 ```sql
--- 创建数据库和扩展
-CREATE DATABASE langchain_db;
-\c langchain_db
+-- 创建数据库和扩展（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_database
+        WHERE datname = 'langchain_db'
+    ) THEN
+        PERFORM dblink_exec('dbname=postgres', 'CREATE DATABASE langchain_db');
+        RAISE NOTICE '数据库 langchain_db 创建成功';
+    ELSE
+        RAISE NOTICE '数据库 langchain_db 已存在';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建数据库失败: %', SQLERRM;
+END $$;
 
--- 安装pgvector扩展
-CREATE EXTENSION IF NOT EXISTS vector;
+-- 切换到新数据库（需要在psql中执行）
+-- \c langchain_db
 
--- 创建向量表（LangChain会自动创建，这里展示结构）
-CREATE TABLE IF NOT EXISTS langchain_pg_embedding (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    collection_id UUID,
-    embedding VECTOR(1536),  -- OpenAI embeddings维度
-    document TEXT,
-    cmetadata JSONB,
-    custom_id TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 安装pgvector扩展（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'vector'
+    ) THEN
+        CREATE EXTENSION vector;
+        RAISE NOTICE 'pgvector扩展安装成功';
+    ELSE
+        RAISE NOTICE 'pgvector扩展已存在';
+    END IF;
+EXCEPTION
+    WHEN undefined_file THEN
+        RAISE EXCEPTION 'pgvector扩展文件不存在，请检查PostgreSQL安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '安装pgvector扩展失败: %', SQLERRM;
+END $$;
 
--- 创建索引
-CREATE INDEX ON langchain_pg_embedding USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX ON langchain_pg_embedding USING btree (collection_id);
-CREATE INDEX ON langchain_pg_embedding USING gin (cmetadata);
+-- 创建向量表（LangChain会自动创建，这里展示结构，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'langchain_pg_embedding'
+    ) THEN
+        RAISE NOTICE '表 langchain_pg_embedding 已存在';
+    ELSE
+        CREATE TABLE langchain_pg_embedding (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            collection_id UUID,
+            embedding VECTOR(1536),  -- OpenAI embeddings维度
+            document TEXT,
+            cmetadata JSONB,
+            custom_id TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 langchain_pg_embedding 创建成功';
+    END IF;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '表 langchain_pg_embedding 已存在';
+    WHEN undefined_type THEN
+        RAISE EXCEPTION 'VECTOR类型不存在，请先安装pgvector扩展';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表失败: %', SQLERRM;
+END $$;
+
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'langchain_pg_embedding'
+    ) THEN
+        RAISE EXCEPTION '表 langchain_pg_embedding 不存在，请先创建表';
+    END IF;
+
+    -- HNSW向量索引
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'langchain_pg_embedding'
+        AND indexname = 'langchain_pg_embedding_embedding_idx'
+    ) THEN
+        CREATE INDEX langchain_pg_embedding_embedding_idx
+        ON langchain_pg_embedding USING hnsw (embedding vector_cosine_ops);
+        RAISE NOTICE 'HNSW向量索引创建成功';
+    END IF;
+
+    -- B-tree索引
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'langchain_pg_embedding'
+        AND indexname = 'langchain_pg_embedding_collection_id_idx'
+    ) THEN
+        CREATE INDEX langchain_pg_embedding_collection_id_idx
+        ON langchain_pg_embedding USING btree (collection_id);
+        RAISE NOTICE 'B-tree索引创建成功';
+    END IF;
+
+    -- GIN索引
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND tablename = 'langchain_pg_embedding'
+        AND indexname = 'langchain_pg_embedding_cmetadata_idx'
+    ) THEN
+        CREATE INDEX langchain_pg_embedding_cmetadata_idx
+        ON langchain_pg_embedding USING gin (cmetadata);
+        RAISE NOTICE 'GIN索引创建成功';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表 langchain_pg_embedding 不存在';
+    WHEN undefined_object THEN
+        RAISE EXCEPTION '索引方法不存在，请检查扩展安装';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 #### **环境变量配置**
@@ -1273,7 +1470,7 @@ class PostgreSQLAgent:
         explain_tool = Tool(
             name="ExplainAnalyze",
             func=self._explain_query,
-            description="分析SQL查询性能。输入：SQL语句。输出：EXPLAIN ANALYZE结果。"
+            description="分析SQL查询性能。输入：SQL语句。输出：EXPLAIN (ANALYZE, BUFFERS, TIMING)结果。"
         )
 
         return [doc_search_tool, sql_tool, explain_tool]
@@ -1304,14 +1501,14 @@ class PostgreSQLAgent:
             conn.close()
 
     def _explain_query(self, sql: str) -> str:
-        """EXPLAIN ANALYZE"""
+        """EXPLAIN (ANALYZE, BUFFERS, TIMING)"""
         import psycopg2
         from config import Config
 
         try:
             conn = psycopg2.connect(Config.DATABASE_URL)
             with conn.cursor() as cur:
-                cur.execute(f"EXPLAIN ANALYZE {sql}")
+                cur.execute(f"EXPLAIN (ANALYZE, BUFFERS, TIMING) {sql}")
                 results = cur.fetchall()
                 return "\n".join([row[0] for row in results])
         except Exception as e:

@@ -348,7 +348,7 @@ max_parallel_workers = 8
    ```
 
 3. **优化查询**
-   - 使用 EXPLAIN ANALYZE 分析查询计划
+   - 使用 EXPLAIN (ANALYZE, BUFFERS, TIMING) 分析查询计划
    - 重写慢查询
    - 添加查询提示
 

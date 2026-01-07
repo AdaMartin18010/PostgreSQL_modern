@@ -689,7 +689,7 @@ $$ LANGUAGE plpgsql;
 
 ```sql
 -- 查询设备最新数据（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT DISTINCT ON (device_id)
     device_id,
     time,
@@ -700,7 +700,7 @@ WHERE device_id IN ('device_001', 'device_002')
 ORDER BY device_id, time DESC;
 
 -- 查询告警事件（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     ae.alert_id,
     d.device_name,
@@ -717,7 +717,7 @@ WHERE ae.status = 'active'
 ORDER BY ae.alert_time DESC;
 
 -- 查询历史趋势（使用连续聚合，带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     hour,
     device_id,
@@ -769,7 +769,7 @@ FROM '/path/to/data.csv' WITH CSV HEADER;
 
 ```sql
 -- 监控写入速率（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     time_bucket('1 minute', time) AS minute,
     COUNT(*) AS data_points,

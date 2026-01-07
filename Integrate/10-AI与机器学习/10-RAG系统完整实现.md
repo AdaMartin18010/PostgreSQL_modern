@@ -388,6 +388,34 @@ LEFT JOIN text_results tr ON dc.chunk_id = tr.chunk_id
 WHERE vr.chunk_id IS NOT NULL OR tr.chunk_id IS NOT NULL
 ORDER BY final_score DESC
 LIMIT 5;
+
+-- 性能测试：混合检索查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+WITH vector_results AS (
+    SELECT
+        chunk_id,
+        1 - (embedding <=> query_vec) AS vec_score
+    FROM document_chunks
+    ORDER BY embedding <=> query_vec
+    LIMIT 100
+),
+text_results AS (
+    SELECT
+        chunk_id,
+        ts_rank(ts_vector, query) AS text_score
+    FROM document_chunks
+    WHERE ts_vector @@ to_tsquery('postgresql & mvcc')
+)
+SELECT
+    dc.chunk_id,
+    dc.chunk_text,
+    COALESCE(vr.vec_score, 0) * 0.7 + COALESCE(tr.text_score, 0) * 0.3 AS final_score
+FROM document_chunks dc
+LEFT JOIN vector_results vr ON dc.chunk_id = vr.chunk_id
+LEFT JOIN text_results tr ON dc.chunk_id = tr.chunk_id
+WHERE vr.chunk_id IS NOT NULL OR tr.chunk_id IS NOT NULL
+ORDER BY final_score DESC
+LIMIT 5;
 ```
 
 ### 4.2 重排序（Rerank）

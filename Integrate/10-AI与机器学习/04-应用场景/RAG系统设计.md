@@ -236,6 +236,27 @@ JOIN documents d ON d.id = dc.document_id,
 WHERE 1 - (dc.embedding <=> qv.vec) > 0.7  -- 相似度阈值
 ORDER BY dc.embedding <=> qv.vec
 LIMIT 5;
+
+-- 性能测试：基础向量检索查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+WITH query_vec AS (
+    SELECT ai.embedding_openai(
+        'text-embedding-3-small',
+        'What is PostgreSQL?'
+    ) AS vec
+)
+SELECT
+    dc.id,
+    dc.chunk_text,
+    d.title,
+    d.source,
+    1 - (dc.embedding <=> qv.vec) AS similarity
+FROM document_chunks dc
+JOIN documents d ON d.id = dc.document_id,
+     query_vec qv
+WHERE 1 - (dc.embedding <=> qv.vec) > 0.7
+ORDER BY dc.embedding <=> qv.vec
+LIMIT 5;
 ```
 
 ### 4.2 混合检索（向量 + 关键词）
@@ -243,6 +264,43 @@ LIMIT 5;
 **向量检索 + 全文搜索**：
 
 ```sql
+WITH query_vec AS (
+    SELECT ai.embedding_openai(
+        'text-embedding-3-small',
+        'PostgreSQL performance optimization'
+    ) AS vec
+),
+vector_results AS (
+    SELECT
+        dc.id,
+        dc.chunk_text,
+        1 - (dc.embedding <=> qv.vec) AS vector_score
+    FROM document_chunks dc, query_vec qv
+    WHERE 1 - (dc.embedding <=> qv.vec) > 0.7
+),
+text_results AS (
+    SELECT
+        dc.id,
+        ts_rank(
+            to_tsvector('english', dc.chunk_text),
+            plainto_tsquery('english', 'PostgreSQL performance optimization')
+        ) AS text_score
+    FROM document_chunks dc
+    WHERE to_tsvector('english', dc.chunk_text)
+          @@ plainto_tsquery('english', 'PostgreSQL performance optimization')
+)
+SELECT
+    COALESCE(vr.id, tr.id) AS chunk_id,
+    dc.chunk_text,
+    COALESCE(vr.vector_score, 0) * 0.6 + COALESCE(tr.text_score, 0) * 0.4 AS final_score
+FROM vector_results vr
+FULL OUTER JOIN text_results tr ON vr.id = tr.id
+JOIN document_chunks dc ON dc.id = COALESCE(vr.id, tr.id)
+ORDER BY final_score DESC
+LIMIT 5;
+
+-- 性能测试：混合检索查询（向量+关键词）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH query_vec AS (
     SELECT ai.embedding_openai(
         'text-embedding-3-small',

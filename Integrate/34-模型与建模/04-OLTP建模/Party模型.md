@@ -1398,7 +1398,7 @@ WHERE pr.role_type IN ('CUSTOMER', 'BILL_TO_CUSTOMER', 'SHIP_TO_CUSTOMER', 'END_
 ORDER BY p.name;
 
 -- 性能测试
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     p.party_id,
     p.name,

@@ -68,7 +68,6 @@
       - [6.1.2 参数调优建议](#612-参数调优建议)
     - [6.2 查询优化技巧](#62-查询优化技巧)
       - [6.2.1 查询计划分析](#621-查询计划分析)
-      - [6.2.2 批量查询优化](#622-批量查询优化)
     - [6.3 常见问题与解决方案](#63-常见问题与解决方案)
       - [6.3.1 索引构建慢](#631-索引构建慢)
       - [6.3.2 查询召回率低](#632-查询召回率低)
@@ -557,7 +556,7 @@ typedef struct Node {
 **查询执行流程**:
 
 ```sql
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM documents
 ORDER BY embedding <=> query_vector
 LIMIT 10;
@@ -978,10 +977,11 @@ SET ivfflat.probes = 100;  -- 速度优先
 
 #### 6.2.1 查询计划分析
 
-**EXPLAIN ANALYZE 使用**:
+**EXPLAIN (ANALYZE, BUFFERS, TIMING) 使用**:
 
 ```sql
-EXPLAIN ANALYZE
+-- 性能测试：向量相似度查询性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT id, content, embedding <=> query_vector as distance
 FROM documents
 ORDER BY embedding <=> query_vector
@@ -991,8 +991,33 @@ LIMIT 10;
 **关键指标**:
 
 - **Index Scan**: 确认使用了 HNSW/IVFFlat 索引
-- **Execution Time**: 查看实际执行时间
+- **Execution Time**: 查看实际执行时间（应 <50ms）
 - **Planning Time**: 查看计划时间（应 <1ms）
+- **Buffers: shared hit**: 缓存命中率（应 >90%）
+
+**性能测试示例**:
+
+```sql
+-- 性能测试：HNSW索引查询性能
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents') THEN
+            RAISE WARNING '表 documents 不存在，无法执行性能测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始性能测试：HNSW索引查询性能';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '性能测试准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, content, embedding <=> '[0.1,0.2,0.3]'::vector(1536) as distance
+FROM documents
+ORDER BY embedding <=> '[0.1,0.2,0.3]'::vector(1536)
+LIMIT 10;
 
 #### 6.2.2 批量查询优化
 
@@ -1322,13 +1347,34 @@ FROM products
 ORDER BY embedding <=> '[1,2,3]'::vector
 LIMIT 10;
 
+-- 性能测试：余弦相似度查询性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, name, embedding <=> '[1,2,3]'::vector AS cosine_distance
+FROM products
+ORDER BY embedding <=> '[1,2,3]'::vector
+LIMIT 10;
+
 -- L2距离（欧氏距离）
 SELECT id, name, embedding <-> '[1,2,3]'::vector AS l2_distance
 FROM products
 ORDER BY embedding <-> '[1,2,3]'::vector
 LIMIT 10;
 
+-- 性能测试：L2距离查询性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT id, name, embedding <-> '[1,2,3]'::vector AS l2_distance
+FROM products
+ORDER BY embedding <-> '[1,2,3]'::vector
+LIMIT 10;
+
 -- 内积
+SELECT id, name, embedding <#> '[1,2,3]'::vector AS inner_product
+FROM products
+ORDER BY embedding <#> '[1,2,3]'::vector
+LIMIT 10;
+
+-- 性能测试：内积查询性能
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT id, name, embedding <#> '[1,2,3]'::vector AS inner_product
 FROM products
 ORDER BY embedding <#> '[1,2,3]'::vector

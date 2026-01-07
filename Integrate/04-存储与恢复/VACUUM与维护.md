@@ -873,13 +873,13 @@ END $$;
 
 ```sql
 -- 1. 检查自动VACUUM配置（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name, setting, unit, short_desc
 FROM pg_settings
 WHERE name IN ('autovacuum', 'autovacuum_naptime', 'autovacuum_vacuum_threshold', 'autovacuum_analyze_threshold');
 
 -- 2. 检查自动VACUUM活动（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     relname,

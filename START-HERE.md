@@ -87,7 +87,7 @@
 
 ## 📊 项目结构
 
-```
+```text
 PostgreSQL_modern/
 ├── README.md（项目概述）
 ├── START-HERE.md（本文件）⭐

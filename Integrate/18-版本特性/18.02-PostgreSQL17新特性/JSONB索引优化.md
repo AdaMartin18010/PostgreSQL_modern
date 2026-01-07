@@ -1058,7 +1058,7 @@ PostgreSQL 17 的 JSONB 索引优化显著提升了 JSONB 数据的查询性能�
 
     ```sql
     -- ✅ 好：检查索引使用情况
-    EXPLAIN ANALYZE
+    EXPLAIN (ANALYZE, BUFFERS, TIMING)
     SELECT * FROM documents
     WHERE content @> '{"status": "active"}';
     -- 查看执行计划，确认使用了索引

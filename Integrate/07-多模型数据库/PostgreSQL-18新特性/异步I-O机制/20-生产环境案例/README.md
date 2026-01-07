@@ -445,11 +445,11 @@ ALTER SYSTEM SET enable_parallel_append = on;
 
    ```sql
    -- 测试大表扫描
-   EXPLAIN ANALYZE
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT COUNT(*) FROM large_table;
 
    -- 测试复杂查询
-   EXPLAIN ANALYZE
+   EXPLAIN (ANALYZE, BUFFERS, TIMING)
    SELECT ... FROM table1 JOIN table2 ...;
    ```
 

@@ -450,20 +450,59 @@ PostgreSQL提供了丰富的性能优化扩展，从索引优化到查询加速�
 **使用示例**：
 
 ```sql
--- 1. 自动向量化管道
-SELECT ai.create_vectorizer(
-    'news_articles'::regclass,
-    destination => 'news_embeddings',
-    embedding => ai.embedding_openai('text-embedding-3-small', 'content'),
-    chunking => ai.chunking_recursive_character_text_splitter('content')
-);
+-- 1. 自动向量化管道（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'pg_ai'
+    ) THEN
+        RAISE EXCEPTION 'pg_ai扩展未安装，请先安装: CREATE EXTENSION pg_ai;';
+    END IF;
 
--- 2. 插入数据自动触发向量化
-INSERT INTO news_articles(title, content)
-VALUES ('Fed Raises Rates', 'The Federal Reserve announced...');
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'news_articles'
+    ) THEN
+        RAISE EXCEPTION '表news_articles不存在，请先创建表';
+    END IF;
+
+    PERFORM ai.create_vectorizer(
+        'news_articles'::regclass,
+        destination => 'news_embeddings',
+        embedding => ai.embedding_openai('text-embedding-3-small', 'content'),
+        chunking => ai.chunking_recursive_character_text_splitter('content')
+    );
+
+    RAISE NOTICE '自动向量化管道创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表news_articles不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'ai.create_vectorizer函数不存在，请检查pg_ai扩展版本';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建向量化管道失败: %', SQLERRM;
+END $$;
+
+-- 2. 插入数据自动触发向量化（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO news_articles(title, content)
+        VALUES ('Fed Raises Rates', 'The Federal Reserve announced...');
+        RAISE NOTICE '数据插入成功，向量化将自动触发';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE EXCEPTION '表news_articles不存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '插入数据失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 -- 自动同步生成向量到news_embeddings表
 
--- 3. SQL内调用LLM
+-- 3. SQL内调用LLM（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT ai.chat_complete(
     'gpt-4',
     'Summarize this article: ' || content
@@ -495,7 +534,35 @@ WHERE id = 1;
 **使用示例**：
 
 ```sql
--- 1. 训练欺诈检测模型
+-- 1. 训练欺诈检测模型（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'pgml'
+    ) THEN
+        RAISE EXCEPTION 'PostgresML扩展未安装，请先安装: CREATE EXTENSION pgml;';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'transactions'
+    ) THEN
+        RAISE EXCEPTION '表transactions不存在，请先创建表';
+    END IF;
+
+    RAISE NOTICE '开始训练欺诈检测模型...';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表transactions不存在';
+    WHEN undefined_function THEN
+        RAISE EXCEPTION 'pgml.train函数不存在，请检查PostgresML扩展安装';
+    WHEN OTHERS THEN
+        RAISE WARNING '模型训练准备失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 执行模型训练
 SELECT * FROM pgml.train(
     project_name => 'fraud_detection',
     task => 'classification',
@@ -505,7 +572,8 @@ SELECT * FROM pgml.train(
     hyperparams => '{"n_estimators": 100, "max_depth": 6}'
 );
 
--- 2. 实时推理
+-- 2. 实时推理（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     transaction_id,
     amount,
@@ -514,7 +582,8 @@ SELECT
     ) AS fraud_probability
 FROM transactions
 WHERE created_at > NOW() - INTERVAL '1 minute'
-ORDER BY fraud_probability DESC;
+ORDER BY fraud_probability DESC
+LIMIT 100;
 ```
 
 **实际案例**：

@@ -907,7 +907,7 @@ WITH (m = 32, ef_construction = 128);
 
 -- 性能测试
 SET hnsw.ef_search = 100;
-EXPLAIN (ANALYZE, BUFFERS)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM documents
 ORDER BY embedding <=> query_vector
 LIMIT 10;

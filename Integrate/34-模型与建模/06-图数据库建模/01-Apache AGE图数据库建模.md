@@ -205,7 +205,7 @@ EXCEPTION
 END $$;
 
 -- 查看所有图数据库（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM ag_catalog.ag_graph;
 
 -- 切换到指定图数据库（带错误处理）
@@ -299,7 +299,7 @@ $$) AS (r agtype);
 
 ```sql
 -- 查找所有Person节点（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('knowledge_graph', $$
     MATCH (p:Person)
     RETURN p
@@ -307,14 +307,14 @@ SELECT * FROM cypher('knowledge_graph', $$
 $$) AS (p agtype);
 
 -- 查找特定节点（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('knowledge_graph', $$
     MATCH (p:Person {name: 'Alice'})
     RETURN p
 $$) AS (p agtype);
 
 -- 查找节点的关系（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('knowledge_graph', $$
     MATCH (p:Person {id: 'p1'})-[r]->(n)
     RETURN p, r, n
@@ -325,7 +325,7 @@ $$) AS (p agtype, r agtype, n agtype);
 
 ```sql
 -- 查找两个节点之间的路径（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('knowledge_graph', $$
     MATCH path = (p1:Person {id: 'p1'})-[*1..3]-(p2:Person {id: 'p2'})
     RETURN path
@@ -333,7 +333,7 @@ SELECT * FROM cypher('knowledge_graph', $$
 $$) AS (path agtype);
 
 -- 查找最短路径（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('knowledge_graph', $$
     MATCH path = shortestPath(
         (p1:Person {id: 'p1'})-[*]-(p2:Person {id: 'p2'})
@@ -346,7 +346,7 @@ $$) AS (path agtype);
 
 ```sql
 -- 统计节点的度（连接数，带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('knowledge_graph', $$
     MATCH (p:Person)
     OPTIONAL MATCH (p)-[r]-()
@@ -355,7 +355,7 @@ SELECT * FROM cypher('knowledge_graph', $$
 $$) AS (name agtype, degree agtype);
 
 -- 查找最受欢迎的节点（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('knowledge_graph', $$
     MATCH (n)-[r]->()
     RETURN labels(n)[0] AS label, id(n) AS node_id, count(r) AS popularity
@@ -620,7 +620,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY mv_popular_nodes;
 
 1. **错误处理**: 使用DO块处理Cypher查询错误
 2. **事务管理**: 图操作应在事务中执行
-3. **性能监控**: 使用EXPLAIN ANALYZE分析查询性能
+3. **性能监控**: 使用EXPLAIN (ANALYZE, BUFFERS, TIMING)分析查询性能
 4. **资源管理**: 限制图查询的内存和CPU使用
 
 ---

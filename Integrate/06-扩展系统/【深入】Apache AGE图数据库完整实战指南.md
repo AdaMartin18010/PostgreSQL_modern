@@ -416,7 +416,7 @@ EXCEPTION
 END $$;
 
 -- 4. 验证（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM ag_graph WHERE name = 'social_network';
 ```
 
@@ -539,7 +539,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：创建单个节点
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     CREATE (alice:Person {name: 'Alice', age: 30, city: 'Beijing'})
     RETURN alice
@@ -569,7 +569,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：创建多个节点和边
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     CREATE (alice:Person {name: 'Alice', age: 30})
     CREATE (bob:Person {name: 'Bob', age: 25})
@@ -599,7 +599,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：创建路径
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     CREATE p = (a:Person {name: 'David'})-[:WORKS_AT]->(c:Company {name: 'TechCorp'})
     RETURN p
@@ -633,7 +633,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：简单匹配
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.age > 25
@@ -662,7 +662,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：关系匹配
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (a:Person)-[r:FRIEND]->(b:Person)
     RETURN a.name, b.name, r.since
@@ -690,7 +690,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：可变长度路径
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (a:Person {name: 'Alice'})-[:FRIEND*1..3]->(friend)
     RETURN DISTINCT friend.name
@@ -719,7 +719,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：双向关系
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (a:Person)-[:FRIEND]-(b:Person)
     WHERE a.name = 'Alice'
@@ -755,7 +755,7 @@ EXCEPTION
         RAISE WARNING '属性过滤查询失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.age >= 25 AND p.age <= 35 AND p.city = 'Beijing'
@@ -784,7 +784,7 @@ EXCEPTION
         RAISE WARNING '正则表达式查询失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.name =~ 'A.*'
@@ -813,7 +813,7 @@ EXCEPTION
         RAISE WARNING 'NULL检查查询失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.email IS NOT NULL
@@ -842,7 +842,7 @@ EXCEPTION
         RAISE WARNING '列表包含查询失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     WHERE p.age IN [25, 30, 35]
@@ -888,7 +888,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：聚合函数
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     RETURN
@@ -921,7 +921,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：GROUP BY
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)
     RETURN p.city, COUNT(p) AS person_count, AVG(p.age) AS avg_age
@@ -950,7 +950,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：COLLECT聚合
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM cypher('social_network', $$
     MATCH (p:Person)-[:FRIEND]->(friend)
     RETURN p.name, COLLECT(friend.name) AS friends
@@ -1935,7 +1935,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：验证RLS策略
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*)
 FROM ag_catalog."Person"
 WHERE properties->>'tenant_id' = current_setting('app.tenant_id', true);
@@ -2085,7 +2085,7 @@ print("Top 10 by PageRank:", sorted(pagerank.items(), key=lambda x: x[1], revers
 
 ### Q4: 如何调试慢查询？
 
-**A**: 使用EXPLAIN ANALYZE
+**A**: 使用EXPLAIN (ANALYZE, BUFFERS, TIMING)
 
 ```sql
 -- 开启详细日志

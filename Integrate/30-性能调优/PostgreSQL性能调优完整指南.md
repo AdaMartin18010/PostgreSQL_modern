@@ -303,20 +303,20 @@ END $$;
 
 ```sql
 -- ✅ 推荐：使用索引（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 123;
 
 -- ❌ 避免：全表扫描（带性能测试，展示问题）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE name LIKE '%test%';
 -- 注意：此查询会导致全表扫描，性能较差
 
 -- ✅ 推荐：使用LIMIT（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders ORDER BY created_at DESC LIMIT 20;
 
 -- ❌ 避免：返回大量数据（带性能测试，展示问题）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders ORDER BY created_at DESC;
 -- 注意：此查询返回所有数据，可能导致性能问题
 ```
@@ -360,12 +360,12 @@ WHERE customer_id = 123
 ```sql
 -- 使用EXISTS代替IN（对于大表，带性能对比）
 -- ❌ 不推荐：使用IN（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id IN (SELECT user_id FROM orders);
 -- 注意：IN子查询可能执行效率较低，特别是对于大表
 
 -- ✅ 推荐：使用EXISTS（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id);
 -- 注意：EXISTS通常在大多数情况下性能更好，因为它可以提前终止搜索
 ```
@@ -577,7 +577,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -735,7 +735,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT pg_size_pretty(pg_database_size('mydb'));
 
 -- 查看表大小（带错误处理和性能测试）
@@ -756,7 +756,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -791,7 +791,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     usename,
@@ -851,7 +851,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     query,
     calls,
@@ -912,7 +912,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_multi ON orders(customer_id, status, creat
 
 -- 查询可以利用跳过扫描（PostgreSQL 18）
 -- 即使WHERE子句不包含索引的第一列，也可以利用索引
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE status = 'pending' AND created_at > '2025-01-01'
 ORDER BY created_at;

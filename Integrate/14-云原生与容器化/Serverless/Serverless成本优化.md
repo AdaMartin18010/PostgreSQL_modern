@@ -166,7 +166,7 @@ WHERE datname NOT IN ('template0', 'template1', 'postgres');
 
 ```sql
 -- 优化慢查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM large_table WHERE condition;
 
 -- 创建索引

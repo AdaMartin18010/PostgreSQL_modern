@@ -130,7 +130,7 @@ SELECT ST_GeomFromText('MULTIPOINT((116.3 39.9), (116.4 39.95))', 4326);
 CREATE INDEX ON places_geography USING GIST (location);
 
 -- 查询使用索引
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM places_geography
 WHERE ST_DWithin(location, ST_GeogFromText('POINT(116.4 39.9)'), 1000);
 -- 1000米范围内的点

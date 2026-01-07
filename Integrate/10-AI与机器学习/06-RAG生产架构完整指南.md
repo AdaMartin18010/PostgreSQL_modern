@@ -406,24 +406,43 @@ class ResilientDBPool:
 **监控SQL**：
 
 ```sql
--- RAG系统监控视图
-CREATE VIEW rag_metrics AS
-SELECT
-    DATE_TRUNC('minute', created_at) AS time_bucket,
-    COUNT(*) AS total_queries,
-    AVG(latency_ms) AS avg_latency,
-    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency,
-    PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency,
-    PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency,
-    AVG(num_chunks_retrieved) AS avg_chunks,
-    AVG(user_rating) AS avg_rating,
-    SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS errors
-FROM rag_query_log
-WHERE created_at > NOW() - INTERVAL '1 hour'
-GROUP BY time_bucket
-ORDER BY time_bucket DESC;
+-- RAG系统监控视图（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_schema = 'public' AND table_name = 'rag_metrics') THEN
+            DROP VIEW rag_metrics CASCADE;
+            RAISE NOTICE '已删除现有视图: rag_metrics';
+        END IF;
 
--- 实时查看
+        CREATE VIEW rag_metrics AS
+        SELECT
+            DATE_TRUNC('minute', created_at) AS time_bucket,
+            COUNT(*) AS total_queries,
+            AVG(latency_ms) AS avg_latency,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency,
+            PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency,
+            PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency,
+            AVG(num_chunks_retrieved) AS avg_chunks,
+            AVG(user_rating) AS avg_rating,
+            SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS errors
+        FROM rag_query_log
+        WHERE created_at > NOW() - INTERVAL '1 hour'
+        GROUP BY time_bucket
+        ORDER BY time_bucket DESC;
+
+        RAISE NOTICE '视图 rag_metrics 创建成功';
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 rag_query_log 不存在，无法创建视图';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 实时查看（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM rag_metrics LIMIT 10;
 ```
 
@@ -432,7 +451,8 @@ SELECT * FROM rag_metrics LIMIT 10;
 **Grafana面板配置**（关键指标）：
 
 ```sql
--- QPS
+-- QPS查询（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     time_bucket,
     total_queries / 60.0 AS qps

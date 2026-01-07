@@ -323,13 +323,39 @@ SELECT * FROM pgml.train(
 1. **实现向量搜索**：
 
 ```sql
--- 用户行为向量化
+-- 用户行为向量化（带错误处理和性能测试）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension
+        WHERE extname = 'pg_ai'
+    ) THEN
+        RAISE EXCEPTION 'pg_ai扩展未安装，请先安装: CREATE EXTENSION pg_ai;';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'risk_features'
+    ) THEN
+        RAISE EXCEPTION '表risk_features不存在，请先创建表';
+    END IF;
+
+    RAISE NOTICE '开始批量向量化用户行为特征';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '向量化准备失败: %', SQLERRM;
+        RAISE;
+END $$;
+
+-- 执行向量化更新（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 UPDATE risk_features
 SET behavior_vec = ai.embedding_openai(
     'text-embedding-3-small',
     feature_name || ' ' || feature_value::text
 )
-WHERE behavior_vec IS NULL;
+WHERE behavior_vec IS NULL
+LIMIT 1000;  -- 批量处理，避免一次性更新过多
 ```
 
 **效果**：
@@ -357,18 +383,43 @@ aliyun rds ModifyDBInstanceSpec \
 1. **查询优化**：
 
 ```sql
--- 1. 使用物化视图预计算
-CREATE MATERIALIZED VIEW daily_risk_stats AS
-SELECT
-    DATE(transaction_time) AS date,
-    COUNT(*) AS total_transactions,
-    AVG(risk_score) AS avg_risk_score,
-    COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_count
-FROM transactions
-GROUP BY DATE(transaction_time);
+-- 1. 使用物化视图预计算（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_matviews
+        WHERE schemaname = 'public' AND matviewname = 'daily_risk_stats'
+    ) THEN
+        DROP MATERIALIZED VIEW daily_risk_stats CASCADE;
+        RAISE NOTICE '已删除现有物化视图: daily_risk_stats';
+    END IF;
 
--- 2. 定期刷新
+    CREATE MATERIALIZED VIEW daily_risk_stats AS
+    SELECT
+        DATE(transaction_time) AS date,
+        COUNT(*) AS total_transactions,
+        AVG(risk_score) AS avg_risk_score,
+        COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_count
+    FROM transactions
+    GROUP BY DATE(transaction_time);
+
+    RAISE NOTICE '物化视图 daily_risk_stats 创建成功';
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '表transactions不存在，请先创建表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建物化视图失败: %', SQLERRM;
+END $$;
+
+-- 2. 定期刷新（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 REFRESH MATERIALIZED VIEW CONCURRENTLY daily_risk_stats;
+
+-- 3. 查询物化视图性能测试
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM daily_risk_stats
+WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+ORDER BY date DESC;
 ```
 
 **效果**：

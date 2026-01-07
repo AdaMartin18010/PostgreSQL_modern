@@ -216,7 +216,7 @@ BEGIN
 END $$;
 
 -- 性能测试：查询计算成本分析视图
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM compute_cost_analysis
 LIMIT 100;
 ```
@@ -370,7 +370,7 @@ BEGIN
 END $$;
 
 -- 性能测试：查询存储成本分析视图
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM storage_cost_analysis
 LIMIT 100;
 ```
@@ -556,7 +556,7 @@ EXCEPTION
         RAISE WARNING 'CPU使用分析失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     date_trunc('hour', timestamp) AS hour,
     avg(cpu_usage_percent) AS avg_cpu,
@@ -705,7 +705,7 @@ EXCEPTION
         RAISE WARNING '查询内存配置失败: %', SQLERRM;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     name,
     setting AS parameter,

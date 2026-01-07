@@ -60,7 +60,18 @@ ALTER SYSTEM SET io_uring_queue_depth = 256;
 -- 5. 重新加载配置
 SELECT pg_reload_conf();
 
--- 6. 验证配置
+-- 6. 验证配置（带性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始验证异步I/O配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '验证配置准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT name, setting, unit
 FROM pg_settings
 WHERE name IN (

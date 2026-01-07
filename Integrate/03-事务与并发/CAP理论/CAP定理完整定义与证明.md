@@ -497,7 +497,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：监控同步延迟
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     application_name,
     sync_state,
@@ -525,7 +525,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：监控阻塞情况
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     wait_event_type,
@@ -569,7 +569,7 @@ EXCEPTION
 END $$;
 
 -- 性能测试：监控复制延迟
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     application_name,
     pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes,

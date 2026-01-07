@@ -208,7 +208,7 @@ EXCEPTION
 END $$;
 
 -- 查看Citus版本（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM citus_version();
 
 -- 创建列存表（带错误处理）
@@ -252,12 +252,12 @@ END $$;
 
 ```sql
 -- 查看列存表信息（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM columnar.storage
 WHERE relation_name = 'sales_fact_columnar';
 
 -- 查看列存表统计（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -368,7 +368,7 @@ CREATE INDEX idx_sales_date_year ON fact_sales_columnar(sale_year)
 
 ```sql
 -- 列存表查询：只选择需要的列（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     sale_year,
     sale_month,
@@ -408,7 +408,7 @@ EXCEPTION
 END $$;
 
 -- 查看列存表统计（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     tablename,
@@ -419,7 +419,7 @@ FROM pg_stats
 WHERE tablename = 'fact_sales_columnar';
 
 -- 列存表压缩统计（带性能测试）
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     relation_name,
     stripe_count,
@@ -562,7 +562,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 性能测试
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM get_order_details(1);
 
 -- OLAP查询：使用列存表（带错误处理和性能测试）
@@ -601,7 +601,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 性能测试
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM get_sales_analytics('2025-01-01'::DATE, '2025-12-31'::DATE);
 ```
 
@@ -767,12 +767,12 @@ LIMIT 10;
 
 -- 对比行存和列存查询性能
 -- 行存查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT SUM(total_amount) FROM fact_sales_rowstore WHERE sale_date >= '2024-01-01';
 -- Seq Scan: 5000ms
 
 -- 列存查询
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT SUM(total_amount) FROM fact_sales_columnar WHERE sale_date >= '2024-01-01';
 -- Columnar Scan: 500ms（快10倍）
 ```

@@ -308,7 +308,8 @@ SELECT auto_predict('model', features);
 ```sql
 -- AI驱动优化器
 SET enable_ai_optimizer = on;
-EXPLAIN SELECT * FROM documents WHERE embedding <=> vec < 0.3;
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM documents WHERE embedding <=> vec < 0.3;
 -- 优化器使用机器学习选择最优计划
 ```
 

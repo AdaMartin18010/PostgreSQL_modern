@@ -224,7 +224,7 @@ ORDER BY
     l_returnflag,
     l_linestatus;
 
--- EXPLAIN ANALYZE
+-- EXPLAIN (ANALYZE, BUFFERS, TIMING)
 /*
 PostgreSQL 17: 45.2s
 ├─ Parallel Seq Scan: 25s

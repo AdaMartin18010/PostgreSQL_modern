@@ -231,7 +231,7 @@
 └─ pg_stat_user_indexes (索引统计)
 
 分析工具:
-├─ EXPLAIN ANALYZE     (执行计划)
+├─ EXPLAIN (ANALYZE, BUFFERS, TIMING)     (执行计划)
 ├─ pgBadger            (日志分析)
 ├─ pg_stat_monitor     (性能监控)
 └─ pg_top              (实时监控)
@@ -797,8 +797,8 @@ WHERE u.id IN (1, 2, 3);
 #### 执行计划解读
 
 ```sql
--- 查看执行计划
-EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+-- 查看执行计划（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders o
 JOIN customers c ON o.customer_id = c.id
 WHERE c.email = 'user@example.com'
@@ -1377,7 +1377,7 @@ WHERE status = 'pending' AND created_at > '2025-01-01'
 ORDER BY created_at;
 
 -- PostgreSQL 18: 跳过扫描优化查询性能30-50%
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE status = 'pending' AND created_at > '2025-01-01'
 ORDER BY created_at;

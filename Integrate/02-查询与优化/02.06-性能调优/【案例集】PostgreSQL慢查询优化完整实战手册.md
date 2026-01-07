@@ -25,7 +25,7 @@
   - [2. 慢查询诊断工具](#2-慢查询诊断工具)
     - [2.1 pg\_stat\_statements](#21-pg_stat_statements)
       - [安装与配置](#安装与配置)
-    - [2.2 EXPLAIN ANALYZE](#22-explain-analyze)
+    - [2.2 EXPLAIN (ANALYZE, BUFFERS, TIMING)](#22-explain-analyze)
     - [2.3 慢查询日志](#23-慢查询日志)
     - [2.4 实时监控](#24-实时监控)
   - [3. 案例1：缺失索引](#3-案例1缺失索引)
@@ -143,7 +143,7 @@
    └─ 应用监控（APM）
 
 2. 分析原因
-   ├─ EXPLAIN ANALYZE
+   ├─ EXPLAIN (ANALYZE, BUFFERS, TIMING)
    ├─ pg_stat_user_tables
    └─ pg_locks
 
@@ -153,7 +153,7 @@
    └─ 配置调整
 
 4. 验证效果
-   ├─ EXPLAIN ANALYZE对比
+   ├─ EXPLAIN (ANALYZE, BUFFERS, TIMING)对比
    ├─ 生产监控
    └─ 负载测试
 
@@ -239,7 +239,7 @@ LIMIT 10;
 SELECT pg_stat_statements_reset();
 ```
 
-### 2.2 EXPLAIN ANALYZE
+### 2.2 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 
 ```sql
 -- 基本用法（带错误处理）
@@ -250,7 +250,7 @@ BEGIN
             RAISE WARNING '表 users 不存在，无法执行查询';
             RETURN;
         END IF;
-        RAISE NOTICE '开始执行EXPLAIN ANALYZE';
+        RAISE NOTICE '开始执行EXPLAIN (ANALYZE, BUFFERS, TIMING)';
     EXCEPTION
         WHEN OTHERS THEN
             RAISE WARNING '执行查询准备失败: %', SQLERRM;
@@ -269,7 +269,7 @@ BEGIN
             RAISE WARNING '表 users 不存在，无法执行查询';
             RETURN;
         END IF;
-        RAISE NOTICE '开始执行详细EXPLAIN ANALYZE';
+        RAISE NOTICE '开始执行详细EXPLAIN (ANALYZE, BUFFERS, TIMING)';
     EXCEPTION
         WHEN OTHERS THEN
             RAISE WARNING '执行查询准备失败: %', SQLERRM;
@@ -874,7 +874,7 @@ BEGIN
 END $$;
 
 -- 选择性 = DISTINCT值数量 / 总行数
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     COUNT(DISTINCT user_id)::float / NULLIF(COUNT(*), 0) AS user_id_selectivity,
     COUNT(DISTINCT status)::float / NULLIF(COUNT(*), 0) AS status_selectivity
@@ -1344,7 +1344,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT o.* FROM orders o
 JOIN users u ON o.user_id = u.id
 WHERE u.country = 'US';
@@ -1369,7 +1369,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders o
 WHERE EXISTS (
     SELECT 1 FROM users u
@@ -1421,7 +1421,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     o.order_id,
     u.username
@@ -2561,7 +2561,7 @@ LIMIT 10;
    - 应用监控
 
 2. 分析执行计划
-   - EXPLAIN ANALYZE
+   - EXPLAIN (ANALYZE, BUFFERS, TIMING)
    - 查看Seq Scan, Index Scan
    - 估算 vs 实际行数
 
@@ -2586,7 +2586,7 @@ LIMIT 10;
    - 配置调整
 
 7. 验证效果
-   - EXPLAIN ANALYZE对比
+   - EXPLAIN (ANALYZE, BUFFERS, TIMING)对比
    - 生产监控
 ```
 
@@ -2689,7 +2689,7 @@ max_connections = 200
 ## ✅ 学习检查清单
 
 - [ ] 掌握pg_stat_statements使用
-- [ ] 能够阅读EXPLAIN ANALYZE输出
+- [ ] 能够阅读EXPLAIN (ANALYZE, BUFFERS, TIMING)输出
 - [ ] 理解索引类型和使用场景
 - [ ] 能够识别N+1查询问题
 - [ ] 掌握JOIN优化技巧

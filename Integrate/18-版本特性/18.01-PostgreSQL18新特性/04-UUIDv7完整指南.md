@@ -1006,7 +1006,7 @@ REINDEX INDEX CONCURRENTLY orders_pkey;
 
 ```sql
 -- 1. 检查函数性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT gen_uuid_v7() FROM generate_series(1, 100000);
 
 -- 2. 检查系统时间同步
@@ -1123,7 +1123,7 @@ SELECT
 -- 时间戳应该接近当前时间
 
 -- 方法3: 检查插入性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 INSERT INTO orders (user_id, amount)
 SELECT i, 100.0
 FROM generate_series(1, 10000) i;

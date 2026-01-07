@@ -341,6 +341,15 @@ WHERE vec <-> query_vec < 0.8  -- 向量相似度
   AND rating > 4.5
 ORDER BY vec <=> query_vec
 LIMIT 20;
+
+-- 性能测试：混合查询（向量+地理+评分）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM listings
+WHERE vec <-> query_vec < 0.8
+  AND ST_DWithin(geom, user_location, 5000)
+  AND rating > 4.5
+ORDER BY vec <=> query_vec
+LIMIT 20;
 ```
 
 **效果**: 用户点击率**提升18%**，开发周期**缩短60%**。
@@ -395,6 +404,18 @@ WHERE amount > 10000
   AND similarity > 0.9
   AND fraud_score > 0.8
 FOR UPDATE SKIP LOCKED;  -- 并发控制
+
+-- 性能测试：实时欺诈检测查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT transaction_id,
+       pgml.predict('fraud_model', features) as fraud_score,
+       vec <=> known_fraud_patterns as similarity
+FROM transactions
+WHERE amount > 10000
+  AND vec <=> known_fraud_patterns < 0.1
+  AND pgml.predict('fraud_model', features) > 0.8
+FOR UPDATE SKIP LOCKED
+LIMIT 100;
 ```
 
 **效果**: 某金融客户复杂报表查询**从2小时缩短至15分钟**，DBA人力成本**降低70%**。
@@ -509,7 +530,21 @@ CREATE INDEX ON products USING hnsw(desc_vec);
 -- 混合查询
 SELECT * FROM products
 WHERE category='electronics'
+  AND desc_vec <=> query_vec < 0.3
+ORDER BY desc_vec <=> query_vec
+LIMIT 20;
+
+-- 性能测试：混合查询（结构化+向量）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM products
+WHERE category='electronics'
+  AND desc_vec <=> query_vec < 0.3
+ORDER BY desc_vec <=> query_vec
+LIMIT 20;
+```
+
   AND desc_vec <=> query_vec < 0.7;
+
 ```
 
 **阶段2: AI原生集成 (4周)**:

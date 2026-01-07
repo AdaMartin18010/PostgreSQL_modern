@@ -3424,7 +3424,7 @@ class QueryOptimizer:
         conn = await asyncpg.connect(self.conn_string)
 
         # 获取执行计划
-        plan = await conn.fetch(f"EXPLAIN ANALYZE {query}")
+        plan = await conn.fetch(f"EXPLAIN (ANALYZE, BUFFERS, TIMING) {query}")
 
         # 分析计划
         analysis = {
@@ -4683,7 +4683,7 @@ class SlowQueryAnalyzer:
         # 分析每个查询
         analysis = []
         for query in slow_queries:
-            plan = await conn.fetch(f"EXPLAIN ANALYZE {query['query']}")
+            plan = await conn.fetch(f"EXPLAIN (ANALYZE, BUFFERS, TIMING) {query['query']}")
 
             analysis.append({
                 'query': query['query'][:200],  # 截断长查询
@@ -6272,17 +6272,21 @@ CREATE INDEX idx_locations_point_spgist ON locations USING SPGIST(point);
 **查询优化技巧**:
 
 ```sql
--- 1. 使用 EXPLAIN 分析查询计划
+-- 1. 使用 EXPLAIN 分析查询计划（统一格式）
+-- 基础EXPLAIN（不执行查询）
 EXPLAIN SELECT * FROM users WHERE email = 'john@example.com';
 
--- EXPLAIN ANALYZE（实际执行并显示统计信息）
-EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'john@example.com';
+-- 性能测试：EXPLAIN (ANALYZE, BUFFERS, TIMING)（实际执行并显示统计信息）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+SELECT * FROM users WHERE email = 'john@example.com';
 
--- EXPLAIN VERBOSE（显示详细信息）
-EXPLAIN VERBOSE SELECT * FROM users WHERE email = 'john@example.com';
+-- 详细输出（包含列信息）
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+SELECT * FROM users WHERE email = 'john@example.com';
 
--- EXPLAIN BUFFERS（显示缓冲区使用情况）
-EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM users WHERE email = 'john@example.com';
+-- JSON格式输出（用于程序分析）
+EXPLAIN (ANALYZE, BUFFERS, TIMING, FORMAT JSON)
+SELECT * FROM users WHERE email = 'john@example.com';
 
 -- 2. 避免 SELECT *
 SELECT id, name, email FROM users;  -- 只选择需要的列

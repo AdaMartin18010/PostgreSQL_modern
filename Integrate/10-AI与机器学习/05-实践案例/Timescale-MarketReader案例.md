@@ -348,6 +348,20 @@ vector_results AS (
     LIMIT 10
 )
 SELECT * FROM vector_results;
+
+-- 性能测试：向量相似度查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+WITH query_vec AS (
+    SELECT ai.embedding_openai('text-embedding-3-small', 'market analysis') AS vec
+),
+vector_results AS (
+    SELECT id, title, content, time
+    FROM financial_news, query_vec
+    WHERE embedding <=> query_vec < 0.3
+    ORDER BY embedding <=> query_vec
+    LIMIT 10
+)
+SELECT * FROM vector_results;
 ```
 
 **效果**：

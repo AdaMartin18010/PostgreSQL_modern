@@ -55,7 +55,7 @@
 ### 性能测试工具
 
 - **[pgbench文档](https://www.postgresql.org/docs/18/pgbench.html)** - PostgreSQL Benchmark Tool
-- **[EXPLAIN ANALYZE](https://www.postgresql.org/docs/18/using-explain.html)** - Query Analysis Tool
+- **[EXPLAIN (ANALYZE, BUFFERS, TIMING)](https://www.postgresql.org/docs/18/using-explain.html)** - Query Analysis Tool
 
 ### 监控工具
 

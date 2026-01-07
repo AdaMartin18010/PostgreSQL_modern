@@ -163,7 +163,7 @@ mindmap
     程序设计
       数据收集
         pg_stat_statements
-        EXPLAIN ANALYZE
+        EXPLAIN (ANALYZE, BUFFERS, TIMING)
         自定义钩子
       模型开发
         PyTorch/TensorFlow
@@ -234,7 +234,7 @@ WHERE age BETWEEN 25 AND 35
 -- 传统估计：假设 age、city、income 独立
 -- 估计基数 = total_rows * sel(age) * sel(city) * sel(income)
 -- 实际基数：可能因为列相关性而差异很大
--- 注意：可以通过 EXPLAIN (ANALYZE, BUFFERS, VERBOSE) 查看详细的估计vs实际对比
+-- 注意：可以通过 EXPLAIN (ANALYZE, BUFFERS, TIMING) 查看详细的估计vs实际对比
 ```
 
 **误差原因**：
@@ -687,7 +687,7 @@ class ExecutionStatsCollector:
         self.conn = db_conn
 
     def collect_explain_analyze(self, query):
-        """收集EXPLAIN ANALYZE统计"""
+        """收集EXPLAIN (ANALYZE, BUFFERS, TIMING)统计"""
         explain_query = f"EXPLAIN (ANALYZE, FORMAT JSON) {query}"
 
         with self.conn.cursor() as cur:
@@ -1114,8 +1114,8 @@ class QueryDataCollector:
             return [dict(zip(columns, row)) for row in results]
 
     def get_explain_analyze(self, query):
-        """获取EXPLAIN ANALYZE结果"""
-        explain_query = f"EXPLAIN (ANALYZE, FORMAT JSON, BUFFERS) {query}"
+        """获取EXPLAIN (ANALYZE, BUFFERS, TIMING)结果"""
+        explain_query = f"EXPLAIN (ANALYZE, BUFFERS, TIMING, FORMAT JSON) {query}"
 
         with self.conn.cursor() as cur:
             cur.execute(explain_query)
@@ -2074,7 +2074,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     o.order_id,
     o.order_date,
@@ -2153,7 +2153,7 @@ BEGIN
     END;
 END $$;
 
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     d.date,
     p.product_category,

@@ -43,7 +43,18 @@
 **验证脚本**:
 
 ```sql
--- 配置检查脚本
+-- 配置检查脚本（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始检查异步I/O配置';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '配置检查准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     name,
     setting,

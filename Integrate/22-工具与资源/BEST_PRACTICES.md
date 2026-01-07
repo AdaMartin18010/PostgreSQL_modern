@@ -281,7 +281,7 @@ max_parallel_workers = 8
 
 **实践**：
 
-- ✅ 分析查询计划（EXPLAIN ANALYZE）
+- ✅ 分析查询计划（EXPLAIN (ANALYZE, BUFFERS, TIMING)）
 - ✅ 创建必要的索引
 - ✅ 定期维护索引（REINDEX）
 - ✅ 监控索引使用情况

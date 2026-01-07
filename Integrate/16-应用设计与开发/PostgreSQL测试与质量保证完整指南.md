@@ -89,7 +89,7 @@ flowchart TD
     B -->|质量保证| E[代码审查 + 静态分析]
 
     C --> C1[pgTAP + 自定义测试]
-    D --> D1[pgbench + EXPLAIN ANALYZE]
+    D --> D1[pgbench + EXPLAIN (ANALYZE, BUFFERS, TIMING)]
     E --> E1[代码审查工具 + 静态分析工具]
 
     C1 --> F[选择测试工具]
@@ -242,7 +242,7 @@ ROLLBACK;
 
 ```sql
 -- 性能测试：查询性能
-EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT u.name, COUNT(o.id) AS order_count, SUM(o.amount) AS total_amount
 FROM users u
 LEFT JOIN orders o ON u.id = o.user_id
@@ -456,7 +456,7 @@ psql -d mydb -f check_security.sql
 测试框架：
 1. 单元测试：pgTAP
 2. 集成测试：自定义测试框架
-3. 性能测试：pgbench + EXPLAIN ANALYZE
+3. 性能测试：pgbench + EXPLAIN (ANALYZE, BUFFERS, TIMING)
 4. 自动化：CI/CD集成
 5. 质量保证：代码审查 + 静态分析
 ```

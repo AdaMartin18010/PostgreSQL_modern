@@ -659,6 +659,21 @@ SET hnsw.ef_search = 100;  -- 默认40，增加可提升召回率
 
 -- 执行查询
 SELECT ... ORDER BY description_vec <=> query_vec LIMIT 20;
+
+-- 性能测试：房源向量相似度查询
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+WITH query_vec AS (
+    SELECT ai.embedding_openai('text-embedding-3-small', 'beach resort with pool') AS vec
+)
+SELECT
+    id,
+    title,
+    description,
+    1 - (description_vec <=> query_vec) AS similarity
+FROM listings, query_vec
+WHERE description_vec IS NOT NULL
+ORDER BY description_vec <=> query_vec
+LIMIT 20;
 ```
 
 ### 7.3 查询优化
