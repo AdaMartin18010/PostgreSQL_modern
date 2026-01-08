@@ -6,7 +6,7 @@
 
 ## 📂 目录结构
 
-```
+```text
 kubernetes/
 ├── README.md                          # 本文件
 ├── postgresql-operator.yaml           # CloudNativePG Operator完整配置

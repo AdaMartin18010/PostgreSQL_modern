@@ -282,7 +282,7 @@ BEGIN
 END $$;
 
 -- 性能测试
-EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     AVG(feature1) AS mean1,
     STDDEV(feature1) AS std1
@@ -340,7 +340,7 @@ FROM normalized_data
 CROSS JOIN feature_stats;
 
 -- 性能测试
-EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     SUM((z1 - AVG(z1) OVER ()) * (z2 - AVG(z2) OVER ())) / NULLIF(COUNT(*) - 1, 0) AS cov_12
 FROM pca_data_normalized;
@@ -504,7 +504,7 @@ GROUP BY nd.id, pc.component_idx
 ORDER BY nd.id, pc.component_idx;
 
 -- 性能测试
-EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     SUM(z1 * 0.5) AS pc1_value
@@ -557,7 +557,7 @@ FROM eigenvalue_summary
 ORDER BY component_idx;
 
 -- 性能测试
-EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     component_idx,
     eigenvalue,
@@ -729,7 +729,7 @@ ORDER BY id
 LIMIT 10;
 
 -- 性能测试
-EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     id,
     z1 AS original_feature1,
