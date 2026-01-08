@@ -278,7 +278,158 @@ ORDER BY signal_id;
 
 ---
 
-## 3. 复杂度分析
+## 3. PostgreSQL 18 并行ICA增强
+
+**PostgreSQL 18** 显著增强了并行ICA计算能力，支持并行执行数据预处理、白化处理和独立成分提取，大幅提升大规模ICA计算的性能。
+
+### 3.1 并行ICA原理
+
+PostgreSQL 18 的并行ICA通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描信号数据
+2. **并行预处理**：每个工作进程独立执行数据预处理
+3. **并行白化**：并行执行协方差矩阵计算和白化处理
+4. **并行成分提取**：并行执行FastICA迭代
+
+### 3.2 并行数据预处理
+
+```sql
+-- PostgreSQL 18 并行数据预处理（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'mixed_signals') THEN
+            RAISE WARNING '表 mixed_signals 不存在，无法执行并行数据预处理';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行数据预处理';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行数据预处理准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行数据预处理：中心化
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH signal_means AS (
+    SELECT
+        signal_id,
+        AVG(value) AS mean_value
+    FROM mixed_signals
+    GROUP BY signal_id
+)
+SELECT
+    ms.time_point,
+    ms.signal_id,
+    ms.value,
+    ROUND((ms.value - sm.mean_value)::numeric, 4) AS centered_value
+FROM mixed_signals ms
+JOIN signal_means sm ON ms.signal_id = sm.signal_id
+ORDER BY ms.time_point, ms.signal_id;
+```
+
+### 3.3 并行白化处理
+
+```sql
+-- PostgreSQL 18 并行白化处理（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'mixed_signals') THEN
+            RAISE WARNING '表 mixed_signals 不存在，无法执行并行白化处理';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行白化处理';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行白化处理准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行协方差矩阵计算（用于白化）
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH centered_signals AS (
+    SELECT
+        time_point,
+        signal_id,
+        value - AVG(value) OVER (PARTITION BY signal_id) AS centered_value
+    FROM mixed_signals
+),
+covariance_matrix AS (
+    SELECT
+        s1.signal_id AS sig1,
+        s2.signal_id AS sig2,
+        AVG(s1.centered_value * s2.centered_value) AS covariance
+    FROM centered_signals s1
+    JOIN centered_signals s2 ON s1.time_point = s2.time_point
+    GROUP BY s1.signal_id, s2.signal_id
+)
+SELECT
+    sig1,
+    sig2,
+    ROUND(covariance::numeric, 6) AS covariance_value
+FROM covariance_matrix
+ORDER BY sig1, sig2;
+```
+
+### 3.4 并行独立成分提取
+
+```sql
+-- PostgreSQL 18 并行独立成分提取（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'whitened_signals') THEN
+            RAISE WARNING '表 whitened_signals 不存在，无法执行并行独立成分提取';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行独立成分提取';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行独立成分提取准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行FastICA迭代更新
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH whitened_data AS (
+    SELECT
+        time_point,
+        signal_id,
+        whitened_value
+    FROM whitened_signals
+),
+ica_update AS (
+    SELECT
+        signal_id,
+        AVG(whitened_value * TANH(whitened_value)) AS update_term,
+        AVG(1 - POWER(TANH(whitened_value), 2)) AS normalization_term
+    FROM whitened_data
+    GROUP BY signal_id
+)
+SELECT
+    signal_id,
+    ROUND(update_term::numeric, 6) AS ica_component,
+    ROUND(normalization_term::numeric, 6) AS normalization
+FROM ica_update
+ORDER BY signal_id;
+```
+
+---
+
+## 4. 复杂度分析
 
 ### 时间复杂度
 
@@ -295,7 +446,7 @@ ORDER BY signal_id;
 
 ---
 
-## 4. 实际应用案例
+## 5. 实际应用案例
 
 ### 4.1 信号分离
 

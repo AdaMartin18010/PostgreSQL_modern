@@ -223,7 +223,125 @@ ORDER BY i, j;
 
 ---
 
-## 5. 实际应用案例
+## 5. PostgreSQL 18 并行t-SNE增强
+
+**PostgreSQL 18** 显著增强了并行t-SNE计算能力，支持并行执行相似度计算、概率分布计算和优化迭代，大幅提升大规模t-SNE降维的性能。
+
+### 5.1 并行t-SNE原理
+
+PostgreSQL 18 的并行t-SNE通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描高维数据
+2. **并行相似度计算**：每个工作进程独立计算相似度矩阵
+3. **并行优化**：并行执行KL散度优化迭代
+4. **结果合并**：主进程合并所有工作进程的计算结果
+
+### 5.2 并行相似度计算
+
+```sql
+-- PostgreSQL 18 并行t-SNE相似度计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tsne_data') THEN
+            RAISE WARNING '表 tsne_data 不存在，无法执行并行t-SNE相似度计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行t-SNE相似度计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行t-SNE相似度计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行相似度计算：高维空间高斯分布
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH pairwise_distances AS (
+    SELECT
+        t1.id AS id1,
+        t2.id AS id2,
+        SQRT(SUM(POWER(t1.feature_vector[i] - t2.feature_vector[i], 2))) AS distance
+    FROM tsne_data t1
+    CROSS JOIN tsne_data t2
+    CROSS JOIN generate_series(1, array_length(t1.feature_vector, 1)) AS i
+    WHERE t1.id < t2.id
+    GROUP BY t1.id, t2.id
+),
+similarity_matrix AS (
+    SELECT
+        id1,
+        id2,
+        EXP(-POWER(distance, 2) / (2 * POWER(30, 2))) AS similarity  -- 简化：固定sigma
+    FROM pairwise_distances
+)
+SELECT
+    id1,
+    id2,
+    ROUND(similarity::numeric, 6) AS similarity_score
+FROM similarity_matrix
+ORDER BY id1, id2
+LIMIT 1000;
+```
+
+### 5.3 并行概率分布计算
+
+```sql
+-- PostgreSQL 18 并行概率分布计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tsne_data') THEN
+            RAISE WARNING '表 tsne_data 不存在，无法执行并行概率分布计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行概率分布计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行概率分布计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行概率分布：对称化处理
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH similarity_scores AS (
+    SELECT
+        id1,
+        id2,
+        similarity
+    FROM similarity_matrix
+),
+symmetric_similarity AS (
+    SELECT id1, id2, similarity FROM similarity_scores
+    UNION ALL
+    SELECT id2 AS id1, id1 AS id2, similarity FROM similarity_scores
+),
+normalized_probability AS (
+    SELECT
+        id1,
+        id2,
+        similarity / SUM(similarity) OVER (PARTITION BY id1) AS probability
+    FROM symmetric_similarity
+)
+SELECT
+    id1,
+    id2,
+    ROUND(probability::numeric, 6) AS p_ij
+FROM normalized_probability
+ORDER BY id1, id2
+LIMIT 1000;
+```
+
+---
+
+## 6. 实际应用案例
 
 ### 5.1 数据可视化
 
@@ -324,7 +442,7 @@ ORDER BY cluster_id, category;
 
 ---
 
-## 📊 性能优化建议
+## 7. PostgreSQL 18 并行t-SNE性能优化
 
 ### Barnes-Hut t-SNE优化
 

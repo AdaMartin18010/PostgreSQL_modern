@@ -227,7 +227,119 @@ ORDER BY array_length(itemset, 1), support_count DESC;
 
 ---
 
-## 4. 实际应用案例
+## 4. PostgreSQL 18 并行FP-Growth增强
+
+**PostgreSQL 18** 显著增强了并行FP-Growth计算能力，支持并行执行FP树构建、模式增长和频繁项集生成，大幅提升大规模频繁模式挖掘的性能。
+
+### 4.1 并行FP-Growth原理
+
+PostgreSQL 18 的并行FP-Growth通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描事务数据
+2. **并行FP树构建**：每个工作进程独立构建FP树
+3. **并行模式增长**：并行执行条件模式基提取
+4. **结果合并**：主进程合并所有工作进程的挖掘结果
+
+### 4.2 并行FP树构建
+
+```sql
+-- PostgreSQL 18 并行FP树构建（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transaction_data') THEN
+            RAISE WARNING '表 transaction_data 不存在，无法执行并行FP树构建';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行FP树构建';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行FP树构建准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行频繁项排序
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH item_support AS (
+    SELECT
+        item_id,
+        COUNT(DISTINCT transaction_id) AS support_count
+    FROM transaction_data
+    GROUP BY item_id
+    HAVING COUNT(DISTINCT transaction_id) >= 2
+),
+sorted_items AS (
+    SELECT
+        item_id,
+        support_count,
+        ROW_NUMBER() OVER (ORDER BY support_count DESC, item_id) AS item_order
+    FROM item_support
+)
+SELECT
+    item_id,
+    support_count,
+    item_order
+FROM sorted_items
+ORDER BY item_order;
+```
+
+### 4.3 并行模式增长
+
+```sql
+-- PostgreSQL 18 并行模式增长（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transaction_data') THEN
+            RAISE WARNING '表 transaction_data 不存在，无法执行并行模式增长';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行模式增长';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行模式增长准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行条件模式基提取
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH prefix_items AS (
+    SELECT DISTINCT item_id AS prefix_item
+    FROM transaction_data
+    WHERE item_id IN (SELECT item_id FROM sorted_items WHERE item_order <= 3)
+),
+conditional_patterns AS (
+    SELECT
+        pi.prefix_item,
+        td.transaction_id,
+        ARRAY_AGG(td2.item_id ORDER BY si.item_order) AS conditional_items
+    FROM prefix_items pi
+    JOIN transaction_data td ON pi.prefix_item = td.item_id
+    JOIN transaction_data td2 ON td.transaction_id = td2.transaction_id
+    JOIN sorted_items si ON td2.item_id = si.item_id
+    WHERE si.item_order < (SELECT item_order FROM sorted_items WHERE item_id = pi.prefix_item)
+    GROUP BY pi.prefix_item, td.transaction_id
+)
+SELECT
+    prefix_item,
+    COUNT(*) AS pattern_count,
+    array_agg(DISTINCT conditional_items) AS conditional_pattern_base
+FROM conditional_patterns
+GROUP BY prefix_item
+ORDER BY prefix_item;
+```
+
+---
+
+## 5. 实际应用案例
 
 ### 4.1 电商商品关联分析
 

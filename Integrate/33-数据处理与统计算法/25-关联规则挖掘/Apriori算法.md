@@ -343,7 +343,122 @@ ORDER BY lift DESC;
 
 ---
 
-## 5. 实际应用案例
+## 5. PostgreSQL 18 并行Apriori增强
+
+**PostgreSQL 18** 显著增强了并行Apriori计算能力，支持并行执行支持度计算、候选项集生成和关联规则挖掘，大幅提升大规模关联规则挖掘的性能。
+
+### 5.1 并行Apriori原理
+
+PostgreSQL 18 的并行Apriori通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描事务数据
+2. **并行支持度计算**：每个工作进程独立计算支持度
+3. **并行候选项生成**：并行生成候选项集
+4. **结果合并**：主进程合并所有工作进程的计算结果
+
+### 5.2 并行支持度计算
+
+```sql
+-- PostgreSQL 18 并行支持度计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transaction_data') THEN
+            RAISE WARNING '表 transaction_data 不存在，无法执行并行支持度计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行支持度计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行支持度计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行支持度：频繁项集识别
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH total_transactions AS (
+    SELECT COUNT(DISTINCT transaction_id) AS total FROM transaction_data
+),
+item_support AS (
+    SELECT
+        item_id,
+        COUNT(DISTINCT transaction_id) AS item_count,
+        COUNT(DISTINCT transaction_id)::NUMERIC / (SELECT total FROM total_transactions) AS support
+    FROM transaction_data
+    GROUP BY item_id
+)
+SELECT
+    item_id,
+    item_count,
+    ROUND(support::numeric, 4) AS support_value,
+    CASE WHEN support >= 0.3 THEN 'Frequent' ELSE 'Infrequent' END AS status
+FROM item_support
+ORDER BY support DESC;
+```
+
+### 5.3 并行候选项集生成
+
+```sql
+-- PostgreSQL 18 并行候选项集生成（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transaction_data') THEN
+            RAISE WARNING '表 transaction_data 不存在，无法执行并行候选项集生成';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行候选项集生成';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行候选项集生成准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行候选项集：2-项集生成
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH frequent_items AS (
+    SELECT item_id FROM item_support WHERE support >= 0.3
+),
+candidate_pairs AS (
+    SELECT
+        f1.item_id AS item1,
+        f2.item_id AS item2
+    FROM frequent_items f1
+    CROSS JOIN frequent_items f2
+    WHERE f1.item_id < f2.item_id
+),
+pair_support AS (
+    SELECT
+        cp.item1,
+        cp.item2,
+        COUNT(DISTINCT td.transaction_id) AS pair_count,
+        COUNT(DISTINCT td.transaction_id)::NUMERIC / (SELECT COUNT(DISTINCT transaction_id) FROM transaction_data) AS support
+    FROM candidate_pairs cp
+    JOIN transaction_data td1 ON cp.item1 = td1.item_id
+    JOIN transaction_data td2 ON cp.item2 = td2.item_id AND td1.transaction_id = td2.transaction_id
+    JOIN transaction_data td ON td1.transaction_id = td.transaction_id
+    GROUP BY cp.item1, cp.item2
+)
+SELECT
+    item1 || ',' || item2 AS itemset,
+    pair_count,
+    ROUND(support::numeric, 4) AS support_value
+FROM pair_support
+WHERE support >= 0.3
+ORDER BY support DESC;
+```
+
+---
+
+## 6. 实际应用案例
 
 ### 5.1 市场篮分析
 

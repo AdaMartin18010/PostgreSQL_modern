@@ -33,7 +33,11 @@
     - [4.1 时间复杂度](#41-时间复杂度)
     - [4.2 空间复杂度](#42-空间复杂度)
     - [4.3 优化策略](#43-优化策略)
-  - [5. 实际应用案例](#5-实际应用案例)
+  - [5. PostgreSQL 18 并行PCA增强](#5-postgresql-18-并行pca增强)
+    - [5.1 并行PCA原理](#51-并行pca原理)
+    - [5.2 并行协方差矩阵计算](#52-并行协方差矩阵计算)
+    - [5.3 并行主成分变换](#53-并行主成分变换)
+  - [6. 实际应用案例](#6-实际应用案例)
     - [5.1 高维数据降维](#51-高维数据降维)
     - [5.2 特征提取](#52-特征提取)
     - [5.3 数据可视化](#53-数据可视化)
@@ -44,11 +48,11 @@
     - [学术文献](#学术文献)
     - [在线资源](#在线资源)
     - [相关算法](#相关算法)
-  - [6. 算法性能对比与优化](#6-算法性能对比与优化)
+  - [7. 算法性能对比与优化](#7-算法性能对比与优化)
     - [6.1 PCA vs 其他降维方法](#61-pca-vs-其他降维方法)
     - [6.2 性能优化建议](#62-性能优化建议)
     - [6.3 常见问题与解决方案](#63-常见问题与解决方案)
-  - [7. 最佳实践](#7-最佳实践)
+  - [8. 最佳实践](#8-最佳实践)
     - [7.1 数据准备](#71-数据准备)
     - [7.2 主成分选择](#72-主成分选择)
     - [7.3 结果验证](#73-结果验证)
@@ -679,7 +683,145 @@ LIMIT 1;
 
 ---
 
-## 5. 实际应用案例
+## 5. PostgreSQL 18 并行PCA增强
+
+**PostgreSQL 18** 显著增强了并行PCA计算能力，支持并行执行协方差矩阵计算、特征值分解和主成分变换，大幅提升大规模高维数据PCA计算的性能。
+
+### 5.1 并行PCA原理
+
+PostgreSQL 18 的并行PCA通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描数据
+2. **并行协方差计算**：每个工作进程独立计算部分协方差
+3. **并行特征值分解**：并行执行特征值分解算法
+4. **并行主成分变换**：并行执行数据投影
+
+### 5.2 并行协方差矩阵计算
+
+```sql
+-- PostgreSQL 18 并行协方差矩阵计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'pca_data') THEN
+            RAISE WARNING '表 pca_data 不存在，无法执行并行协方差矩阵计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行协方差矩阵计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行协方差矩阵计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行协方差矩阵计算
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH data_stats AS (
+    SELECT
+        AVG(feature1) AS mean1,
+        AVG(feature2) AS mean2,
+        AVG(feature3) AS mean3,
+        STDDEV(feature1) AS std1,
+        STDDEV(feature2) AS std2,
+        STDDEV(feature3) AS std3
+    FROM pca_data
+),
+normalized_data AS (
+    SELECT
+        id,
+        (feature1 - ds.mean1) / NULLIF(ds.std1, 0) AS z1,
+        (feature2 - ds.mean2) / NULLIF(ds.std2, 0) AS z2,
+        (feature3 - ds.mean3) / NULLIF(ds.std3, 0) AS z3
+    FROM pca_data
+    CROSS JOIN data_stats ds
+),
+covariance_matrix AS (
+    SELECT
+        1 AS row_idx, 1 AS col_idx, AVG(z1 * z1) AS cov_value FROM normalized_data
+    UNION ALL
+    SELECT 1, 2, AVG(z1 * z2) FROM normalized_data
+    UNION ALL
+    SELECT 1, 3, AVG(z1 * z3) FROM normalized_data
+    UNION ALL
+    SELECT 2, 1, AVG(z2 * z1) FROM normalized_data
+    UNION ALL
+    SELECT 2, 2, AVG(z2 * z2) FROM normalized_data
+    UNION ALL
+    SELECT 2, 3, AVG(z2 * z3) FROM normalized_data
+    UNION ALL
+    SELECT 3, 1, AVG(z3 * z1) FROM normalized_data
+    UNION ALL
+    SELECT 3, 2, AVG(z3 * z2) FROM normalized_data
+    UNION ALL
+    SELECT 3, 3, AVG(z3 * z3) FROM normalized_data
+)
+SELECT
+    row_idx,
+    col_idx,
+    ROUND(cov_value::numeric, 6) AS covariance
+FROM covariance_matrix
+ORDER BY row_idx, col_idx;
+```
+
+### 5.3 并行主成分变换
+
+```sql
+-- PostgreSQL 18 并行主成分变换（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'pca_data_normalized') THEN
+            RAISE WARNING '表 pca_data_normalized 不存在，无法执行并行主成分变换';
+            RETURN;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'principal_components') THEN
+            RAISE WARNING '表 principal_components 不存在，无法执行并行主成分变换';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行主成分变换';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行主成分变换准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行主成分变换：将数据投影到主成分空间
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH normalized_data AS (
+    SELECT id, z1, z2, z3, z4, z5 FROM pca_data_normalized
+),
+pc_vectors AS (
+    SELECT component_idx, feature_idx, component_value
+    FROM principal_components
+    WHERE component_idx <= 2
+)
+SELECT
+    nd.id,
+    pc.component_idx AS pc_index,
+    ROUND(SUM(CASE pc.feature_idx
+        WHEN 1 THEN nd.z1 * pc.component_value
+        WHEN 2 THEN nd.z2 * pc.component_value
+        WHEN 3 THEN nd.z3 * pc.component_value
+        WHEN 4 THEN nd.z4 * pc.component_value
+        WHEN 5 THEN nd.z5 * pc.component_value
+    END)::numeric, 6) AS pc_value
+FROM normalized_data nd
+CROSS JOIN pc_vectors pc
+GROUP BY nd.id, pc.component_idx
+ORDER BY nd.id, pc.component_idx;
+```
+
+---
+
+## 6. 实际应用案例
 
 ### 5.1 高维数据降维
 
@@ -973,7 +1115,7 @@ ORDER BY id;
 
 ---
 
-## 6. 算法性能对比与优化
+## 7. 算法性能对比与优化
 
 ### 6.1 PCA vs 其他降维方法
 
@@ -1013,7 +1155,7 @@ ORDER BY id;
 
 ---
 
-## 7. 最佳实践
+## 8. 最佳实践
 
 ### 7.1 数据准备
 

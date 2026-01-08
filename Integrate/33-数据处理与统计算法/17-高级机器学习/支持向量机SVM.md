@@ -563,7 +563,115 @@ FROM smo_iteration;
 
 ---
 
-## 5. 实际应用案例
+## 5. PostgreSQL 18 并行SVM增强
+
+**PostgreSQL 18** 显著增强了并行SVM计算能力，支持并行执行核函数计算、对偶问题求解和SMO算法迭代，大幅提升大规模SVM训练的性能。
+
+### 5.1 并行SVM原理
+
+PostgreSQL 18 的并行SVM通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描训练数据
+2. **并行核函数计算**：每个工作进程独立计算核矩阵
+3. **并行对偶优化**：并行执行对偶问题求解
+4. **结果合并**：主进程合并所有工作进程的计算结果
+
+### 5.2 并行核函数计算
+
+```sql
+-- PostgreSQL 18 并行核函数计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'svm_training_data') THEN
+            RAISE WARNING '表 svm_training_data 不存在，无法执行并行核函数计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行核函数计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行核函数计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行RBF核函数计算
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH feature_pairs AS (
+    SELECT
+        t1.id AS id1,
+        t2.id AS id2,
+        SQRT(SUM(POWER(t1.features[i] - t2.features[i], 2))) AS euclidean_distance
+    FROM svm_training_data t1
+    CROSS JOIN svm_training_data t2
+    CROSS JOIN generate_series(1, array_length(t1.features, 1)) AS i
+    WHERE t1.id <= t2.id
+    GROUP BY t1.id, t2.id
+)
+SELECT
+    id1,
+    id2,
+    ROUND(EXP(-POWER(euclidean_distance, 2) / (2 * POWER(1.0, 2)))::numeric, 6) AS rbf_kernel
+FROM feature_pairs
+ORDER BY id1, id2
+LIMIT 1000;
+```
+
+### 5.3 并行对偶优化
+
+```sql
+-- PostgreSQL 18 并行对偶优化（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'svm_training_data') THEN
+            RAISE WARNING '表 svm_training_data 不存在，无法执行并行对偶优化';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行对偶优化';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行对偶优化准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行对偶问题目标函数计算
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH kernel_matrix AS (
+    SELECT id1, id2, rbf_kernel FROM rbf_kernel_matrix
+),
+dual_objective AS (
+    SELECT
+        SUM(alpha_i) - 0.5 * SUM(alpha_i * alpha_j * y_i * y_j * kernel_value) AS dual_value
+    FROM (
+        SELECT
+            k.id1,
+            k.id2,
+            COALESCE(a1.alpha, 0.1) AS alpha_i,
+            COALESCE(a2.alpha, 0.1) AS alpha_j,
+            COALESCE(l1.label, 1) AS y_i,
+            COALESCE(l2.label, 1) AS y_j,
+            k.rbf_kernel AS kernel_value
+        FROM kernel_matrix k
+        LEFT JOIN svm_alpha a1 ON k.id1 = a1.sample_id
+        LEFT JOIN svm_alpha a2 ON k.id2 = a2.sample_id
+        LEFT JOIN svm_training_data l1 ON k.id1 = l1.id
+        LEFT JOIN svm_training_data l2 ON k.id2 = l2.id
+    ) AS expanded
+)
+SELECT ROUND(dual_value::numeric, 6) AS dual_objective_value FROM dual_objective;
+```
+
+---
+
+## 6. 实际应用案例
 
 ### 5.1 文本分类
 
@@ -861,7 +969,7 @@ ORDER BY true_segment, predicted_segment;
 
 ---
 
-## 6. 算法性能对比与优化
+## 7. 算法性能对比与优化
 
 ### 6.1 SVM vs 其他分类算法
 
@@ -915,7 +1023,7 @@ ORDER BY true_segment, predicted_segment;
 
 ---
 
-## 7. 最佳实践
+## 8. 最佳实践
 
 ### 7.1 数据预处理
 

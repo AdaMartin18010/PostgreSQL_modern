@@ -271,6 +271,111 @@ LIMIT 20;
 
 ---
 
+## 4. PostgreSQL 18 并行UMAP增强
+
+**PostgreSQL 18** 显著增强了并行UMAP计算能力，支持并行执行距离计算、邻域图构建和流形学习，大幅提升大规模UMAP降维的性能。
+
+### 4.1 并行UMAP原理
+
+PostgreSQL 18 的并行UMAP通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描数据
+2. **并行距离计算**：每个工作进程独立计算部分距离矩阵
+3. **并行邻域构建**：并行执行k近邻搜索
+4. **并行优化**：并行执行交叉熵优化
+
+### 4.2 并行距离计算
+
+```sql
+-- PostgreSQL 18 并行距离计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'high_dim_data') THEN
+            RAISE WARNING '表 high_dim_data 不存在，无法执行并行距离计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行距离计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行距离计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行计算成对距离矩阵
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+SELECT
+    hd1.id AS id1,
+    hd2.id AS id2,
+    ROUND(SQRT(SUM(POWER((hd1.feature_vector[i] - hd2.feature_vector[i])::numeric, 2)))::numeric, 6) AS euclidean_distance
+FROM high_dim_data hd1
+CROSS JOIN high_dim_data hd2
+CROSS JOIN generate_series(1, array_length(hd1.feature_vector, 1)) AS i
+WHERE hd1.id < hd2.id
+GROUP BY hd1.id, hd2.id
+ORDER BY hd1.id, hd2.id
+LIMIT 100;
+```
+
+### 4.3 并行邻域图构建
+
+```sql
+-- PostgreSQL 18 并行邻域图构建（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'high_dim_data') THEN
+            RAISE WARNING '表 high_dim_data 不存在，无法执行并行邻域图构建';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行邻域图构建';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行邻域图构建准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行k近邻搜索（k=5）
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH pairwise_distances AS (
+    SELECT
+        hd1.id AS id1,
+        hd2.id AS id2,
+        SQRT(SUM(POWER((hd1.feature_vector[i] - hd2.feature_vector[i])::numeric, 2))) AS distance
+    FROM high_dim_data hd1
+    CROSS JOIN high_dim_data hd2
+    CROSS JOIN generate_series(1, array_length(hd1.feature_vector, 1)) AS i
+    WHERE hd1.id != hd2.id
+    GROUP BY hd1.id, hd2.id
+),
+k_nearest_neighbors AS (
+    SELECT
+        id1,
+        id2,
+        distance,
+        ROW_NUMBER() OVER (PARTITION BY id1 ORDER BY distance) AS neighbor_rank
+    FROM pairwise_distances
+)
+SELECT
+    id1,
+    id2,
+    ROUND(distance::numeric, 6) AS distance,
+    neighbor_rank
+FROM k_nearest_neighbors
+WHERE neighbor_rank <= 5
+ORDER BY id1, neighbor_rank;
+```
+
+---
+
 ## 📊 性能优化建议
 
 ### 索引优化

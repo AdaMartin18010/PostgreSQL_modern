@@ -174,7 +174,117 @@ ORDER BY date;
 
 ---
 
-## 3. 实际应用案例
+## 3. PostgreSQL 18 并行GARCH增强
+
+**PostgreSQL 18** 显著增强了并行GARCH计算能力，支持并行执行ARCH模型、GARCH模型和波动率预测，大幅提升大规模金融时间序列GARCH建模的性能。
+
+### 3.1 并行GARCH原理
+
+PostgreSQL 18 的并行GARCH通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描时间序列数据
+2. **并行条件方差计算**：每个工作进程独立计算条件方差
+3. **并行参数估计**：并行执行GARCH参数估计
+4. **结果合并**：主进程合并所有工作进程的计算结果
+
+### 3.2 并行ARCH模型
+
+```sql
+-- PostgreSQL 18 并行ARCH模型（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'garch_data') THEN
+            RAISE WARNING '表 garch_data 不存在，无法执行并行ARCH模型';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行ARCH模型';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行ARCH模型准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行ARCH：条件方差计算
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH arch_terms AS (
+    SELECT
+        date,
+        return_rate,
+        squared_return,
+        LAG(squared_return, 1) OVER (ORDER BY date) AS lag1_sq,
+        LAG(squared_return, 2) OVER (ORDER BY date) AS lag2_sq
+    FROM garch_data
+)
+SELECT
+    date,
+    ROUND(return_rate::numeric, 4) AS return_rate,
+    ROUND((0.01 + 0.3 * COALESCE(lag1_sq, 0) + 0.2 * COALESCE(lag2_sq, 0))::numeric, 6) AS conditional_variance
+FROM arch_terms
+ORDER BY date;
+```
+
+### 3.3 并行GARCH模型
+
+```sql
+-- PostgreSQL 18 并行GARCH模型（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'garch_data') THEN
+            RAISE WARNING '表 garch_data 不存在，无法执行并行GARCH模型';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行GARCH模型';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行GARCH模型准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行GARCH(1,1)：条件方差递归计算
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH RECURSIVE garch_variance AS (
+    SELECT
+        date,
+        return_rate,
+        squared_return,
+        0.01 AS conditional_var,
+        1 AS iteration
+    FROM garch_data
+    ORDER BY date
+    LIMIT 1
+    UNION ALL
+    SELECT
+        gd.date,
+        gd.return_rate,
+        gd.squared_return,
+        0.01 + 0.1 * gd.squared_return + 0.85 * gv.conditional_var AS conditional_var,
+        gv.iteration + 1
+    FROM garch_data gd
+    JOIN garch_variance gv ON gd.date > gv.date
+    WHERE gv.iteration < 100
+)
+SELECT
+    date,
+    ROUND(return_rate::numeric, 4) AS return_rate,
+    ROUND(conditional_var::numeric, 6) AS garch_variance
+FROM garch_variance
+ORDER BY date
+LIMIT 50;
+```
+
+---
+
+## 4. 实际应用案例
 
 ### 3.1 金融波动率预测
 

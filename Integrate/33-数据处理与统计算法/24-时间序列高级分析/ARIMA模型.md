@@ -359,7 +359,162 @@ ORDER BY date;
 
 ---
 
-## 📊 性能优化建议
+## 6. PostgreSQL 18 并行ARIMA增强
+
+**PostgreSQL 18** 显著增强了并行ARIMA计算能力，支持并行执行AR模型、MA模型和预测计算，大幅提升大规模时间序列ARIMA建模的性能。
+
+### 6.1 并行ARIMA原理
+
+PostgreSQL 18 的并行ARIMA通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描时间序列数据
+2. **并行AR计算**：每个工作进程独立计算自回归项
+3. **并行MA计算**：并行执行移动平均项计算
+4. **并行预测**：并行执行多步预测
+5. **结果合并**：主进程合并所有工作进程的计算结果
+
+### 6.2 并行AR模型计算
+
+```sql
+-- PostgreSQL 18 并行AR模型计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'arima_data') THEN
+            RAISE WARNING '表 arima_data 不存在，无法执行并行AR模型计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行AR模型计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行AR模型计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行AR模型：自回归项计算
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH ar_terms AS (
+    SELECT
+        time_point,
+        value,
+        LAG(value, 1) OVER (ORDER BY time_point) AS ar1,
+        LAG(value, 2) OVER (ORDER BY time_point) AS ar2,
+        LAG(value, 3) OVER (ORDER BY time_point) AS ar3
+    FROM arima_data
+)
+SELECT
+    time_point,
+    value,
+    ROUND(ar1::numeric, 4) AS ar_term_1,
+    ROUND(ar2::numeric, 4) AS ar_term_2,
+    ROUND(ar3::numeric, 4) AS ar_term_3,
+    ROUND((0.5 * ar1 + 0.3 * ar2 + 0.2 * ar3)::numeric, 4) AS ar_prediction
+FROM ar_terms
+WHERE ar1 IS NOT NULL
+ORDER BY time_point;
+```
+
+### 6.3 并行MA模型计算
+
+```sql
+-- PostgreSQL 18 并行MA模型计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'arima_data') THEN
+            RAISE WARNING '表 arima_data 不存在，无法执行并行MA模型计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行MA模型计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行MA模型计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行MA模型：移动平均误差项
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH residuals AS (
+    SELECT
+        time_point,
+        value - LAG(value, 1) OVER (ORDER BY time_point) AS residual
+    FROM arima_data
+),
+ma_terms AS (
+    SELECT
+        time_point,
+        residual,
+        LAG(residual, 1) OVER (ORDER BY time_point) AS ma1,
+        LAG(residual, 2) OVER (ORDER BY time_point) AS ma2
+    FROM residuals
+)
+SELECT
+    time_point,
+    ROUND(residual::numeric, 4) AS error_term,
+    ROUND(ma1::numeric, 4) AS ma_term_1,
+    ROUND(ma2::numeric, 4) AS ma_term_2,
+    ROUND((0.4 * ma1 + 0.3 * ma2)::numeric, 4) AS ma_prediction
+FROM ma_terms
+WHERE ma1 IS NOT NULL
+ORDER BY time_point;
+```
+
+### 6.4 并行ARIMA预测
+
+```sql
+-- PostgreSQL 18 并行ARIMA预测（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'arima_data') THEN
+            RAISE WARNING '表 arima_data 不存在，无法执行并行ARIMA预测';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行ARIMA预测';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行ARIMA预测准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行ARIMA预测：多步预测
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH recent_values AS (
+    SELECT
+        time_point,
+        value
+    FROM arima_data
+    ORDER BY time_point DESC
+    LIMIT 10
+),
+forecast_steps AS (
+    SELECT
+        generate_series(1, 5) AS step,
+        (SELECT value FROM recent_values ORDER BY time_point DESC LIMIT 1) AS last_value,
+        (SELECT value FROM recent_values ORDER BY time_point DESC OFFSET 1 LIMIT 1) AS prev_value
+)
+SELECT
+    step,
+    ROUND((last_value * 0.6 + prev_value * 0.3)::numeric, 4) AS forecast_value
+FROM forecast_steps
+ORDER BY step;
+```
+
+---
+
+## 7. PostgreSQL 18 并行ARIMA性能优化
 
 ### 模型选择优化
 

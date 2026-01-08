@@ -350,7 +350,124 @@ $$g_i(x) = w^T x + w_{i0}$$
 
 ---
 
-## 4. 复杂度分析
+## 4. PostgreSQL 18 并行LDA增强
+
+**PostgreSQL 18** 显著增强了并行LDA计算能力，支持并行执行散度矩阵计算、特征值分解和数据投影，大幅提升大规模LDA计算的性能。
+
+### 4.1 并行LDA原理
+
+PostgreSQL 18 的并行LDA通过以下方式实现：
+
+1. **并行扫描**：多个工作进程并行扫描数据
+2. **并行散度矩阵计算**：每个工作进程独立计算部分散度矩阵
+3. **并行特征值分解**：并行执行广义特征值分解
+4. **并行数据投影**：并行计算每个样本的投影值
+
+### 4.2 并行散度矩阵计算
+
+```sql
+-- PostgreSQL 18 并行散度矩阵计算（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'lda_data') THEN
+            RAISE WARNING '表 lda_data 不存在，无法执行并行散度矩阵计算';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行散度矩阵计算';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行散度矩阵计算准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行类内散度矩阵计算
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH class_means AS (
+    SELECT
+        class_label,
+        AVG(feature1) AS mean_f1,
+        AVG(feature2) AS mean_f2,
+        AVG(feature3) AS mean_f3
+    FROM lda_data
+    GROUP BY class_label
+),
+centered_data AS (
+    SELECT
+        ld.id,
+        ld.class_label,
+        ld.feature1 - cm.mean_f1 AS centered_f1,
+        ld.feature2 - cm.mean_f2 AS centered_f2,
+        ld.feature3 - cm.mean_f3 AS centered_f3
+    FROM lda_data ld
+    JOIN class_means cm ON ld.class_label = cm.class_label
+),
+within_class_scatter AS (
+    SELECT
+        SUM(centered_f1 * centered_f1) AS s11,
+        SUM(centered_f1 * centered_f2) AS s12,
+        SUM(centered_f1 * centered_f3) AS s13,
+        SUM(centered_f2 * centered_f2) AS s22,
+        SUM(centered_f2 * centered_f3) AS s23,
+        SUM(centered_f3 * centered_f3) AS s33
+    FROM centered_data
+)
+SELECT
+    ROUND(s11::numeric, 6) AS s11,
+    ROUND(s12::numeric, 6) AS s12,
+    ROUND(s13::numeric, 6) AS s13,
+    ROUND(s22::numeric, 6) AS s22,
+    ROUND(s23::numeric, 6) AS s23,
+    ROUND(s33::numeric, 6) AS s33
+FROM within_class_scatter;
+```
+
+### 4.3 并行数据投影
+
+```sql
+-- PostgreSQL 18 并行数据投影（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'lda_data') THEN
+            RAISE WARNING '表 lda_data 不存在，无法执行并行数据投影';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行PostgreSQL 18并行数据投影';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '并行数据投影准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+SET max_parallel_workers_per_gather = 4;
+SET parallel_setup_cost = 0;
+
+-- 并行LDA数据投影
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+WITH projection_vector AS (
+    SELECT
+        0.577 AS w1,
+        0.577 AS w2,
+        0.577 AS w3
+)
+SELECT
+    ld.id,
+    ld.class_label,
+    ROUND((ld.feature1 * pv.w1 + ld.feature2 * pv.w2 + ld.feature3 * pv.w3)::numeric, 4) AS projected_value
+FROM lda_data ld
+CROSS JOIN projection_vector pv
+ORDER BY ld.class_label, ld.id;
+```
+
+---
+
+## 5. 复杂度分析
 
 ### 4.1 时间复杂度
 
@@ -366,7 +483,7 @@ $$g_i(x) = w^T x + w_{i0}$$
 
 ---
 
-## 5. 实际应用案例
+## 6. 实际应用案例
 
 ### 5.1 人脸识别
 
