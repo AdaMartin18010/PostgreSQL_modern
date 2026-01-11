@@ -243,6 +243,18 @@ XA扩展功能：
 #### PREPARE TRANSACTION
 
 ```sql
+-- 数据准备
+CREATE TABLE IF NOT EXISTS accounts (
+    id SERIAL PRIMARY KEY,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO accounts (id, name, balance) VALUES
+    (1, 'Alice', 1000.00),
+    (2, 'Bob', 500.00)
+ON CONFLICT (id) DO UPDATE SET balance = EXCLUDED.balance;
+
 -- PostgreSQL XA支持（通过PREPARE TRANSACTION）
 
 -- XA事务开始（应用层）
@@ -265,7 +277,7 @@ COMMIT PREPARED 'xa_txn_001';
 
 -- XA回滚（应用层）
 -- xa_rollback(xid)
-ROLLBACK PREPARED 'xa_txn_001';
+-- ROLLBACK PREPARED 'xa_txn_001';
 ```
 
 #### XA接口映射

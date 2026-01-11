@@ -86,22 +86,43 @@ PostgreSQL 18支持虚拟生成列（Virtual Generated Columns），这是Postgr
 -- PostgreSQL 18支持两种生成列：
 
 -- 1. 存储生成列（STORED）- PostgreSQL 12+
-CREATE TABLE orders (
-    id INT PRIMARY KEY,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED
+CREATE TABLE IF NOT EXISTS orders_stored (
+    id SERIAL PRIMARY KEY,
+    amount DECIMAL(10, 2) NOT NULL,
+    tax_rate DECIMAL(5, 4) NOT NULL DEFAULT 0.1,
+    total_amount DECIMAL(10, 2) GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED,
+    order_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
 -- 特点：占用存储空间，写入时计算，查询时直接读取
 
+-- 插入示例数据
+INSERT INTO orders_stored (amount, tax_rate) VALUES
+    (100.00, 0.1),
+    (200.00, 0.15),
+    (300.00, 0.2)
+ON CONFLICT DO NOTHING;
+
 -- 2. 虚拟生成列（VIRTUAL）- PostgreSQL 18新增
-CREATE TABLE orders (
-    id INT PRIMARY KEY,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL
+CREATE TABLE IF NOT EXISTS orders_virtual (
+    id SERIAL PRIMARY KEY,
+    amount DECIMAL(10, 2) NOT NULL,
+    tax_rate DECIMAL(5, 4) NOT NULL DEFAULT 0.1,
+    total_amount DECIMAL(10, 2) GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL,
+    order_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
 -- 特点：不占用存储空间，查询时计算，写入时不存储
+
+-- 插入示例数据
+INSERT INTO orders_virtual (amount, tax_rate) VALUES
+    (100.00, 0.1),
+    (200.00, 0.15),
+    (300.00, 0.2)
+ON CONFLICT DO NOTHING;
+
+-- 查询对比
+SELECT id, amount, tax_rate, total_amount FROM orders_stored;
+SELECT id, amount, tax_rate, total_amount FROM orders_virtual;
+-- 两个查询结果相同，但存储方式不同
 ```
 
 #### 虚拟列特性
@@ -138,26 +159,37 @@ CREATE TABLE orders (
 -- 场景：订单表，频繁更新订单状态
 
 -- 表结构（存储列）：
-CREATE TABLE orders_stored (
-    id INT PRIMARY KEY,
-    order_no TEXT,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED,
-    status TEXT,
-    updated_at TIMESTAMP
+CREATE TABLE IF NOT EXISTS orders_stored (
+    id SERIAL PRIMARY KEY,
+    order_no VARCHAR(50) UNIQUE NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    tax_rate DECIMAL(5, 4) NOT NULL DEFAULT 0.1,
+    total_amount DECIMAL(10, 2) GENERATED ALWAYS AS (amount * (1 + tax_rate)) STORED,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 表结构（虚拟列）：
-CREATE TABLE orders_virtual (
-    id INT PRIMARY KEY,
-    order_no TEXT,
-    amount DECIMAL,
-    tax_rate DECIMAL,
-    total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL,
-    status TEXT,
-    updated_at TIMESTAMP
+CREATE TABLE IF NOT EXISTS orders_virtual (
+    id SERIAL PRIMARY KEY,
+    order_no VARCHAR(50) UNIQUE NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    tax_rate DECIMAL(5, 4) NOT NULL DEFAULT 0.1,
+    total_amount DECIMAL(10, 2) GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 插入示例数据
+INSERT INTO orders_stored (order_no, amount, tax_rate, status) VALUES
+    ('ORD001', 100.00, 0.1, 'pending'),
+    ('ORD002', 200.00, 0.15, 'processing')
+ON CONFLICT (order_no) DO NOTHING;
+
+INSERT INTO orders_virtual (order_no, amount, tax_rate, status) VALUES
+    ('ORD001', 100.00, 0.1, 'pending'),
+    ('ORD002', 200.00, 0.15, 'processing')
+ON CONFLICT (order_no) DO NOTHING;
 
 -- 更新操作：
 UPDATE orders_stored SET status = 'shipped' WHERE id = 1;

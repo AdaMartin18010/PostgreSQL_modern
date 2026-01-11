@@ -298,39 +298,58 @@ END $$;
 **完整列存表设计**:
 
 ```sql
--- 事实表：列存设计
-CREATE TABLE fact_sales_columnar (
-    sale_id BIGSERIAL,
-    -- 时间维度
-    sale_date DATE NOT NULL,
-    sale_year INT NOT NULL,
-    sale_month INT NOT NULL,
-    sale_quarter INT NOT NULL,
-    -- 维度键
-    product_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    store_id INT NOT NULL,
-    -- 度量值
-    quantity INT NOT NULL,
-    unit_price NUMERIC(10,2) NOT NULL,
-    amount NUMERIC(10,2) NOT NULL,
-    cost NUMERIC(10,2) NOT NULL,
-    profit NUMERIC(10,2) GENERATED ALWAYS AS (amount - cost) STORED,
-    -- 元数据
-    created_at TIMESTAMPTZ DEFAULT NOW()
-) USING columnar
-PARTITION BY RANGE (sale_date);
+-- 事实表：列存设计（分区表，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_columnar') THEN
+        CREATE TABLE fact_sales_columnar (
+            sale_id BIGSERIAL,
+            -- 时间维度
+            sale_date DATE NOT NULL,
+            sale_year INT NOT NULL,
+            sale_month INT NOT NULL,
+            sale_quarter INT NOT NULL,
+            -- 维度键
+            product_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            store_id INT NOT NULL,
+            -- 度量值
+            quantity INT NOT NULL,
+            unit_price NUMERIC(10,2) NOT NULL,
+            amount NUMERIC(10,2) NOT NULL,
+            cost NUMERIC(10,2) NOT NULL,
+            profit NUMERIC(10,2) GENERATED ALWAYS AS (amount - cost) STORED,
+            -- 元数据
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        ) USING columnar
+        PARTITION BY RANGE (sale_date);
+        RAISE NOTICE '分区表 fact_sales_columnar 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_sales_columnar 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区表 fact_sales_columnar 失败: %', SQLERRM;
+END $$;
 
--- 创建分区
-CREATE TABLE fact_sales_columnar_2024
-    PARTITION OF fact_sales_columnar
-    FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')
-    USING columnar;
-
-CREATE TABLE fact_sales_columnar_2025
-    PARTITION OF fact_sales_columnar
-    FOR VALUES FROM ('2025-01-01') TO ('2026-01-01')
-    USING columnar;
+-- 创建分区（带错误处理）
+DO $$
+BEGIN
+    CREATE TABLE IF NOT EXISTS fact_sales_columnar_2024
+        PARTITION OF fact_sales_columnar
+        FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')
+        USING columnar;
+    CREATE TABLE IF NOT EXISTS fact_sales_columnar_2025
+        PARTITION OF fact_sales_columnar
+        FOR VALUES FROM ('2025-01-01') TO ('2026-01-01')
+        USING columnar;
+    RAISE NOTICE '分区创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建分区失败: %', SQLERRM;
+END $$;
 ```
 
 ### 3.3 列存表索引

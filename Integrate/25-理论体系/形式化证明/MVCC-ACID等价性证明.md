@@ -365,6 +365,19 @@ MVCC-ACID等价性定理体系
 **MVCC版本管理（PostgreSQL实现）**：
 
 ```sql
+-- 数据准备：创建账户表
+CREATE TABLE IF NOT EXISTS accounts (
+    account_id SERIAL PRIMARY KEY,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    account_name VARCHAR(100) NOT NULL
+);
+
+-- 插入示例数据
+INSERT INTO accounts (account_name, balance) VALUES
+    ('Account1', 1000.00),
+    ('Account2', 500.00)
+ON CONFLICT DO NOTHING;
+
 -- PostgreSQL MVCC版本管理
 -- 1. 查看元组版本信息
 SELECT
@@ -396,20 +409,26 @@ SELECT txid_current_snapshot();
 **ACID属性验证（带错误处理和性能测试）**：
 
 ```sql
+-- 数据准备（accounts表已创建）
+
 -- 1. 原子性验证
 BEGIN;
-INSERT INTO accounts (account_id, balance) VALUES (999, 1000);
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 999;
+INSERT INTO accounts (account_name, balance) VALUES ('TestAccount999', 1000);
+UPDATE accounts SET balance = balance - 100 WHERE account_name = 'TestAccount999';
 -- 如果后续操作失败，ROLLBACK会撤销所有操作
 ROLLBACK;  -- 原子性保证：所有操作要么全部成功，要么全部失败
+
+-- 验证：检查数据是否回滚
+SELECT * FROM accounts WHERE account_name = 'TestAccount999';  -- 应该返回空
 
 -- 2. 一致性验证
 BEGIN;
 -- 检查约束
-ALTER TABLE accounts ADD CONSTRAINT check_balance CHECK (balance >= 0);
+ALTER TABLE accounts ADD CONSTRAINT IF NOT EXISTS check_balance CHECK (balance >= 0);
 -- 违反约束的操作会被拒绝
 UPDATE accounts SET balance = -100 WHERE account_id = 1;
 -- ERROR: new row for relation "accounts" violates check constraint "check_balance"
+ROLLBACK;
 
 -- 3. 隔离性验证（快照隔离）
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
@@ -421,6 +440,9 @@ COMMIT;
 BEGIN;
 UPDATE accounts SET balance = balance + 100 WHERE account_id = 1;
 COMMIT;  -- 提交后，即使数据库崩溃，修改也会持久化
+
+-- 验证：重启后数据仍然存在
+SELECT * FROM accounts WHERE account_id = 1;
 ```
 
 ---

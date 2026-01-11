@@ -232,35 +232,74 @@ VALUES (1, 'Customer'), (1, 'Supplier');
 **PostgreSQL实现示例**:
 
 ```sql
--- 订单表
-CREATE TABLE sales_order (
-    order_id SERIAL PRIMARY KEY,
-    order_number VARCHAR(50) UNIQUE NOT NULL,
-    customer_id INT NOT NULL REFERENCES party(party_id),
-    order_date TIMESTAMPTZ DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'PENDING',
-    total_amount NUMERIC(10,2) NOT NULL,
-    CHECK (total_amount >= 0)
-);
+-- 订单表（带错误处理，需要先创建party表）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'sales_order') THEN
+        CREATE TABLE sales_order (
+            order_id SERIAL PRIMARY KEY,
+            order_number VARCHAR(50) UNIQUE NOT NULL,
+            customer_id INT NOT NULL REFERENCES party(party_id),
+            order_date TIMESTAMPTZ DEFAULT NOW(),
+            status VARCHAR(20) DEFAULT 'PENDING',
+            total_amount NUMERIC(10,2) NOT NULL,
+            CHECK (total_amount >= 0)
+        );
+        RAISE NOTICE '表 sales_order 创建成功';
+    ELSE
+        RAISE NOTICE '表 sales_order 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 sales_order 失败: %', SQLERRM;
+END $$;
 
--- 订单行表
-CREATE TABLE sales_order_line (
-    line_id SERIAL PRIMARY KEY,
-    order_id INT NOT NULL REFERENCES sales_order(order_id),
-    product_id INT NOT NULL REFERENCES product(product_id),
-    quantity INT NOT NULL CHECK (quantity > 0),
-    unit_price NUMERIC(10,2) NOT NULL CHECK (unit_price >= 0),
-    line_amount NUMERIC(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED
-);
+-- 订单行表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'sales_order_line') THEN
+        CREATE TABLE sales_order_line (
+            line_id SERIAL PRIMARY KEY,
+            order_id INT NOT NULL REFERENCES sales_order(order_id),
+            product_id INT NOT NULL REFERENCES product(product_id),
+            quantity INT NOT NULL CHECK (quantity > 0),
+            unit_price NUMERIC(10,2) NOT NULL CHECK (unit_price >= 0),
+            line_amount NUMERIC(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED
+        );
+        RAISE NOTICE '表 sales_order_line 创建成功';
+    ELSE
+        RAISE NOTICE '表 sales_order_line 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 sales_order 和 product 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 sales_order_line 失败: %', SQLERRM;
+END $$;
 
--- 订单状态历史
-CREATE TABLE order_status_history (
-    history_id SERIAL PRIMARY KEY,
-    order_id INT NOT NULL REFERENCES sales_order(order_id),
-    status VARCHAR(20) NOT NULL,
-    changed_at TIMESTAMPTZ DEFAULT NOW(),
-    changed_by INT REFERENCES party(party_id)
-);
+-- 订单状态历史（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'order_status_history') THEN
+        CREATE TABLE order_status_history (
+            history_id SERIAL PRIMARY KEY,
+            order_id INT NOT NULL REFERENCES sales_order(order_id),
+            status VARCHAR(20) NOT NULL,
+            changed_at TIMESTAMPTZ DEFAULT NOW(),
+            changed_by INT REFERENCES party(party_id)
+        );
+        RAISE NOTICE '表 order_status_history 创建成功';
+    ELSE
+        RAISE NOTICE '表 order_status_history 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 sales_order 和 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 order_status_history 失败: %', SQLERRM;
+END $$;
 ```
 
 ---

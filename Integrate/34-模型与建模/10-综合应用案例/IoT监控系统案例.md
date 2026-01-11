@@ -909,14 +909,40 @@ ORDER BY alert_count DESC;
 
 ```sql
 -- 按设备ID HASH分区
-CREATE TABLE device_telemetry (
-    ...
-) PARTITION BY HASH (device_id);
+-- 设备遥测数据表（分区表，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'device_telemetry') THEN
+        CREATE TABLE device_telemetry (
+            telemetry_id BIGSERIAL,
+            device_id VARCHAR(50) NOT NULL,
+            timestamp TIMESTAMPTZ DEFAULT NOW(),
+            metric_name VARCHAR(50) NOT NULL,
+            metric_value DOUBLE PRECISION NOT NULL,
+            PRIMARY KEY (telemetry_id, device_id)
+        ) PARTITION BY HASH (device_id);
+        RAISE NOTICE '分区表 device_telemetry 创建成功';
+    ELSE
+        RAISE NOTICE '表 device_telemetry 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区表 device_telemetry 失败: %', SQLERRM;
+END $$;
 
--- 创建8个分区
-CREATE TABLE device_telemetry_0 PARTITION OF device_telemetry
-    FOR VALUES WITH (MODULUS 8, REMAINDER 0);
--- ... 创建其他分区
+-- 创建8个分区（带错误处理）
+DO $$
+BEGIN
+    FOR i IN 0..7 LOOP
+        EXECUTE format('CREATE TABLE IF NOT EXISTS device_telemetry_%s PARTITION OF device_telemetry FOR VALUES WITH (MODULUS 8, REMAINDER %s)', i, i);
+    END LOOP;
+    RAISE NOTICE 'HASH分区创建成功';
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建HASH分区失败: %', SQLERRM;
+END $$;
 ```
 
 ### Q2: 如何处理高频数据写入？
@@ -984,7 +1010,19 @@ WHERE hypertable_name = 'device_telemetry'
   AND range_end < NOW() - INTERVAL '7 days';
 
 -- 归档旧数据
-CREATE TABLE device_telemetry_archive (LIKE device_telemetry INCLUDING ALL);
+-- 设备遥测数据归档表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'device_telemetry_archive') THEN
+        CREATE TABLE device_telemetry_archive (LIKE device_telemetry INCLUDING ALL);
+        RAISE NOTICE '归档表 device_telemetry_archive 创建成功';
+    ELSE
+        RAISE NOTICE '归档表 device_telemetry_archive 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建归档表 device_telemetry_archive 失败: %', SQLERRM;
+END $$;
 
 INSERT INTO device_telemetry_archive
 SELECT * FROM device_telemetry

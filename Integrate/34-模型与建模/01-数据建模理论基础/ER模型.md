@@ -311,20 +311,44 @@ Student {
 **PostgreSQL实现**:
 
 ```sql
--- 示例：用户与用户档案（1:1）
-CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL
-);
+-- 示例：用户与用户档案（1:1，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'users') THEN
+        CREATE TABLE users (
+            user_id SERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL
+        );
+        RAISE NOTICE '表 users 创建成功';
+    ELSE
+        RAISE NOTICE '表 users 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 users 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE user_profiles (
-    profile_id SERIAL PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL REFERENCES users(user_id),
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    bio TEXT
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'user_profiles') THEN
+        CREATE TABLE user_profiles (
+            profile_id SERIAL PRIMARY KEY,
+            user_id INT UNIQUE NOT NULL REFERENCES users(user_id),
+            first_name VARCHAR(50),
+            last_name VARCHAR(50),
+            bio TEXT
+        );
+        RAISE NOTICE '表 user_profiles 创建成功';
+    ELSE
+        RAISE NOTICE '表 user_profiles 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 users 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 user_profiles 失败: %', SQLERRM;
+END $$;
 ```
 
 **应用场景**:
@@ -344,21 +368,50 @@ CREATE TABLE user_profiles (
 **PostgreSQL实现**:
 
 ```sql
--- 示例：部门与员工（1:N）
-CREATE TABLE departments (
-    dept_id SERIAL PRIMARY KEY,
-    dept_name VARCHAR(100) NOT NULL
-);
+-- 示例：部门与员工（1:N，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'departments') THEN
+        CREATE TABLE departments (
+            dept_id SERIAL PRIMARY KEY,
+            dept_name VARCHAR(100) NOT NULL
+        );
+        RAISE NOTICE '表 departments 创建成功';
+    ELSE
+        RAISE NOTICE '表 departments 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 departments 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE employees (
-    emp_id SERIAL PRIMARY KEY,
-    emp_name VARCHAR(100) NOT NULL,
-    dept_id INT NOT NULL REFERENCES departments(dept_id),
-    salary NUMERIC(10,2)
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'employees') THEN
+        CREATE TABLE employees (
+            emp_id SERIAL PRIMARY KEY,
+            emp_name VARCHAR(100) NOT NULL,
+            dept_id INT NOT NULL REFERENCES departments(dept_id),
+            salary NUMERIC(10,2)
+        );
+        RAISE NOTICE '表 employees 创建成功';
+    ELSE
+        RAISE NOTICE '表 employees 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 employees 失败: %', SQLERRM;
+END $$;
 
--- 创建索引优化查询
-CREATE INDEX idx_emp_dept ON employees(dept_id);
+-- 创建索引优化查询（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_emp_dept ON employees(dept_id);
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 **应用场景**:
@@ -378,31 +431,71 @@ CREATE INDEX idx_emp_dept ON employees(dept_id);
 **PostgreSQL实现**:
 
 ```sql
--- 示例：学生与课程（M:N）
-CREATE TABLE students (
-    student_id SERIAL PRIMARY KEY,
-    student_name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE
-);
+-- 示例：学生与课程（M:N，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'students') THEN
+        CREATE TABLE students (
+            student_id SERIAL PRIMARY KEY,
+            student_name VARCHAR(100) NOT NULL,
+            email VARCHAR(100) UNIQUE
+        );
+        RAISE NOTICE '表 students 创建成功';
+    ELSE
+        RAISE NOTICE '表 students 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 students 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE courses (
-    course_id SERIAL PRIMARY KEY,
-    course_name VARCHAR(100) NOT NULL,
-    credits INT NOT NULL
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'courses') THEN
+        CREATE TABLE courses (
+            course_id SERIAL PRIMARY KEY,
+            course_name VARCHAR(100) NOT NULL,
+            credits INT NOT NULL
+        );
+        RAISE NOTICE '表 courses 创建成功';
+    ELSE
+        RAISE NOTICE '表 courses 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 courses 失败: %', SQLERRM;
+END $$;
 
--- 中间关联表
-CREATE TABLE enrollments (
-    enrollment_id SERIAL PRIMARY KEY,
-    student_id INT NOT NULL REFERENCES students(student_id),
-    course_id INT NOT NULL REFERENCES courses(course_id),
-    enrollment_date DATE DEFAULT CURRENT_DATE,
-    grade CHAR(2),
-    UNIQUE(student_id, course_id) -- 防止重复选课
-);
+-- 中间关联表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'enrollments') THEN
+        CREATE TABLE enrollments (
+            enrollment_id SERIAL PRIMARY KEY,
+            student_id INT NOT NULL REFERENCES students(student_id),
+            course_id INT NOT NULL REFERENCES courses(course_id),
+            enrollment_date DATE DEFAULT CURRENT_DATE,
+            grade CHAR(2),
+            UNIQUE(student_id, course_id) -- 防止重复选课
+        );
+        RAISE NOTICE '表 enrollments 创建成功';
+    ELSE
+        RAISE NOTICE '表 enrollments 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 enrollments 失败: %', SQLERRM;
+END $$;
 
--- 创建复合索引
-CREATE INDEX idx_enroll_student ON enrollments(student_id);
+-- 创建复合索引（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_enroll_student ON enrollments(student_id);
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 CREATE INDEX idx_enroll_course ON enrollments(course_id);
 ```
 
@@ -553,14 +646,24 @@ erDiagram
 每个实体转换为一张表，实体的属性转换为表的列。
 
 ```sql
--- 实体: 学生
--- 转换为表:
-CREATE TABLE students (
-    student_id SERIAL PRIMARY KEY,
-    student_name VARCHAR(100),
-    birth_date DATE,
-    email VARCHAR(100)
-);
+-- 实体: 学生（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'students_er') THEN
+        CREATE TABLE students_er (
+            student_id SERIAL PRIMARY KEY,
+            student_name VARCHAR(100),
+            birth_date DATE,
+            email VARCHAR(100)
+        );
+        RAISE NOTICE '表 students_er 创建成功';
+    ELSE
+        RAISE NOTICE '表 students_er 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 students_er 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -570,14 +673,29 @@ CREATE TABLE students (
 **方式1**: 在其中一个表中添加外键（推荐）
 
 ```sql
-CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50)
-);
+-- 1:1关系转换示例（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'users_1to1') THEN
+        CREATE TABLE users_1to1 (
+            user_id SERIAL PRIMARY KEY,
+            username VARCHAR(50)
+        );
+        RAISE NOTICE '表 users_1to1 创建成功';
+    ELSE
+        RAISE NOTICE '表 users_1to1 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 users_1to1 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE user_profiles (
-    profile_id SERIAL PRIMARY KEY,
-    user_id INT UNIQUE REFERENCES users(user_id),
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'user_profiles_1to1') THEN
+        CREATE TABLE user_profiles_1to1 (
+            profile_id SERIAL PRIMARY KEY,
+            user_id INT UNIQUE REFERENCES users_1to1(user_id),
     first_name VARCHAR(50)
 );
 ```
@@ -585,12 +703,24 @@ CREATE TABLE user_profiles (
 **方式2**: 合并为一张表（如果关系紧密）
 
 ```sql
-CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50),
-    first_name VARCHAR(50),
-    last_name VARCHAR(50)
-);
+-- Users表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'users') THEN
+        CREATE TABLE users (
+            user_id SERIAL PRIMARY KEY,
+            username VARCHAR(50),
+            first_name VARCHAR(50),
+            last_name VARCHAR(50)
+        );
+        RAISE NOTICE '表 users 创建成功';
+    ELSE
+        RAISE NOTICE '表 users 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 users 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -600,16 +730,42 @@ CREATE TABLE users (
 在多的一方添加外键。
 
 ```sql
-CREATE TABLE departments (
-    dept_id SERIAL PRIMARY KEY,
-    dept_name VARCHAR(100)
-);
+-- Departments表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'departments') THEN
+        CREATE TABLE departments (
+            dept_id SERIAL PRIMARY KEY,
+            dept_name VARCHAR(100)
+        );
+        RAISE NOTICE '表 departments 创建成功';
+    ELSE
+        RAISE NOTICE '表 departments 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 departments 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE employees (
-    emp_id SERIAL PRIMARY KEY,
-    emp_name VARCHAR(100),
-    dept_id INT REFERENCES departments(dept_id)
-);
+-- Employees表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'employees') THEN
+        CREATE TABLE employees (
+            emp_id SERIAL PRIMARY KEY,
+            emp_name VARCHAR(100),
+            dept_id INT REFERENCES departments(dept_id)
+        );
+        RAISE NOTICE '表 employees 创建成功';
+    ELSE
+        RAISE NOTICE '表 employees 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 departments 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 employees 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -619,23 +775,61 @@ CREATE TABLE employees (
 创建中间关联表。
 
 ```sql
-CREATE TABLE students (
-    student_id SERIAL PRIMARY KEY,
-    student_name VARCHAR(100)
-);
+-- Students表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'students') THEN
+        CREATE TABLE students (
+            student_id SERIAL PRIMARY KEY,
+            student_name VARCHAR(100)
+        );
+        RAISE NOTICE '表 students 创建成功';
+    ELSE
+        RAISE NOTICE '表 students 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 students 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE courses (
-    course_id SERIAL PRIMARY KEY,
-    course_name VARCHAR(100)
-);
+-- Courses表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'courses') THEN
+        CREATE TABLE courses (
+            course_id SERIAL PRIMARY KEY,
+            course_name VARCHAR(100)
+        );
+        RAISE NOTICE '表 courses 创建成功';
+    ELSE
+        RAISE NOTICE '表 courses 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 courses 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE enrollments (
-    enrollment_id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(student_id),
-    course_id INT REFERENCES courses(course_id),
-    enrollment_date DATE,
-    UNIQUE(student_id, course_id)
-);
+-- Enrollments表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'enrollments') THEN
+        CREATE TABLE enrollments (
+            enrollment_id SERIAL PRIMARY KEY,
+            student_id INT REFERENCES students(student_id),
+            course_id INT REFERENCES courses(course_id),
+            enrollment_date DATE,
+            UNIQUE(student_id, course_id)
+        );
+        RAISE NOTICE '表 enrollments 创建成功';
+    ELSE
+        RAISE NOTICE '表 enrollments 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 students 和 courses 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 enrollments 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -645,17 +839,42 @@ CREATE TABLE enrollments (
 创建独立的表存储多值属性。
 
 ```sql
--- 学生实体有多个电话号码（多值属性）
-CREATE TABLE students (
-    student_id SERIAL PRIMARY KEY,
-    student_name VARCHAR(100)
-);
+-- 学生实体有多个电话号码（多值属性，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'students') THEN
+        CREATE TABLE students (
+            student_id SERIAL PRIMARY KEY,
+            student_name VARCHAR(100)
+        );
+        RAISE NOTICE '表 students 创建成功（多值属性示例）';
+    ELSE
+        RAISE NOTICE '表 students 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 students 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE student_phones (
-    phone_id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(student_id),
-    phone_number VARCHAR(20) NOT NULL
-);
+-- Student Phones表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'student_phones') THEN
+        CREATE TABLE student_phones (
+            phone_id SERIAL PRIMARY KEY,
+            student_id INT REFERENCES students(student_id),
+            phone_number VARCHAR(20) NOT NULL
+        );
+        RAISE NOTICE '表 student_phones 创建成功';
+    ELSE
+        RAISE NOTICE '表 student_phones 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 students 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 student_phones 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -665,15 +884,26 @@ CREATE TABLE student_phones (
 将复合属性展开为多个列。
 
 ```sql
--- 地址是复合属性（省+市+区+街道）
-CREATE TABLE students (
-    student_id SERIAL PRIMARY KEY,
-    student_name VARCHAR(100),
-    province VARCHAR(50),  -- 省
-    city VARCHAR(50),      -- 市
-    district VARCHAR(50),  -- 区
-    street VARCHAR(200)    -- 街道
-);
+-- 地址是复合属性（省+市+区+街道，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'students' AND schemaname = 'public') THEN
+        CREATE TABLE students (
+            student_id SERIAL PRIMARY KEY,
+            student_name VARCHAR(100),
+            province VARCHAR(50),  -- 省
+            city VARCHAR(50),      -- 市
+            district VARCHAR(50),  -- 区
+            street VARCHAR(200)    -- 街道
+        );
+        RAISE NOTICE '表 students 创建成功（复合属性示例）';
+    ELSE
+        RAISE NOTICE '表 students 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 students 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -699,20 +929,48 @@ CREATE TABLE students (
 **PostgreSQL实现**:
 
 ```sql
-CREATE TABLE orders (
-    order_id SERIAL PRIMARY KEY,
-    order_date DATE NOT NULL,
-    customer_id INT REFERENCES customers(customer_id)
-);
+-- Orders表（弱实体示例，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'orders') THEN
+        CREATE TABLE orders (
+            order_id SERIAL PRIMARY KEY,
+            order_date DATE NOT NULL,
+            customer_id INT REFERENCES customers(customer_id)
+        );
+        RAISE NOTICE '表 orders 创建成功（弱实体示例）';
+    ELSE
+        RAISE NOTICE '表 orders 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 customers 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 orders 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE order_items (
-    order_id INT NOT NULL REFERENCES orders(order_id),
-    line_number INT NOT NULL,
-    product_id INT REFERENCES products(product_id),
-    quantity INT NOT NULL,
-    unit_price NUMERIC(10,2),
-    PRIMARY KEY (order_id, line_number) -- 复合主键
-);
+-- Order Items表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'order_items') THEN
+        CREATE TABLE order_items (
+            order_id INT NOT NULL REFERENCES orders(order_id),
+            line_number INT NOT NULL,
+            product_id INT REFERENCES products(product_id),
+            quantity INT NOT NULL,
+            unit_price NUMERIC(10,2),
+            PRIMARY KEY (order_id, line_number) -- 复合主键
+        );
+        RAISE NOTICE '表 order_items 创建成功（弱实体示例）';
+    ELSE
+        RAISE NOTICE '表 order_items 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 orders 和 products 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 order_items 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -732,39 +990,109 @@ CREATE TABLE order_items (
 **PostgreSQL实现**:
 
 ```sql
--- 方式1: 使用继承表
-CREATE TABLE persons (
-    person_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    birth_date DATE
-);
+-- 方式1: 使用继承表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'persons' AND schemaname = 'public') THEN
+        CREATE TABLE persons (
+            person_id SERIAL PRIMARY KEY,
+            name VARCHAR(100),
+            birth_date DATE
+        );
+        RAISE NOTICE '表 persons 创建成功（继承示例）';
+    ELSE
+        RAISE NOTICE '表 persons 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 persons 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE students (
-    student_id INT PRIMARY KEY REFERENCES persons(person_id),
-    student_number VARCHAR(20) UNIQUE,
-    enrollment_date DATE
-) INHERITS (persons);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'students' AND schemaname = 'public') THEN
+        CREATE TABLE students (
+            student_id INT PRIMARY KEY REFERENCES persons(person_id),
+            student_number VARCHAR(20) UNIQUE,
+            enrollment_date DATE
+        ) INHERITS (persons);
+        RAISE NOTICE '表 students 创建成功（继承示例）';
+    ELSE
+        RAISE NOTICE '表 students 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 persons 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 students 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE teachers (
-    teacher_id INT PRIMARY KEY REFERENCES persons(person_id),
-    employee_number VARCHAR(20) UNIQUE,
-    hire_date DATE
-) INHERITS (persons);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'teachers' AND schemaname = 'public') THEN
+        CREATE TABLE teachers (
+            teacher_id INT PRIMARY KEY REFERENCES persons(person_id),
+            employee_number VARCHAR(20) UNIQUE,
+            hire_date DATE
+        ) INHERITS (persons);
+        RAISE NOTICE '表 teachers 创建成功（继承示例）';
+    ELSE
+        RAISE NOTICE '表 teachers 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 persons 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 teachers 失败: %', SQLERRM;
+END $$;
 
--- 方式2: 使用分区表（PostgreSQL 10+）
-CREATE TABLE persons (
-    person_id SERIAL,
-    person_type CHAR(1) NOT NULL CHECK (person_type IN ('S', 'T')),
-    name VARCHAR(100),
-    birth_date DATE,
-    PRIMARY KEY (person_id, person_type)
-) PARTITION BY LIST (person_type);
+-- 方式2: 使用分区表（PostgreSQL 10+，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'persons' AND schemaname = 'public') THEN
+        CREATE TABLE persons (
+            person_id SERIAL,
+            person_type CHAR(1) NOT NULL CHECK (person_type IN ('S', 'T')),
+            name VARCHAR(100),
+            birth_date DATE,
+            PRIMARY KEY (person_id, person_type)
+        ) PARTITION BY LIST (person_type);
+        RAISE NOTICE '表 persons 创建成功（分区示例）';
+    ELSE
+        RAISE NOTICE '表 persons 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 persons 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE students PARTITION OF persons
-    FOR VALUES IN ('S');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'students' AND schemaname = 'public') THEN
+        CREATE TABLE students PARTITION OF persons
+            FOR VALUES IN ('S');
+        RAISE NOTICE '分区 students 创建成功';
+    ELSE
+        RAISE NOTICE '分区 students 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区 students 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE teachers PARTITION OF persons
-    FOR VALUES IN ('T');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'teachers' AND schemaname = 'public') THEN
+        CREATE TABLE teachers PARTITION OF persons
+            FOR VALUES IN ('T');
+        RAISE NOTICE '分区 teachers 创建成功';
+    ELSE
+        RAISE NOTICE '分区 teachers 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区 teachers 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -806,11 +1134,23 @@ CREATE TABLE teachers PARTITION OF persons
 **PostgreSQL实现**:
 
 ```sql
-CREATE TABLE employees (
-    emp_id SERIAL PRIMARY KEY,
-    emp_name VARCHAR(100),
-    manager_id INT REFERENCES employees(emp_id)
-);
+-- Employees表（递归关系示例，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'employees') THEN
+        CREATE TABLE employees (
+            emp_id SERIAL PRIMARY KEY,
+            emp_name VARCHAR(100),
+            manager_id INT REFERENCES employees(emp_id)
+        );
+        RAISE NOTICE '表 employees 创建成功（递归关系示例）';
+    ELSE
+        RAISE NOTICE '表 employees 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 employees 失败: %', SQLERRM;
+END $$;
 ```
 
 ---

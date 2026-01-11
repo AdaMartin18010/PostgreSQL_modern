@@ -247,27 +247,66 @@ Organization可以进一步细分为：
 **PostgreSQL实现 / PostgreSQL Implementation**:
 
 ```sql
--- Organization实体（作为Party的子类型）
-CREATE TABLE organization (
-    party_id INT PRIMARY KEY REFERENCES party(party_id),
-    legal_name VARCHAR(200),
-    tax_id VARCHAR(50),
-    founded_date DATE,
-    organization_type VARCHAR(50)  -- Legal/Informal
-);
+-- Organization实体（作为Party的子类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'organization') THEN
+        CREATE TABLE organization (
+            party_id INT PRIMARY KEY REFERENCES party(party_id),
+            legal_name VARCHAR(200),
+            tax_id VARCHAR(50),
+            founded_date DATE,
+            organization_type VARCHAR(50)  -- Legal/Informal
+        );
+        RAISE NOTICE '表 organization 创建成功';
+    ELSE
+        RAISE NOTICE '表 organization 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 organization 失败: %', SQLERRM;
+END $$;
 
--- Legal Organization子类型
-CREATE TABLE legal_organization (
-    party_id INT PRIMARY KEY REFERENCES organization(party_id),
-    registration_number VARCHAR(100),
-    incorporation_date DATE
-);
+-- Legal Organization子类型（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'legal_organization') THEN
+        CREATE TABLE legal_organization (
+            party_id INT PRIMARY KEY REFERENCES organization(party_id),
+            registration_number VARCHAR(100),
+            incorporation_date DATE
+        );
+        RAISE NOTICE '表 legal_organization 创建成功';
+    ELSE
+        RAISE NOTICE '表 legal_organization 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 organization 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 legal_organization 失败: %', SQLERRM;
+END $$;
 
--- Informal Organization子类型
-CREATE TABLE informal_organization (
-    party_id INT PRIMARY KEY REFERENCES organization(party_id),
-    organization_purpose TEXT
-);
+-- Informal Organization子类型（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'informal_organization') THEN
+        CREATE TABLE informal_organization (
+            party_id INT PRIMARY KEY REFERENCES organization(party_id),
+            organization_purpose TEXT
+        );
+        RAISE NOTICE '表 informal_organization 创建成功';
+    ELSE
+        RAISE NOTICE '表 informal_organization 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 organization 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 informal_organization 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -294,49 +333,101 @@ Person包含以下属性：
 **PostgreSQL实现 / PostgreSQL Implementation**:
 
 ```sql
--- Person实体（标准模型）
-CREATE TABLE person (
-    party_id INT PRIMARY KEY REFERENCES party(party_id),
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    middle_name VARCHAR(50),
-    birth_date DATE,
-    gender CHAR(1) CHECK (gender IN ('M', 'F', 'O', 'U')),  -- M=Male, F=Female, O=Other, U=Unknown
-    height VARCHAR(20),  -- 如 "6'0\""
-    weight NUMERIC(5,2),  -- 单位：磅或公斤
-    passport_number VARCHAR(50),
-    passport_expiration_date DATE,
-    current_marital_status VARCHAR(20)
-);
+-- Person实体（标准模型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'person') THEN
+        CREATE TABLE person (
+            party_id INT PRIMARY KEY REFERENCES party(party_id),
+            first_name VARCHAR(50),
+            last_name VARCHAR(50),
+            middle_name VARCHAR(50),
+            birth_date DATE,
+            gender CHAR(1) CHECK (gender IN ('M', 'F', 'O', 'U')),  -- M=Male, F=Female, O=Other, U=Unknown
+            height VARCHAR(20),  -- 如 "6'0\""
+            weight NUMERIC(5,2),  -- 单位：磅或公斤
+            passport_number VARCHAR(50),
+            passport_expiration_date DATE,
+            current_marital_status VARCHAR(20)
+        );
+        RAISE NOTICE '表 person 创建成功';
+    ELSE
+        RAISE NOTICE '表 person 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 person 失败: %', SQLERRM;
+END $$;
 
--- Person Alternate Model（支持历史跟踪）
-CREATE TABLE person_name (
-    party_id INT NOT NULL REFERENCES person(party_id),
-    name_seq_id INT NOT NULL,
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    middle_name VARCHAR(50),
-    name_type VARCHAR(20),  -- Current, Alias, Previous
-    valid_from DATE NOT NULL,
-    valid_to DATE,
-    PRIMARY KEY (party_id, name_seq_id)
-);
+-- Person Alternate Model（支持历史跟踪，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'person_name') THEN
+        CREATE TABLE person_name (
+            party_id INT NOT NULL REFERENCES person(party_id),
+            name_seq_id INT NOT NULL,
+            first_name VARCHAR(50),
+            last_name VARCHAR(50),
+            middle_name VARCHAR(50),
+            name_type VARCHAR(20),  -- Current, Alias, Previous
+            valid_from DATE NOT NULL,
+            valid_to DATE,
+            PRIMARY KEY (party_id, name_seq_id)
+        );
+        RAISE NOTICE '表 person_name 创建成功';
+    ELSE
+        RAISE NOTICE '表 person_name 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 person 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 person_name 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE marital_status (
-    party_id INT NOT NULL REFERENCES person(party_id),
-    marital_status_type VARCHAR(20) NOT NULL,
-    valid_from DATE NOT NULL,
-    valid_to DATE,
-    PRIMARY KEY (party_id, marital_status_type, valid_from)
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'marital_status') THEN
+        CREATE TABLE marital_status (
+            party_id INT NOT NULL REFERENCES person(party_id),
+            marital_status_type VARCHAR(20) NOT NULL,
+            valid_from DATE NOT NULL,
+            valid_to DATE,
+            PRIMARY KEY (party_id, marital_status_type, valid_from)
+        );
+        RAISE NOTICE '表 marital_status 创建成功';
+    ELSE
+        RAISE NOTICE '表 marital_status 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 person 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 marital_status 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE physical_characteristic (
-    party_id INT NOT NULL REFERENCES person(party_id),
-    characteristic_type VARCHAR(50) NOT NULL,  -- Height, Weight, Blood Pressure
-    characteristic_value VARCHAR(100),
-    measurement_date DATE NOT NULL,
-    PRIMARY KEY (party_id, characteristic_type, measurement_date)
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'physical_characteristic') THEN
+        CREATE TABLE physical_characteristic (
+            party_id INT NOT NULL REFERENCES person(party_id),
+            characteristic_type VARCHAR(50) NOT NULL,  -- Height, Weight, Blood Pressure
+            characteristic_value VARCHAR(100),
+            measurement_date DATE NOT NULL,
+            PRIMARY KEY (party_id, characteristic_type, measurement_date)
+        );
+        RAISE NOTICE '表 physical_characteristic 创建成功';
+    ELSE
+        RAISE NOTICE '表 physical_characteristic 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 person 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 physical_characteristic 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -365,44 +456,102 @@ Party通过Party Classification进行分类：
 
 ```sql
 -- ❌ 传统设计：重复的表结构
-CREATE TABLE customers (
-    customer_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    email VARCHAR(100),
-    phone VARCHAR(20)
-);
+-- 反模式示例：使用独立的表（带错误处理，说明问题）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'customers_bad_design') THEN
+        CREATE TABLE customers_bad_design (
+            customer_id SERIAL PRIMARY KEY,
+            name VARCHAR(100),
+            email VARCHAR(100),
+            phone VARCHAR(20)
+        );
+        RAISE NOTICE '表 customers_bad_design 创建成功（反模式示例）';
+    ELSE
+        RAISE NOTICE '表 customers_bad_design 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建示例表失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE suppliers (
-    supplier_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    email VARCHAR(100),
-    phone VARCHAR(20)  -- 重复字段
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'suppliers_bad_design') THEN
+        CREATE TABLE suppliers_bad_design (
+            supplier_id SERIAL PRIMARY KEY,
+            name VARCHAR(100),
+            email VARCHAR(100),
+            phone VARCHAR(20)  -- 重复字段
+        );
+        RAISE NOTICE '表 suppliers_bad_design 创建成功（反模式示例）';
+    ELSE
+        RAISE NOTICE '表 suppliers_bad_design 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建示例表失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE employees (
-    employee_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    email VARCHAR(100),
-    phone VARCHAR(20)  -- 重复字段
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'employees_bad_design') THEN
+        CREATE TABLE employees_bad_design (
+            employee_id SERIAL PRIMARY KEY,
+            name VARCHAR(100),
+            email VARCHAR(100),
+            phone VARCHAR(20)  -- 重复字段
+        );
+        RAISE NOTICE '表 employees_bad_design 创建成功（反模式示例）';
+    ELSE
+        RAISE NOTICE '表 employees_bad_design 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建示例表失败: %', SQLERRM;
+END $$;
 ```
 
 **Party模型设计**:
 
 ```sql
--- ✅ Party模型：统一设计
-CREATE TABLE party (
-    party_id SERIAL PRIMARY KEY,
-    party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-) PARTITION BY LIST (party_type);
+-- ✅ Party模型：统一设计（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party') THEN
+        CREATE TABLE party (
+            party_id SERIAL PRIMARY KEY,
+            party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
+            name TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        ) PARTITION BY LIST (party_type);
+        RAISE NOTICE '分区表 party 创建成功';
+    ELSE
+        RAISE NOTICE '表 party 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区表 party 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE person PARTITION OF party
-    FOR VALUES IN ('P');
-
-CREATE TABLE organization PARTITION OF party
-    FOR VALUES IN ('O');
+-- 创建分区（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party') THEN
+        CREATE TABLE IF NOT EXISTS person PARTITION OF party
+            FOR VALUES IN ('P');
+        CREATE TABLE IF NOT EXISTS organization PARTITION OF party
+            FOR VALUES IN ('O');
+        RAISE NOTICE '分区创建成功';
+    ELSE
+        RAISE WARNING '请先创建 party 分区表';
+    END IF;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建分区失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -430,24 +579,48 @@ Volume 1讨论了两种设计方式：
 **PostgreSQL实现 / PostgreSQL Implementation**:
 
 ```sql
--- Party Role实体（基于Volume 1 Figure 2.4）
-CREATE TABLE party_role (
-    party_role_id SERIAL PRIMARY KEY,
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    role_type VARCHAR(50) NOT NULL,
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
-    UNIQUE(party_id, role_type, valid_from)
-);
+-- Party Role实体（基于Volume 1 Figure 2.4，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role') THEN
+        CREATE TABLE party_role (
+            party_role_id SERIAL PRIMARY KEY,
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            role_type VARCHAR(50) NOT NULL,
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
+            UNIQUE(party_id, role_type, valid_from)
+        );
+        RAISE NOTICE '表 party_role 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_role 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_role 失败: %', SQLERRM;
+END $$;
 
--- Party Role Type（角色类型）
-CREATE TABLE party_role_type (
-    role_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    role_category VARCHAR(20) CHECK (role_category IN ('PERSON', 'ORGANIZATION', 'COMMON'))
-);
+-- Party Role Type（角色类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role_type') THEN
+        CREATE TABLE party_role_type (
+            role_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            role_category VARCHAR(20) CHECK (role_category IN ('PERSON', 'ORGANIZATION', 'COMMON'))
+        );
+        RAISE NOTICE '表 party_role_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_role_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_role_type 失败: %', SQLERRM;
+END $$;
 
 -- 插入Person Roles
 INSERT INTO party_role_type (role_type, description, role_category) VALUES
@@ -546,34 +719,48 @@ Party Relationship包含：
 **PostgreSQL实现 / PostgreSQL Implementation**:
 
 ```sql
--- Party Relationship实体（基于Volume 1 Figure 2.6a）
-CREATE TABLE party_relationship (
-    party_relationship_id SERIAL PRIMARY KEY,
-    party_id_from INT NOT NULL,
-    party_type_from CHAR(1) NOT NULL,
-    party_role_id_from INT NOT NULL,  -- 关联到Party Role
-    party_id_to INT NOT NULL,
-    party_type_to CHAR(1) NOT NULL,
-    party_role_id_to INT NOT NULL,  -- 关联到Party Role
-    relationship_type VARCHAR(50) NOT NULL,
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id_from, party_type_from) REFERENCES party(party_id, party_type),
-    FOREIGN KEY (party_id_to, party_type_to) REFERENCES party(party_id, party_type),
-    FOREIGN KEY (party_role_id_from) REFERENCES party_role(party_role_id),
-    FOREIGN KEY (party_role_id_to) REFERENCES party_role(party_role_id),
+-- Party Relationship实体（基于Volume 1 Figure 2.6a，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_relationship') THEN
+        CREATE TABLE party_relationship (
+            party_relationship_id SERIAL PRIMARY KEY,
+            party_id_from INT NOT NULL,
+            party_type_from CHAR(1) NOT NULL,
+            party_role_id_from INT NOT NULL,  -- 关联到Party Role
+            party_id_to INT NOT NULL,
+            party_type_to CHAR(1) NOT NULL,
+            party_role_id_to INT NOT NULL,  -- 关联到Party Role
+            relationship_type VARCHAR(50) NOT NULL,
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id_from, party_type_from) REFERENCES party(party_id, party_type),
+            FOREIGN KEY (party_id_to, party_type_to) REFERENCES party(party_id, party_type),
+            FOREIGN KEY (party_role_id_from) REFERENCES party_role(party_role_id),
+            FOREIGN KEY (party_role_id_to) REFERENCES party_role(party_role_id),
     CHECK (party_id_from != party_id_to OR party_type_from != party_type_to),
     UNIQUE(party_id_from, party_type_from, party_role_id_from,
            party_id_to, party_type_to, party_role_id_to, relationship_type, valid_from)
 );
 
--- Party Relationship Type（关系类型）
-CREATE TABLE party_relationship_type (
-    relationship_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    from_role_type VARCHAR(50) NOT NULL,  -- 起始角色类型
-    to_role_type VARCHAR(50) NOT NULL     -- 目标角色类型
-);
+-- Party Relationship Type（关系类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_relationship_type') THEN
+        CREATE TABLE party_relationship_type (
+            relationship_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            from_role_type VARCHAR(50) NOT NULL,  -- 起始角色类型
+            to_role_type VARCHAR(50) NOT NULL     -- 目标角色类型
+        );
+        RAISE NOTICE '表 party_relationship_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_relationship_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_relationship_type 失败: %', SQLERRM;
+END $$;
 
 -- 插入关系类型
 INSERT INTO party_relationship_type (relationship_type, description, from_role_type, to_role_type) VALUES
@@ -585,34 +772,69 @@ INSERT INTO party_relationship_type (relationship_type, description, from_role_t
 ('MENTORING_RELATIONSHIP', '导师关系', 'MENTOR', 'APPRENTICE'),
 ('PARENT_CHILD_RELATIONSHIP', '父子关系', 'PARENT', 'CHILD');
 
--- Party Relationship Information（关系信息）
-CREATE TABLE party_relationship_info (
-    party_relationship_id INT NOT NULL REFERENCES party_relationship(party_relationship_id),
-    priority_type VARCHAR(20),  -- Very High, High, Medium, Low
-    status_type VARCHAR(20),    -- Active, Inactive, Pursuing
-    notes TEXT,
-    last_contact_date TIMESTAMPTZ,
-    PRIMARY KEY (party_relationship_id)
-);
+-- Party Relationship Information（关系信息，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_relationship_info') THEN
+        CREATE TABLE party_relationship_info (
+            party_relationship_id INT NOT NULL REFERENCES party_relationship(party_relationship_id),
+            priority_type VARCHAR(20),  -- Very High, High, Medium, Low
+            status_type VARCHAR(20),    -- Active, Inactive, Pursuing
+            notes TEXT,
+            last_contact_date TIMESTAMPTZ,
+            PRIMARY KEY (party_relationship_id)
+        );
+        RAISE NOTICE '表 party_relationship_info 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_relationship_info 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party_relationship 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_relationship_info 失败: %', SQLERRM;
+END $$;
 
--- Status Type（状态类型）
-CREATE TABLE status_type (
-    status_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    applies_to VARCHAR(50)  -- PARTY_RELATIONSHIP, ORDER, SHIPMENT, etc.
-);
+-- Status Type（状态类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'status_type') THEN
+        CREATE TABLE status_type (
+            status_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            applies_to VARCHAR(50)  -- PARTY_RELATIONSHIP, ORDER, SHIPMENT, etc.
+        );
+        RAISE NOTICE '表 status_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 status_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 status_type 失败: %', SQLERRM;
+END $$;
 
 INSERT INTO status_type (status_type, description, applies_to) VALUES
 ('ACTIVE', '活跃', 'PARTY_RELATIONSHIP'),
 ('INACTIVE', '非活跃', 'PARTY_RELATIONSHIP'),
 ('PURSuing', '追求更多参与', 'PARTY_RELATIONSHIP');
 
--- Priority Type（优先级类型）
-CREATE TABLE priority_type (
-    priority_type VARCHAR(20) PRIMARY KEY,
-    description TEXT,
-    priority_order INT
-);
+-- Priority Type（优先级类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'priority_type') THEN
+        CREATE TABLE priority_type (
+            priority_type VARCHAR(20) PRIMARY KEY,
+            description TEXT,
+            priority_order INT
+        );
+        RAISE NOTICE '表 priority_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 priority_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 priority_type 失败: %', SQLERRM;
+END $$;
 
 INSERT INTO priority_type (priority_type, description, priority_order) VALUES
 ('VERY_HIGH', '非常高', 1),
@@ -745,22 +967,55 @@ VALUES (1, 'Partner', NOW());
 -- Based on Volume 1 Chapter 2: People and Organizations
 -- ============================================
 
--- 1. Party基础表
-CREATE TABLE party (
-    party_id SERIAL,
-    party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (party_id, party_type)
-) PARTITION BY LIST (party_type);
+-- 1. Party基础表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party') THEN
+        CREATE TABLE party (
+            party_id SERIAL,
+            party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
+            name TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (party_id, party_type)
+        ) PARTITION BY LIST (party_type);
+        RAISE NOTICE '表 party 创建成功';
+    ELSE
+        RAISE NOTICE '表 party 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party 失败: %', SQLERRM;
+END $$;
 
--- Person分区
-CREATE TABLE person PARTITION OF party
-    FOR VALUES IN ('P');
+-- Person分区（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'person') THEN
+        CREATE TABLE person PARTITION OF party
+            FOR VALUES IN ('P');
+        RAISE NOTICE '分区 person 创建成功';
+    ELSE
+        RAISE NOTICE '分区 person 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区 person 失败: %', SQLERRM;
+END $$;
 
--- Organization分区
-CREATE TABLE organization PARTITION OF party
-    FOR VALUES IN ('O');
+-- Organization分区（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'organization') THEN
+        CREATE TABLE organization PARTITION OF party
+            FOR VALUES IN ('O');
+        RAISE NOTICE '分区 organization 创建成功';
+    ELSE
+        RAISE NOTICE '分区 organization 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区 organization 失败: %', SQLERRM;
+END $$;
 
 -- 添加Person特定字段
 ALTER TABLE person ADD COLUMN first_name VARCHAR(50);
@@ -775,227 +1030,562 @@ ALTER TABLE organization ADD COLUMN tax_id VARCHAR(50);
 ALTER TABLE organization ADD COLUMN founded_date DATE;
 ALTER TABLE organization ADD COLUMN organization_type VARCHAR(50);
 
--- 2. Party Classification（分类）
-CREATE TABLE party_classification (
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    classification_type VARCHAR(50) NOT NULL,
-    classification_value VARCHAR(100),
-    valid_from DATE NOT NULL,
-    valid_to DATE,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    PRIMARY KEY (party_id, party_type, classification_type, valid_from)
-);
+-- 2. Party Classification（分类，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_classification') THEN
+        CREATE TABLE party_classification (
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            classification_type VARCHAR(50) NOT NULL,
+            classification_value VARCHAR(100),
+            valid_from DATE NOT NULL,
+            valid_to DATE,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            PRIMARY KEY (party_id, party_type, classification_type, valid_from)
+        );
+        RAISE NOTICE '表 party_classification 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_classification 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_classification 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE party_classification_type (
-    classification_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    applies_to CHAR(1) CHECK (applies_to IN ('P', 'O', 'B'))
-);
+-- Party Classification Type（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_classification_type') THEN
+        CREATE TABLE party_classification_type (
+            classification_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            applies_to CHAR(1) CHECK (applies_to IN ('P', 'O', 'B'))
+        );
+        RAISE NOTICE '表 party_classification_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_classification_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_classification_type 失败: %', SQLERRM;
+END $$;
 
--- 3. Party Role（角色）
-CREATE TABLE party_role (
-    party_role_id SERIAL PRIMARY KEY,
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    role_type VARCHAR(50) NOT NULL,
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE
-);
+-- 3. Party Role（角色，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role') THEN
+        CREATE TABLE party_role (
+            party_role_id SERIAL PRIMARY KEY,
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            role_type VARCHAR(50) NOT NULL,
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE
+        );
+        RAISE NOTICE '表 party_role 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_role 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_role 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE party_role_type (
-    role_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    role_category VARCHAR(20) CHECK (role_category IN ('PERSON', 'ORGANIZATION', 'COMMON'))
-);
+-- Party Role Type（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role_type') THEN
+        CREATE TABLE party_role_type (
+            role_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            role_category VARCHAR(20) CHECK (role_category IN ('PERSON', 'ORGANIZATION', 'COMMON'))
+        );
+        RAISE NOTICE '表 party_role_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_role_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_role_type 失败: %', SQLERRM;
+END $$;
 
--- 4. Party Relationship（关系）
-CREATE TABLE party_relationship (
-    party_relationship_id SERIAL PRIMARY KEY,
-    party_id_from INT NOT NULL,
-    party_type_from CHAR(1) NOT NULL,
-    party_role_id_from INT NOT NULL,
-    party_id_to INT NOT NULL,
-    party_type_to CHAR(1) NOT NULL,
-    party_role_id_to INT NOT NULL,
-    relationship_type VARCHAR(50) NOT NULL,
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id_from, party_type_from) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    FOREIGN KEY (party_id_to, party_type_to) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    FOREIGN KEY (party_role_id_from) REFERENCES party_role(party_role_id) ON DELETE CASCADE,
-    FOREIGN KEY (party_role_id_to) REFERENCES party_role(party_role_id) ON DELETE CASCADE,
-    CHECK (party_id_from != party_id_to OR party_type_from != party_type_to)
-);
+-- 4. Party Relationship（关系，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_relationship') THEN
+        CREATE TABLE party_relationship (
+            party_relationship_id SERIAL PRIMARY KEY,
+            party_id_from INT NOT NULL,
+            party_type_from CHAR(1) NOT NULL,
+            party_role_id_from INT NOT NULL,
+            party_id_to INT NOT NULL,
+            party_type_to CHAR(1) NOT NULL,
+            party_role_id_to INT NOT NULL,
+            relationship_type VARCHAR(50) NOT NULL,
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id_from, party_type_from) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            FOREIGN KEY (party_id_to, party_type_to) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            FOREIGN KEY (party_role_id_from) REFERENCES party_role(party_role_id) ON DELETE CASCADE,
+            FOREIGN KEY (party_role_id_to) REFERENCES party_role(party_role_id) ON DELETE CASCADE,
+            CHECK (party_id_from != party_id_to OR party_type_from != party_type_to)
+        );
+        RAISE NOTICE '表 party_relationship 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_relationship 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 和 party_role 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_relationship 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE party_relationship_type (
-    relationship_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    from_role_type VARCHAR(50) NOT NULL,
-    to_role_type VARCHAR(50) NOT NULL
-);
+-- Party Relationship Type（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_relationship_type') THEN
+        CREATE TABLE party_relationship_type (
+            relationship_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            from_role_type VARCHAR(50) NOT NULL,
+            to_role_type VARCHAR(50) NOT NULL
+        );
+        RAISE NOTICE '表 party_relationship_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_relationship_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_relationship_type 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE party_relationship_info (
-    party_relationship_id INT PRIMARY KEY REFERENCES party_relationship(party_relationship_id) ON DELETE CASCADE,
-    priority_type VARCHAR(20),
-    status_type VARCHAR(20),
-    notes TEXT,
-    last_contact_date TIMESTAMPTZ
-);
+-- Party Relationship Info（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_relationship_info') THEN
+        CREATE TABLE party_relationship_info (
+            party_relationship_id INT PRIMARY KEY REFERENCES party_relationship(party_relationship_id) ON DELETE CASCADE,
+            priority_type VARCHAR(20),
+            status_type VARCHAR(20),
+            notes TEXT,
+            last_contact_date TIMESTAMPTZ
+        );
+        RAISE NOTICE '表 party_relationship_info 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_relationship_info 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party_relationship 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_relationship_info 失败: %', SQLERRM;
+END $$;
 
--- 5. Postal Address（邮政地址）
-CREATE TABLE postal_address (
-    postal_address_id SERIAL PRIMARY KEY,
-    address1 TEXT NOT NULL,
-    address2 TEXT,
-    directions TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 5. Postal Address（邮政地址，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'postal_address') THEN
+        CREATE TABLE postal_address (
+            postal_address_id SERIAL PRIMARY KEY,
+            address1 TEXT NOT NULL,
+            address2 TEXT,
+            directions TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 postal_address 创建成功';
+    ELSE
+        RAISE NOTICE '表 postal_address 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 postal_address 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE party_postal_address (
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id) ON DELETE CASCADE,
-    address_purpose VARCHAR(50),
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    PRIMARY KEY (party_id, party_type, postal_address_id, valid_from)
-);
+-- Party Postal Address（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_postal_address') THEN
+        CREATE TABLE party_postal_address (
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id) ON DELETE CASCADE,
+            address_purpose VARCHAR(50),
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            PRIMARY KEY (party_id, party_type, postal_address_id, valid_from)
+        );
+        RAISE NOTICE '表 party_postal_address 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_postal_address 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 和 postal_address 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_postal_address 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE geographic_boundary (
-    geographic_boundary_id SERIAL PRIMARY KEY,
-    boundary_type VARCHAR(50) NOT NULL,
-    boundary_name VARCHAR(200) NOT NULL,
-    boundary_code VARCHAR(50),
-    parent_boundary_id INT REFERENCES geographic_boundary(geographic_boundary_id),
-    UNIQUE(boundary_type, boundary_code)
-);
+-- Geographic Boundary（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'geographic_boundary') THEN
+        CREATE TABLE geographic_boundary (
+            geographic_boundary_id SERIAL PRIMARY KEY,
+            boundary_type VARCHAR(50) NOT NULL,
+            boundary_name VARCHAR(200) NOT NULL,
+            boundary_code VARCHAR(50),
+            parent_boundary_id INT REFERENCES geographic_boundary(geographic_boundary_id),
+            UNIQUE(boundary_type, boundary_code)
+        );
+        RAISE NOTICE '表 geographic_boundary 创建成功';
+    ELSE
+        RAISE NOTICE '表 geographic_boundary 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 geographic_boundary 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE postal_address_boundary (
-    postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id) ON DELETE CASCADE,
-    geographic_boundary_id INT NOT NULL REFERENCES geographic_boundary(geographic_boundary_id) ON DELETE CASCADE,
-    boundary_role VARCHAR(50),
-    PRIMARY KEY (postal_address_id, geographic_boundary_id, boundary_role)
-);
+-- Postal Address Boundary（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'postal_address_boundary') THEN
+        CREATE TABLE postal_address_boundary (
+            postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id) ON DELETE CASCADE,
+            geographic_boundary_id INT NOT NULL REFERENCES geographic_boundary(geographic_boundary_id) ON DELETE CASCADE,
+            boundary_role VARCHAR(50),
+            PRIMARY KEY (postal_address_id, geographic_boundary_id, boundary_role)
+        );
+        RAISE NOTICE '表 postal_address_boundary 创建成功';
+    ELSE
+        RAISE NOTICE '表 postal_address_boundary 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 postal_address 和 geographic_boundary 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 postal_address_boundary 失败: %', SQLERRM;
+END $$;
 
--- 6. Contact Mechanism（联系方式）
-CREATE TABLE contact_mechanism (
-    contact_mechanism_id SERIAL PRIMARY KEY,
-    contact_mechanism_type VARCHAR(50) NOT NULL,
-    contact_value TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 6. Contact Mechanism（联系方式，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism') THEN
+        CREATE TABLE contact_mechanism (
+            contact_mechanism_id SERIAL PRIMARY KEY,
+            contact_mechanism_type VARCHAR(50) NOT NULL,
+            contact_value TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 contact_mechanism 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE contact_mechanism_type (
-    contact_mechanism_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    mechanism_category VARCHAR(20) CHECK (mechanism_category IN ('POSTAL', 'TELECOMMUNICATIONS', 'ELECTRONIC'))
-);
+-- Contact Mechanism Type（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism_type') THEN
+        CREATE TABLE contact_mechanism_type (
+            contact_mechanism_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            mechanism_category VARCHAR(20) CHECK (mechanism_category IN ('POSTAL', 'TELECOMMUNICATIONS', 'ELECTRONIC'))
+        );
+        RAISE NOTICE '表 contact_mechanism_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism_type 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE telecommunications_number (
-    contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id) ON DELETE CASCADE,
-    country_code VARCHAR(10),
-    area_code VARCHAR(10),
-    phone_number VARCHAR(20) NOT NULL,
-    extension VARCHAR(10)
-);
+-- Telecommunications Number（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'telecommunications_number') THEN
+        CREATE TABLE telecommunications_number (
+            contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id) ON DELETE CASCADE,
+            country_code VARCHAR(10),
+            area_code VARCHAR(10),
+            phone_number VARCHAR(20) NOT NULL,
+            extension VARCHAR(10)
+        );
+        RAISE NOTICE '表 telecommunications_number 创建成功';
+    ELSE
+        RAISE NOTICE '表 telecommunications_number 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 telecommunications_number 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE electronic_address (
-    contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id) ON DELETE CASCADE,
-    email_address VARCHAR(255),
-    web_url VARCHAR(500),
-    internet_address VARCHAR(500)
-);
+-- Electronic Address（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'electronic_address') THEN
+        CREATE TABLE electronic_address (
+            contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id) ON DELETE CASCADE,
+            email_address VARCHAR(255),
+            web_url VARCHAR(500),
+            internet_address VARCHAR(500)
+        );
+        RAISE NOTICE '表 electronic_address 创建成功';
+    ELSE
+        RAISE NOTICE '表 electronic_address 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 electronic_address 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE party_contact_mechanism (
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    contact_mechanism_id INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id) ON DELETE CASCADE,
-    non_solicitation_ind BOOLEAN DEFAULT FALSE,
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    PRIMARY KEY (party_id, party_type, contact_mechanism_id, valid_from)
-);
+-- Party Contact Mechanism（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_contact_mechanism') THEN
+        CREATE TABLE party_contact_mechanism (
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            contact_mechanism_id INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id) ON DELETE CASCADE,
+            non_solicitation_ind BOOLEAN DEFAULT FALSE,
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            PRIMARY KEY (party_id, party_type, contact_mechanism_id, valid_from)
+        );
+        RAISE NOTICE '表 party_contact_mechanism 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_contact_mechanism 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 和 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_contact_mechanism 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE contact_mechanism_purpose (
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    contact_mechanism_id INT NOT NULL,
-    purpose_type VARCHAR(50) NOT NULL,
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type, contact_mechanism_id, valid_from)
-        REFERENCES party_contact_mechanism(party_id, party_type, contact_mechanism_id, valid_from) ON DELETE CASCADE,
-    PRIMARY KEY (party_id, party_type, contact_mechanism_id, purpose_type, valid_from)
-);
+-- Contact Mechanism Purpose（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism_purpose') THEN
+        CREATE TABLE contact_mechanism_purpose (
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            contact_mechanism_id INT NOT NULL,
+            purpose_type VARCHAR(50) NOT NULL,
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type, contact_mechanism_id, valid_from)
+                REFERENCES party_contact_mechanism(party_id, party_type, contact_mechanism_id, valid_from) ON DELETE CASCADE,
+            PRIMARY KEY (party_id, party_type, contact_mechanism_id, purpose_type, valid_from)
+        );
+        RAISE NOTICE '表 contact_mechanism_purpose 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism_purpose 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party_contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism_purpose 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE contact_mechanism_purpose_type (
-    purpose_type VARCHAR(50) PRIMARY KEY,
-    description TEXT
-);
+-- Contact Mechanism Purpose Type（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism_purpose_type') THEN
+        CREATE TABLE contact_mechanism_purpose_type (
+            purpose_type VARCHAR(50) PRIMARY KEY,
+            description TEXT
+        );
+        RAISE NOTICE '表 contact_mechanism_purpose_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism_purpose_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism_purpose_type 失败: %', SQLERRM;
+END $$;
 
--- 7. Communication Event（通信事件）
-CREATE TABLE communication_event (
-    communication_event_id SERIAL PRIMARY KEY,
-    party_relationship_id INT REFERENCES party_relationship(party_relationship_id) ON DELETE SET NULL,
-    contact_mechanism_type VARCHAR(50) NOT NULL,
-    datetime_started TIMESTAMPTZ NOT NULL,
-    datetime_ended TIMESTAMPTZ,
-    notes TEXT,
-    status_type VARCHAR(50) DEFAULT 'SCHEDULED'
-);
+-- 7. Communication Event（通信事件，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event') THEN
+        CREATE TABLE communication_event (
+            communication_event_id SERIAL PRIMARY KEY,
+            party_relationship_id INT REFERENCES party_relationship(party_relationship_id) ON DELETE SET NULL,
+            contact_mechanism_type VARCHAR(50) NOT NULL,
+            datetime_started TIMESTAMPTZ NOT NULL,
+            datetime_ended TIMESTAMPTZ,
+            notes TEXT,
+            status_type VARCHAR(50) DEFAULT 'SCHEDULED'
+        );
+        RAISE NOTICE '表 communication_event 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party_relationship 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE communication_event_role (
-    communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id) ON DELETE CASCADE,
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    role_type VARCHAR(50) NOT NULL,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    PRIMARY KEY (communication_event_id, party_id, party_type, role_type)
-);
+-- Communication Event Role（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_role') THEN
+        CREATE TABLE communication_event_role (
+            communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id) ON DELETE CASCADE,
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            role_type VARCHAR(50) NOT NULL,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            PRIMARY KEY (communication_event_id, party_id, party_type, role_type)
+        );
+        RAISE NOTICE '表 communication_event_role 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_role 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 communication_event 和 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_role 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE communication_event_purpose (
-    communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id) ON DELETE CASCADE,
-    purpose_type VARCHAR(50) NOT NULL,
-    description TEXT,
-    PRIMARY KEY (communication_event_id, purpose_type)
-);
+-- Communication Event Purpose（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_purpose') THEN
+        CREATE TABLE communication_event_purpose (
+            communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id) ON DELETE CASCADE,
+            purpose_type VARCHAR(50) NOT NULL,
+            description TEXT,
+            PRIMARY KEY (communication_event_id, purpose_type)
+        );
+        RAISE NOTICE '表 communication_event_purpose 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_purpose 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 communication_event 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_purpose 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE communication_event_purpose_type (
-    purpose_type VARCHAR(50) PRIMARY KEY,
-    description TEXT
-);
+-- Communication Event Purpose Type（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_purpose_type') THEN
+        CREATE TABLE communication_event_purpose_type (
+            purpose_type VARCHAR(50) PRIMARY KEY,
+            description TEXT
+        );
+        RAISE NOTICE '表 communication_event_purpose_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_purpose_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_purpose_type 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE communication_event_status_type (
-    status_type VARCHAR(50) PRIMARY KEY,
-    description TEXT
-);
+-- Communication Event Status Type（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_status_type') THEN
+        CREATE TABLE communication_event_status_type (
+            status_type VARCHAR(50) PRIMARY KEY,
+            description TEXT
+        );
+        RAISE NOTICE '表 communication_event_status_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_status_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_status_type 失败: %', SQLERRM;
+END $$;
 
--- 8. Case（案例）
-CREATE TABLE case_entity (
-    case_id SERIAL PRIMARY KEY,
-    case_description TEXT NOT NULL,
-    opened_date TIMESTAMPTZ DEFAULT NOW(),
-    closed_date TIMESTAMPTZ
-);
+-- 8. Case（案例，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'case_entity') THEN
+        CREATE TABLE case_entity (
+            case_id SERIAL PRIMARY KEY,
+            case_description TEXT NOT NULL,
+            opened_date TIMESTAMPTZ DEFAULT NOW(),
+            closed_date TIMESTAMPTZ
+        );
+        RAISE NOTICE '表 case_entity 创建成功';
+    ELSE
+        RAISE NOTICE '表 case_entity 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 case_entity 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE case_role (
-    case_id INT NOT NULL REFERENCES case_entity(case_id) ON DELETE CASCADE,
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    role_type VARCHAR(50) NOT NULL,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    PRIMARY KEY (case_id, party_id, party_type, role_type)
-);
+-- Case Role（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'case_role') THEN
+        CREATE TABLE case_role (
+            case_id INT NOT NULL REFERENCES case_entity(case_id) ON DELETE CASCADE,
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            role_type VARCHAR(50) NOT NULL,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            PRIMARY KEY (case_id, party_id, party_type, role_type)
+        );
+        RAISE NOTICE '表 case_role 创建成功';
+    ELSE
+        RAISE NOTICE '表 case_role 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 case_entity 和 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 case_role 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE communication_event_case (
-    communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id) ON DELETE CASCADE,
-    case_id INT NOT NULL REFERENCES case_entity(case_id) ON DELETE CASCADE,
-    PRIMARY KEY (communication_event_id, case_id)
-);
+-- Communication Event Case（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_case') THEN
+        CREATE TABLE communication_event_case (
+            communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id) ON DELETE CASCADE,
+            case_id INT NOT NULL REFERENCES case_entity(case_id) ON DELETE CASCADE,
+            PRIMARY KEY (communication_event_id, case_id)
+        );
+        RAISE NOTICE '表 communication_event_case 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_case 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 communication_event 和 case_entity 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_case 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -1720,28 +2310,66 @@ ORDER BY pri.priority_type DESC NULLS LAST, days_since_contact DESC NULLS LAST;
 
 ```sql
 -- 父表
-CREATE TABLE party (
-    party_id SERIAL PRIMARY KEY,
-    party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Party基础表（继承示例，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party') THEN
+        CREATE TABLE party (
+            party_id SERIAL PRIMARY KEY,
+            party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
+            name TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 party 创建成功（继承示例）';
+    ELSE
+        RAISE NOTICE '表 party 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party 失败: %', SQLERRM;
+END $$;
 
--- 子表（继承）
-CREATE TABLE person (
-    party_id INT PRIMARY KEY REFERENCES party(party_id),
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    birth_date DATE,
-    gender CHAR(1) CHECK (gender IN ('M', 'F', 'O'))
-) INHERITS (party);
+-- 子表（继承，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'person') THEN
+        CREATE TABLE person (
+            party_id INT PRIMARY KEY REFERENCES party(party_id),
+            first_name VARCHAR(50),
+            last_name VARCHAR(50),
+            birth_date DATE,
+            gender CHAR(1) CHECK (gender IN ('M', 'F', 'O'))
+        ) INHERITS (party);
+        RAISE NOTICE '表 person 创建成功（继承示例）';
+    ELSE
+        RAISE NOTICE '表 person 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 person 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE organization (
-    party_id INT PRIMARY KEY REFERENCES party(party_id),
-    legal_name VARCHAR(200),
-    tax_id VARCHAR(50),
-    founded_date DATE
-) INHERITS (party);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'organization') THEN
+        CREATE TABLE organization (
+            party_id INT PRIMARY KEY REFERENCES party(party_id),
+            legal_name VARCHAR(200),
+            tax_id VARCHAR(50),
+            founded_date DATE
+        ) INHERITS (party);
+        RAISE NOTICE '表 organization 创建成功（继承示例）';
+    ELSE
+        RAISE NOTICE '表 organization 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 organization 失败: %', SQLERRM;
+END $$;
 
 -- 查询：仅查询父表（使用ONLY）
 SELECT * FROM ONLY party WHERE party_type = 'P';
@@ -1757,21 +2385,54 @@ SELECT * FROM party WHERE party_type = 'P';
 **方式2: 使用声明式分区（推荐，PostgreSQL 10+）**:
 
 ```sql
--- 父表（分区表）
-CREATE TABLE party (
-    party_id SERIAL,
-    party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (party_id, party_type)
-) PARTITION BY LIST (party_type);
+-- 父表（分区表，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party') THEN
+        CREATE TABLE party (
+            party_id SERIAL,
+            party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
+            name TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (party_id, party_type)
+        ) PARTITION BY LIST (party_type);
+        RAISE NOTICE '表 party 创建成功（分区示例）';
+    ELSE
+        RAISE NOTICE '表 party 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party 失败: %', SQLERRM;
+END $$;
 
--- 子分区
-CREATE TABLE person PARTITION OF party
-    FOR VALUES IN ('P');
+-- 子分区（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'person') THEN
+        CREATE TABLE person PARTITION OF party
+            FOR VALUES IN ('P');
+        RAISE NOTICE '分区 person 创建成功（分区示例）';
+    ELSE
+        RAISE NOTICE '分区 person 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区 person 失败: %', SQLERRM;
+END $$;
 
-CREATE TABLE organization PARTITION OF party
-    FOR VALUES IN ('O');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'organization') THEN
+        CREATE TABLE organization PARTITION OF party
+            FOR VALUES IN ('O');
+        RAISE NOTICE '分区 organization 创建成功（分区示例）';
+    ELSE
+        RAISE NOTICE '分区 organization 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区 organization 失败: %', SQLERRM;
+END $$;
 
 -- 添加子表特定字段（PostgreSQL 11+）
 ALTER TABLE person ADD COLUMN first_name VARCHAR(50);
@@ -1792,13 +2453,26 @@ SELECT * FROM party WHERE party_type = 'P';  -- 仅扫描person分区
 **实现方式1: 使用Party统一关联**:
 
 ```sql
--- ✅ 正确：统一关联Party
-CREATE TABLE orders (
-    order_id BIGSERIAL PRIMARY KEY,
-    party_id INT NOT NULL REFERENCES party(party_id),  -- 统一关联
-    order_date TIMESTAMPTZ DEFAULT NOW(),
-    total_amount NUMERIC(10,2) NOT NULL
-);
+-- ✅ 正确：统一关联Party（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'orders') THEN
+        CREATE TABLE orders (
+            order_id BIGSERIAL PRIMARY KEY,
+            party_id INT NOT NULL REFERENCES party(party_id),  -- 统一关联
+            order_date TIMESTAMPTZ DEFAULT NOW(),
+            total_amount NUMERIC(10,2) NOT NULL
+        );
+        RAISE NOTICE '表 orders 创建成功（多态关联示例）';
+    ELSE
+        RAISE NOTICE '表 orders 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 orders 失败: %', SQLERRM;
+END $$;
 
 -- 查询：获取订单的Party信息
 SELECT o.*, p.name, p.party_type
@@ -1835,44 +2509,92 @@ WHERE pr.role_type = 'Customer'
 **PostgreSQL实现 / PostgreSQL Implementation**:
 
 ```sql
--- Postal Address实体（基于Volume 1 Figure 2.8）
-CREATE TABLE postal_address (
-    postal_address_id SERIAL PRIMARY KEY,
-    address1 TEXT NOT NULL,
-    address2 TEXT,
-    directions TEXT,  -- 到达该地址的路线说明
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Postal Address实体（基于Volume 1 Figure 2.8，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'postal_address') THEN
+        CREATE TABLE postal_address (
+            postal_address_id SERIAL PRIMARY KEY,
+            address1 TEXT NOT NULL,
+            address2 TEXT,
+            directions TEXT,  -- 到达该地址的路线说明
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 postal_address 创建成功';
+    ELSE
+        RAISE NOTICE '表 postal_address 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 postal_address 失败: %', SQLERRM;
+END $$;
 
--- Party Postal Address（Party与地址的多对多关系）
-CREATE TABLE party_postal_address (
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id),
-    address_purpose VARCHAR(50),  -- Mailing, Headquarters, Service, Billing
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
-    PRIMARY KEY (party_id, party_type, postal_address_id, valid_from)
-);
+-- Party Postal Address（Party与地址的多对多关系，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_postal_address') THEN
+        CREATE TABLE party_postal_address (
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id),
+            address_purpose VARCHAR(50),  -- Mailing, Headquarters, Service, Billing
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
+            PRIMARY KEY (party_id, party_type, postal_address_id, valid_from)
+        );
+        RAISE NOTICE '表 party_postal_address 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_postal_address 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 和 postal_address 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_postal_address 失败: %', SQLERRM;
+END $$;
 
--- Geographic Boundary（地理边界）
-CREATE TABLE geographic_boundary (
-    geographic_boundary_id SERIAL PRIMARY KEY,
-    boundary_type VARCHAR(50) NOT NULL,  -- CITY, STATE, COUNTRY, POSTAL_CODE, PROVINCE, TERRITORY
-    boundary_name VARCHAR(200) NOT NULL,
-    boundary_code VARCHAR(50),  -- 如邮政编码、州代码
-    parent_boundary_id INT REFERENCES geographic_boundary(geographic_boundary_id),  -- 递归关系
-    UNIQUE(boundary_type, boundary_code)
-);
+-- Geographic Boundary（地理边界，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'geographic_boundary') THEN
+        CREATE TABLE geographic_boundary (
+            geographic_boundary_id SERIAL PRIMARY KEY,
+            boundary_type VARCHAR(50) NOT NULL,  -- CITY, STATE, COUNTRY, POSTAL_CODE, PROVINCE, TERRITORY
+            boundary_name VARCHAR(200) NOT NULL,
+            boundary_code VARCHAR(50),  -- 如邮政编码、州代码
+            parent_boundary_id INT REFERENCES geographic_boundary(geographic_boundary_id),  -- 递归关系
+            UNIQUE(boundary_type, boundary_code)
+        );
+        RAISE NOTICE '表 geographic_boundary 创建成功';
+    ELSE
+        RAISE NOTICE '表 geographic_boundary 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 geographic_boundary 失败: %', SQLERRM;
+END $$;
 
--- Postal Address Boundary（地址与地理边界的关联）
-CREATE TABLE postal_address_boundary (
-    postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id),
-    geographic_boundary_id INT NOT NULL REFERENCES geographic_boundary(geographic_boundary_id),
-    boundary_role VARCHAR(50),  -- CITY, STATE, COUNTRY, POSTAL_CODE
-    PRIMARY KEY (postal_address_id, geographic_boundary_id, boundary_role)
-);
+-- Postal Address Boundary（地址与地理边界的关联，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'postal_address_boundary') THEN
+        CREATE TABLE postal_address_boundary (
+            postal_address_id INT NOT NULL REFERENCES postal_address(postal_address_id),
+            geographic_boundary_id INT NOT NULL REFERENCES geographic_boundary(geographic_boundary_id),
+            boundary_role VARCHAR(50),  -- CITY, STATE, COUNTRY, POSTAL_CODE
+            PRIMARY KEY (postal_address_id, geographic_boundary_id, boundary_role)
+        );
+        RAISE NOTICE '表 postal_address_boundary 创建成功';
+    ELSE
+        RAISE NOTICE '表 postal_address_boundary 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 postal_address 和 geographic_boundary 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 postal_address_boundary 失败: %', SQLERRM;
+END $$;
 
 -- 示例：创建地址
 INSERT INTO postal_address (address1, address2, directions) VALUES
@@ -1942,20 +2664,44 @@ Contact Mechanism分为三类：
 
 ```sql
 -- Contact Mechanism实体（基于Volume 1 Figure 2.10）
-CREATE TABLE contact_mechanism (
-    contact_mechanism_id SERIAL PRIMARY KEY,
-    contact_mechanism_type VARCHAR(50) NOT NULL,
-    contact_value TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Contact Mechanism（联系方式，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism') THEN
+        CREATE TABLE contact_mechanism (
+            contact_mechanism_id SERIAL PRIMARY KEY,
+            contact_mechanism_type VARCHAR(50) NOT NULL,
+            contact_value TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 contact_mechanism 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism 失败: %', SQLERRM;
+END $$;
 
--- Contact Mechanism Type（联系方式类型）
-CREATE TABLE contact_mechanism_type (
-    contact_mechanism_type VARCHAR(50) PRIMARY KEY,
-    description TEXT,
-    mechanism_category VARCHAR(20) CHECK (mechanism_category IN ('POSTAL', 'TELECOMMUNICATIONS', 'ELECTRONIC'))
-);
+-- Contact Mechanism Type（联系方式类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism_type') THEN
+        CREATE TABLE contact_mechanism_type (
+            contact_mechanism_type VARCHAR(50) PRIMARY KEY,
+            description TEXT,
+            mechanism_category VARCHAR(20) CHECK (mechanism_category IN ('POSTAL', 'TELECOMMUNICATIONS', 'ELECTRONIC'))
+        );
+        RAISE NOTICE '表 contact_mechanism_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism_type 失败: %', SQLERRM;
+END $$;
 
+-- Contact Mechanism Type 初始数据
 INSERT INTO contact_mechanism_type (contact_mechanism_type, description, mechanism_category) VALUES
 ('POSTAL_ADDRESS', '邮政地址', 'POSTAL'),
 ('PHONE', '电话', 'TELECOMMUNICATIONS'),
@@ -1965,55 +2711,119 @@ INSERT INTO contact_mechanism_type (contact_mechanism_type, description, mechani
 ('MODEM', '调制解调器', 'TELECOMMUNICATIONS'),
 ('EMAIL', '电子邮箱', 'ELECTRONIC'),
 ('WEB_URL', '网站URL', 'ELECTRONIC'),
-('INTERNET_ADDRESS', '互联网地址', 'ELECTRONIC');
+('INTERNET_ADDRESS', '互联网地址', 'ELECTRONIC')
+ON CONFLICT (contact_mechanism_type) DO NOTHING;
 
--- Telecommunications Number（电信号码）
-CREATE TABLE telecommunications_number (
-    contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id),
-    country_code VARCHAR(10),
-    area_code VARCHAR(10),
-    phone_number VARCHAR(20) NOT NULL,
-    extension VARCHAR(10)
-);
+-- Telecommunications Number（电信号码，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'telecommunications_number') THEN
+        CREATE TABLE telecommunications_number (
+            contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id),
+            country_code VARCHAR(10),
+            area_code VARCHAR(10),
+            phone_number VARCHAR(20) NOT NULL,
+            extension VARCHAR(10)
+        );
+        RAISE NOTICE '表 telecommunications_number 创建成功';
+    ELSE
+        RAISE NOTICE '表 telecommunications_number 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 telecommunications_number 失败: %', SQLERRM;
+END $$;
 
--- Electronic Address（电子地址）
-CREATE TABLE electronic_address (
-    contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id),
-    email_address VARCHAR(255),
-    web_url VARCHAR(500),
-    internet_address VARCHAR(500)
-);
+-- Electronic Address（电子地址，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'electronic_address') THEN
+        CREATE TABLE electronic_address (
+            contact_mechanism_id INT PRIMARY KEY REFERENCES contact_mechanism(contact_mechanism_id),
+            email_address VARCHAR(255),
+            web_url VARCHAR(500),
+            internet_address VARCHAR(500)
+        );
+        RAISE NOTICE '表 electronic_address 创建成功';
+    ELSE
+        RAISE NOTICE '表 electronic_address 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 electronic_address 失败: %', SQLERRM;
+END $$;
 
--- Party Contact Mechanism（Party与联系方式的关联）
-CREATE TABLE party_contact_mechanism (
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    contact_mechanism_id INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
-    non_solicitation_ind BOOLEAN DEFAULT FALSE,  -- 是否禁止营销
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
-    PRIMARY KEY (party_id, party_type, contact_mechanism_id, valid_from)
-);
+-- Party Contact Mechanism（Party与联系方式的关联，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_contact_mechanism') THEN
+        CREATE TABLE party_contact_mechanism (
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            contact_mechanism_id INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
+            non_solicitation_ind BOOLEAN DEFAULT FALSE,  -- 是否禁止营销
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
+            PRIMARY KEY (party_id, party_type, contact_mechanism_id, valid_from)
+        );
+        RAISE NOTICE '表 party_contact_mechanism 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_contact_mechanism 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 和 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_contact_mechanism 失败: %', SQLERRM;
+END $$;
 
--- Contact Mechanism Purpose（联系方式用途）
-CREATE TABLE contact_mechanism_purpose (
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    contact_mechanism_id INT NOT NULL,
-    purpose_type VARCHAR(50) NOT NULL,
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type, contact_mechanism_id, valid_from)
-        REFERENCES party_contact_mechanism(party_id, party_type, contact_mechanism_id, valid_from),
-    PRIMARY KEY (party_id, party_type, contact_mechanism_id, purpose_type, valid_from)
-);
+-- Contact Mechanism Purpose（联系方式用途，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism_purpose') THEN
+        CREATE TABLE contact_mechanism_purpose (
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            contact_mechanism_id INT NOT NULL,
+            purpose_type VARCHAR(50) NOT NULL,
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type, contact_mechanism_id, valid_from)
+                REFERENCES party_contact_mechanism(party_id, party_type, contact_mechanism_id, valid_from),
+            PRIMARY KEY (party_id, party_type, contact_mechanism_id, purpose_type, valid_from)
+        );
+        RAISE NOTICE '表 contact_mechanism_purpose 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism_purpose 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party_contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism_purpose 失败: %', SQLERRM;
+END $$;
 
--- Contact Mechanism Purpose Type（联系方式用途类型）
-CREATE TABLE contact_mechanism_purpose_type (
-    purpose_type VARCHAR(50) PRIMARY KEY,
-    description TEXT
-);
+-- Contact Mechanism Purpose Type（联系方式用途类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism_purpose_type') THEN
+        CREATE TABLE contact_mechanism_purpose_type (
+            purpose_type VARCHAR(50) PRIMARY KEY,
+            description TEXT
+        );
+        RAISE NOTICE '表 contact_mechanism_purpose_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism_purpose_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism_purpose_type 失败: %', SQLERRM;
+END $$;
 
 INSERT INTO contact_mechanism_purpose_type (purpose_type, description) VALUES
 ('GENERAL_PHONE', '通用电话'),
@@ -2030,12 +2840,26 @@ INSERT INTO contact_mechanism_purpose_type (purpose_type, description) VALUES
 ('CENTRAL_INTERNET_ADDRESS', '中央互联网地址');
 
 -- Contact Mechanism Link（联系方式链接）
-CREATE TABLE contact_mechanism_link (
-    contact_mechanism_id_from INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
-    contact_mechanism_id_to INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
-    link_type VARCHAR(50),  -- Auto-forward, Backup, etc.
-    PRIMARY KEY (contact_mechanism_id_from, contact_mechanism_id_to)
-);
+-- Contact Mechanism Link（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'contact_mechanism_link') THEN
+        CREATE TABLE contact_mechanism_link (
+            contact_mechanism_id_from INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
+            contact_mechanism_id_to INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
+            link_type VARCHAR(50),  -- Auto-forward, Backup, etc.
+            PRIMARY KEY (contact_mechanism_id_from, contact_mechanism_id_to)
+        );
+        RAISE NOTICE '表 contact_mechanism_link 创建成功';
+    ELSE
+        RAISE NOTICE '表 contact_mechanism_link 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 contact_mechanism_link 失败: %', SQLERRM;
+END $$;
 
 -- 示例：创建联系方式（基于Volume 1 Table 2.11）
 -- ABC Corporation的联系方式
@@ -2093,47 +2917,100 @@ WHERE p.party_id = 100
 
 ```sql
 -- Facility实体（基于Volume 1 Figure 2.11）
-CREATE TABLE facility (
-    facility_id SERIAL PRIMARY KEY,
-    facility_type VARCHAR(50) NOT NULL,
-    facility_name VARCHAR(200) NOT NULL,
-    square_footage NUMERIC(10,2),
-    parent_facility_id INT REFERENCES facility(facility_id),  -- 递归关系
-    postal_address_id INT REFERENCES postal_address(postal_address_id)
-);
+-- Facility（设施，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'facility') THEN
+        CREATE TABLE facility (
+            facility_id SERIAL PRIMARY KEY,
+            facility_type VARCHAR(50) NOT NULL,
+            facility_name VARCHAR(200) NOT NULL,
+            square_footage NUMERIC(10,2),
+            parent_facility_id INT REFERENCES facility(facility_id),  -- 递归关系
+            postal_address_id INT REFERENCES postal_address(postal_address_id)
+        );
+        RAISE NOTICE '表 facility 创建成功';
+    ELSE
+        RAISE NOTICE '表 facility 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 postal_address 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 facility 失败: %', SQLERRM;
+END $$;
 
--- Facility Type（设施类型）
-CREATE TABLE facility_type (
-    facility_type VARCHAR(50) PRIMARY KEY,
-    description TEXT
-);
+-- Facility Type（设施类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'facility_type') THEN
+        CREATE TABLE facility_type (
+            facility_type VARCHAR(50) PRIMARY KEY,
+            description TEXT
+        );
+        RAISE NOTICE '表 facility_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 facility_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 facility_type 失败: %', SQLERRM;
+END $$;
 
+-- Facility Type 初始数据
 INSERT INTO facility_type (facility_type, description) VALUES
 ('WAREHOUSE', '仓库'),
 ('PLANT', '工厂'),
 ('BUILDING', '建筑物'),
 ('ROOM', '房间'),
 ('OFFICE', '办公室'),
-('FLOOR', '楼层');
+('FLOOR', '楼层')
+ON CONFLICT (facility_type) DO NOTHING;
 
--- Facility Role（设施角色）
-CREATE TABLE facility_role (
-    facility_id INT NOT NULL REFERENCES facility(facility_id),
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    role_type VARCHAR(50) NOT NULL,  -- USE, LEASE, RENT, OWN
-    valid_from TIMESTAMPTZ DEFAULT NOW(),
-    valid_to TIMESTAMPTZ,
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
-    PRIMARY KEY (facility_id, party_id, party_type, role_type, valid_from)
-);
+-- Facility Role（设施角色，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'facility_role') THEN
+        CREATE TABLE facility_role (
+            facility_id INT NOT NULL REFERENCES facility(facility_id),
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            role_type VARCHAR(50) NOT NULL,  -- USE, LEASE, RENT, OWN
+            valid_from TIMESTAMPTZ DEFAULT NOW(),
+            valid_to TIMESTAMPTZ,
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
+            PRIMARY KEY (facility_id, party_id, party_type, role_type, valid_from)
+        );
+        RAISE NOTICE '表 facility_role 创建成功';
+    ELSE
+        RAISE NOTICE '表 facility_role 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 facility 和 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 facility_role 失败: %', SQLERRM;
+END $$;
 
--- Facility Contact Mechanism（设施联系方式）
-CREATE TABLE facility_contact_mechanism (
-    facility_id INT NOT NULL REFERENCES facility(facility_id),
-    contact_mechanism_id INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
-    PRIMARY KEY (facility_id, contact_mechanism_id)
-);
+-- Facility Contact Mechanism（设施联系方式，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'facility_contact_mechanism') THEN
+        CREATE TABLE facility_contact_mechanism (
+            facility_id INT NOT NULL REFERENCES facility(facility_id),
+            contact_mechanism_id INT NOT NULL REFERENCES contact_mechanism(contact_mechanism_id),
+            PRIMARY KEY (facility_id, contact_mechanism_id)
+        );
+        RAISE NOTICE '表 facility_contact_mechanism 创建成功';
+    ELSE
+        RAISE NOTICE '表 facility_contact_mechanism 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 facility 和 contact_mechanism 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 facility_contact_mechanism 失败: %', SQLERRM;
+END $$;
 
 -- 示例：创建设施
 INSERT INTO facility (facility_type, facility_name, square_footage, postal_address_id) VALUES
@@ -2161,40 +3038,90 @@ INSERT INTO facility_contact_mechanism (facility_id, contact_mechanism_id) VALUE
 **PostgreSQL实现 / PostgreSQL Implementation**:
 
 ```sql
--- Communication Event实体（基于Volume 1 Figure 2.12）
-CREATE TABLE communication_event (
-    communication_event_id SERIAL PRIMARY KEY,
-    party_relationship_id INT REFERENCES party_relationship(party_relationship_id),
-    contact_mechanism_type VARCHAR(50) NOT NULL,  -- Phone, Face-to-face, Email, etc.
-    datetime_started TIMESTAMPTZ NOT NULL,
-    datetime_ended TIMESTAMPTZ,
-    notes TEXT,
-    status_type VARCHAR(50) DEFAULT 'SCHEDULED'  -- Scheduled, In Progress, Completed
-);
+-- Communication Event实体（基于Volume 1 Figure 2.12，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event') THEN
+        CREATE TABLE communication_event (
+            communication_event_id SERIAL PRIMARY KEY,
+            party_relationship_id INT REFERENCES party_relationship(party_relationship_id),
+            contact_mechanism_type VARCHAR(50) NOT NULL,  -- Phone, Face-to-face, Email, etc.
+            datetime_started TIMESTAMPTZ NOT NULL,
+            datetime_ended TIMESTAMPTZ,
+            notes TEXT,
+            status_type VARCHAR(50) DEFAULT 'SCHEDULED'  -- Scheduled, In Progress, Completed
+        );
+        RAISE NOTICE '表 communication_event 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party_relationship 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event 失败: %', SQLERRM;
+END $$;
 
--- Communication Event Role（通信事件角色）
-CREATE TABLE communication_event_role (
-    communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    role_type VARCHAR(50) NOT NULL,  -- Caller, Receiver, Facilitator, Participant, Note Taker
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
-    PRIMARY KEY (communication_event_id, party_id, party_type, role_type)
-);
+-- Communication Event Role（通信事件角色，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_role') THEN
+        CREATE TABLE communication_event_role (
+            communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            role_type VARCHAR(50) NOT NULL,  -- Caller, Receiver, Facilitator, Participant, Note Taker
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
+            PRIMARY KEY (communication_event_id, party_id, party_type, role_type)
+        );
+        RAISE NOTICE '表 communication_event_role 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_role 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 communication_event 和 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_role 失败: %', SQLERRM;
+END $$;
 
--- Communication Event Purpose（通信事件目的）
-CREATE TABLE communication_event_purpose (
-    communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
-    purpose_type VARCHAR(50) NOT NULL,
-    description TEXT,
-    PRIMARY KEY (communication_event_id, purpose_type)
-);
+-- Communication Event Purpose（通信事件目的，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_purpose') THEN
+        CREATE TABLE communication_event_purpose (
+            communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
+            purpose_type VARCHAR(50) NOT NULL,
+            description TEXT,
+            PRIMARY KEY (communication_event_id, purpose_type)
+        );
+        RAISE NOTICE '表 communication_event_purpose 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_purpose 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 communication_event 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_purpose 失败: %', SQLERRM;
+END $$;
 
--- Communication Event Purpose Type（通信事件目的类型）
-CREATE TABLE communication_event_purpose_type (
-    purpose_type VARCHAR(50) PRIMARY KEY,
-    description TEXT
-);
+-- Communication Event Purpose Type（通信事件目的类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_purpose_type') THEN
+        CREATE TABLE communication_event_purpose_type (
+            purpose_type VARCHAR(50) PRIMARY KEY,
+            description TEXT
+        );
+        RAISE NOTICE '表 communication_event_purpose_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_purpose_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_purpose_type 失败: %', SQLERRM;
+END $$;
 
 INSERT INTO communication_event_purpose_type (purpose_type, description) VALUES
 ('INITIAL_SALES_CALL', '初始销售电话'),
@@ -2207,58 +3134,132 @@ INSERT INTO communication_event_purpose_type (purpose_type, description) VALUES
 ('SEMINAR', '研讨会'),
 ('ACTIVITY_REQUEST', '活动请求');
 
--- Communication Event Status Type（通信事件状态类型）
-CREATE TABLE communication_event_status_type (
-    status_type VARCHAR(50) PRIMARY KEY,
-    description TEXT
-);
+-- Communication Event Status Type（通信事件状态类型，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_status_type') THEN
+        CREATE TABLE communication_event_status_type (
+            status_type VARCHAR(50) PRIMARY KEY,
+            description TEXT
+        );
+        RAISE NOTICE '表 communication_event_status_type 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_status_type 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_status_type 失败: %', SQLERRM;
+END $$;
 
+-- Communication Event Status Type 初始数据
 INSERT INTO communication_event_status_type (status_type, description) VALUES
 ('SCHEDULED', '已安排'),
 ('IN_PROGRESS', '进行中'),
 ('COMPLETED', '已完成'),
 ('CANCELLED', '已取消'),
-('PENDING_RESOLUTION', '待解决');
+('PENDING_RESOLUTION', '待解决')
+ON CONFLICT (status_type) DO NOTHING;
 
--- Case（案例）
-CREATE TABLE case_entity (
-    case_id SERIAL PRIMARY KEY,
-    case_description TEXT NOT NULL,
-    opened_date TIMESTAMPTZ DEFAULT NOW(),
-    closed_date TIMESTAMPTZ
-);
+-- Case（案例，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'case_entity') THEN
+        CREATE TABLE case_entity (
+            case_id SERIAL PRIMARY KEY,
+            case_description TEXT NOT NULL,
+            opened_date TIMESTAMPTZ DEFAULT NOW(),
+            closed_date TIMESTAMPTZ
+        );
+        RAISE NOTICE '表 case_entity 创建成功';
+    ELSE
+        RAISE NOTICE '表 case_entity 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 case_entity 失败: %', SQLERRM;
+END $$;
 
--- Case Role（案例角色）
-CREATE TABLE case_role (
-    case_id INT NOT NULL REFERENCES case_entity(case_id),
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    role_type VARCHAR(50) NOT NULL,  -- Resolution Lead, Case Customer, Quality Assurance Manager
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
-    PRIMARY KEY (case_id, party_id, party_type, role_type)
-);
+-- Case Role（案例角色，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'case_role') THEN
+        CREATE TABLE case_role (
+            case_id INT NOT NULL REFERENCES case_entity(case_id),
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            role_type VARCHAR(50) NOT NULL,  -- Resolution Lead, Case Customer, Quality Assurance Manager
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type),
+            PRIMARY KEY (case_id, party_id, party_type, role_type)
+        );
+        RAISE NOTICE '表 case_role 创建成功';
+    ELSE
+        RAISE NOTICE '表 case_role 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 case_entity 和 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 case_role 失败: %', SQLERRM;
+END $$;
 
--- Communication Event Case（通信事件与案例的关联）
-CREATE TABLE communication_event_case (
-    communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
-    case_id INT NOT NULL REFERENCES case_entity(case_id),
-    PRIMARY KEY (communication_event_id, case_id)
-);
+-- Communication Event Case（通信事件与案例的关联，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_case') THEN
+        CREATE TABLE communication_event_case (
+            communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
+            case_id INT NOT NULL REFERENCES case_entity(case_id),
+            PRIMARY KEY (communication_event_id, case_id)
+        );
+        RAISE NOTICE '表 communication_event_case 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_case 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 communication_event 和 case_entity 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_case 失败: %', SQLERRM;
+END $$;
 
--- Work Effort（工作努力，将在Chapter 6详细说明）
-CREATE TABLE work_effort (
-    work_effort_id SERIAL PRIMARY KEY,
-    work_effort_type VARCHAR(50) NOT NULL,
-    description TEXT,
-    status VARCHAR(50)
-);
+-- Work Effort（工作努力，将在Chapter 6详细说明，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'work_effort') THEN
+        CREATE TABLE work_effort (
+            work_effort_id SERIAL PRIMARY KEY,
+            work_effort_type VARCHAR(50) NOT NULL,
+            description TEXT,
+            status VARCHAR(50)
+        );
+        RAISE NOTICE '表 work_effort 创建成功';
+    ELSE
+        RAISE NOTICE '表 work_effort 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 work_effort 失败: %', SQLERRM;
+END $$;
 
--- Communication Event Work Effort（通信事件与工作努力的关联）
-CREATE TABLE communication_event_work_effort (
-    communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
-    work_effort_id INT NOT NULL REFERENCES work_effort(work_effort_id),
-    PRIMARY KEY (communication_event_id, work_effort_id)
-);
+-- Communication Event Work Effort（通信事件与工作努力的关联，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'communication_event_work_effort') THEN
+        CREATE TABLE communication_event_work_effort (
+            communication_event_id INT NOT NULL REFERENCES communication_event(communication_event_id),
+            work_effort_id INT NOT NULL REFERENCES work_effort(work_effort_id),
+            PRIMARY KEY (communication_event_id, work_effort_id)
+        );
+        RAISE NOTICE '表 communication_event_work_effort 创建成功';
+    ELSE
+        RAISE NOTICE '表 communication_event_work_effort 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 communication_event 和 work_effort 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 communication_event_work_effort 失败: %', SQLERRM;
+END $$;
 
 -- 示例：创建通信事件（基于Volume 1 Table 2.12）
 -- William Jones给Marc Martinez的销售电话
@@ -2351,17 +3352,30 @@ INSERT INTO party_role_type (role_type, description, role_category) VALUES
 ('PARTNER', '合作伙伴', 'ORGANIZATION')
 ON CONFLICT (role_type) DO NOTHING;
 
--- 2. 客户标签表
-CREATE TABLE party_tag (
-    tag_id SERIAL PRIMARY KEY,
-    party_id INT NOT NULL,
-    party_type CHAR(1) NOT NULL,
-    tag_name VARCHAR(50) NOT NULL,
-    tag_category VARCHAR(50),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
-    UNIQUE(party_id, party_type, tag_name)
-);
+-- 2. 客户标签表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_tag') THEN
+        CREATE TABLE party_tag (
+            tag_id SERIAL PRIMARY KEY,
+            party_id INT NOT NULL,
+            party_type CHAR(1) NOT NULL,
+            tag_name VARCHAR(50) NOT NULL,
+            tag_category VARCHAR(50),
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            FOREIGN KEY (party_id, party_type) REFERENCES party(party_id, party_type) ON DELETE CASCADE,
+            UNIQUE(party_id, party_type, tag_name)
+        );
+        RAISE NOTICE '表 party_tag 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_tag 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_tag 失败: %', SQLERRM;
+END $$;
 
 CREATE INDEX idx_party_tag_party ON party_tag(party_id, party_type);
 CREATE INDEX idx_party_tag_name ON party_tag(tag_name);
@@ -2439,46 +3453,108 @@ INSERT INTO party_role_type (role_type, description, role_category) VALUES
 ('COST_CENTER', '成本中心', 'ORGANIZATION')
 ON CONFLICT (role_type) DO NOTHING;
 
--- 2. 采购订单表
-CREATE TABLE purchase_orders (
-    po_id BIGSERIAL PRIMARY KEY,
-    supplier_id INT NOT NULL,
-    supplier_party_type CHAR(1) NOT NULL,
-    internal_org_id INT NOT NULL,
-    internal_org_party_type CHAR(1) NOT NULL DEFAULT 'O',
-    po_number VARCHAR(50) UNIQUE NOT NULL,
-    order_date TIMESTAMPTZ DEFAULT NOW(),
-    expected_delivery_date TIMESTAMPTZ,
-    total_amount NUMERIC(10,2) NOT NULL,
-    status VARCHAR(20) DEFAULT 'DRAFT',
-    FOREIGN KEY (supplier_id, supplier_party_type) REFERENCES party(party_id, party_type),
-    FOREIGN KEY (internal_org_id, internal_org_party_type) REFERENCES party(party_id, party_type)
-);
+-- 2. 采购订单表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'purchase_orders') THEN
+        CREATE TABLE purchase_orders (
+            po_id BIGSERIAL PRIMARY KEY,
+            supplier_id INT NOT NULL,
+            supplier_party_type CHAR(1) NOT NULL,
+            internal_org_id INT NOT NULL,
+            internal_org_party_type CHAR(1) NOT NULL DEFAULT 'O',
+            po_number VARCHAR(50) UNIQUE NOT NULL,
+            order_date TIMESTAMPTZ DEFAULT NOW(),
+            expected_delivery_date TIMESTAMPTZ,
+            total_amount NUMERIC(10,2) NOT NULL,
+            status VARCHAR(20) DEFAULT 'DRAFT',
+            FOREIGN KEY (supplier_id, supplier_party_type) REFERENCES party(party_id, party_type),
+            FOREIGN KEY (internal_org_id, internal_org_party_type) REFERENCES party(party_id, party_type)
+        );
+        RAISE NOTICE '表 purchase_orders 创建成功';
+    ELSE
+        RAISE NOTICE '表 purchase_orders 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 purchase_orders 失败: %', SQLERRM;
+END $$;
 
-CREATE INDEX idx_purchase_orders_supplier ON purchase_orders(supplier_id, supplier_party_type);
-CREATE INDEX idx_purchase_orders_internal_org ON purchase_orders(internal_org_id, internal_org_party_type);
-CREATE INDEX idx_purchase_orders_date ON purchase_orders(order_date);
+-- 采购订单索引（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_purchase_orders_supplier') THEN
+        CREATE INDEX idx_purchase_orders_supplier ON purchase_orders(supplier_id, supplier_party_type);
+        RAISE NOTICE '索引 idx_purchase_orders_supplier 创建成功';
+    ELSE
+        RAISE NOTICE '索引 idx_purchase_orders_supplier 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 
--- 3. 销售订单表
-CREATE TABLE sales_orders (
-    so_id BIGSERIAL PRIMARY KEY,
-    customer_id INT NOT NULL,
-    customer_party_type CHAR(1) NOT NULL,
-    bill_to_party_id INT,
-    bill_to_party_type CHAR(1),
-    ship_to_party_id INT,
-    ship_to_party_type CHAR(1),
-    internal_org_id INT NOT NULL,
-    internal_org_party_type CHAR(1) NOT NULL DEFAULT 'O',
-    so_number VARCHAR(50) UNIQUE NOT NULL,
-    order_date TIMESTAMPTZ DEFAULT NOW(),
-    total_amount NUMERIC(10,2) NOT NULL,
-    status VARCHAR(20) DEFAULT 'DRAFT',
-    FOREIGN KEY (customer_id, customer_party_type) REFERENCES party(party_id, party_type),
-    FOREIGN KEY (bill_to_party_id, bill_to_party_type) REFERENCES party(party_id, party_type),
-    FOREIGN KEY (ship_to_party_id, ship_to_party_type) REFERENCES party(party_id, party_type),
-    FOREIGN KEY (internal_org_id, internal_org_party_type) REFERENCES party(party_id, party_type)
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_purchase_orders_internal_org') THEN
+        CREATE INDEX idx_purchase_orders_internal_org ON purchase_orders(internal_org_id, internal_org_party_type);
+        RAISE NOTICE '索引 idx_purchase_orders_internal_org 创建成功';
+    ELSE
+        RAISE NOTICE '索引 idx_purchase_orders_internal_org 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_purchase_orders_date') THEN
+        CREATE INDEX idx_purchase_orders_date ON purchase_orders(order_date);
+        RAISE NOTICE '索引 idx_purchase_orders_date 创建成功';
+    ELSE
+        RAISE NOTICE '索引 idx_purchase_orders_date 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
+
+-- 3. 销售订单表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'sales_orders') THEN
+        CREATE TABLE sales_orders (
+            so_id BIGSERIAL PRIMARY KEY,
+            customer_id INT NOT NULL,
+            customer_party_type CHAR(1) NOT NULL,
+            bill_to_party_id INT,
+            bill_to_party_type CHAR(1),
+            ship_to_party_id INT,
+            ship_to_party_type CHAR(1),
+            internal_org_id INT NOT NULL,
+            internal_org_party_type CHAR(1) NOT NULL DEFAULT 'O',
+            so_number VARCHAR(50) UNIQUE NOT NULL,
+            order_date TIMESTAMPTZ DEFAULT NOW(),
+            total_amount NUMERIC(10,2) NOT NULL,
+            status VARCHAR(20) DEFAULT 'DRAFT',
+            FOREIGN KEY (customer_id, customer_party_type) REFERENCES party(party_id, party_type),
+            FOREIGN KEY (bill_to_party_id, bill_to_party_type) REFERENCES party(party_id, party_type),
+            FOREIGN KEY (ship_to_party_id, ship_to_party_type) REFERENCES party(party_id, party_type),
+            FOREIGN KEY (internal_org_id, internal_org_party_type) REFERENCES party(party_id, party_type)
+        );
+        RAISE NOTICE '表 sales_orders 创建成功';
+    ELSE
+        RAISE NOTICE '表 sales_orders 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 sales_orders 失败: %', SQLERRM;
+END $$;
 
 CREATE INDEX idx_sales_orders_customer ON sales_orders(customer_id, customer_party_type);
 CREATE INDEX idx_sales_orders_date ON sales_orders(order_date);
@@ -2573,19 +3649,22 @@ INSERT INTO party_role_type (role_type, description, role_category) VALUES
 ('VERIFIED_SELLER', '认证卖家', 'ORGANIZATION')
 ON CONFLICT (role_type) DO NOTHING;
 
--- 2. 订单表（关联Customer和Seller）
-CREATE TABLE orders (
-    order_id BIGSERIAL PRIMARY KEY,
-    customer_id INT NOT NULL,
-    customer_party_type CHAR(1) NOT NULL,
-    seller_id INT NOT NULL,
-    seller_party_type CHAR(1) NOT NULL DEFAULT 'O',
-    affiliate_id INT,  -- 推广者（可选）
-    affiliate_party_type CHAR(1),
-    order_number VARCHAR(50) UNIQUE NOT NULL,
-    order_date TIMESTAMPTZ DEFAULT NOW(),
-    total_amount NUMERIC(10,2) NOT NULL,
-    status VARCHAR(20) DEFAULT 'PENDING',
+-- 2. 订单表（关联Customer和Seller，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'orders') THEN
+        CREATE TABLE orders (
+            order_id BIGSERIAL PRIMARY KEY,
+            customer_id INT NOT NULL,
+            customer_party_type CHAR(1) NOT NULL,
+            seller_id INT NOT NULL,
+            seller_party_type CHAR(1) NOT NULL DEFAULT 'O',
+            affiliate_id INT,  -- 推广者（可选）
+            affiliate_party_type CHAR(1),
+            order_number VARCHAR(50) UNIQUE NOT NULL,
+            order_date TIMESTAMPTZ DEFAULT NOW(),
+            total_amount NUMERIC(10,2) NOT NULL,
+            status VARCHAR(20) DEFAULT 'PENDING',
     FOREIGN KEY (customer_id, customer_party_type) REFERENCES party(party_id, party_type),
     FOREIGN KEY (seller_id, seller_party_type) REFERENCES party(party_id, party_type),
     FOREIGN KEY (affiliate_id, affiliate_party_type) REFERENCES party(party_id, party_type)
@@ -2613,19 +3692,33 @@ CREATE INDEX idx_affiliate_relationships_affiliate ON affiliate_relationships(af
 CREATE INDEX idx_affiliate_relationships_customer ON affiliate_relationships(customer_id, customer_party_type);
 
 -- 4. 评价表
-CREATE TABLE party_ratings (
-    rating_id SERIAL PRIMARY KEY,
-    rater_party_id INT NOT NULL,
-    rater_party_type CHAR(1) NOT NULL,
-    rated_party_id INT NOT NULL,
-    rated_party_type CHAR(1) NOT NULL,
-    rating_type VARCHAR(50) NOT NULL,  -- SELLER_RATING, PRODUCT_RATING, etc.
-    rating_value INT NOT NULL CHECK (rating_value >= 1 AND rating_value <= 5),
-    comment TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    FOREIGN KEY (rater_party_id, rater_party_type) REFERENCES party(party_id, party_type),
-    FOREIGN KEY (rated_party_id, rated_party_type) REFERENCES party(party_id, party_type)
-);
+-- Party Ratings（评价系统，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_ratings') THEN
+        CREATE TABLE party_ratings (
+            rating_id SERIAL PRIMARY KEY,
+            rater_party_id INT NOT NULL,
+            rater_party_type CHAR(1) NOT NULL,
+            rated_party_id INT NOT NULL,
+            rated_party_type CHAR(1) NOT NULL,
+            rating_type VARCHAR(50) NOT NULL,  -- SELLER_RATING, PRODUCT_RATING, etc.
+            rating_value INT NOT NULL CHECK (rating_value >= 1 AND rating_value <= 5),
+            comment TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            FOREIGN KEY (rater_party_id, rater_party_type) REFERENCES party(party_id, party_type),
+            FOREIGN KEY (rated_party_id, rated_party_type) REFERENCES party(party_id, party_type)
+        );
+        RAISE NOTICE '表 party_ratings 创建成功';
+    ELSE
+        RAISE NOTICE '表 party_ratings 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party_ratings 失败: %', SQLERRM;
+END $$;
 
 CREATE INDEX idx_party_ratings_rated ON party_ratings(rated_party_id, rated_party_type, rating_type);
 
@@ -2714,13 +3807,25 @@ oauth_audience = 'postgresql-server'
 
 ```sql
 -- PostgreSQL 18：RLS性能优化示例（多租户SaaS应用）
-CREATE TABLE tenant_data (
-    id SERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL,
-    party_id INTEGER NOT NULL,
-    data TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Tenant Data（多租户数据，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'tenant_data') THEN
+        CREATE TABLE tenant_data (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL,
+            party_id INTEGER NOT NULL,
+            data TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 tenant_data 创建成功';
+    ELSE
+        RAISE NOTICE '表 tenant_data 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 tenant_data 失败: %', SQLERRM;
+END $$;
 
 -- 创建RLS策略（PostgreSQL 18性能优化）
 CREATE POLICY tenant_isolation_policy ON tenant_data
@@ -2753,14 +3858,25 @@ SELECT * FROM tenant_data WHERE id = 123;
 **在Party模型多租户应用中的集成**:
 
 ```sql
--- 多租户Party模型（结合OAuth 2.0和RLS）
-CREATE TABLE party (
-    party_id SERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL,  -- 租户ID
-    party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
-    name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-) PARTITION BY LIST (party_type);
+-- 多租户Party模型（结合OAuth 2.0和RLS，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party' AND schemaname = 'public') THEN
+        CREATE TABLE party (
+            party_id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL,  -- 租户ID
+            party_type CHAR(1) NOT NULL CHECK (party_type IN ('P', 'O')),
+            name VARCHAR(255) NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        ) PARTITION BY LIST (party_type);
+        RAISE NOTICE '表 party 创建成功（多租户示例，分区表）';
+    ELSE
+        RAISE NOTICE '表 party 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 party 失败: %', SQLERRM;
+END $$;
 
 -- RLS策略：确保租户数据隔离
 CREATE POLICY party_tenant_isolation ON party
@@ -3086,14 +4202,28 @@ GROUP BY p.party_id;
 
 ```sql
 -- 订单表关联Party
-CREATE TABLE orders (
-    order_id BIGSERIAL PRIMARY KEY,
-    customer_party_id INT NOT NULL,
-    customer_party_type CHAR(1) NOT NULL,
-    -- 其他字段...
-    FOREIGN KEY (customer_party_id, customer_party_type)
-        REFERENCES party(party_id, party_type)
-);
+-- Orders（订单表示例，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'orders') THEN
+        CREATE TABLE orders (
+            order_id BIGSERIAL PRIMARY KEY,
+            customer_party_id INT NOT NULL,
+            customer_party_type CHAR(1) NOT NULL,
+            -- 其他字段...
+            FOREIGN KEY (customer_party_id, customer_party_type)
+                REFERENCES party(party_id, party_type)
+        );
+        RAISE NOTICE '表 orders 创建成功（示例）';
+    ELSE
+        RAISE NOTICE '表 orders 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 party 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 orders 失败: %', SQLERRM;
+END $$;
 
 -- 查询订单的Party信息
 SELECT

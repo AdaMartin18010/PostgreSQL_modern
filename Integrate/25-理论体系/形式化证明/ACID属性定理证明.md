@@ -392,24 +392,37 @@ ACID属性定理体系
 **原子性实现验证（带错误处理和性能测试）**：
 
 ```sql
+-- 数据准备：创建账户表
+CREATE TABLE IF NOT EXISTS accounts (
+    account_id SERIAL PRIMARY KEY,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    account_name VARCHAR(100) NOT NULL
+);
+
 -- 1. 事务原子性测试
 BEGIN;
-INSERT INTO accounts (account_id, balance) VALUES (999, 1000);
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 999;
--- 模拟错误
-RAISE EXCEPTION '模拟错误';
+INSERT INTO accounts (account_name, balance) VALUES ('TestAccount999', 1000);
+UPDATE accounts SET balance = balance - 100 WHERE account_name = 'TestAccount999';
+-- 模拟错误（注意：实际使用时需要DO块中）
+DO $$
+BEGIN
+    RAISE EXCEPTION '模拟错误';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '模拟错误触发，事务将回滚';
+END $$;
 -- 所有操作都会被回滚（原子性）
 ROLLBACK;
 
--- 验证: 检查账户999是否存在
-SELECT * FROM accounts WHERE account_id = 999;
+-- 验证: 检查账户是否存在
+SELECT * FROM accounts WHERE account_name = 'TestAccount999';
 -- 应该返回空（原子性保证）
 
 -- 2. 保存点（部分回滚）
 BEGIN;
-INSERT INTO accounts (account_id, balance) VALUES (998, 1000);
+INSERT INTO accounts (account_name, balance) VALUES ('TestAccount998', 1000);
 SAVEPOINT sp1;
-UPDATE accounts SET balance = balance - 100 WHERE account_id = 998;
+UPDATE accounts SET balance = balance - 100 WHERE account_name = 'TestAccount998';
 ROLLBACK TO SAVEPOINT sp1;  -- 只回滚到保存点
 COMMIT;  -- 提交保存点之前的操作
 ```
@@ -419,25 +432,42 @@ COMMIT;  -- 提交保存点之前的操作
 **一致性实现验证（带错误处理和性能测试）**：
 
 ```sql
+-- 数据准备（accounts表已创建）
+
+-- 插入一些测试数据
+INSERT INTO accounts (account_name, balance) VALUES
+    ('Account1', 1000.00),
+    ('Account2', 500.00)
+ON CONFLICT DO NOTHING;
+
 -- 1. 约束一致性
-ALTER TABLE accounts ADD CONSTRAINT check_balance CHECK (balance >= 0);
+ALTER TABLE accounts ADD CONSTRAINT IF NOT EXISTS check_balance CHECK (balance >= 0);
 
 -- 违反约束的操作会被拒绝
 BEGIN;
-UPDATE accounts SET balance = -100 WHERE account_id = 1;
+UPDATE accounts SET balance = -100 WHERE account_name = 'Account1';
 -- ERROR: new row for relation "accounts" violates check constraint "check_balance"
 ROLLBACK;
 
 -- 2. 外键一致性
-ALTER TABLE transactions
-ADD CONSTRAINT fk_account
-FOREIGN KEY (account_id) REFERENCES accounts(account_id);
+CREATE TABLE IF NOT EXISTS transactions (
+    transaction_id SERIAL PRIMARY KEY,
+    account_id INTEGER REFERENCES accounts(account_id),
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- 违反外键的操作会被拒绝
 BEGIN;
 INSERT INTO transactions (account_id, amount) VALUES (99999, 100);
--- ERROR: insert or update on table "transactions" violates foreign key constraint "fk_account"
+-- ERROR: insert or update on table "transactions" violates foreign key constraint
 ROLLBACK;
+
+-- 正确的插入（外键存在）
+BEGIN;
+INSERT INTO transactions (account_id, amount)
+SELECT account_id, 50.00 FROM accounts WHERE account_name = 'Account1' LIMIT 1;
+COMMIT;
 ```
 
 ---

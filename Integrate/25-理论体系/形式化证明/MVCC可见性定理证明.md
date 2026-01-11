@@ -351,6 +351,20 @@ EXCEPTION
         RAISE EXCEPTION '获取快照信息失败: %', SQLERRM;
 END $$;
 
+-- 数据准备：创建用户表
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 插入示例数据
+INSERT INTO users (username, email) VALUES
+    ('alice', 'alice@example.com'),
+    ('bob', 'bob@example.com')
+ON CONFLICT DO NOTHING;
+
 -- 性能测试：可见性检查
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM users WHERE id = 1;
@@ -366,6 +380,8 @@ SELECT * FROM users WHERE id = 1;
 1. **快照扩展**：
 
    ```sql
+   -- 数据准备（users表已创建）
+
    -- 事务开始时创建快照
    BEGIN;
    SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;

@@ -437,14 +437,30 @@ graph LR
 **Write Skew Example**:
 
 ```sql
--- T1: SELECT * FROM seats WHERE booked = false; -- finds seat A
--- T2: SELECT * FROM seats WHERE booked = false; -- finds seat B
--- T1: UPDATE seats SET booked = true WHERE id = A; -- commits
--- T2: UPDATE seats SET booked = true WHERE id = B; -- commits
--- Result: Both think they booked the last seat (application bug)
-```
+-- 数据准备
+CREATE TABLE IF NOT EXISTS seats (
+    id SERIAL PRIMARY KEY,
+    seat_number VARCHAR(10) NOT NULL UNIQUE,
+    booked BOOLEAN NOT NULL DEFAULT false
+);
 
-**Solution**: Use `SELECT ... FOR UPDATE` (current read + X lock) instead of snapshot read.
+INSERT INTO seats (seat_number, booked) VALUES
+    ('A1', false),
+    ('A2', false);
+
+-- 场景：两个事务同时尝试预订最后一个可用座位
+-- T1: SELECT * FROM seats WHERE booked = false; -- finds seat A1
+-- T2: SELECT * FROM seats WHERE booked = false; -- finds seat A1 (same!)
+-- T1: UPDATE seats SET booked = true WHERE id = 1; -- commits
+-- T2: UPDATE seats SET booked = true WHERE id = 1; -- commits
+-- Result: Both think they booked the last seat (application bug - write skew anomaly)
+
+-- Solution: Use SELECT ... FOR UPDATE (current read + X lock) instead of snapshot read
+BEGIN;
+SELECT * FROM seats WHERE booked = false FOR UPDATE;  -- Locks the row
+UPDATE seats SET booked = true WHERE id = 1;
+COMMIT;
+```
 
 ---
 

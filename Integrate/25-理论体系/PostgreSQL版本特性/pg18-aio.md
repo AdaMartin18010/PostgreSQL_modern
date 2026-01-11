@@ -87,11 +87,29 @@ PostgreSQL 18引入了异步I/O（AIO）子系统，这是PostgreSQL历史上最
 #### 顺序扫描的性能问题
 
 ```sql
+-- 数据准备：创建大表用于测试
+CREATE TABLE IF NOT EXISTS large_table (
+    id BIGSERIAL PRIMARY KEY,
+    status VARCHAR(20) NOT NULL,
+    data_column TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_large_table_status ON large_table(status);
+
+-- 插入示例数据（实际使用时需要更多数据）
+INSERT INTO large_table (status, data_column)
+SELECT
+    CASE WHEN random() < 0.5 THEN 'active' ELSE 'inactive' END,
+    'Data ' || generate_series
+FROM generate_series(1, 10000);
+
 -- PostgreSQL 17及之前的I/O模式
 
 -- 场景：大表顺序扫描
 SELECT * FROM large_table WHERE status = 'active';
--- 表大小：1TB
+-- 表大小：1TB（示例中为小表，实际场景为大表）
 -- 页面数：134,217,728（8KB页面）
 
 -- 同步I/O流程：

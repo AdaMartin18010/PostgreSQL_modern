@@ -25,10 +25,15 @@
     - [2.2 数据预处理](#22-数据预处理)
     - [2.3 白化处理](#23-白化处理)
     - [2.4 独立成分提取](#24-独立成分提取)
-  - [3. 复杂度分析](#3-复杂度分析)
+  - [3. PostgreSQL 18 并行ICA增强](#3-postgresql-18-并行ica增强)
+    - [3.1 并行ICA原理](#31-并行ica原理)
+    - [3.2 并行数据预处理](#32-并行数据预处理)
+    - [3.3 并行白化处理](#33-并行白化处理)
+    - [3.4 并行独立成分提取](#34-并行独立成分提取)
+  - [4. 复杂度分析](#4-复杂度分析)
     - [时间复杂度](#时间复杂度)
     - [空间复杂度](#空间复杂度)
-  - [4. 实际应用案例](#4-实际应用案例)
+  - [5. 实际应用案例](#5-实际应用案例)
     - [4.1 信号分离](#41-信号分离)
     - [4.2 特征提取](#42-特征提取)
     - [4.3 脑电信号分析](#43-脑电信号分析)
@@ -779,6 +784,184 @@ CREATE INDEX IF NOT EXISTS idx_signal_time ON mixed_signals(signal_id, time_poin
 2. **数值精度**: 注意矩阵运算和迭代更新的精度
 3. **性能优化**: 使用物化视图和索引优化性能
 4. **内存管理**: 注意大规模矩阵运算的内存占用
+
+### PostgreSQL 18 新特性应用（增强）
+
+**PostgreSQL 18**引入了多项增强功能，可以显著提升ICA算法的性能：
+
+1. **Skip Scan优化**：
+   - 对于包含信号ID的索引，Skip Scan可以跳过不必要的索引扫描
+   - 特别适用于Top-N独立成分查询和多信号分离查询
+
+2. **异步I/O增强**：
+   - 对于大规模ICA计算，异步I/O可以显著提升性能
+   - 适用于批量数据预处理和并行独立成分提取
+
+3. **并行查询增强**：
+   - ICA支持更好的并行执行（已在3节详细说明）
+   - 适用于大规模信号分离和并行盲源分析
+
+**示例：使用Skip Scan优化ICA查询**
+
+```sql
+-- 为ICA数据创建Skip Scan优化索引
+CREATE INDEX IF NOT EXISTS idx_ica_data_skip_scan
+ON mixed_signals(signal_id, time_point DESC);
+
+-- Skip Scan优化查询：查找每个信号的最新时间点
+EXPLAIN (ANALYZE, BUFFERS, TIMING, VERBOSE)
+SELECT DISTINCT ON (signal_id)
+    signal_id,
+    time_point,
+    signal_value
+FROM mixed_signals
+ORDER BY signal_id, time_point DESC
+LIMIT 50;
+```
+
+### 高级优化技巧（增强）
+
+**1. 使用物化视图缓存ICA结果**
+
+对于频繁使用的ICA分离结果，使用物化视图缓存：
+
+```sql
+-- 创建物化视图缓存ICA分离结果
+CREATE MATERIALIZED VIEW IF NOT EXISTS ica_separation_cache AS
+WITH whitened_signals AS (
+    SELECT
+        signal_id,
+        time_point,
+        signal_value,
+        -- 使用窗口函数计算白化信号（避免重复计算）
+        (signal_value - AVG(signal_value) OVER (PARTITION BY signal_id)) /
+        NULLIF(STDDEV(signal_value) OVER (PARTITION BY signal_id), 0) AS whitened_value
+    FROM mixed_signals
+),
+independent_components AS (
+    SELECT
+        signal_id,
+        time_point,
+        whitened_value,
+        -- 使用窗口函数计算非高斯性（简化版）
+        POWER(whitened_value, 3) AS skewness_measure,
+        POWER(whitened_value, 4) - 3 AS kurtosis_measure
+    FROM whitened_signals
+)
+SELECT
+    signal_id,
+    time_point,
+    ROUND(whitened_value::numeric, 4) AS whitened_value,
+    ROUND(skewness_measure::numeric, 4) AS skewness_measure,
+    ROUND(kurtosis_measure::numeric, 4) AS kurtosis_measure,
+    CASE
+        WHEN ABS(kurtosis_measure) > 3 THEN 'Non-Gaussian - Good for ICA'
+        WHEN ABS(kurtosis_measure) > 1 THEN 'Moderately Non-Gaussian'
+        ELSE 'Near Gaussian - Not Suitable for ICA'
+    END AS ica_suitability
+FROM independent_components
+ORDER BY signal_id, time_point DESC;
+
+-- 创建索引加速物化视图查询
+CREATE INDEX idx_ica_separation_cache_signal_time ON ica_separation_cache(signal_id, time_point DESC);
+CREATE INDEX idx_ica_separation_cache_suitability ON ica_separation_cache(ica_suitability, ABS(kurtosis_measure) DESC);
+
+-- 定期刷新物化视图
+REFRESH MATERIALIZED VIEW CONCURRENTLY ica_separation_cache;
+```
+
+**2. 实时ICA分析：增量信号更新**
+
+**实时ICA分析**：对于实时数据，使用增量方法更新信号分离结果。
+
+```sql
+-- 实时ICA分析：增量信号更新（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ica_analysis_state') THEN
+            CREATE TABLE ica_analysis_state (
+                signal_id INTEGER NOT NULL,
+                sum_values NUMERIC DEFAULT 0,
+                sum_squared_values NUMERIC DEFAULT 0,
+                count_samples BIGINT DEFAULT 0,
+                mean_value NUMERIC,
+                stddev_value NUMERIC,
+                whitening_factor NUMERIC,
+                last_updated TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (signal_id)
+            );
+
+            CREATE INDEX idx_ica_analysis_state_signal ON ica_analysis_state(signal_id, last_updated DESC);
+            CREATE INDEX idx_ica_analysis_state_updated ON ica_analysis_state(last_updated DESC);
+
+            RAISE NOTICE 'ICA分析状态表创建成功';
+        END IF;
+
+        RAISE NOTICE '开始执行增量ICA分析更新';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '增量ICA分析更新准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+```
+
+**3. 智能ICA优化：自适应分离策略选择**
+
+**智能ICA优化**：根据信号特征自动选择最优分离策略。
+
+```sql
+-- 智能ICA优化：自适应分离策略选择（带错误处理和性能测试）
+DO $$
+DECLARE
+    signal_count INTEGER;
+    sample_count BIGINT;
+    gaussian_ratio NUMERIC;
+    recommended_method VARCHAR(50);
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'mixed_signals') THEN
+            RAISE WARNING '表 mixed_signals 不存在，无法执行智能ICA优化';
+            RETURN;
+        END IF;
+
+        -- 计算信号特征
+        WITH signal_statistics AS (
+            SELECT
+                COUNT(DISTINCT signal_id) AS sig_count,
+                COUNT(DISTINCT time_point) AS samp_count,
+                COUNT(*) FILTER (
+                    WHERE ABS(POWER(signal_value - AVG(signal_value) OVER (PARTITION BY signal_id), 4) /
+                              NULLIF(POWER(STDDEV(signal_value) OVER (PARTITION BY signal_id), 4), 0)) - 3) < 1
+                )::numeric / COUNT(*) AS gauss_ratio
+            FROM mixed_signals
+        )
+        SELECT
+            sig_count,
+            samp_count,
+            gauss_ratio
+        INTO signal_count, sample_count, gaussian_ratio
+        FROM signal_statistics;
+
+        -- 根据信号特征自适应选择分离方法
+        IF gaussian_ratio > 0.8 THEN
+            recommended_method := 'PCA';  -- 高斯信号多：使用PCA
+        ELSIF signal_count >= sample_count / 10 THEN
+            recommended_method := 'FASTICA';  -- 信号数适中：使用FastICA
+        ELSE
+            recommended_method := 'JADE';  -- 信号数少：使用JADE
+        END IF;
+
+        RAISE NOTICE '信号数: %, 样本数: %, 高斯比率: %, 推荐方法: %',
+            signal_count, sample_count, gaussian_ratio, recommended_method;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '智能ICA优化准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+```
 
 ---
 

@@ -153,84 +153,162 @@ Kimball维度建模方法是数据仓库设计的权威方法论，由Ralph Kimb
 **示例**:
 
 ```sql
--- 事实表：销售事实
-CREATE TABLE fact_sales (
-    sale_id BIGSERIAL PRIMARY KEY,
-    date_id INT NOT NULL,
-    product_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    store_id INT NOT NULL,
-    quantity INT NOT NULL,
-    amount NUMERIC(10,2) NOT NULL,
-    cost NUMERIC(10,2) NOT NULL,
-    profit NUMERIC(10,2) GENERATED ALWAYS AS (amount - cost) STORED
-);
+-- 事实表：销售事实（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales') THEN
+        CREATE TABLE fact_sales (
+            sale_id BIGSERIAL PRIMARY KEY,
+            date_id INT NOT NULL,
+            product_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            store_id INT NOT NULL,
+            quantity INT NOT NULL,
+            amount NUMERIC(10,2) NOT NULL,
+            cost NUMERIC(10,2) NOT NULL,
+            profit NUMERIC(10,2) GENERATED ALWAYS AS (amount - cost) STORED
+        );
+        RAISE NOTICE '表 fact_sales 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_sales 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_sales 失败: %', SQLERRM;
+END $$;
 
--- 维度表：日期维度
-CREATE TABLE dim_date (
-    date_id INT PRIMARY KEY,
-    date_actual DATE NOT NULL UNIQUE,
-    day_name VARCHAR(10),
-    day_of_week INT,
-    day_of_month INT,
-    day_of_year INT,
-    week_of_year INT,
-    month_name VARCHAR(10),
-    month_of_year INT,
-    quarter_name VARCHAR(2),
-    quarter_of_year INT,
-    year INT,
-    is_weekend BOOLEAN,
-    is_holiday BOOLEAN
-);
+-- 维度表：日期维度（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_date') THEN
+        CREATE TABLE dim_date (
+            date_id INT PRIMARY KEY,
+            date_actual DATE NOT NULL UNIQUE,
+            day_name VARCHAR(10),
+            day_of_week INT,
+            day_of_month INT,
+            day_of_year INT,
+            week_of_year INT,
+            month_name VARCHAR(10),
+            month_of_year INT,
+            quarter_name VARCHAR(2),
+            quarter_of_year INT,
+            year INT,
+            is_weekend BOOLEAN,
+            is_holiday BOOLEAN
+        );
+        RAISE NOTICE '表 dim_date 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_date 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_date 失败: %', SQLERRM;
+END $$;
 
--- 维度表：产品维度
-CREATE TABLE dim_product (
-    product_id INT PRIMARY KEY,
-    product_code VARCHAR(50) UNIQUE NOT NULL,
-    product_name VARCHAR(200) NOT NULL,
-    category_name VARCHAR(100),
-    brand_name VARCHAR(100),
-    unit_price NUMERIC(10,2),
-    is_active BOOLEAN DEFAULT TRUE
-);
+-- 维度表：产品维度（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_product') THEN
+        CREATE TABLE dim_product (
+            product_id INT PRIMARY KEY,
+            product_code VARCHAR(50) UNIQUE NOT NULL,
+            product_name VARCHAR(200) NOT NULL,
+            category_name VARCHAR(100),
+            brand_name VARCHAR(100),
+            unit_price NUMERIC(10,2),
+            is_active BOOLEAN DEFAULT TRUE
+        );
+        RAISE NOTICE '表 dim_product 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_product 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_product 失败: %', SQLERRM;
+END $$;
 
--- 维度表：客户维度
-CREATE TABLE dim_customer (
-    customer_id INT PRIMARY KEY,
-    customer_code VARCHAR(50) UNIQUE NOT NULL,
-    customer_name VARCHAR(200) NOT NULL,
-    city VARCHAR(100),
-    state VARCHAR(50),
-    country VARCHAR(50),
-    customer_segment VARCHAR(50)
-);
+-- 维度表：客户维度（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_customer') THEN
+        CREATE TABLE dim_customer (
+            customer_id INT PRIMARY KEY,
+            customer_code VARCHAR(50) UNIQUE NOT NULL,
+            customer_name VARCHAR(200) NOT NULL,
+            city VARCHAR(100),
+            state VARCHAR(50),
+            country VARCHAR(50),
+            customer_segment VARCHAR(50)
+        );
+        RAISE NOTICE '表 dim_customer 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_customer 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_customer 失败: %', SQLERRM;
+END $$;
 
--- 维度表：门店维度
-CREATE TABLE dim_store (
-    store_id INT PRIMARY KEY,
-    store_code VARCHAR(50) UNIQUE NOT NULL,
-    store_name VARCHAR(200) NOT NULL,
-    city VARCHAR(100),
-    state VARCHAR(50),
-    country VARCHAR(50),
-    store_type VARCHAR(50),
-    square_feet INT
-);
+-- 维度表：门店维度（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_store') THEN
+        CREATE TABLE dim_store (
+            store_id INT PRIMARY KEY,
+            store_code VARCHAR(50) UNIQUE NOT NULL,
+            store_name VARCHAR(200) NOT NULL,
+            city VARCHAR(100),
+            state VARCHAR(50),
+            country VARCHAR(50),
+            store_type VARCHAR(50),
+            square_feet INT
+        );
+        RAISE NOTICE '表 dim_store 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_store 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_store 失败: %', SQLERRM;
+END $$;
 
--- 外键约束
-ALTER TABLE fact_sales
-ADD CONSTRAINT fk_sales_date FOREIGN KEY (date_id) REFERENCES dim_date(date_id),
-ADD CONSTRAINT fk_sales_product FOREIGN KEY (product_id) REFERENCES dim_product(product_id),
-ADD CONSTRAINT fk_sales_customer FOREIGN KEY (customer_id) REFERENCES dim_customer(customer_id),
-ADD CONSTRAINT fk_sales_store FOREIGN KEY (store_id) REFERENCES dim_store(store_id);
+-- 外键约束（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'fk_sales_date' AND conrelid = 'fact_sales'::regclass
+    ) THEN
+        ALTER TABLE fact_sales
+        ADD CONSTRAINT fk_sales_date FOREIGN KEY (date_id) REFERENCES dim_date(date_id),
+        ADD CONSTRAINT fk_sales_product FOREIGN KEY (product_id) REFERENCES dim_product(product_id),
+        ADD CONSTRAINT fk_sales_customer FOREIGN KEY (customer_id) REFERENCES dim_customer(customer_id),
+        ADD CONSTRAINT fk_sales_store FOREIGN KEY (store_id) REFERENCES dim_store(store_id);
+        RAISE NOTICE '外键约束创建成功';
+    ELSE
+        RAISE NOTICE '外键约束已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建所有维度表';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建外键约束失败: %', SQLERRM;
+END $$;
 
--- 创建索引优化查询
-CREATE INDEX idx_sales_date ON fact_sales(date_id);
-CREATE INDEX idx_sales_product ON fact_sales(product_id);
-CREATE INDEX idx_sales_customer ON fact_sales(customer_id);
-CREATE INDEX idx_sales_store ON fact_sales(store_id);
-CREATE INDEX idx_sales_date_product ON fact_sales(date_id, product_id);
+-- 创建索引优化查询（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_sales_date ON fact_sales(date_id);
+    CREATE INDEX IF NOT EXISTS idx_sales_product ON fact_sales(product_id);
+    CREATE INDEX IF NOT EXISTS idx_sales_customer ON fact_sales(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_sales_store ON fact_sales(store_id);
+    CREATE INDEX IF NOT EXISTS idx_sales_date_product ON fact_sales(date_id, product_id);
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -249,39 +327,93 @@ CREATE INDEX idx_sales_date_product ON fact_sales(date_id, product_id);
 **示例**:
 
 ```sql
--- 雪花模式：产品维度规范化
-CREATE TABLE dim_product (
-    product_id INT PRIMARY KEY,
-    product_code VARCHAR(50) UNIQUE NOT NULL,
-    product_name VARCHAR(200) NOT NULL,
-    category_id INT NOT NULL,
-    brand_id INT NOT NULL,
-    unit_price NUMERIC(10,2)
-);
+-- 雪花模式：产品维度规范化（带错误处理）
+DO $$
+BEGIN
+    -- 创建部门维度表
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_department') THEN
+        CREATE TABLE dim_department (
+            department_id INT PRIMARY KEY,
+            department_name VARCHAR(100) NOT NULL
+        );
+        RAISE NOTICE '表 dim_department 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_department 已存在，跳过创建';
+    END IF;
 
-CREATE TABLE dim_category (
-    category_id INT PRIMARY KEY,
-    category_name VARCHAR(100) NOT NULL,
-    department_id INT NOT NULL
-);
+    -- 创建分类维度表
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_category') THEN
+        CREATE TABLE dim_category (
+            category_id INT PRIMARY KEY,
+            category_name VARCHAR(100) NOT NULL,
+            department_id INT NOT NULL
+        );
+        RAISE NOTICE '表 dim_category 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_category 已存在，跳过创建';
+    END IF;
 
-CREATE TABLE dim_department (
-    department_id INT PRIMARY KEY,
-    department_name VARCHAR(100) NOT NULL
-);
+    -- 创建品牌维度表
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_brand') THEN
+        CREATE TABLE dim_brand (
+            brand_id INT PRIMARY KEY,
+            brand_name VARCHAR(100) NOT NULL
+        );
+        RAISE NOTICE '表 dim_brand 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_brand 已存在，跳过创建';
+    END IF;
 
-CREATE TABLE dim_brand (
-    brand_id INT PRIMARY KEY,
-    brand_name VARCHAR(100) NOT NULL
-);
+    -- 创建产品维度表（雪花模式）
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_product_snowflake') THEN
+        CREATE TABLE dim_product_snowflake (
+            product_id INT PRIMARY KEY,
+            product_code VARCHAR(50) UNIQUE NOT NULL,
+            product_name VARCHAR(200) NOT NULL,
+            category_id INT NOT NULL,
+            brand_id INT NOT NULL,
+            unit_price NUMERIC(10,2)
+        );
+        RAISE NOTICE '表 dim_product_snowflake 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_product_snowflake 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建维度表失败: %', SQLERRM;
+END $$;
 
--- 外键关系
-ALTER TABLE dim_product
-ADD CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES dim_category(category_id),
-ADD CONSTRAINT fk_product_brand FOREIGN KEY (brand_id) REFERENCES dim_brand(brand_id);
+-- 外键关系（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'fk_product_category' AND conrelid = 'dim_product_snowflake'::regclass
+    ) THEN
+        ALTER TABLE dim_product_snowflake
+        ADD CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES dim_category(category_id),
+        ADD CONSTRAINT fk_product_brand FOREIGN KEY (brand_id) REFERENCES dim_brand(brand_id);
+        RAISE NOTICE '产品表外键约束创建成功';
+    ELSE
+        RAISE NOTICE '产品表外键约束已存在，跳过创建';
+    END IF;
 
-ALTER TABLE dim_category
-ADD CONSTRAINT fk_category_department FOREIGN KEY (department_id) REFERENCES dim_department(department_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'fk_category_department' AND conrelid = 'dim_category'::regclass
+    ) THEN
+        ALTER TABLE dim_category
+        ADD CONSTRAINT fk_category_department FOREIGN KEY (department_id) REFERENCES dim_department(department_id);
+        RAISE NOTICE '分类表外键约束创建成功';
+    ELSE
+        RAISE NOTICE '分类表外键约束已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建所有相关维度表';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建外键约束失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -316,36 +448,77 @@ ADD CONSTRAINT fk_category_department FOREIGN KEY (department_id) REFERENCES dim
 **示例**:
 
 ```sql
-CREATE TABLE fact_sales_transaction (
-    sale_id BIGSERIAL PRIMARY KEY,
-    transaction_time TIMESTAMPTZ NOT NULL,
-    date_id INT NOT NULL,
-    product_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    store_id INT NOT NULL,
-    salesperson_id INT,
-    quantity INT NOT NULL,
-    unit_price NUMERIC(10,2) NOT NULL,
-    discount_amount NUMERIC(10,2) DEFAULT 0,
-    total_amount NUMERIC(10,2) NOT NULL,
-    cost_amount NUMERIC(10,2) NOT NULL,
-    profit_amount NUMERIC(10,2) GENERATED ALWAYS AS (total_amount - cost_amount) STORED
-);
+-- 事务事实表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_transaction') THEN
+        CREATE TABLE fact_sales_transaction (
+            sale_id BIGSERIAL PRIMARY KEY,
+            transaction_time TIMESTAMPTZ NOT NULL,
+            date_id INT NOT NULL,
+            product_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            store_id INT NOT NULL,
+            salesperson_id INT,
+            quantity INT NOT NULL,
+            unit_price NUMERIC(10,2) NOT NULL,
+            discount_amount NUMERIC(10,2) DEFAULT 0,
+            total_amount NUMERIC(10,2) NOT NULL,
+            cost_amount NUMERIC(10,2) NOT NULL,
+            profit_amount NUMERIC(10,2) GENERATED ALWAYS AS (total_amount - cost_amount) STORED
+        );
+        RAISE NOTICE '表 fact_sales_transaction 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_sales_transaction 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_sales_transaction 失败: %', SQLERRM;
+END $$;
 
--- 分区策略（按日期）
-CREATE TABLE fact_sales_transaction (
-    sale_id BIGSERIAL,
-    transaction_time TIMESTAMPTZ NOT NULL,
-    date_id INT NOT NULL,
-    -- ... 其他列
-    PRIMARY KEY (sale_id, date_id)
-) PARTITION BY RANGE (date_id);
+-- 分区策略（按日期，带错误处理）
+-- 注意：需要先删除原表才能改为分区表，这里提供分区表创建示例
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_transaction_partitioned') THEN
+        CREATE TABLE fact_sales_transaction_partitioned (
+            sale_id BIGSERIAL,
+            transaction_time TIMESTAMPTZ NOT NULL,
+            date_id INT NOT NULL,
+            product_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            store_id INT NOT NULL,
+            quantity INT NOT NULL,
+            total_amount NUMERIC(10,2) NOT NULL,
+            PRIMARY KEY (sale_id, date_id)
+        ) PARTITION BY RANGE (date_id);
+        RAISE NOTICE '分区表 fact_sales_transaction_partitioned 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_sales_transaction_partitioned 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建分区表失败: %', SQLERRM;
+END $$;
 
--- 创建月度分区
-CREATE TABLE fact_sales_transaction_202401 PARTITION OF fact_sales_transaction
-    FOR VALUES FROM (20240101) TO (20240201);
-CREATE TABLE fact_sales_transaction_202402 PARTITION OF fact_sales_transaction
-    FOR VALUES FROM (20240201) TO (20240301);
+-- 创建月度分区（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_transaction_partitioned') THEN
+        CREATE TABLE IF NOT EXISTS fact_sales_transaction_202401 PARTITION OF fact_sales_transaction_partitioned
+            FOR VALUES FROM (20240101) TO (20240201);
+        CREATE TABLE IF NOT EXISTS fact_sales_transaction_202402 PARTITION OF fact_sales_transaction_partitioned
+            FOR VALUES FROM (20240201) TO (20240301);
+        RAISE NOTICE '分区创建成功';
+    ELSE
+        RAISE WARNING '请先创建 fact_sales_transaction_partitioned 分区表';
+    END IF;
+EXCEPTION
+    WHEN duplicate_table THEN
+        RAISE NOTICE '分区已存在，跳过创建';
+    WHEN OTHERS THEN
+        RAISE WARNING '创建分区失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -364,20 +537,32 @@ CREATE TABLE fact_sales_transaction_202402 PARTITION OF fact_sales_transaction
 **示例**:
 
 ```sql
-CREATE TABLE fact_account_balance (
-    snapshot_id BIGSERIAL PRIMARY KEY,
-    snapshot_date DATE NOT NULL,
-    date_id INT NOT NULL,
-    account_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    account_type VARCHAR(50),
-    opening_balance NUMERIC(15,2) NOT NULL,
-    closing_balance NUMERIC(15,2) NOT NULL,
-    transaction_count INT DEFAULT 0,
-    deposit_amount NUMERIC(15,2) DEFAULT 0,
-    withdrawal_amount NUMERIC(15,2) DEFAULT 0,
-    UNIQUE (snapshot_date, account_id)
-);
+-- 周期快照事实表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_account_balance') THEN
+        CREATE TABLE fact_account_balance (
+            snapshot_id BIGSERIAL PRIMARY KEY,
+            snapshot_date DATE NOT NULL,
+            date_id INT NOT NULL,
+            account_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            account_type VARCHAR(50),
+            opening_balance NUMERIC(15,2) NOT NULL,
+            closing_balance NUMERIC(15,2) NOT NULL,
+            transaction_count INT DEFAULT 0,
+            deposit_amount NUMERIC(15,2) DEFAULT 0,
+            withdrawal_amount NUMERIC(15,2) DEFAULT 0,
+            UNIQUE (snapshot_date, account_id)
+        );
+        RAISE NOTICE '表 fact_account_balance 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_account_balance 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_account_balance 失败: %', SQLERRM;
+END $$;
 
 -- 每日快照
 INSERT INTO fact_account_balance (
@@ -412,53 +597,65 @@ WHERE snapshot_date = CURRENT_DATE - INTERVAL '1 day';
 **示例**:
 
 ```sql
-CREATE TABLE fact_order_fulfillment (
-    order_id BIGINT PRIMARY KEY,
-    order_date DATE NOT NULL,
-    order_date_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    product_id INT NOT NULL,
-    order_quantity INT NOT NULL,
+-- 累积快照事实表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_order_fulfillment') THEN
+        CREATE TABLE fact_order_fulfillment (
+            order_id BIGINT PRIMARY KEY,
+            order_date DATE NOT NULL,
+            order_date_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            product_id INT NOT NULL,
+            order_quantity INT NOT NULL,
 
-    -- 订单生命周期时间点
-    order_placed_date DATE,
-    order_placed_date_id INT,
-    order_processed_date DATE,
-    order_processed_date_id INT,
-    order_shipped_date DATE,
-    order_shipped_date_id INT,
-    order_delivered_date DATE,
-    order_delivered_date_id INT,
-    order_cancelled_date DATE,
-    order_cancelled_date_id INT,
+            -- 订单生命周期时间点
+            order_placed_date DATE,
+            order_placed_date_id INT,
+            order_processed_date DATE,
+            order_processed_date_id INT,
+            order_shipped_date DATE,
+            order_shipped_date_id INT,
+            order_delivered_date DATE,
+            order_delivered_date_id INT,
+            order_cancelled_date DATE,
+            order_cancelled_date_id INT,
 
-    -- 各阶段度量
-    order_amount NUMERIC(10,2),
-    shipping_cost NUMERIC(10,2),
-    total_amount NUMERIC(10,2),
+            -- 各阶段度量
+            order_amount NUMERIC(10,2),
+            shipping_cost NUMERIC(10,2),
+            total_amount NUMERIC(10,2),
 
-    -- 计算字段
-    days_to_process INT GENERATED ALWAYS AS (
-        CASE WHEN order_processed_date IS NOT NULL
-        THEN order_processed_date - order_placed_date
-        ELSE NULL END
-    ) STORED,
-    days_to_ship INT GENERATED ALWAYS AS (
-        CASE WHEN order_shipped_date IS NOT NULL
-        THEN order_shipped_date - order_processed_date
-        ELSE NULL END
-    ) STORED,
-    days_to_deliver INT GENERATED ALWAYS AS (
-        CASE WHEN order_delivered_date IS NOT NULL
-        THEN order_delivered_date - order_shipped_date
-        ELSE NULL END
-    ) STORED,
-    total_days INT GENERATED ALWAYS AS (
-        CASE WHEN order_delivered_date IS NOT NULL
-        THEN order_delivered_date - order_placed_date
-        ELSE NULL END
-    ) STORED
-);
+            -- 计算字段
+            days_to_process INT GENERATED ALWAYS AS (
+                CASE WHEN order_processed_date IS NOT NULL
+                THEN order_processed_date - order_placed_date
+                ELSE NULL END
+            ) STORED,
+            days_to_ship INT GENERATED ALWAYS AS (
+                CASE WHEN order_shipped_date IS NOT NULL
+                THEN order_shipped_date - order_processed_date
+                ELSE NULL END
+            ) STORED,
+            days_to_deliver INT GENERATED ALWAYS AS (
+                CASE WHEN order_delivered_date IS NOT NULL
+                THEN order_delivered_date - order_shipped_date
+                ELSE NULL END
+            ) STORED,
+            total_days INT GENERATED ALWAYS AS (
+                CASE WHEN order_delivered_date IS NOT NULL
+                THEN order_delivered_date - order_placed_date
+                ELSE NULL END
+            ) STORED
+        );
+        RAISE NOTICE '表 fact_order_fulfillment 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_order_fulfillment 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_order_fulfillment 失败: %', SQLERRM;
+END $$;
 
 -- 更新订单状态
 UPDATE fact_order_fulfillment
@@ -484,16 +681,28 @@ WHERE order_id = 12345
 **示例**:
 
 ```sql
-CREATE TABLE dim_customer_type1 (
-    customer_id INT PRIMARY KEY,
-    customer_code VARCHAR(50) UNIQUE NOT NULL,
-    customer_name VARCHAR(200) NOT NULL,
-    city VARCHAR(100),
-    state VARCHAR(50),
-    country VARCHAR(50),
-    customer_segment VARCHAR(50),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- SCD Type 1维度表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_customer_type1') THEN
+        CREATE TABLE dim_customer_type1 (
+            customer_id INT PRIMARY KEY,
+            customer_code VARCHAR(50) UNIQUE NOT NULL,
+            customer_name VARCHAR(200) NOT NULL,
+            city VARCHAR(100),
+            state VARCHAR(50),
+            country VARCHAR(50),
+            customer_segment VARCHAR(50),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        RAISE NOTICE '表 dim_customer_type1 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_customer_type1 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_customer_type1 失败: %', SQLERRM;
+END $$;
 
 -- 更新客户信息（覆盖历史）
 UPDATE dim_customer_type1
@@ -515,24 +724,43 @@ WHERE customer_id = 12345;
 **示例**:
 
 ```sql
-CREATE TABLE dim_customer_type2 (
-    customer_sk SERIAL PRIMARY KEY,  -- 代理键
-    customer_id INT NOT NULL,         -- 业务键
-    customer_code VARCHAR(50) NOT NULL,
-    customer_name VARCHAR(200) NOT NULL,
-    city VARCHAR(100),
-    state VARCHAR(50),
-    country VARCHAR(50),
-    customer_segment VARCHAR(50),
-    effective_date DATE NOT NULL,
-    expiry_date DATE,
-    is_current BOOLEAN DEFAULT TRUE,
-    UNIQUE (customer_id, effective_date)
-);
+-- SCD Type 2维度表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_customer_type2') THEN
+        CREATE TABLE dim_customer_type2 (
+            customer_sk SERIAL PRIMARY KEY,  -- 代理键
+            customer_id INT NOT NULL,         -- 业务键
+            customer_code VARCHAR(50) NOT NULL,
+            customer_name VARCHAR(200) NOT NULL,
+            city VARCHAR(100),
+            state VARCHAR(50),
+            country VARCHAR(50),
+            customer_segment VARCHAR(50),
+            effective_date DATE NOT NULL,
+            expiry_date DATE,
+            is_current BOOLEAN DEFAULT TRUE,
+            UNIQUE (customer_id, effective_date)
+        );
+        RAISE NOTICE '表 dim_customer_type2 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_customer_type2 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_customer_type2 失败: %', SQLERRM;
+END $$;
 
--- 创建索引
-CREATE INDEX idx_customer_type2_id ON dim_customer_type2(customer_id);
-CREATE INDEX idx_customer_type2_current ON dim_customer_type2(is_current) WHERE is_current = TRUE;
+-- 创建索引（带错误处理）
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_customer_type2_id ON dim_customer_type2(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_customer_type2_current ON dim_customer_type2(is_current) WHERE is_current = TRUE;
+    RAISE NOTICE '索引创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建索引失败: %', SQLERRM;
+END $$;
 
 -- 插入新客户
 INSERT INTO dim_customer_type2 (
@@ -591,17 +819,29 @@ ORDER BY effective_date DESC;
 **示例**:
 
 ```sql
-CREATE TABLE dim_customer_type3 (
-    customer_id INT PRIMARY KEY,
-    customer_code VARCHAR(50) UNIQUE NOT NULL,
-    customer_name VARCHAR(200) NOT NULL,
-    city VARCHAR(100),
-    previous_city VARCHAR(100),  -- 前一个城市
-    city_changed_date DATE,      -- 变更日期
-    customer_segment VARCHAR(50),
-    previous_segment VARCHAR(50),
-    segment_changed_date DATE
-);
+-- SCD Type 3维度表（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_customer_type3') THEN
+        CREATE TABLE dim_customer_type3 (
+            customer_id INT PRIMARY KEY,
+            customer_code VARCHAR(50) UNIQUE NOT NULL,
+            customer_name VARCHAR(200) NOT NULL,
+            city VARCHAR(100),
+            previous_city VARCHAR(100),  -- 前一个城市
+            city_changed_date DATE,      -- 变更日期
+            customer_segment VARCHAR(50),
+            previous_segment VARCHAR(50),
+            segment_changed_date DATE
+        );
+        RAISE NOTICE '表 dim_customer_type3 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_customer_type3 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_customer_type3 失败: %', SQLERRM;
+END $$;
 
 -- 更新客户信息（保留前一个值）
 UPDATE dim_customer_type3
@@ -624,19 +864,32 @@ WHERE customer_id = 12345;
 **示例**:
 
 ```sql
--- 日期维度在订单事实表中扮演多个角色
-CREATE TABLE fact_orders (
-    order_id BIGSERIAL PRIMARY KEY,
-    order_date_id INT NOT NULL,      -- 订单日期
-    ship_date_id INT,                -- 发货日期
-    delivery_date_id INT,            -- 交付日期
-    customer_id INT NOT NULL,
-    product_id INT NOT NULL,
-    order_amount NUMERIC(10,2) NOT NULL,
-    CONSTRAINT fk_order_date FOREIGN KEY (order_date_id) REFERENCES dim_date(date_id),
-    CONSTRAINT fk_ship_date FOREIGN KEY (ship_date_id) REFERENCES dim_date(date_id),
-    CONSTRAINT fk_delivery_date FOREIGN KEY (delivery_date_id) REFERENCES dim_date(date_id)
-);
+-- 角色扮演维度示例（带错误处理，需要先创建dim_date表）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_orders') THEN
+        CREATE TABLE fact_orders (
+            order_id BIGSERIAL PRIMARY KEY,
+            order_date_id INT NOT NULL,      -- 订单日期
+            ship_date_id INT,                -- 发货日期
+            delivery_date_id INT,            -- 交付日期
+            customer_id INT NOT NULL,
+            product_id INT NOT NULL,
+            order_amount NUMERIC(10,2) NOT NULL,
+            CONSTRAINT fk_order_date FOREIGN KEY (order_date_id) REFERENCES dim_date(date_id),
+            CONSTRAINT fk_ship_date FOREIGN KEY (ship_date_id) REFERENCES dim_date(date_id),
+            CONSTRAINT fk_delivery_date FOREIGN KEY (delivery_date_id) REFERENCES dim_date(date_id)
+        );
+        RAISE NOTICE '表 fact_orders 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_orders 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 dim_date 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_orders 失败: %', SQLERRM;
+END $$;
 
 -- 查询时使用表别名区分角色
 SELECT
@@ -662,28 +915,52 @@ GROUP BY od.year, sd.month_name, dd.day_name;
 **示例**:
 
 ```sql
--- 杂项维度：组合多个标志位
-CREATE TABLE dim_junk (
-    junk_id SERIAL PRIMARY KEY,
-    payment_method VARCHAR(20),      -- 支付方式
-    delivery_method VARCHAR(20),     -- 配送方式
-    order_source VARCHAR(20),        -- 订单来源
-    is_gift BOOLEAN,                 -- 是否礼品
-    is_express BOOLEAN,              -- 是否加急
-    is_international BOOLEAN,        -- 是否国际
-    UNIQUE (payment_method, delivery_method, order_source, is_gift, is_express, is_international)
-);
+-- 杂项维度：组合多个标志位（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_junk') THEN
+        CREATE TABLE dim_junk (
+            junk_id SERIAL PRIMARY KEY,
+            payment_method VARCHAR(20),      -- 支付方式
+            delivery_method VARCHAR(20),     -- 配送方式
+            order_source VARCHAR(20),        -- 订单来源
+            is_gift BOOLEAN,                 -- 是否礼品
+            is_express BOOLEAN,              -- 是否加急
+            is_international BOOLEAN,        -- 是否国际
+            UNIQUE (payment_method, delivery_method, order_source, is_gift, is_express, is_international)
+        );
+        RAISE NOTICE '表 dim_junk 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_junk 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_junk 失败: %', SQLERRM;
+END $$;
 
--- 事实表引用杂项维度
-CREATE TABLE fact_orders (
-    order_id BIGSERIAL PRIMARY KEY,
-    date_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    product_id INT NOT NULL,
-    junk_id INT NOT NULL,  -- 引用杂项维度
-    order_amount NUMERIC(10,2) NOT NULL,
-    CONSTRAINT fk_order_junk FOREIGN KEY (junk_id) REFERENCES dim_junk(junk_id)
-);
+-- 事实表引用杂项维度（带错误处理，注意避免与上面的fact_orders冲突）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_orders_with_junk') THEN
+        CREATE TABLE fact_orders_with_junk (
+            order_id BIGSERIAL PRIMARY KEY,
+            date_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            product_id INT NOT NULL,
+            junk_id INT NOT NULL,  -- 引用杂项维度
+            order_amount NUMERIC(10,2) NOT NULL,
+            CONSTRAINT fk_order_junk FOREIGN KEY (junk_id) REFERENCES dim_junk(junk_id)
+        );
+        RAISE NOTICE '表 fact_orders_with_junk 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_orders_with_junk 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '请先创建 dim_junk 表';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_orders_with_junk 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -709,18 +986,44 @@ CREATE TABLE fact_orders (
 **示例**:
 
 ```sql
--- ✅ 正确：事务级粒度
-CREATE TABLE fact_sales (
-    transaction_id BIGSERIAL PRIMARY KEY,
-    transaction_time TIMESTAMPTZ NOT NULL,
-    -- ...
-);
+-- ✅ 正确：事务级粒度（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_transaction_fine') THEN
+        CREATE TABLE fact_sales_transaction_fine (
+            transaction_id BIGSERIAL PRIMARY KEY,
+            transaction_time TIMESTAMPTZ NOT NULL,
+            date_id INT NOT NULL,
+            product_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            quantity INT NOT NULL,
+            amount NUMERIC(10,2) NOT NULL
+        );
+        RAISE NOTICE '表 fact_sales_transaction_fine 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_sales_transaction_fine 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_sales_transaction_fine 失败: %', SQLERRM;
+END $$;
 
--- ❌ 错误：汇总级粒度（无法向下钻取）
-CREATE TABLE fact_sales_daily (
-    sale_date DATE PRIMARY KEY,
-    total_amount NUMERIC(10,2)  -- 已汇总，无法分析明细
-);
+-- ❌ 错误：汇总级粒度（无法向下钻取，带错误处理，示例表）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_daily_bad') THEN
+        CREATE TABLE fact_sales_daily_bad (
+            sale_date DATE PRIMARY KEY,
+            total_amount NUMERIC(10,2)  -- 已汇总，无法分析明细
+        );
+        RAISE NOTICE '表 fact_sales_daily_bad 创建成功（反模式示例）';
+    ELSE
+        RAISE NOTICE '表 fact_sales_daily_bad 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建示例表失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -732,21 +1035,43 @@ CREATE TABLE fact_sales_daily (
 **示例**:
 
 ```sql
--- ✅ 正确：星型模式（去范式化）
-CREATE TABLE dim_product (
-    product_id INT PRIMARY KEY,
-    product_name VARCHAR(200),
-    category_name VARCHAR(100),  -- 直接存储，不JOIN
-    brand_name VARCHAR(100)       -- 直接存储，不JOIN
-);
+-- ✅ 正确：星型模式（去范式化，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_product_star') THEN
+        CREATE TABLE dim_product_star (
+            product_id INT PRIMARY KEY,
+            product_name VARCHAR(200),
+            category_name VARCHAR(100),  -- 直接存储，不JOIN
+            brand_name VARCHAR(100)       -- 直接存储，不JOIN
+        );
+        RAISE NOTICE '表 dim_product_star 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_product_star 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_product_star 失败: %', SQLERRM;
+END $$;
 
--- ⚠️ 可选：雪花模式（规范化，节省存储）
-CREATE TABLE dim_product (
-    product_id INT PRIMARY KEY,
-    product_name VARCHAR(200),
-    category_id INT,  -- 需要JOIN
-    brand_id INT      -- 需要JOIN
-);
+-- ⚠️ 可选：雪花模式（规范化，节省存储，带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'dim_product_snowflake_example') THEN
+        CREATE TABLE dim_product_snowflake_example (
+            product_id INT PRIMARY KEY,
+            product_name VARCHAR(200),
+            category_id INT,  -- 需要JOIN
+            brand_id INT      -- 需要JOIN
+        );
+        RAISE NOTICE '表 dim_product_snowflake_example 创建成功';
+    ELSE
+        RAISE NOTICE '表 dim_product_snowflake_example 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 dim_product_snowflake_example 失败: %', SQLERRM;
+END $$;
 ```
 
 ---
@@ -763,23 +1088,45 @@ CREATE TABLE dim_product (
 **示例**:
 
 ```sql
--- ✅ 正确：事实表只存储度量
-CREATE TABLE fact_sales (
-    sale_id BIGSERIAL PRIMARY KEY,
-    date_id INT NOT NULL,
-    product_id INT NOT NULL,
-    customer_id INT NOT NULL,
-    quantity INT NOT NULL,        -- 可加性事实
-    amount NUMERIC(10,2) NOT NULL -- 可加性事实
-);
+-- ✅ 正确：事实表只存储度量（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_correct') THEN
+        CREATE TABLE fact_sales_correct (
+            sale_id BIGSERIAL PRIMARY KEY,
+            date_id INT NOT NULL,
+            product_id INT NOT NULL,
+            customer_id INT NOT NULL,
+            quantity INT NOT NULL,        -- 可加性事实
+            amount NUMERIC(10,2) NOT NULL -- 可加性事实
+        );
+        RAISE NOTICE '表 fact_sales_correct 创建成功';
+    ELSE
+        RAISE NOTICE '表 fact_sales_correct 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 fact_sales_correct 失败: %', SQLERRM;
+END $$;
 
--- ❌ 错误：事实表包含描述性属性
-CREATE TABLE fact_sales (
-    sale_id BIGSERIAL PRIMARY KEY,
-    product_name VARCHAR(200),    -- ❌ 应该在维度表
-    customer_name VARCHAR(200),   -- ❌ 应该在维度表
-    amount NUMERIC(10,2)
-);
+-- ❌ 错误：事实表包含描述性属性（带错误处理，反模式示例）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'fact_sales_bad') THEN
+        CREATE TABLE fact_sales_bad (
+            sale_id BIGSERIAL PRIMARY KEY,
+            product_name VARCHAR(200),    -- ❌ 应该在维度表
+            customer_name VARCHAR(200),   -- ❌ 应该在维度表
+            amount NUMERIC(10,2)
+        );
+        RAISE NOTICE '表 fact_sales_bad 创建成功（反模式示例）';
+    ELSE
+        RAISE NOTICE '表 fact_sales_bad 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建示例表失败: %', SQLERRM;
+END $$;
 ```
 
 ---

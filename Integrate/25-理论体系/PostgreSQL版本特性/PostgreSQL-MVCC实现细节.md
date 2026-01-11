@@ -138,9 +138,17 @@ struct HeapTupleFields
 **示例**：
 
 ```sql
+-- 数据准备：创建用户表
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 事务100插入一行
 BEGIN;  -- XID = 100
-INSERT INTO users (id, name) VALUES (1, 'Alice');
+INSERT INTO users (name) VALUES ('Alice');
 COMMIT;
 
 -- 元组头部：
@@ -182,14 +190,16 @@ bool HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot)
 **示例**：
 
 ```sql
+-- 数据准备（users表已创建）
+
 -- 事务100插入一行
 BEGIN;  -- XID = 100
-INSERT INTO users (id, name) VALUES (1, 'Alice');
+INSERT INTO users (name) VALUES ('Alice');
 COMMIT;
 
 -- 事务101删除该行
 BEGIN;  -- XID = 101
-DELETE FROM users WHERE id = 1;
+DELETE FROM users WHERE name = 'Alice';
 COMMIT;
 
 -- 元组头部：
@@ -238,14 +248,22 @@ typedef struct ItemPointerData
 **版本链示例**：
 
 ```sql
+-- 数据准备（users表已创建）
+
 -- 初始状态
-INSERT INTO users (id, name) VALUES (1, 'Alice');
--- ctid = (0, 1)
+INSERT INTO users (name) VALUES ('Alice');
+-- ctid = (0, 1)  -- 假设插入到页面0，位置1
+
+-- 查看元组信息
+SELECT ctid, xmin, xmax, * FROM users WHERE name = 'Alice';
 
 -- UPDATE操作
-UPDATE users SET name = 'Bob' WHERE id = 1;
+UPDATE users SET name = 'Bob' WHERE name = 'Alice';
 -- 旧元组：ctid = (0, 1) -> (0, 2)  -- 指向新元组
--- 新元组：ctid = (0, 2)
+-- 新元组：ctid = (0, 2)  -- 新元组位置
+
+-- 查看版本链
+SELECT ctid, xmin, xmax, * FROM users WHERE name = 'Bob';
 ```
 
 **版本链遍历**：

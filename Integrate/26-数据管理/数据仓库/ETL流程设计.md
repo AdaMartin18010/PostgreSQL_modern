@@ -59,23 +59,102 @@ ETL（Extract, Transform, Load）是数据仓库的核心流程：
 ### 2.1 全量提取
 
 ```sql
--- 全量提取
-INSERT INTO staging_area
-SELECT * FROM source_system.table_name;
+-- ETL提取阶段：准备源表和目标表
+
+-- 1. 创建源表（模拟源系统）
+CREATE TABLE IF NOT EXISTS source_system.table_name (
+    id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(200) NOT NULL,
+    email VARCHAR(200),
+    amount NUMERIC(12,2),
+    order_date DATE,
+    status VARCHAR(50),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. 创建暂存区（Staging Area）
+CREATE TABLE IF NOT EXISTS staging_area (
+    id INTEGER NOT NULL,
+    customer_name VARCHAR(200) NOT NULL,
+    email VARCHAR(200),
+    amount NUMERIC(12,2),
+    order_date DATE,
+    status VARCHAR(50),
+    updated_at TIMESTAMPTZ,
+    etl_batch_id VARCHAR(100),
+    etl_loaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. 插入源数据示例
+INSERT INTO source_system.table_name (customer_name, email, amount, order_date, status) VALUES
+    ('Alice Johnson', 'alice@example.com', 299.99, '2024-01-15', 'completed'),
+    ('Bob Smith', 'bob@example.com', 199.99, '2024-01-16', 'pending'),
+    ('Charlie Brown', 'charlie@example.com', 399.99, '2024-01-17', 'completed')
+ON CONFLICT DO NOTHING;
+
+-- 4. 全量提取
+INSERT INTO staging_area (id, customer_name, email, amount, order_date, status, updated_at, etl_batch_id)
+SELECT
+    id,
+    customer_name,
+    email,
+    amount,
+    order_date,
+    status,
+    updated_at,
+    'BATCH_' || TO_CHAR(NOW(), 'YYYYMMDDHH24MISS')
+FROM source_system.table_name;
 ```
 
 ### 2.2 增量提取
 
 ```sql
--- 增量提取（基于时间戳）
-INSERT INTO staging_area
-SELECT * FROM source_system.table_name
-WHERE updated_at > (SELECT MAX(updated_at) FROM staging_area);
+-- 1. 创建变更日志表
+CREATE TABLE IF NOT EXISTS source_system.change_log (
+    change_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(200) NOT NULL,
+    record_id INTEGER NOT NULL,
+    change_type VARCHAR(20) NOT NULL CHECK (change_type IN ('INSERT', 'UPDATE', 'DELETE')),
+    old_data JSONB,
+    new_data JSONB,
+    changed_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- 增量提取（基于变更日志）
-INSERT INTO staging_area
-SELECT * FROM source_system.change_log
-WHERE change_type IN ('INSERT', 'UPDATE');
+-- 2. 增量提取（基于时间戳）
+INSERT INTO staging_area (id, customer_name, email, amount, order_date, status, updated_at, etl_batch_id)
+SELECT
+    id,
+    customer_name,
+    email,
+    amount,
+    order_date,
+    status,
+    updated_at,
+    'INCREMENTAL_' || TO_CHAR(NOW(), 'YYYYMMDDHH24MISS')
+FROM source_system.table_name
+WHERE updated_at > COALESCE(
+    (SELECT MAX(updated_at) FROM staging_area WHERE etl_batch_id LIKE 'INCREMENTAL_%'),
+    '1970-01-01'::TIMESTAMPTZ
+);
+
+-- 3. 增量提取（基于变更日志）
+INSERT INTO staging_area (id, customer_name, email, amount, order_date, status, updated_at, etl_batch_id)
+SELECT
+    (new_data->>'id')::INTEGER,
+    new_data->>'customer_name',
+    new_data->>'email',
+    (new_data->>'amount')::NUMERIC(12,2),
+    (new_data->>'order_date')::DATE,
+    new_data->>'status',
+    changed_at,
+    'CDC_' || TO_CHAR(NOW(), 'YYYYMMDDHH24MISS')
+FROM source_system.change_log
+WHERE table_name = 'table_name'
+  AND change_type IN ('INSERT', 'UPDATE')
+  AND changed_at > COALESCE(
+      (SELECT MAX(updated_at) FROM staging_area WHERE etl_batch_id LIKE 'CDC_%'),
+      '1970-01-01'::TIMESTAMPTZ
+  );
 ```
 
 ### 2.3 提取策略
@@ -91,40 +170,127 @@ WHERE change_type IN ('INSERT', 'UPDATE');
 ### 3.1 数据清洗
 
 ```sql
--- 清洗NULL值
-UPDATE staging_area
-SET column_name = COALESCE(column_name, 'Unknown')
-WHERE column_name IS NULL;
+-- ETL转换阶段：数据清洗
 
--- 清洗重复数据
+-- 1. 添加业务键列（用于去重）
+ALTER TABLE staging_area
+ADD COLUMN IF NOT EXISTS business_key VARCHAR(200) GENERATED ALWAYS AS (customer_name || '|' || COALESCE(email, '')) STORED;
+
+-- 2. 清洗NULL值
+UPDATE staging_area
+SET email = COALESCE(email, 'unknown@example.com')
+WHERE email IS NULL;
+
+UPDATE staging_area
+SET status = COALESCE(status, 'unknown')
+WHERE status IS NULL;
+
+-- 3. 清洗重复数据（保留最新的记录）
 DELETE FROM staging_area a
 USING staging_area b
 WHERE a.id < b.id
-  AND a.business_key = b.business_key;
+  AND a.business_key = b.business_key
+  AND a.etl_batch_id = b.etl_batch_id;
+
+-- 4. 数据标准化（统一格式）
+UPDATE staging_area
+SET customer_name = INITCAP(LOWER(TRIM(customer_name))),
+    email = LOWER(TRIM(email));
+
+-- 5. 数据验证和过滤无效数据
+DELETE FROM staging_area
+WHERE customer_name IS NULL
+   OR LENGTH(customer_name) < 2
+   OR amount < 0;
 ```
 
 ### 3.2 数据转换
 
 ```sql
--- 数据类型转换
-ALTER TABLE staging_area
-ALTER COLUMN amount TYPE NUMERIC(12,2)
-USING amount::NUMERIC(12,2);
+-- ETL转换阶段：数据转换
 
--- 数据格式转换
+-- 1. 数据类型转换（如果列类型不匹配）
+-- 注意：如果staging_area的amount已经是NUMERIC类型，此步骤可以跳过
+-- ALTER TABLE staging_area
+-- ALTER COLUMN amount TYPE NUMERIC(12,2)
+-- USING amount::NUMERIC(12,2);
+
+-- 2. 数据格式转换和计算字段
+ALTER TABLE staging_area
+ADD COLUMN IF NOT EXISTS year_month VARCHAR(7) GENERATED ALWAYS AS (TO_CHAR(order_date, 'YYYY-MM')) STORED,
+ADD COLUMN IF NOT EXISTS is_high_value BOOLEAN GENERATED ALWAYS AS (amount > 300) STORED;
+
+-- 3. 日期格式标准化
 UPDATE staging_area
-SET date_column = TO_DATE(date_string, 'YYYY-MM-DD');
+SET order_date = COALESCE(order_date, CURRENT_DATE)
+WHERE order_date IS NULL;
+
+-- 4. 数据聚合和汇总（创建汇总表）
+CREATE TABLE IF NOT EXISTS staging_summary (
+    batch_id VARCHAR(100) PRIMARY KEY,
+    record_count INTEGER NOT NULL,
+    total_amount NUMERIC(15,2) NOT NULL,
+    avg_amount NUMERIC(12,2) NOT NULL,
+    min_date DATE,
+    max_date DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO staging_summary (batch_id, record_count, total_amount, avg_amount, min_date, max_date)
+SELECT
+    etl_batch_id,
+    COUNT(*) AS record_count,
+    SUM(amount) AS total_amount,
+    AVG(amount) AS avg_amount,
+    MIN(order_date) AS min_date,
+    MAX(order_date) AS max_date
+FROM staging_area
+WHERE etl_loaded_at > NOW() - INTERVAL '1 hour'
+GROUP BY etl_batch_id
+ON CONFLICT (batch_id) DO UPDATE
+SET record_count = EXCLUDED.record_count,
+    total_amount = EXCLUDED.total_amount,
+    avg_amount = EXCLUDED.avg_amount,
+    min_date = EXCLUDED.min_date,
+    max_date = EXCLUDED.max_date;
 ```
 
 ### 3.3 数据验证
 
 ```sql
--- 验证数据质量
+-- ETL转换阶段：数据验证
+
+-- 1. 验证数据质量（全面的质量检查）
 SELECT
+    etl_batch_id,
     COUNT(*) AS total_rows,
-    COUNT(*) FILTER (WHERE column_name IS NOT NULL) AS non_null_rows,
-    COUNT(DISTINCT business_key) AS unique_keys
-FROM staging_area;
+    COUNT(*) FILTER (WHERE customer_name IS NOT NULL) AS non_null_names,
+    COUNT(*) FILTER (WHERE email IS NOT NULL) AS non_null_emails,
+    COUNT(*) FILTER (WHERE amount IS NOT NULL) AS non_null_amounts,
+    COUNT(*) FILTER (WHERE amount > 0) AS valid_amounts,
+    COUNT(DISTINCT business_key) AS unique_keys,
+    COUNT(*) - COUNT(DISTINCT business_key) AS duplicate_count,
+    SUM(amount) AS total_amount,
+    AVG(amount) AS avg_amount,
+    MIN(order_date) AS earliest_date,
+    MAX(order_date) AS latest_date
+FROM staging_area
+GROUP BY etl_batch_id;
+
+-- 2. 数据质量报告视图
+CREATE OR REPLACE VIEW v_etl_quality_report AS
+SELECT
+    etl_batch_id,
+    COUNT(*) AS total_rows,
+    COUNT(*) FILTER (WHERE customer_name IS NULL OR email IS NULL) AS invalid_rows,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE customer_name IS NOT NULL AND email IS NOT NULL AND amount > 0) / NULLIF(COUNT(*), 0), 2) AS quality_score,
+    COUNT(DISTINCT business_key) AS unique_records,
+    COUNT(*) - COUNT(DISTINCT business_key) AS duplicates
+FROM staging_area
+GROUP BY etl_batch_id;
+
+-- 3. 查询质量报告
+SELECT * FROM v_etl_quality_report ORDER BY etl_batch_id DESC;
 ```
 
 ---
@@ -134,20 +300,66 @@ FROM staging_area;
 ### 4.1 批量加载
 
 ```sql
--- 批量插入
-INSERT INTO fact_sales
-SELECT * FROM staging_area;
+-- ETL加载阶段：批量加载
 
--- 使用COPY（更快）
-COPY fact_sales FROM '/path/to/file.csv' WITH CSV HEADER;
+-- 1. 确保目标表存在
+CREATE TABLE IF NOT EXISTS fact_sales (
+    sale_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(200) NOT NULL,
+    email VARCHAR(200),
+    amount NUMERIC(12,2) NOT NULL,
+    order_date DATE NOT NULL,
+    status VARCHAR(50),
+    loaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. 批量插入（从暂存区加载）
+INSERT INTO fact_sales (customer_name, email, amount, order_date, status)
+SELECT DISTINCT
+    customer_name,
+    email,
+    amount,
+    order_date,
+    status
+FROM staging_area
+WHERE etl_batch_id = (SELECT MAX(etl_batch_id) FROM staging_area)
+ON CONFLICT DO NOTHING;
+
+-- 3. 使用COPY加载（从CSV文件，性能更好）
+-- COPY fact_sales (customer_name, email, amount, order_date, status)
+-- FROM '/path/to/file.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+
+-- 4. 验证加载结果
+SELECT
+    COUNT(*) AS loaded_rows,
+    SUM(amount) AS total_amount,
+    MIN(order_date) AS earliest_date,
+    MAX(order_date) AS latest_date
+FROM fact_sales
+WHERE loaded_at > NOW() - INTERVAL '1 hour';
 ```
 
 ### 4.2 增量加载
 
 ```sql
--- 增量插入
-INSERT INTO fact_sales
-SELECT * FROM staging_area s
+-- ETL加载阶段：增量加载
+
+-- 1. 增量插入（使用MERGE或UPSERT模式）
+INSERT INTO fact_sales (customer_name, email, amount, order_date, status)
+SELECT
+    s.customer_name,
+    s.email,
+    s.amount,
+    s.order_date,
+    s.status
+FROM staging_area s
+WHERE s.etl_batch_id LIKE 'INCREMENTAL_%'
+  AND NOT EXISTS (
+      SELECT 1 FROM fact_sales f
+      WHERE f.customer_name = s.customer_name
+        AND f.email = s.email
+        AND f.order_date = s.order_date
+  )
 WHERE NOT EXISTS (
     SELECT 1 FROM fact_sales f
     WHERE f.business_key = s.business_key

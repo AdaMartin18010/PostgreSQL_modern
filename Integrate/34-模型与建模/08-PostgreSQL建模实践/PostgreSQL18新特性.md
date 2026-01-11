@@ -742,23 +742,52 @@ PostgreSQL 18显著提升了行级安全（RLS）的性能，特别适用于多�
 **多租户SaaS应用**:
 
 ```sql
--- PostgreSQL 18：RLS性能优化示例
-CREATE TABLE tenant_data (
-    id SERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL,
-    data TEXT
-);
+-- PostgreSQL 18：RLS性能优化示例（带错误处理）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'tenant_data') THEN
+        CREATE TABLE tenant_data (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL,
+            data TEXT
+        );
+        RAISE NOTICE '表 tenant_data 创建成功';
+    ELSE
+        RAISE NOTICE '表 tenant_data 已存在，跳过创建';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建表 tenant_data 失败: %', SQLERRM;
+END $$;
 
--- 创建RLS策略（PostgreSQL 18性能优化）
-CREATE POLICY tenant_isolation_policy ON tenant_data
-FOR ALL
-TO PUBLIC
-USING (
-    tenant_id = current_setting('app.current_tenant_id', true)::INTEGER
-)
-WITH CHECK (
-    tenant_id = current_setting('app.current_tenant_id', true)::INTEGER
-);
+-- 创建RLS策略（PostgreSQL 18性能优化，带错误处理）
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS tenant_isolation_policy ON tenant_data;
+    CREATE POLICY tenant_isolation_policy ON tenant_data
+    FOR ALL
+    TO PUBLIC
+    USING (
+        tenant_id = current_setting('app.current_tenant_id', true)::INTEGER
+    )
+    WITH CHECK (
+        tenant_id = current_setting('app.current_tenant_id', true)::INTEGER
+    );
+    RAISE NOTICE 'RLS策略创建成功';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '创建RLS策略失败: %', SQLERRM;
+END $$;
+
+-- 启用RLS（带错误处理）
+DO $$
+BEGIN
+    ALTER TABLE tenant_data ENABLE ROW LEVEL SECURITY;
+    RAISE NOTICE 'RLS已启用';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '启用RLS失败: %', SQLERRM;
+END $$;
 
 -- PostgreSQL 18自动优化RLS查询计划
 EXPLAIN (ANALYZE, BUFFERS)
