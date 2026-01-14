@@ -671,7 +671,8 @@ JOIN party_role_type prt ON pr.role_type = prt.role_type
 WHERE prt.role_type IN ('CUSTOMER', 'BILL_TO_CUSTOMER', 'SHIP_TO_CUSTOMER', 'END_USER_CUSTOMER')
   AND (pr.valid_to IS NULL OR pr.valid_to > NOW());
 
--- 查询：获取某组织的所有员工
+-- 查询：获取某组织的所有员工（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT p.party_id, p.name, pr.valid_from, pr.valid_to
 FROM party p
 JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type

@@ -522,7 +522,12 @@ CREATE TABLE person PARTITION OF party FOR VALUES IN ('P');
 CREATE TABLE organization PARTITION OF party FOR VALUES IN ('O');
 
 -- 查询优化：使用ONLY关键字
+-- 查询Party继承表（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM ONLY party WHERE party_type='P'; -- 仅查父表
+
+-- 查询Person继承表（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM person; -- 查询所有Person（包括继承）
 ```
 

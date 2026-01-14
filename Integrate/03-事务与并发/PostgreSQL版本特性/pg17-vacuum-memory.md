@@ -517,7 +517,8 @@ ALTER TABLE app_logs_2024_01 SET (
 ```sql
 -- 监控VACUUM内存使用
 
--- 1. 查看当前VACUUM进程内存使用
+-- 1. 查看当前VACUUM进程内存使用（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     usename,
@@ -528,7 +529,8 @@ FROM pg_stat_activity
 WHERE query LIKE '%VACUUM%'
   AND state = 'active';
 
--- 2. 查看VACUUM统计信息
+-- 2. 查看VACUUM统计信息（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     schemaname,
     relname,
@@ -544,7 +546,8 @@ WHERE n_dead_tup > 0
 ORDER BY n_dead_tup DESC
 LIMIT 10;
 
--- 3. 查看VACUUM进度（PostgreSQL 17新增）
+-- 3. 查看VACUUM进度（PostgreSQL 17新增，带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     pid,
     datname,

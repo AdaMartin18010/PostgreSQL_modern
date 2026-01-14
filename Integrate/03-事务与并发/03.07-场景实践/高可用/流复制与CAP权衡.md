@@ -345,7 +345,12 @@ DECLARE
     v_slot_exists BOOLEAN;
 BEGIN
     BEGIN
-        -- 检查复制槽是否已存在
+        -- 检查复制槽是否已存在（带性能测试说明）
+        -- 注意：这是检查性查询，通常不需要性能测试
+        -- 如果需要性能测试，可以使用：
+        -- EXPLAIN (ANALYZE, BUFFERS, TIMING)
+        -- SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = v_slot_name);
+        
         SELECT EXISTS (
             SELECT 1 FROM pg_replication_slots WHERE slot_name = v_slot_name
         ) INTO v_slot_exists;

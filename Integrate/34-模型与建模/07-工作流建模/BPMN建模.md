@@ -841,6 +841,8 @@ CREATE TABLE bpmn_task (...);
 ```sql
 -- 使用行级锁
 BEGIN;
+-- 查询BPMN任务（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM bpmn_task
 WHERE task_id = 'TASK_123' AND status = 'pending'
 FOR UPDATE;
@@ -933,6 +935,8 @@ CREATE TABLE bpmn_process_definition (
 );
 
 -- 查询最新版本
+-- 查询BPMN流程定义（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM bpmn_process_definition
 WHERE process_key = 'order_approval'
   AND is_active = TRUE

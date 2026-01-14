@@ -924,18 +924,26 @@ WHERE (state->>'current') IN ('created', 'paid');
 
 ```sql
 -- ✅ 优化：使用索引的查询
+-- 查询订单状态（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE state->>'current' = 'pending';  -- 使用索引
 
 -- ❌ 未优化：使用函数查询
+-- 查询订单状态（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE jsonb_extract_path_text(state, 'current') = 'pending';  -- 不使用索引
 
 -- ✅ 优化：使用GIN索引的包含查询
+-- 查询订单状态（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE state @> '{"current": "pending"}';  -- 使用GIN索引
 
 -- ✅ 优化：使用表达式索引
+-- 查询订单状态（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE (state->>'current') = 'pending'  -- 使用表达式索引
 ORDER BY created_at DESC;

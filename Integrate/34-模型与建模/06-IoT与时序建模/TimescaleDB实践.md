@@ -323,6 +323,10 @@ FROM sensor_readings
 GROUP BY bucket, device_id;
 
 -- 查询实时聚合（自动合并物化数据和实时数据）
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+-- 查询连续聚合视图（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings_hourly_realtime
 WHERE bucket >= NOW() - INTERVAL '24 hours';
 ```
@@ -448,11 +452,15 @@ WHERE hypertable_name = 'sensor_readings';
 
 ```sql
 -- ✅ 正确：使用时间范围查询（自动分区剪枝）
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings
 WHERE time >= NOW() - INTERVAL '24 hours'
   AND device_id = 123;
 
 -- ❌ 错误：使用函数（分区剪枝失效）
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings
 WHERE DATE_TRUNC('day', time) = CURRENT_DATE
   AND device_id = 123;
@@ -666,6 +674,10 @@ FROM sensor_readings
 GROUP BY bucket, device_id;
 
 -- 查询时自动使用物化数据（历史）+ 实时数据（最新）
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
+-- 查询连续聚合视图（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings_hourly_realtime
 WHERE bucket >= NOW() - INTERVAL '7 days'
   AND device_id = 123
@@ -729,6 +741,8 @@ GROUP BY device_id;
 
 -- 2. 检查分区剪枝是否生效
 EXPLAIN (ANALYZE)
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings
 WHERE time >= NOW() - INTERVAL '1 day'
   AND device_id = 123;
@@ -1112,22 +1126,30 @@ ON sensor_readings((time::DATE), device_id);
 
 ```sql
 -- ✅ 正确：使用时间范围查询（自动分区剪枝）
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings
 WHERE time >= NOW() - INTERVAL '24 hours'
   AND device_id = 123;
 
 -- ❌ 错误：使用函数（分区剪枝失效）
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings
 WHERE DATE_TRUNC('day', time) = CURRENT_DATE
   AND device_id = 123;
 
 -- ✅ 正确：使用LIMIT限制结果集
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings
 WHERE device_id = 123
 ORDER BY time DESC
 LIMIT 1000;
 
 -- ✅ 正确：使用连续聚合查询历史数据
+-- 查询传感器数据（带性能测试）
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM sensor_readings_hourly
 WHERE bucket >= NOW() - INTERVAL '7 days'
   AND device_id = 123;

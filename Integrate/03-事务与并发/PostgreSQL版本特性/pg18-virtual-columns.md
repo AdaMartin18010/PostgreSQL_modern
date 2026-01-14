@@ -719,7 +719,10 @@ CREATE TABLE orders_new (
     total_amount DECIMAL GENERATED ALWAYS AS (amount * (1 + tax_rate)) VIRTUAL
 );
 
--- 3. 迁移数据
+-- 3. 迁移数据（带性能测试说明）
+-- 注意：数据迁移查询的性能测试通常在迁移前进行
+-- EXPLAIN (ANALYZE, BUFFERS, TIMING)
+-- SELECT id, amount, tax_rate FROM orders;
 INSERT INTO orders_new SELECT id, amount, tax_rate FROM orders;
 
 -- 4. 创建索引（如果需要）

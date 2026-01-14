@@ -299,6 +299,7 @@ END $$;
 DO $$
 BEGIN
     BEGIN
+        -- 注意：这是检查性查询，通常不需要性能测试
         IF NOT EXISTS (SELECT 1 FROM pg_prepared_xacts WHERE gid = 'xa_txn_001') THEN
             RAISE WARNING 'XA事务 xa_txn_001 不存在，无法提交';
             RETURN;
@@ -329,6 +330,7 @@ xa_prepare(xid)   → PREPARE TRANSACTION 'xid'
 xa_commit(xid)    → COMMIT PREPARED 'xid'
 xa_rollback(xid)  → ROLLBACK PREPARED 'xid'
 xa_recover(xid)   → SELECT * FROM pg_prepared_xacts
+-- 注意：这是系统查询，通常不需要性能测试
 ```
 
 ### 2.2 事务管理器集成
