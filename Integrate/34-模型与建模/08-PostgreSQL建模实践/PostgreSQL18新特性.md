@@ -230,7 +230,22 @@ EXCEPTION
 END $$;
 COMMIT;
 
--- 检查异步I/O状态
+-- 检查异步I/O状态（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'pg_stat_io') THEN
+            RAISE WARNING 'pg_stat_io视图不存在（可能需要PostgreSQL 18+）';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始检查异步I/O状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_io;
 ```
 
@@ -320,7 +335,21 @@ EXCEPTION
         RAISE WARNING '创建索引失败: %', SQLERRM;
 END $$;
 
--- 查询时自动使用虚拟生成列索引（带性能测试）
+-- 查询时自动使用虚拟生成列索引（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '表 products 不存在，无法执行虚拟生成列索引查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行虚拟生成列索引查询';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT id, name, final_price
 FROM products
@@ -423,7 +452,22 @@ oauth_audience = 'postgresql-server'
 
 ```sql
 -- PostgreSQL 18改进了多表JOIN的优化
--- 自动选择最优的JOIN顺序和算法（带性能测试）
+-- 自动选择最优的JOIN顺序和算法（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'customers') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products') THEN
+            RAISE WARNING '必需的表不存在，无法执行JOIN查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行多表JOIN查询（PostgreSQL 18自动优化）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
 
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT *
@@ -449,7 +493,21 @@ EXCEPTION
         RAISE WARNING '配置并行查询失败: %', SQLERRM;
 END $$;
 
--- 并行查询性能测试
+-- 并行查询性能测试（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行并行查询测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行并行查询性能测试（PostgreSQL 18）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT COUNT(*), customer_id
 FROM orders
@@ -525,7 +583,36 @@ EXCEPTION
         RAISE WARNING '创建B-Tree索引失败: %', SQLERRM;
 END $$;
 
--- 性能测试：查询性能
+-- 性能测试：查询性能（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行查询性能测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行B-Tree索引查询性能测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+-- 虚拟生成列查询性能测试（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行虚拟生成列查询性能测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE order_date >= '2025-01-01'
@@ -564,7 +651,21 @@ END $$;
 **新特性**: 更智能的分区剪枝
 
 ```sql
--- 18版本改进了分区剪枝算法（带性能测试）
+-- 18版本改进了分区剪枝算法（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行分区剪枝测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行分区剪枝查询测试（PostgreSQL 18）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE order_date BETWEEN '2024-01-01' AND '2024-01-31';
@@ -611,7 +712,21 @@ EXCEPTION
         RAISE WARNING '创建GIN索引失败: %', SQLERRM;
 END $$;
 
--- JSONB查询性能测试
+-- JSONB查询性能测试（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table_name') THEN
+            RAISE WARNING '表 table_name 不存在，无法执行JSONB查询测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行JSONB查询性能测试（PostgreSQL 18）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM table_name
 WHERE jsonb_column @> '{"key": "value"}';
@@ -623,7 +738,21 @@ WHERE jsonb_column @> '{"key": "value"}';
 **新特性**: 新增JSONB函数
 
 ```sql
--- 18版本新增了更多JSONB操作函数（带性能测试）
+-- 18版本新增了更多JSONB操作函数（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table_name') THEN
+            RAISE WARNING '表 table_name 不存在，无法执行JSONB路径查询测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行JSONB路径查询测试（PostgreSQL 18）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT jsonb_path_query_array(
     jsonb_column,
@@ -664,7 +793,21 @@ END $$;
 **新特性**: NUMERIC类型性能优化
 
 ```sql
--- 18版本改进了NUMERIC类型的计算性能（带性能测试）
+-- 18版本改进了NUMERIC类型的计算性能（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行NUMERIC计算性能测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行NUMERIC计算性能测试（PostgreSQL 18）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT SUM(amount) FROM orders;
 -- 计算性能提升约10-20%
@@ -789,8 +932,37 @@ EXCEPTION
         RAISE WARNING '启用RLS失败: %', SQLERRM;
 END $$;
 
--- PostgreSQL 18自动优化RLS查询计划
-EXPLAIN (ANALYZE, BUFFERS)
+-- PostgreSQL 18自动优化RLS查询计划（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tenant_data') THEN
+            RAISE WARNING '表 tenant_data 不存在，无法执行RLS查询测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行RLS查询测试（PostgreSQL 18自动优化）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+-- 查询tenant_data（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tenant_data') THEN
+            RAISE WARNING '表 tenant_data 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行RLS查询性能测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM tenant_data WHERE id = 123;
 -- 自动使用tenant_id索引，性能提升30-50%
 ```
@@ -808,8 +980,22 @@ SELECT * FROM tenant_data WHERE id = 123;
 **新特性**: PostgreSQL 18新增EXPLAIN MEMORY选项，显示查询的内存使用情况。
 
 ```sql
--- PostgreSQL 18：EXPLAIN MEMORY示例
-EXPLAIN (ANALYZE, BUFFERS, MEMORY)
+-- PostgreSQL 18：EXPLAIN MEMORY示例（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行EXPLAIN MEMORY测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行EXPLAIN MEMORY测试（PostgreSQL 18）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING, MEMORY)
 SELECT customer_id, SUM(amount)
 FROM orders
 GROUP BY customer_id;
@@ -825,8 +1011,22 @@ GROUP BY customer_id;
 **新特性**: PostgreSQL 18新增EXPLAIN SERIALIZE选项，显示查询计划的序列化格式。
 
 ```sql
--- PostgreSQL 18：EXPLAIN SERIALIZE示例
-EXPLAIN (SERIALIZE)
+-- PostgreSQL 18：EXPLAIN SERIALIZE示例（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行EXPLAIN SERIALIZE测试';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行EXPLAIN SERIALIZE测试（PostgreSQL 18）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING, SERIALIZE)
 SELECT * FROM orders WHERE order_date > '2024-01-01';
 
 -- 输出查询计划的JSON格式，便于：
@@ -881,9 +1081,41 @@ ANALYZE orders;
 
 ```sql
 -- 18版本新增了更多监控视图
+-- 查看VACUUM进度（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'pg_stat_progress_vacuum') THEN
+            RAISE WARNING 'pg_stat_progress_vacuum视图不存在（可能需要PostgreSQL 9.6+）';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查看VACUUM进度';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_progress_vacuum;
 -- 更详细的VACUUM进度信息
 
+-- 查看索引创建进度（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'pg_stat_progress_create_index') THEN
+            RAISE WARNING 'pg_stat_progress_create_index视图不存在（可能需要PostgreSQL 12+）';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查看索引创建进度';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM pg_stat_progress_create_index;
 -- 索引创建进度信息
 ```

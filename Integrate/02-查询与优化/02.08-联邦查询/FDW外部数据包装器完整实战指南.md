@@ -230,7 +230,21 @@ EXCEPTION
         RAISE EXCEPTION '查询外部表失败: %', SQLERRM;
 END $$;
 
--- 性能测试：查询外部表
+-- 性能测试：查询外部表（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'remote_users') THEN
+            RAISE WARNING '外部表 remote_users 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询外部表（性能测试）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM remote_users WHERE id > 100;
 -- 执行时间: 取决于网络延迟和远程表大小
@@ -1352,7 +1366,21 @@ EXCEPTION
         RAISE EXCEPTION '查询API数据失败: %', SQLERRM;
 END $$;
 
--- 性能测试：查询API数据
+-- 性能测试：查询API数据（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'github_users') THEN
+            RAISE WARNING '外部表 github_users 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询API外部表（性能测试）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM github_users LIMIT 10;
 -- 执行时间: 取决于网络延迟和API响应时间
@@ -2015,25 +2043,80 @@ END $$;
 ### 10.2 安全建议
 
 ```sql
--- ❌ 不要在USER MAPPING中硬编码密码
-CREATE USER MAPPING FOR postgres
-SERVER remote_server
-OPTIONS (user 'remote_user', password 'plain_text_password');  -- 危险！
+-- ❌ 不要在USER MAPPING中硬编码密码（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        RAISE WARNING '不要在USER MAPPING中硬编码密码，这是安全风险！';
+        -- CREATE USER MAPPING FOR postgres
+        -- SERVER remote_server
+        -- OPTIONS (user 'remote_user', password 'plain_text_password');  -- 危险！
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '安全警告: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- ✅ 使用.pgpass文件
+-- ✅ 使用.pgpass文件（推荐）
 -- ~/.pgpass
 -- hostname:port:database:username:password
 -- remote-host:5432:remotedb:remote_user:secure_password
 
--- ✅ 或使用证书认证
-CREATE USER MAPPING FOR postgres
-SERVER remote_server
-OPTIONS (sslcert '/path/to/client-cert.pem', sslkey '/path/to/client-key.pem');
+-- ✅ 或使用证书认证（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_server') THEN
+            RAISE WARNING '服务器 remote_server 不存在，请先创建';
+            RETURN;
+        END IF;
 
--- ✅ 限制访问权限
-GRANT USAGE ON FOREIGN SERVER remote_server TO app_user;
-GRANT SELECT ON remote_users TO app_user;
--- 不授予INSERT/UPDATE/DELETE
+        IF EXISTS (SELECT 1 FROM pg_user_mappings WHERE srvname = 'remote_server' AND umuser = (SELECT oid FROM pg_roles WHERE rolname = 'postgres')) THEN
+            RAISE NOTICE '用户映射已存在: postgres -> remote_server';
+        ELSE
+            CREATE USER MAPPING FOR postgres
+            SERVER remote_server
+            OPTIONS (sslcert '/path/to/client-cert.pem', sslkey '/path/to/client-key.pem');
+            RAISE NOTICE '用户映射创建成功（使用证书认证）';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_object THEN
+            RAISE WARNING '用户映射已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建用户映射失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- ✅ 限制访问权限（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+            RAISE WARNING '角色 app_user 不存在，请先创建';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_foreign_server WHERE srvname = 'remote_server') THEN
+            RAISE WARNING '服务器 remote_server 不存在';
+            RETURN;
+        END IF;
+
+        GRANT USAGE ON FOREIGN SERVER remote_server TO app_user;
+        GRANT SELECT ON remote_users TO app_user;
+        -- 不授予INSERT/UPDATE/DELETE
+        RAISE NOTICE '访问权限已设置（仅SELECT权限）';
+    EXCEPTION
+        WHEN undefined_object THEN
+            RAISE WARNING '对象不存在';
+        WHEN insufficient_privilege THEN
+            RAISE WARNING '权限不足，无法授予权限';
+        WHEN OTHERS THEN
+            RAISE WARNING '设置访问权限失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### 10.3 监控

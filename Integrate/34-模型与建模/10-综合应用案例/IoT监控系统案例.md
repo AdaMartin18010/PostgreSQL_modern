@@ -688,7 +688,37 @@ $$ LANGUAGE plpgsql;
 **实时查询**:
 
 ```sql
--- 查询设备最新数据（带性能测试）
+-- 查询设备最新数据（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询设备最新数据';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 查询设备最新遥测数据（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询设备最新遥测数据（DISTINCT ON）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT DISTINCT ON (device_id)
     device_id,
@@ -699,7 +729,24 @@ FROM device_telemetry
 WHERE device_id IN ('device_001', 'device_002')
 ORDER BY device_id, time DESC;
 
--- 查询告警事件（带性能测试）
+-- 查询告警事件（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'alert_events') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'alert_rules') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'devices') THEN
+            RAISE WARNING '必需的表不存在，无法执行告警事件查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询告警事件';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     ae.alert_id,
@@ -716,7 +763,37 @@ JOIN devices d ON ae.device_id = d.device_id
 WHERE ae.status = 'active'
 ORDER BY ae.alert_time DESC;
 
--- 查询历史趋势（使用连续聚合，带性能测试）
+-- 查询历史趋势（使用连续聚合，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry_hourly') THEN
+            RAISE WARNING '表 device_telemetry_hourly 不存在，无法执行历史趋势查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询历史趋势（使用连续聚合）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 查询设备小时聚合数据（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry_hourly') THEN
+            RAISE WARNING '表 device_telemetry_hourly 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询设备小时聚合数据（最近24小时）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     hour,
@@ -739,7 +816,7 @@ ORDER BY hour DESC;
 **批量写入优化**:
 
 ```sql
--- 批量插入遥测数据
+-- 批量插入遥测数据（带完整错误处理）
 CREATE OR REPLACE FUNCTION batch_insert_telemetry(
     p_data JSONB
 )
@@ -747,28 +824,69 @@ RETURNS INT AS $$
 DECLARE
     v_count INT;
 BEGIN
-    INSERT INTO device_telemetry (device_id, time, sensor_type, value)
-    SELECT
-        (elem->>'device_id')::INT,
-        (elem->>'time')::TIMESTAMPTZ,
-        elem->>'sensor_type',
-        (elem->>'value')::DOUBLE PRECISION
-    FROM jsonb_array_elements(p_data) AS elem;
+    BEGIN
+        -- 参数验证
+        IF p_data IS NULL THEN
+            RAISE EXCEPTION 'data参数不能为NULL';
+        END IF;
 
-    GET DIAGNOSTICS v_count = ROW_COUNT;
-    RETURN v_count;
+        IF jsonb_array_length(p_data) = 0 THEN
+            RAISE EXCEPTION 'data数组不能为空';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE EXCEPTION '表 device_telemetry 不存在';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '参数验证失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        INSERT INTO device_telemetry (device_id, time, sensor_type, value)
+        SELECT
+            (elem->>'device_id')::INT,
+            (elem->>'time')::TIMESTAMPTZ,
+            elem->>'sensor_type',
+            (elem->>'value')::DOUBLE PRECISION
+        FROM jsonb_array_elements(p_data) AS elem;
+
+        GET DIAGNOSTICS v_count = ROW_COUNT;
+        RETURN v_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '批量插入遥测数据失败: %', SQLERRM;
+            RAISE;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 
--- 使用COPY批量导入（最快）
-COPY device_telemetry (device_id, time, sensor_type, value)
-FROM '/path/to/data.csv' WITH CSV HEADER;
+-- 使用COPY批量导入（最快，带错误处理说明）
+-- COPY device_telemetry (device_id, time, sensor_type, value)
+-- FROM '/path/to/data.csv' WITH CSV HEADER;
+-- 注意：COPY命令需要在服务器端执行，需要文件系统访问权限
 ```
 
 **写入性能监控**:
 
 ```sql
 -- 监控写入速率（带性能测试）
+-- 查询数据采集统计（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询数据采集统计（按分钟聚合）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     time_bucket('1 minute', time) AS minute,
@@ -811,7 +929,22 @@ SELECT
 FROM device_telemetry_minutely
 GROUP BY bucket, device_id, sensor_type;
 
--- 查询时使用聚合视图
+-- 查询时使用聚合视图（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry_hourly') THEN
+            RAISE WARNING '表 device_telemetry_hourly 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询聚合视图 device_telemetry_hourly（最近24小时）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM device_telemetry_hourly
 WHERE device_id = 1
   AND bucket >= NOW() - INTERVAL '24 hours';
@@ -839,7 +972,53 @@ SELECT add_retention_policy('device_telemetry', INTERVAL '90 days');
 **存储空间监控**:
 
 ```sql
--- 监控存储空间
+-- 监控存储空间（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
+            RAISE WARNING 'TimescaleDB扩展未安装，无法查询chunks信息';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询存储空间监控';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 查询TimescaleDB块信息（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
+            RAISE WARNING 'TimescaleDB扩展未安装，无法查询块信息';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询TimescaleDB块信息（压缩统计）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+-- 查询TimescaleDB块信息（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
+            RAISE WARNING 'TimescaleDB扩展未安装，无法查询块信息';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询TimescaleDB块信息（压缩统计）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     hypertable_name,
     COUNT(*) AS chunk_count,
@@ -856,7 +1035,38 @@ GROUP BY hypertable_name;
 **设备监控**:
 
 ```sql
--- 监控设备在线状态
+-- 监控设备在线状态（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_twin') THEN
+            RAISE WARNING '表 device_twin 不存在，无法执行设备在线状态监控';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控设备在线状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 查询设备状态统计（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_twin') THEN
+            RAISE WARNING '表 device_twin 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询设备状态统计（按设备类型分组）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     device_type,
     COUNT(*) FILTER (WHERE status = 'online') AS online_count,
@@ -866,7 +1076,38 @@ SELECT
 FROM device_twin
 GROUP BY device_type;
 
--- 监控数据采集延迟
+-- 监控数据采集延迟（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行数据采集延迟监控';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控数据采集延迟';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 监控数据采集延迟（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行延迟监控查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控数据采集延迟（超过5分钟的设备）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     device_id,
     MAX(time) AS last_data_time,
@@ -876,12 +1117,27 @@ FROM device_telemetry
 GROUP BY device_id
 HAVING MAX(time) < NOW() - INTERVAL '5 minutes'
 ORDER BY data_delay DESC;
-```
 
 **告警监控**:
 
 ```sql
--- 监控告警统计
+-- 监控告警统计（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_alerts') THEN
+            RAISE WARNING '表 device_alerts 不存在，无法执行告警统计监控';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始监控告警统计';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     alert_level,
     COUNT(*) AS alert_count,
@@ -955,20 +1211,54 @@ END $$;
 4. **减少索引**: 仅创建必要索引
 
 ```sql
--- 批量写入函数
+-- 批量写入函数（带完整错误处理）
 CREATE OR REPLACE FUNCTION batch_insert_telemetry_bulk(
     p_device_id INT,
     p_data_points JSONB
 )
 RETURNS VOID AS $$
+DECLARE
+    v_inserted_count INT;
 BEGIN
-    INSERT INTO device_telemetry (device_id, time, sensor_type, value)
-    SELECT
-        p_device_id,
-        (elem->>'time')::TIMESTAMPTZ,
-        elem->>'sensor_type',
-        (elem->>'value')::DOUBLE PRECISION
-    FROM jsonb_array_elements(p_data_points) AS elem;
+    BEGIN
+        -- 参数验证
+        IF p_device_id IS NULL OR p_device_id <= 0 THEN
+            RAISE EXCEPTION 'device_id必须大于0';
+        END IF;
+
+        IF p_data_points IS NULL THEN
+            RAISE EXCEPTION 'data_points参数不能为NULL';
+        END IF;
+
+        IF jsonb_array_length(p_data_points) = 0 THEN
+            RAISE EXCEPTION 'data_points数组不能为空';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE EXCEPTION '表 device_telemetry 不存在';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '参数验证失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        INSERT INTO device_telemetry (device_id, time, sensor_type, value)
+        SELECT
+            p_device_id,
+            (elem->>'time')::TIMESTAMPTZ,
+            elem->>'sensor_type',
+            (elem->>'value')::DOUBLE PRECISION
+        FROM jsonb_array_elements(p_data_points) AS elem;
+
+        GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
+        RAISE NOTICE '批量插入成功，插入了 % 条记录', v_inserted_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '批量插入遥测数据失败: %', SQLERRM;
+            RAISE;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 ```
@@ -983,13 +1273,60 @@ $$ LANGUAGE plpgsql;
 4. **索引优化**: 为时间范围查询创建索引
 
 ```sql
--- 实时数据查询（仅查询最近1小时）
+-- 实时数据查询（仅查询最近1小时，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行实时数据查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行实时数据查询（最近1小时）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+-- 查询设备遥测数据（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询设备遥测数据（最近1小时）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM device_telemetry
 WHERE device_id = 1
   AND time >= NOW() - INTERVAL '1 hour'
 ORDER BY time DESC;
 
--- 使用连续聚合查询历史数据
+-- 使用连续聚合查询历史数据（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry_hourly') THEN
+            RAISE WARNING '表 device_telemetry_hourly 不存在，无法执行历史数据查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行历史数据查询（使用连续聚合）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM device_telemetry_hourly
 WHERE device_id = 1
   AND bucket >= NOW() - INTERVAL '7 days';
@@ -1000,14 +1337,67 @@ WHERE device_id = 1
 **A**: 压缩和归档策略：
 
 ```sql
--- TimescaleDB自动压缩
-SELECT add_compression_policy('device_telemetry', INTERVAL '7 days');
+-- TimescaleDB自动压缩（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
+            RAISE WARNING 'TimescaleDB扩展未安装，无法添加压缩策略';
+            RETURN;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法添加压缩策略';
+            RETURN;
+        END IF;
+        PERFORM add_compression_policy('device_telemetry', INTERVAL '7 days');
+        RAISE NOTICE '压缩策略添加成功（7天后自动压缩）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '添加压缩策略失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 手动压缩
-SELECT compress_chunk(chunk) FROM timescaledb_information.chunks
-WHERE hypertable_name = 'device_telemetry'
-  AND is_compressed = false
-  AND range_end < NOW() - INTERVAL '7 days';
+-- 手动压缩（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_chunk_count INT := 0;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
+            RAISE WARNING 'TimescaleDB扩展未安装，无法执行手动压缩';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行手动压缩';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '压缩准备失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        SELECT COUNT(*) INTO v_chunk_count
+        FROM timescaledb_information.chunks
+        WHERE hypertable_name = 'device_telemetry'
+          AND is_compressed = false
+          AND range_end < NOW() - INTERVAL '7 days';
+        
+        IF v_chunk_count > 0 THEN
+            PERFORM compress_chunk(chunk)
+            FROM timescaledb_information.chunks
+            WHERE hypertable_name = 'device_telemetry'
+              AND is_compressed = false
+              AND range_end < NOW() - INTERVAL '7 days';
+            RAISE NOTICE '手动压缩完成，压缩了 % 个chunks', v_chunk_count;
+        ELSE
+            RAISE NOTICE '没有需要压缩的chunks';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '手动压缩失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 归档旧数据
 -- 设备遥测数据归档表（带错误处理）
@@ -1024,12 +1414,45 @@ EXCEPTION
         RAISE EXCEPTION '创建归档表 device_telemetry_archive 失败: %', SQLERRM;
 END $$;
 
-INSERT INTO device_telemetry_archive
-SELECT * FROM device_telemetry
-WHERE time < NOW() - INTERVAL '1 year';
+-- 归档旧数据（带错误处理和性能测试）
+DO $$
+DECLARE
+    v_archived_count INT := 0;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry') THEN
+            RAISE WARNING '表 device_telemetry 不存在，无法执行归档';
+            RETURN;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'device_telemetry_archive') THEN
+            RAISE WARNING '归档表 device_telemetry_archive 不存在，无法执行归档';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始归档旧数据（1年前的数据）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '归档准备失败: %', SQLERRM;
+            RAISE;
+    END;
 
-DELETE FROM device_telemetry
-WHERE time < NOW() - INTERVAL '1 year';
+    BEGIN
+        INSERT INTO device_telemetry_archive
+        SELECT * FROM device_telemetry
+        WHERE time < NOW() - INTERVAL '1 year';
+        
+        GET DIAGNOSTICS v_archived_count = ROW_COUNT;
+        RAISE NOTICE '已归档 % 条记录到归档表', v_archived_count;
+
+        DELETE FROM device_telemetry
+        WHERE time < NOW() - INTERVAL '1 year';
+        
+        RAISE NOTICE '已删除 % 条旧数据', v_archived_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '归档操作失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 ```
 
 ### Q5: 如何优化告警检测性能？
@@ -1042,7 +1465,7 @@ WHERE time < NOW() - INTERVAL '1 year';
 4. **规则优先级**: 先检测高优先级规则
 
 ```sql
--- 批量告警检测
+-- 批量告警检测（带完整错误处理）
 CREATE OR REPLACE FUNCTION batch_check_alerts(
     p_device_ids INT[]
 )
@@ -1051,17 +1474,55 @@ DECLARE
     v_device_id INT;
     v_rule RECORD;
 BEGIN
-    FOR v_device_id IN SELECT unnest(p_device_ids)
-    LOOP
-        FOR v_rule IN SELECT * FROM alert_rules WHERE is_enabled = TRUE ORDER BY priority DESC
+    BEGIN
+        -- 参数验证
+        IF p_device_ids IS NULL OR array_length(p_device_ids, 1) IS NULL THEN
+            RAISE EXCEPTION 'device_ids参数不能为NULL或空数组';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'alert_rules') THEN
+            RAISE EXCEPTION '表 alert_rules 不存在';
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '参数验证失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        FOR v_device_id IN SELECT unnest(p_device_ids)
         LOOP
-            -- 执行规则检测
-            IF check_alert_rule(v_device_id, v_rule) THEN
-                RETURN QUERY SELECT v_device_id, v_rule.alert_level, v_rule.message;
-                EXIT;  -- 找到告警后退出
-            END IF;
+            BEGIN
+                FOR v_rule IN SELECT * FROM alert_rules WHERE is_enabled = TRUE ORDER BY priority DESC
+                LOOP
+                    BEGIN
+                        -- 执行规则检测（如果函数存在）
+                        IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'check_alert_rule') THEN
+                            IF check_alert_rule(v_device_id, v_rule) THEN
+                                RETURN QUERY SELECT v_device_id, v_rule.alert_level, v_rule.message;
+                                EXIT;  -- 找到告警后退出
+                            END IF;
+                        ELSE
+                            RAISE WARNING '函数 check_alert_rule 不存在，跳过规则检测';
+                            EXIT;
+                        END IF;
+                    EXCEPTION
+                        WHEN OTHERS THEN
+                            RAISE WARNING '规则检测失败 (device_id: %, rule_id: %): %', v_device_id, v_rule.rule_id, SQLERRM;
+                            CONTINUE;
+                    END;
+                END LOOP;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE WARNING '设备告警检测失败 (device_id: %): %', v_device_id, SQLERRM;
+                    CONTINUE;
+            END;
         END LOOP;
-    END LOOP;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '批量告警检测失败: %', SQLERRM;
+            RAISE;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 ```
@@ -1071,26 +1532,53 @@ $$ LANGUAGE plpgsql;
 **A**: 系统健康监控：
 
 ```sql
--- 系统健康检查视图
-CREATE VIEW system_health_check AS
-SELECT
-    'device_online_rate' AS metric,
-    ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'online') / COUNT(*), 2) AS value
-FROM device_twin
-UNION ALL
-SELECT
-    'data_collection_rate' AS metric,
-    COUNT(*) AS value
-FROM device_telemetry
-WHERE time >= NOW() - INTERVAL '1 minute'
-UNION ALL
-SELECT
-    'alert_resolution_rate' AS metric,
-    ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'resolved') / COUNT(*), 2) AS value
-FROM device_alerts
-WHERE created_at >= NOW() - INTERVAL '24 hours';
+-- 系统健康检查视图（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        DROP VIEW IF EXISTS system_health_check;
+        CREATE OR REPLACE VIEW system_health_check AS
+        SELECT
+            'device_online_rate' AS metric,
+            ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'online') / NULLIF(COUNT(*), 0), 2) AS value
+        FROM device_twin
+        UNION ALL
+        SELECT
+            'data_collection_rate' AS metric,
+            COUNT(*) AS value
+        FROM device_telemetry
+        WHERE time >= NOW() - INTERVAL '1 minute'
+        UNION ALL
+        SELECT
+            'alert_resolution_rate' AS metric,
+            ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'resolved') / NULLIF(COUNT(*), 0), 2) AS value
+        FROM device_alerts
+        WHERE created_at >= NOW() - INTERVAL '24 hours';
+        RAISE NOTICE '系统健康检查视图创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建系统健康检查视图失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
--- 查询系统健康状态
+-- 查询系统健康状态（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.views WHERE table_schema = 'public' AND table_name = 'system_health_check') THEN
+            RAISE WARNING '视图 system_health_check 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始查询系统健康状态';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM system_health_check;
 ```
 

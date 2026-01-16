@@ -622,48 +622,112 @@ EXCEPTION
         RAISE EXCEPTION '创建表 party_role_type 失败: %', SQLERRM;
 END $$;
 
--- 插入Person Roles
-INSERT INTO party_role_type (role_type, description, role_category) VALUES
-('EMPLOYEE', '员工', 'PERSON'),
-('CONTRACTOR', '承包商', 'PERSON'),
-('FAMILY_MEMBER', '家庭成员', 'PERSON'),
-('CONTACT', '联系人', 'PERSON');
+-- 插入Person Roles（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role_type') THEN
+        INSERT INTO party_role_type (role_type, description, role_category) VALUES
+        ('EMPLOYEE', '员工', 'PERSON'),
+        ('CONTRACTOR', '承包商', 'PERSON'),
+        ('FAMILY_MEMBER', '家庭成员', 'PERSON'),
+        ('CONTACT', '联系人', 'PERSON')
+        ON CONFLICT (role_type) DO NOTHING;
+        RAISE NOTICE 'Person Roles插入成功';
+    ELSE
+        RAISE NOTICE '表 party_role_type 不存在，跳过插入';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '插入Person Roles失败: %', SQLERRM;
+END $$;
 
--- 插入Organization Roles
-INSERT INTO party_role_type (role_type, description, role_category) VALUES
-('DISTRIBUTION_CHANNEL', '分销渠道', 'ORGANIZATION'),
-('AGENT', '代理商', 'ORGANIZATION'),
-('DISTRIBUTOR', '分销商', 'ORGANIZATION'),
-('COMPETITOR', '竞争对手', 'ORGANIZATION'),
-('PARTNER', '合作伙伴', 'ORGANIZATION'),
-('REGULATORY_AGENCY', '监管机构', 'ORGANIZATION'),
-('HOUSEHOLD', '家庭', 'ORGANIZATION'),
-('ASSOCIATION', '协会', 'ORGANIZATION'),
-('SUPPLIER', '供应商', 'ORGANIZATION'),
-('PARENT_ORGANIZATION', '母公司', 'ORGANIZATION'),
-('SUBSIDIARY', '子公司', 'ORGANIZATION'),
-('DEPARTMENT', '部门', 'ORGANIZATION'),
-('DIVISION', '事业部', 'ORGANIZATION'),
-('INTERNAL_ORGANIZATION', '内部组织', 'ORGANIZATION');
+-- 插入Organization Roles（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role_type') THEN
+        INSERT INTO party_role_type (role_type, description, role_category) VALUES
+        ('DISTRIBUTION_CHANNEL', '分销渠道', 'ORGANIZATION'),
+        ('AGENT', '代理商', 'ORGANIZATION'),
+        ('DISTRIBUTOR', '分销商', 'ORGANIZATION'),
+        ('COMPETITOR', '竞争对手', 'ORGANIZATION'),
+        ('PARTNER', '合作伙伴', 'ORGANIZATION'),
+        ('REGULATORY_AGENCY', '监管机构', 'ORGANIZATION'),
+        ('HOUSEHOLD', '家庭', 'ORGANIZATION'),
+        ('ASSOCIATION', '协会', 'ORGANIZATION'),
+        ('SUPPLIER', '供应商', 'ORGANIZATION'),
+        ('PARENT_ORGANIZATION', '母公司', 'ORGANIZATION'),
+        ('SUBSIDIARY', '子公司', 'ORGANIZATION'),
+        ('DEPARTMENT', '部门', 'ORGANIZATION'),
+        ('DIVISION', '事业部', 'ORGANIZATION'),
+        ('INTERNAL_ORGANIZATION', '内部组织', 'ORGANIZATION')
+        ON CONFLICT (role_type) DO NOTHING;
+        RAISE NOTICE 'Organization Roles插入成功';
+    ELSE
+        RAISE NOTICE '表 party_role_type 不存在，跳过插入';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '插入Organization Roles失败: %', SQLERRM;
+END $$;
 
--- 插入Common Roles
-INSERT INTO party_role_type (role_type, description, role_category) VALUES
-('CUSTOMER', '客户', 'COMMON'),
-('BILL_TO_CUSTOMER', '账单客户', 'COMMON'),
-('SHIP_TO_CUSTOMER', '收货客户', 'COMMON'),
-('END_USER_CUSTOMER', '最终用户客户', 'COMMON'),
-('SHAREHOLDER', '股东', 'COMMON'),
-('PROSPECT', '潜在客户', 'COMMON');
+-- 插入Common Roles（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role_type') THEN
+        INSERT INTO party_role_type (role_type, description, role_category) VALUES
+        ('CUSTOMER', '客户', 'COMMON'),
+        ('BILL_TO_CUSTOMER', '账单客户', 'COMMON'),
+        ('SHIP_TO_CUSTOMER', '收货客户', 'COMMON'),
+        ('END_USER_CUSTOMER', '最终用户客户', 'COMMON'),
+        ('SHAREHOLDER', '股东', 'COMMON'),
+        ('PROSPECT', '潜在客户', 'COMMON')
+        ON CONFLICT (role_type) DO NOTHING;
+        RAISE NOTICE 'Common Roles插入成功';
+    ELSE
+        RAISE NOTICE '表 party_role_type 不存在，跳过插入';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '插入Common Roles失败: %', SQLERRM;
+END $$;
 
--- 示例：John Smith扮演多个角色（基于Volume 1 Table 2.4）
-INSERT INTO party_role (party_id, party_type, role_type) VALUES
-(5000, 'P', 'EMPLOYEE'),
-(5000, 'P', 'SUPPLIER_COORDINATOR'),
-(5000, 'P', 'PARENT'),
-(5000, 'P', 'TEAM_LEADER'),
-(5000, 'P', 'MENTOR');
+-- 示例：John Smith扮演多个角色（基于Volume 1 Table 2.4，带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_role') THEN
+        INSERT INTO party_role (party_id, party_type, role_type) VALUES
+        (5000, 'P', 'EMPLOYEE'),
+        (5000, 'P', 'SUPPLIER_COORDINATOR'),
+        (5000, 'P', 'PARENT'),
+        (5000, 'P', 'TEAM_LEADER'),
+        (5000, 'P', 'MENTOR')
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE 'Party Roles示例数据插入成功';
+    ELSE
+        RAISE NOTICE '表 party_role 不存在，跳过插入';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '插入Party Roles示例数据失败: %', SQLERRM;
+END $$;
 
--- 查询：获取所有客户
+-- 查询：获取所有客户（带性能测试和错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            RAISE WARNING '必需的表不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行查询：获取所有客户';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT p.party_id, p.name, p.party_type, pr.role_type, prt.description
 FROM party p
 JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
@@ -671,7 +735,22 @@ JOIN party_role_type prt ON pr.role_type = prt.role_type
 WHERE prt.role_type IN ('CUSTOMER', 'BILL_TO_CUSTOMER', 'SHIP_TO_CUSTOMER', 'END_USER_CUSTOMER')
   AND (pr.valid_to IS NULL OR pr.valid_to > NOW());
 
--- 查询：获取某组织的所有员工（带性能测试）
+-- 查询：获取某组织的所有员工（带性能测试和错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            RAISE WARNING '必需的表不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行查询：获取某组织的所有员工';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT p.party_id, p.name, pr.valid_from, pr.valid_to
 FROM party p
@@ -679,10 +758,18 @@ JOIN party_role pr ON p.party_id = pr.party_id AND p.party_type = pr.party_type
 WHERE pr.role_type = 'EMPLOYEE'
   AND pr.party_id IN (
       SELECT party_id FROM party_role
-      WHERE role_type = 'INTERNAL_ORGANIZATION'
-        AND party_id = 200  -- ABC Subsidiary
-  )
-  AND (pr.valid_to IS NULL OR pr.valid_to > NOW());
+              WHERE role_type = 'INTERNAL_ORGANIZATION'
+                AND party_id = 200  -- ABC Subsidiary
+          )
+          AND (pr.valid_to IS NULL OR pr.valid_to > NOW());
+        RAISE NOTICE '获取组织员工查询执行成功';
+    ELSE
+        RAISE NOTICE '表 party 不存在，跳过查询';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '获取组织员工查询失败: %', SQLERRM;
+END $$;
 ```
 
 **Volume 1示例数据 / Volume 1 Example Data**:
@@ -763,15 +850,27 @@ EXCEPTION
         RAISE EXCEPTION '创建表 party_relationship_type 失败: %', SQLERRM;
 END $$;
 
--- 插入关系类型
-INSERT INTO party_relationship_type (relationship_type, description, from_role_type, to_role_type) VALUES
-('CUSTOMER_RELATIONSHIP', '客户关系', 'CUSTOMER', 'INTERNAL_ORGANIZATION'),
-('EMPLOYMENT', '雇佣关系', 'EMPLOYEE', 'INTERNAL_ORGANIZATION'),
-('ORGANIZATION_ROLLUP', '组织层级关系', 'SUBSIDIARY', 'PARENT_ORGANIZATION'),
-('SUPPLIER_RELATIONSHIP', '供应商关系', 'SUPPLIER', 'INTERNAL_ORGANIZATION'),
-('AGENT_RELATIONSHIP', '代理关系', 'AGENT', 'INTERNAL_ORGANIZATION'),
-('MENTORING_RELATIONSHIP', '导师关系', 'MENTOR', 'APPRENTICE'),
-('PARENT_CHILD_RELATIONSHIP', '父子关系', 'PARENT', 'CHILD');
+-- 插入关系类型（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'party_relationship_type') THEN
+        INSERT INTO party_relationship_type (relationship_type, description, from_role_type, to_role_type) VALUES
+        ('CUSTOMER_RELATIONSHIP', '客户关系', 'CUSTOMER', 'INTERNAL_ORGANIZATION'),
+        ('EMPLOYMENT', '雇佣关系', 'EMPLOYEE', 'INTERNAL_ORGANIZATION'),
+        ('ORGANIZATION_ROLLUP', '组织层级关系', 'SUBSIDIARY', 'PARENT_ORGANIZATION'),
+        ('SUPPLIER_RELATIONSHIP', '供应商关系', 'SUPPLIER', 'INTERNAL_ORGANIZATION'),
+        ('AGENT_RELATIONSHIP', '代理关系', 'AGENT', 'INTERNAL_ORGANIZATION'),
+        ('MENTORING_RELATIONSHIP', '导师关系', 'MENTOR', 'APPRENTICE'),
+        ('PARENT_CHILD_RELATIONSHIP', '父子关系', 'PARENT', 'CHILD')
+        ON CONFLICT (relationship_type) DO NOTHING;
+        RAISE NOTICE '关系类型插入成功';
+    ELSE
+        RAISE NOTICE '表 party_relationship_type 不存在，跳过插入';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '插入关系类型失败: %', SQLERRM;
+END $$;
 
 -- Party Relationship Information（关系信息，带错误处理）
 DO $$
@@ -814,10 +913,23 @@ EXCEPTION
         RAISE EXCEPTION '创建表 status_type 失败: %', SQLERRM;
 END $$;
 
-INSERT INTO status_type (status_type, description, applies_to) VALUES
-('ACTIVE', '活跃', 'PARTY_RELATIONSHIP'),
-('INACTIVE', '非活跃', 'PARTY_RELATIONSHIP'),
-('PURSuing', '追求更多参与', 'PARTY_RELATIONSHIP');
+-- 插入状态类型（带错误处理）
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'status_type') THEN
+        INSERT INTO status_type (status_type, description, applies_to) VALUES
+        ('ACTIVE', '活跃', 'PARTY_RELATIONSHIP'),
+        ('INACTIVE', '非活跃', 'PARTY_RELATIONSHIP'),
+        ('PURSuing', '追求更多参与', 'PARTY_RELATIONSHIP')
+        ON CONFLICT (status_type) DO NOTHING;
+        RAISE NOTICE '状态类型插入成功';
+    ELSE
+        RAISE NOTICE '表 status_type 不存在，跳过插入';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING '插入状态类型失败: %', SQLERRM;
+END $$;
 
 -- Priority Type（优先级类型，带错误处理）
 DO $$
@@ -837,35 +949,78 @@ EXCEPTION
         RAISE EXCEPTION '创建表 priority_type 失败: %', SQLERRM;
 END $$;
 
-INSERT INTO priority_type (priority_type, description, priority_order) VALUES
-('VERY_HIGH', '非常高', 1),
-('HIGH', '高', 2),
-('MEDIUM', '中', 3),
-('LOW', '低', 4);
+-- 插入priority_type数据（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'priority_type') THEN
+            RAISE WARNING '表 priority_type 不存在，无法插入数据';
+            RETURN;
+        END IF;
+        INSERT INTO priority_type (priority_type, description, priority_order) VALUES
+        ('VERY_HIGH', '非常高', 1),
+        ('HIGH', '高', 2),
+        ('MEDIUM', '中', 3),
+        ('LOW', '低', 4)
+        ON CONFLICT (priority_type) DO NOTHING;
+        RAISE NOTICE 'priority_type数据插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入priority_type数据失败: %', SQLERRM;
+    END;
+END $$;
 
--- 示例：Customer Relationship（基于Volume 1 Table 2.5）
+-- 示例：Customer Relationship（基于Volume 1 Table 2.5，带错误处理）
 -- ACME Company是ABC Subsidiary的客户
-INSERT INTO party_relationship (
-    party_id_from, party_type_from, party_role_id_from,
-    party_id_to, party_type_to, party_role_id_to,
-    relationship_type, valid_from
-) VALUES (
-    700, 'O', (SELECT party_role_id FROM party_role WHERE party_id = 700 AND role_type = 'CUSTOMER'),
-    200, 'O', (SELECT party_role_id FROM party_role WHERE party_id = 200 AND role_type = 'INTERNAL_ORGANIZATION'),
-    'CUSTOMER_RELATIONSHIP', '1999-01-01'::TIMESTAMPTZ
-);
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_relationship') THEN
+            RAISE WARNING '表 party_relationship 不存在，无法插入客户关系';
+            RETURN;
+        END IF;
+        INSERT INTO party_relationship (
+            party_id_from, party_type_from, party_role_id_from,
+            party_id_to, party_type_to, party_role_id_to,
+            relationship_type, valid_from
+        ) VALUES (
+            700, 'O', (SELECT party_role_id FROM party_role WHERE party_id = 700 AND role_type = 'CUSTOMER'),
+            200, 'O', (SELECT party_role_id FROM party_role WHERE party_id = 200 AND role_type = 'INTERNAL_ORGANIZATION'),
+            'CUSTOMER_RELATIONSHIP', '1999-01-01'::TIMESTAMPTZ
+        )
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE '客户关系插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入客户关系失败: %', SQLERRM;
+    END;
+END $$;
 
--- 示例：Employment Relationship（基于Volume 1 Table 2.6）
+-- 示例：Employment Relationship（基于Volume 1 Table 2.6，带错误处理）
 -- John Smith是ABC Subsidiary的员工
-INSERT INTO party_relationship (
-    party_id_from, party_type_from, party_role_id_from,
-    party_id_to, party_type_to, party_role_id_to,
-    relationship_type, valid_from, valid_to
-) VALUES (
-    5000, 'P', (SELECT party_role_id FROM party_role WHERE party_id = 5000 AND role_type = 'EMPLOYEE'),
-    200, 'O', (SELECT party_role_id FROM party_role WHERE party_id = 200 AND role_type = 'INTERNAL_ORGANIZATION'),
-    'EMPLOYMENT', '1989-12-31'::TIMESTAMPTZ, '1999-12-01'::TIMESTAMPTZ
-);
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_relationship') THEN
+            RAISE WARNING '表 party_relationship 不存在，无法插入雇佣关系';
+            RETURN;
+        END IF;
+        INSERT INTO party_relationship (
+            party_id_from, party_type_from, party_role_id_from,
+            party_id_to, party_type_to, party_role_id_to,
+            relationship_type, valid_from, valid_to
+        ) VALUES (
+            5000, 'P', (SELECT party_role_id FROM party_role WHERE party_id = 5000 AND role_type = 'EMPLOYEE'),
+            200, 'O', (SELECT party_role_id FROM party_role WHERE party_id = 200 AND role_type = 'INTERNAL_ORGANIZATION'),
+            'EMPLOYMENT', '1989-12-31'::TIMESTAMPTZ, '1999-12-01'::TIMESTAMPTZ
+        )
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE '雇佣关系插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入雇佣关系失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 查询：获取某组织的所有客户关系
 SELECT
@@ -942,16 +1097,46 @@ INSERT INTO party_role (party_id, role_type) VALUES
 **Party模型支持**:
 
 ```sql
--- 角色变更：将客户角色设为失效
-UPDATE party_role
-SET valid_to = NOW()
-WHERE party_id = 1
-  AND role_type = 'Customer'
-  AND valid_to IS NULL;
+-- 角色变更：将客户角色设为失效（带错误处理）
+DO $$
+DECLARE
+    v_updated_count INT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            RAISE WARNING '表 party_role 不存在，无法更新角色';
+            RETURN;
+        END IF;
+        UPDATE party_role
+        SET valid_to = NOW()
+        WHERE party_id = 1
+          AND role_type = 'Customer'
+          AND valid_to IS NULL;
+        GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+        RAISE NOTICE '已更新 % 条角色记录', v_updated_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '更新角色失败: %', SQLERRM;
+    END;
+END $$;
 
--- 添加新角色
-INSERT INTO party_role (party_id, role_type, valid_from)
-VALUES (1, 'Partner', NOW());
+-- 添加新角色（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            RAISE WARNING '表 party_role 不存在，无法插入新角色';
+            RETURN;
+        END IF;
+        INSERT INTO party_role (party_id, role_type, valid_from)
+        VALUES (1, 'Partner', NOW())
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE '新角色插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入新角色失败: %', SQLERRM;
+    END;
+END $$;
 ```
 
 ---
@@ -1594,54 +1779,260 @@ END $$;
 ### 6.2 索引设计 / Index Design
 
 ```sql
--- Party表索引
-CREATE INDEX idx_party_name ON party(name);
-CREATE INDEX idx_party_type ON party(party_type);
-CREATE INDEX idx_party_created_at ON party(created_at);
+-- Party表索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_name') THEN
+                CREATE INDEX idx_party_name ON party(name);
+                RAISE NOTICE '索引 idx_party_name 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_type') THEN
+                CREATE INDEX idx_party_type ON party(party_type);
+                RAISE NOTICE '索引 idx_party_type 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_created_at') THEN
+                CREATE INDEX idx_party_created_at ON party(created_at);
+                RAISE NOTICE '索引 idx_party_created_at 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 party 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建Party表索引失败: %', SQLERRM;
+    END;
+END $$;
 
--- Party Role索引
-CREATE INDEX idx_party_role_party ON party_role(party_id, party_type);
-CREATE INDEX idx_party_role_type ON party_role(role_type);
-CREATE INDEX idx_party_role_valid ON party_role(valid_from, valid_to)
-    WHERE valid_to IS NULL;
+-- Party Role索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_role_party') THEN
+                CREATE INDEX idx_party_role_party ON party_role(party_id, party_type);
+                RAISE NOTICE '索引 idx_party_role_party 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_role_type') THEN
+                CREATE INDEX idx_party_role_type ON party_role(role_type);
+                RAISE NOTICE '索引 idx_party_role_type 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_role_valid') THEN
+                CREATE INDEX idx_party_role_valid ON party_role(valid_from, valid_to)
+                    WHERE valid_to IS NULL;
+                RAISE NOTICE '索引 idx_party_role_valid 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 party_role 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建Party Role索引失败: %', SQLERRM;
+    END;
+END $$;
 
--- Party Relationship索引
-CREATE INDEX idx_party_relationship_from ON party_relationship(party_id_from, party_type_from);
-CREATE INDEX idx_party_relationship_to ON party_relationship(party_id_to, party_type_to);
-CREATE INDEX idx_party_relationship_type ON party_relationship(relationship_type);
-CREATE INDEX idx_party_relationship_valid ON party_relationship(valid_from, valid_to)
-    WHERE valid_to IS NULL;
+-- Party Relationship索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_relationship') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_relationship_from') THEN
+                CREATE INDEX idx_party_relationship_from ON party_relationship(party_id_from, party_type_from);
+                RAISE NOTICE '索引 idx_party_relationship_from 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_relationship_to') THEN
+                CREATE INDEX idx_party_relationship_to ON party_relationship(party_id_to, party_type_to);
+                RAISE NOTICE '索引 idx_party_relationship_to 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_relationship_type') THEN
+                CREATE INDEX idx_party_relationship_type ON party_relationship(relationship_type);
+                RAISE NOTICE '索引 idx_party_relationship_type 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_relationship_valid') THEN
+                CREATE INDEX idx_party_relationship_valid ON party_relationship(valid_from, valid_to)
+                    WHERE valid_to IS NULL;
+                RAISE NOTICE '索引 idx_party_relationship_valid 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 party_relationship 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建Party Relationship索引失败: %', SQLERRM;
+    END;
+END $$;
 
--- Postal Address索引
-CREATE INDEX idx_postal_address_address1 ON postal_address(address1);
-CREATE INDEX idx_party_postal_address_party ON party_postal_address(party_id, party_type);
-CREATE INDEX idx_party_postal_address_valid ON party_postal_address(valid_from, valid_to)
-    WHERE valid_to IS NULL;
+-- Postal Address索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'postal_address') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_postal_address_address1') THEN
+                CREATE INDEX idx_postal_address_address1 ON postal_address(address1);
+                RAISE NOTICE '索引 idx_postal_address_address1 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 postal_address 不存在，跳过索引创建';
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_postal_address') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_postal_address_party') THEN
+                CREATE INDEX idx_party_postal_address_party ON party_postal_address(party_id, party_type);
+                RAISE NOTICE '索引 idx_party_postal_address_party 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_postal_address_valid') THEN
+                CREATE INDEX idx_party_postal_address_valid ON party_postal_address(valid_from, valid_to)
+                    WHERE valid_to IS NULL;
+                RAISE NOTICE '索引 idx_party_postal_address_valid 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 party_postal_address 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建Postal Address索引失败: %', SQLERRM;
+    END;
+END $$;
 
--- Geographic Boundary索引
-CREATE INDEX idx_geographic_boundary_type ON geographic_boundary(boundary_type);
-CREATE INDEX idx_geographic_boundary_code ON geographic_boundary(boundary_code);
-CREATE INDEX idx_geographic_boundary_parent ON geographic_boundary(parent_boundary_id);
+-- Geographic Boundary索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'geographic_boundary') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_geographic_boundary_type') THEN
+                CREATE INDEX idx_geographic_boundary_type ON geographic_boundary(boundary_type);
+                RAISE NOTICE '索引 idx_geographic_boundary_type 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_geographic_boundary_code') THEN
+                CREATE INDEX idx_geographic_boundary_code ON geographic_boundary(boundary_code);
+                RAISE NOTICE '索引 idx_geographic_boundary_code 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_geographic_boundary_parent') THEN
+                CREATE INDEX idx_geographic_boundary_parent ON geographic_boundary(parent_boundary_id);
+                RAISE NOTICE '索引 idx_geographic_boundary_parent 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 geographic_boundary 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建Geographic Boundary索引失败: %', SQLERRM;
+    END;
+END $$;
 
--- Contact Mechanism索引
-CREATE INDEX idx_contact_mechanism_type ON contact_mechanism(contact_mechanism_type);
-CREATE INDEX idx_contact_mechanism_value ON contact_mechanism(contact_value);
-CREATE INDEX idx_party_contact_mechanism_party ON party_contact_mechanism(party_id, party_type);
-CREATE INDEX idx_party_contact_mechanism_valid ON party_contact_mechanism(valid_from, valid_to)
-    WHERE valid_to IS NULL;
+-- Contact Mechanism索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contact_mechanism') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_contact_mechanism_type') THEN
+                CREATE INDEX idx_contact_mechanism_type ON contact_mechanism(contact_mechanism_type);
+                RAISE NOTICE '索引 idx_contact_mechanism_type 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_contact_mechanism_value') THEN
+                CREATE INDEX idx_contact_mechanism_value ON contact_mechanism(contact_value);
+                RAISE NOTICE '索引 idx_contact_mechanism_value 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 contact_mechanism 不存在，跳过索引创建';
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_contact_mechanism') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_contact_mechanism_party') THEN
+                CREATE INDEX idx_party_contact_mechanism_party ON party_contact_mechanism(party_id, party_type);
+                RAISE NOTICE '索引 idx_party_contact_mechanism_party 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_contact_mechanism_valid') THEN
+                CREATE INDEX idx_party_contact_mechanism_valid ON party_contact_mechanism(valid_from, valid_to)
+                    WHERE valid_to IS NULL;
+                RAISE NOTICE '索引 idx_party_contact_mechanism_valid 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 party_contact_mechanism 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建Contact Mechanism索引失败: %', SQLERRM;
+    END;
+END $$;
 
--- Communication Event索引
-CREATE INDEX idx_communication_event_relationship ON communication_event(party_relationship_id);
-CREATE INDEX idx_communication_event_started ON communication_event(datetime_started);
-CREATE INDEX idx_communication_event_status ON communication_event(status_type);
-CREATE INDEX idx_communication_event_role_party ON communication_event_role(party_id, party_type);
+-- Communication Event索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'communication_event') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_communication_event_relationship') THEN
+                CREATE INDEX idx_communication_event_relationship ON communication_event(party_relationship_id);
+                RAISE NOTICE '索引 idx_communication_event_relationship 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_communication_event_started') THEN
+                CREATE INDEX idx_communication_event_started ON communication_event(datetime_started);
+                RAISE NOTICE '索引 idx_communication_event_started 创建成功';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_communication_event_status') THEN
+                CREATE INDEX idx_communication_event_status ON communication_event(status_type);
+                RAISE NOTICE '索引 idx_communication_event_status 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 communication_event 不存在，跳过索引创建';
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'communication_event_role') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_communication_event_role_party') THEN
+                CREATE INDEX idx_communication_event_role_party ON communication_event_role(party_id, party_type);
+                RAISE NOTICE '索引 idx_communication_event_role_party 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 communication_event_role 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建Communication Event索引失败: %', SQLERRM;
+    END;
+END $$;
 
--- 复合索引（用于常见查询）
-CREATE INDEX idx_party_role_active ON party_role(party_id, role_type, valid_from, valid_to)
-    WHERE valid_to IS NULL;
-CREATE INDEX idx_party_relationship_active ON party_relationship(
-    party_id_from, party_id_to, relationship_type, valid_from, valid_to
-) WHERE valid_to IS NULL;
+-- 复合索引（用于常见查询，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_role_active') THEN
+                CREATE INDEX idx_party_role_active ON party_role(party_id, role_type, valid_from, valid_to)
+                    WHERE valid_to IS NULL;
+                RAISE NOTICE '索引 idx_party_role_active 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 party_role 不存在，跳过索引创建';
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_relationship') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_party_relationship_active') THEN
+                CREATE INDEX idx_party_relationship_active ON party_relationship(
+                    party_id_from, party_id_to, relationship_type, valid_from, valid_to
+                ) WHERE valid_to IS NULL;
+                RAISE NOTICE '索引 idx_party_relationship_active 创建成功';
+            END IF;
+        ELSE
+            RAISE WARNING '表 party_relationship 不存在，跳过索引创建';
+        END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            RAISE NOTICE '索引已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建复合索引失败: %', SQLERRM;
+    END;
+END $$;
 ```
 
 ---
@@ -1988,7 +2379,22 @@ WHERE pr.role_type IN ('CUSTOMER', 'BILL_TO_CUSTOMER', 'SHIP_TO_CUSTOMER', 'END_
   AND (pr.valid_to IS NULL OR pr.valid_to > NOW())
 ORDER BY p.name;
 
--- 性能测试
+-- 性能测试（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            RAISE WARNING '必需的表不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行性能测试：获取所有活跃客户';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     p.party_id,
@@ -2372,10 +2778,40 @@ EXCEPTION
         RAISE EXCEPTION '创建表 organization 失败: %', SQLERRM;
 END $$;
 
--- 查询：仅查询父表（使用ONLY）
+-- 查询：仅查询父表（使用ONLY，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') THEN
+            RAISE WARNING '表 party 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行查询：仅查询父表（ONLY）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM ONLY party WHERE party_type = 'P';
 
--- 查询：查询所有（包括子表）
+-- 查询：查询所有（包括子表，带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') THEN
+            RAISE WARNING '表 party 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行查询：查询所有（包括子表）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM party WHERE party_type = 'P';
 ```
 
@@ -2441,7 +2877,22 @@ ALTER TABLE person ADD COLUMN last_name VARCHAR(50);
 ALTER TABLE organization ADD COLUMN legal_name VARCHAR(200);
 ALTER TABLE organization ADD COLUMN tax_id VARCHAR(50);
 
--- 查询优化：自动分区剪枝
+-- 查询优化：自动分区剪枝（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') THEN
+            RAISE WARNING '表 party 不存在，无法执行分区剪枝查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行查询：自动分区剪枝测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM party WHERE party_type = 'P';  -- 仅扫描person分区
 ```
 
@@ -2597,26 +3048,83 @@ EXCEPTION
         RAISE EXCEPTION '创建表 postal_address_boundary 失败: %', SQLERRM;
 END $$;
 
--- 示例：创建地址
-INSERT INTO postal_address (address1, address2, directions) VALUES
-('100 Main Street', 'Suite 101', 'Take Highway 95 to Main Street exit, turn right');
+-- 示例：创建地址（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'postal_address') THEN
+            RAISE WARNING '表 postal_address 不存在，无法插入地址';
+            RETURN;
+        END IF;
+        INSERT INTO postal_address (address1, address2, directions) VALUES
+        ('100 Main Street', 'Suite 101', 'Take Highway 95 to Main Street exit, turn right')
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE '地址插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入地址失败: %', SQLERRM;
+    END;
+END $$;
 
-INSERT INTO geographic_boundary (boundary_type, boundary_name, boundary_code) VALUES
-('CITY', 'New York', 'NYC'),
-('STATE', 'New York', 'NY'),
-('COUNTRY', 'United States', 'US'),
-('POSTAL_CODE', '10001', '10001');
+-- 插入地理边界（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'geographic_boundary') THEN
+            RAISE WARNING '表 geographic_boundary 不存在，无法插入地理边界';
+            RETURN;
+        END IF;
+        INSERT INTO geographic_boundary (boundary_type, boundary_name, boundary_code) VALUES
+        ('CITY', 'New York', 'NYC'),
+        ('STATE', 'New York', 'NY'),
+        ('COUNTRY', 'United States', 'US'),
+        ('POSTAL_CODE', '10001', '10001')
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE '地理边界插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入地理边界失败: %', SQLERRM;
+    END;
+END $$;
 
--- 关联地址与地理边界
-INSERT INTO postal_address_boundary (postal_address_id, geographic_boundary_id, boundary_role) VALUES
-(1, (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_code = '10001'), 'POSTAL_CODE'),
-(1, (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_name = 'New York' AND boundary_type = 'CITY'), 'CITY'),
-(1, (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_code = 'NY'), 'STATE');
+-- 关联地址与地理边界（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'postal_address_boundary') THEN
+            RAISE WARNING '表 postal_address_boundary 不存在，无法关联地址与地理边界';
+            RETURN;
+        END IF;
+        INSERT INTO postal_address_boundary (postal_address_id, geographic_boundary_id, boundary_role) VALUES
+        (1, (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_code = '10001'), 'POSTAL_CODE'),
+        (1, (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_name = 'New York' AND boundary_type = 'CITY'), 'CITY'),
+        (1, (SELECT geographic_boundary_id FROM geographic_boundary WHERE boundary_code = 'NY'), 'STATE')
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE '地址与地理边界关联成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '关联地址与地理边界失败: %', SQLERRM;
+    END;
+END $$;
 
--- 关联Party与地址
-INSERT INTO party_postal_address (party_id, party_type, postal_address_id, address_purpose) VALUES
-(100, 'O', 1, 'Headquarters'),
-(100, 'O', 1, 'Billing');
+-- 关联Party与地址（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_postal_address') THEN
+            RAISE WARNING '表 party_postal_address 不存在，无法关联Party与地址';
+            RETURN;
+        END IF;
+        INSERT INTO party_postal_address (party_id, party_type, postal_address_id, address_purpose) VALUES
+        (100, 'O', 1, 'Headquarters'),
+        (100, 'O', 1, 'Billing')
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE 'Party与地址关联成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '关联Party与地址失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 查询：获取Party的所有地址
 SELECT
@@ -2862,23 +3370,49 @@ EXCEPTION
         RAISE EXCEPTION '创建表 contact_mechanism_link 失败: %', SQLERRM;
 END $$;
 
--- 示例：创建联系方式（基于Volume 1 Table 2.11）
+-- 示例：创建联系方式（基于Volume 1 Table 2.11，带错误处理）
 -- ABC Corporation的联系方式
-INSERT INTO contact_mechanism (contact_mechanism_type, contact_value) VALUES
-('PHONE', '(212) 234-0958'),
-('FAX', '(212) 334-5896'),
-('POSTAL_ADDRESS', '100 Main Street');
-
-INSERT INTO telecommunications_number (contact_mechanism_id, area_code, phone_number) VALUES
-((SELECT contact_mechanism_id FROM contact_mechanism WHERE contact_value = '(212) 234-0958'), '212', '234-0958');
-
-INSERT INTO party_contact_mechanism (party_id, party_type, contact_mechanism_id) VALUES
-(100, 'O', (SELECT contact_mechanism_id FROM contact_mechanism WHERE contact_value = '(212) 234-0958'));
-
-INSERT INTO contact_mechanism_purpose (party_id, party_type, contact_mechanism_id, purpose_type) VALUES
-(100, 'O',
- (SELECT contact_mechanism_id FROM contact_mechanism WHERE contact_value = '(212) 234-0958'),
- 'GENERAL_PHONE');
+DO $$
+DECLARE
+    v_phone_contact_id INT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contact_mechanism') THEN
+            RAISE WARNING '表 contact_mechanism 不存在，无法插入联系方式';
+            RETURN;
+        END IF;
+        INSERT INTO contact_mechanism (contact_mechanism_type, contact_value) VALUES
+        ('PHONE', '(212) 234-0958'),
+        ('FAX', '(212) 334-5896'),
+        ('POSTAL_ADDRESS', '100 Main Street')
+        ON CONFLICT DO NOTHING
+        RETURNING contact_mechanism_id INTO v_phone_contact_id;
+        
+        IF v_phone_contact_id IS NULL THEN
+            SELECT contact_mechanism_id INTO v_phone_contact_id
+            FROM contact_mechanism WHERE contact_value = '(212) 234-0958' LIMIT 1;
+        END IF;
+        
+        IF v_phone_contact_id IS NOT NULL THEN
+            INSERT INTO telecommunications_number (contact_mechanism_id, area_code, phone_number) VALUES
+            (v_phone_contact_id, '212', '234-0958')
+            ON CONFLICT DO NOTHING;
+            
+            INSERT INTO party_contact_mechanism (party_id, party_type, contact_mechanism_id) VALUES
+            (100, 'O', v_phone_contact_id)
+            ON CONFLICT DO NOTHING;
+            
+            INSERT INTO contact_mechanism_purpose (party_id, party_type, contact_mechanism_id, purpose_type) VALUES
+            (100, 'O', v_phone_contact_id, 'GENERAL_PHONE')
+            ON CONFLICT DO NOTHING;
+        END IF;
+        
+        RAISE NOTICE '联系方式创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建联系方式失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 查询：获取Party的所有联系方式
 SELECT
@@ -3013,14 +3547,36 @@ EXCEPTION
         RAISE EXCEPTION '创建表 facility_contact_mechanism 失败: %', SQLERRM;
 END $$;
 
--- 示例：创建设施
-INSERT INTO facility (facility_type, facility_name, square_footage, postal_address_id) VALUES
-('WAREHOUSE', 'Main Warehouse', 50000.00, 1),
-('PLANT', 'Manufacturing Plant A', 100000.00, 1);
-
--- 关联设施与联系方式
-INSERT INTO facility_contact_mechanism (facility_id, contact_mechanism_id) VALUES
-(1, (SELECT contact_mechanism_id FROM contact_mechanism WHERE contact_value = '(212) 234-0958'));
+-- 示例：创建设施（带错误处理）
+DO $$
+DECLARE
+    v_contact_id INT;
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'facility') THEN
+            RAISE WARNING '表 facility 不存在，无法创建设施';
+            RETURN;
+        END IF;
+        INSERT INTO facility (facility_type, facility_name, square_footage, postal_address_id) VALUES
+        ('WAREHOUSE', 'Main Warehouse', 50000.00, 1),
+        ('PLANT', 'Manufacturing Plant A', 100000.00, 1)
+        ON CONFLICT DO NOTHING;
+        
+        SELECT contact_mechanism_id INTO v_contact_id
+        FROM contact_mechanism WHERE contact_value = '(212) 234-0958' LIMIT 1;
+        
+        IF v_contact_id IS NOT NULL THEN
+            INSERT INTO facility_contact_mechanism (facility_id, contact_mechanism_id) VALUES
+            (1, v_contact_id)
+            ON CONFLICT DO NOTHING;
+        END IF;
+        
+        RAISE NOTICE '设施创建成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '创建设施失败: %', SQLERRM;
+    END;
+END $$;
 ```
 
 ---
@@ -3124,16 +3680,31 @@ EXCEPTION
         RAISE EXCEPTION '创建表 communication_event_purpose_type 失败: %', SQLERRM;
 END $$;
 
-INSERT INTO communication_event_purpose_type (purpose_type, description) VALUES
-('INITIAL_SALES_CALL', '初始销售电话'),
-('SALES_FOLLOW_UP', '销售跟进'),
-('CUSTOMER_SERVICE', '客户服务'),
-('TECHNICAL_SUPPORT', '技术支持'),
-('DEMONSTRATION', '产品演示'),
-('MEETING', '会议'),
-('CONFERENCE', '会议'),
-('SEMINAR', '研讨会'),
-('ACTIVITY_REQUEST', '活动请求');
+-- 插入通信事件目的类型（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'communication_event_purpose_type') THEN
+            RAISE WARNING '表 communication_event_purpose_type 不存在，无法插入数据';
+            RETURN;
+        END IF;
+        INSERT INTO communication_event_purpose_type (purpose_type, description) VALUES
+        ('INITIAL_SALES_CALL', '初始销售电话'),
+        ('SALES_FOLLOW_UP', '销售跟进'),
+        ('CUSTOMER_SERVICE', '客户服务'),
+        ('TECHNICAL_SUPPORT', '技术支持'),
+        ('DEMONSTRATION', '产品演示'),
+        ('MEETING', '会议'),
+        ('CONFERENCE', '会议'),
+        ('SEMINAR', '研讨会'),
+        ('ACTIVITY_REQUEST', '活动请求')
+        ON CONFLICT (purpose_type) DO NOTHING;
+        RAISE NOTICE '通信事件目的类型插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入通信事件目的类型失败: %', SQLERRM;
+    END;
+END $$;
 
 -- Communication Event Status Type（通信事件状态类型，带错误处理）
 DO $$
@@ -3152,14 +3723,27 @@ EXCEPTION
         RAISE EXCEPTION '创建表 communication_event_status_type 失败: %', SQLERRM;
 END $$;
 
--- Communication Event Status Type 初始数据
-INSERT INTO communication_event_status_type (status_type, description) VALUES
-('SCHEDULED', '已安排'),
-('IN_PROGRESS', '进行中'),
-('COMPLETED', '已完成'),
-('CANCELLED', '已取消'),
-('PENDING_RESOLUTION', '待解决')
-ON CONFLICT (status_type) DO NOTHING;
+-- Communication Event Status Type 初始数据（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'communication_event_status_type') THEN
+            RAISE WARNING '表 communication_event_status_type 不存在，无法插入数据';
+            RETURN;
+        END IF;
+        INSERT INTO communication_event_status_type (status_type, description) VALUES
+        ('SCHEDULED', '已安排'),
+        ('IN_PROGRESS', '进行中'),
+        ('COMPLETED', '已完成'),
+        ('CANCELLED', '已取消'),
+        ('PENDING_RESOLUTION', '待解决')
+        ON CONFLICT (status_type) DO NOTHING;
+        RAISE NOTICE '通信事件状态类型插入成功';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '插入通信事件状态类型失败: %', SQLERRM;
+    END;
+END $$;
 
 -- Case（案例，带错误处理）
 DO $$
@@ -3344,14 +3928,29 @@ ORDER BY ce.datetime_started DESC;
 **完整实现**:
 
 ```sql
--- 1. 扩展Party Role类型（CRM特定）
-INSERT INTO party_role_type (role_type, description, role_category) VALUES
-('PROSPECT', '潜在客户', 'COMMON'),
-('LEAD', '线索', 'COMMON'),
-('CUSTOMER', '客户', 'COMMON'),
-('VIP_CUSTOMER', 'VIP客户', 'COMMON'),
-('PARTNER', '合作伙伴', 'ORGANIZATION')
-ON CONFLICT (role_type) DO NOTHING;
+-- 1. 扩展Party Role类型（CRM特定，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role_type') THEN
+            RAISE WARNING '表 party_role_type 不存在，无法插入数据';
+            RETURN;
+        END IF;
+        INSERT INTO party_role_type (role_type, description, role_category) VALUES
+        ('PROSPECT', '潜在客户', 'COMMON'),
+        ('LEAD', '线索', 'COMMON'),
+        ('CUSTOMER', '客户', 'COMMON'),
+        ('VIP_CUSTOMER', 'VIP客户', 'COMMON'),
+        ('PARTNER', '合作伙伴', 'ORGANIZATION')
+        ON CONFLICT (role_type) DO NOTHING;
+        RAISE NOTICE 'Party Role类型数据插入成功';
+    EXCEPTION
+        WHEN unique_violation THEN
+            RAISE NOTICE 'Party Role类型数据已存在，跳过插入';
+        WHEN OTHERS THEN
+            RAISE WARNING '插入Party Role类型数据失败: %', SQLERRM;
+    END;
+END $$;
 
 -- 2. 客户标签表（带错误处理）
 DO $$
@@ -3381,15 +3980,46 @@ END $$;
 CREATE INDEX idx_party_tag_party ON party_tag(party_id, party_type);
 CREATE INDEX idx_party_tag_name ON party_tag(tag_name);
 
--- 3. 客户细分（使用Party Classification）
-INSERT INTO party_classification_type (classification_type, description, applies_to) VALUES
-('CUSTOMER_SEGMENT', '客户细分', 'B'),
-('INDUSTRY', '行业', 'O'),
-('COMPANY_SIZE', '公司规模', 'O'),
-('REVENUE_RANGE', '收入范围', 'O')
-ON CONFLICT (classification_type) DO NOTHING;
+-- 3. 客户细分（使用Party Classification，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_classification_type') THEN
+            RAISE WARNING '表 party_classification_type 不存在，无法插入数据';
+            RETURN;
+        END IF;
+        INSERT INTO party_classification_type (classification_type, description, applies_to) VALUES
+        ('CUSTOMER_SEGMENT', '客户细分', 'B'),
+        ('INDUSTRY', '行业', 'O'),
+        ('COMPANY_SIZE', '公司规模', 'O'),
+        ('REVENUE_RANGE', '收入范围', 'O')
+        ON CONFLICT (classification_type) DO NOTHING;
+        RAISE NOTICE '客户细分类型数据插入成功';
+    EXCEPTION
+        WHEN unique_violation THEN
+            RAISE NOTICE '客户细分类型数据已存在，跳过插入';
+        WHEN OTHERS THEN
+            RAISE WARNING '插入客户细分类型数据失败: %', SQLERRM;
+    END;
+END $$;
 
--- 4. CRM查询：获取所有潜在客户
+-- 4. CRM查询：获取所有潜在客户（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'party_role') THEN
+            RAISE WARNING '必需的表不存在（party或party_role），无法执行CRM查询';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行CRM查询：获取所有潜在客户';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT
     p.party_id,
     p.name,

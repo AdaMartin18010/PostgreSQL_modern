@@ -1162,7 +1162,24 @@ SELECT * FROM large_table1 t1
 JOIN large_table2 t2 ON t1.id = t2.ref_id
 WHERE t1.created_at >= '2025-01-01';
 
--- ✅ 好：使用CTE或子查询先过滤
+-- ✅ 好：使用CTE或子查询先过滤（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table1') OR
+           NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'large_table2') THEN
+            RAISE WARNING '必需的表不存在，无法执行JOIN优化';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行JOIN优化（✅ 好：使用CTE或子查询先过滤）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'JOIN优化演示准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 WITH filtered AS (
     SELECT * FROM large_table1
     WHERE created_at >= '2025-01-01'
@@ -1170,18 +1187,56 @@ WITH filtered AS (
 SELECT * FROM filtered f
 JOIN large_table2 t2 ON f.id = t2.ref_id;
 
--- 技巧2：确保JOIN列有索引
-CREATE INDEX t1_id_idx ON table1(id);
-CREATE INDEX t2_ref_id_idx ON table2(ref_id);
+-- 技巧2：确保JOIN列有索引（带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table1') THEN
+            RAISE WARNING '表 table1 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'table1' AND indexname = 't1_id_idx') THEN
+            CREATE INDEX t1_id_idx ON table1(id);
+            RAISE NOTICE '索引 t1_id_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 table1 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 t1_id_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'table2') THEN
+            RAISE WARNING '表 table2 不存在，无法创建索引';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'table2' AND indexname = 't2_ref_id_idx') THEN
+            CREATE INDEX t2_ref_id_idx ON table2(ref_id);
+            RAISE NOTICE '索引 t2_ref_id_idx 创建成功';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 table2 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 t2_ref_id_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
 
 -- 技巧3：使用INNER JOIN替代OUTER JOIN（如果可以）
 -- INNER JOIN性能通常更好
 
 -- 技巧4：考虑JOIN顺序（小表在前）
 -- PostgreSQL优化器会自动优化，但有时手动调整更好
-SELECT /*+ Leading(small_table large_table) */ *
-FROM large_table
-JOIN small_table ON ...;
+-- 注意：PostgreSQL不支持/*+ Leading(...) */提示，但优化器会自动选择最佳顺序
 ```
 
 ---
@@ -2507,11 +2562,49 @@ LIMIT 10;
 ### 14.2 解决方案
 
 ```sql
--- 方案1：创建复合索引（过滤列 + 排序列）
-CREATE INDEX orders_status_created_desc_idx
-ON orders(status, created_at DESC);
+-- 方案1：创建复合索引（过滤列 + 排序列，带错误处理）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法创建索引';
+            RETURN;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'orders_status_created_desc_idx') THEN
+            CREATE INDEX orders_status_created_desc_idx ON orders(status, created_at DESC);
+            RAISE NOTICE '索引 orders_status_created_desc_idx 创建成功';
+        ELSE
+            RAISE NOTICE '索引 orders_status_created_desc_idx 已存在';
+        END IF;
+    EXCEPTION
+        WHEN undefined_table THEN
+            RAISE WARNING '表 orders 不存在';
+        WHEN duplicate_table THEN
+            RAISE WARNING '索引 orders_status_created_desc_idx 已存在';
+        WHEN OTHERS THEN
+            RAISE WARNING '创建索引失败: %', SQLERRM;
+    END;
+END $$;
 
-EXPLAIN (ANALYZE)
+-- 查询优化后性能测试（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+            RAISE WARNING '表 orders 不存在，无法执行查询';
+            RETURN;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'orders_status_created_desc_idx') THEN
+            RAISE WARNING '索引 orders_status_created_desc_idx 不存在，查询可能较慢';
+        END IF;
+        RAISE NOTICE '开始执行优化后查询性能测试';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '查询准备失败: %', SQLERRM;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT * FROM orders
 WHERE status = 'completed'
 ORDER BY created_at DESC

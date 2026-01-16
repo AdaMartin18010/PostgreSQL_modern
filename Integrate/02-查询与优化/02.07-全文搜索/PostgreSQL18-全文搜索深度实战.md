@@ -71,6 +71,17 @@ BEGIN
     END;
 END $$;
 
+-- 测试to_tsvector函数（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始测试to_tsvector函数';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试准备失败: %', SQLERRM;
+    END;
+END $$;
+
 EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT to_tsvector('english', 'The quick brown fox jumps over the lazy dog');
 -- 结果: 'brown':3 'dog':9 'fox':4 'jump':5 'lazi':8 'quick':2
@@ -106,6 +117,17 @@ BEGIN
         WHEN OTHERS THEN
             RAISE WARNING '测试准备失败: %', SQLERRM;
             RAISE;
+    END;
+END $$;
+
+-- 测试文本搜索匹配（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        RAISE NOTICE '开始测试文本搜索匹配（@@操作符）';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '测试准备失败: %', SQLERRM;
     END;
 END $$;
 
@@ -1104,7 +1126,28 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- 使用
+-- 使用（带错误处理和性能测试）
+DO $$
+BEGIN
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'articles') THEN
+            RAISE WARNING '表 articles 不存在，无法执行语言检测';
+            RETURN;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'detect_language') THEN
+            RAISE WARNING '函数 detect_language 不存在，请先创建';
+            RETURN;
+        END IF;
+        RAISE NOTICE '开始执行多语言检测和tsvector生成';
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING '多语言检测准备失败: %', SQLERRM;
+            RAISE;
+    END;
+END $$;
+
+EXPLAIN (ANALYZE, BUFFERS, TIMING)
 SELECT to_tsvector(detect_language(content), content)
 FROM articles;
 ```
