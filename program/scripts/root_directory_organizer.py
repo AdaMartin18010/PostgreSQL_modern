@@ -27,8 +27,26 @@ class RootDirectoryOrganizer:
     def __init__(self, root_dir: str):
         """初始化整理器"""
         self.root_dir = Path(root_dir)
-        self.archive_dir = self.root_dir / "99-Archive" / "根目录归档"
+        # 统一使用项目现有的 archive/ 体系，避免引入新的 99-Archive/
+        self.archive_dir = self.root_dir / "archive" / "根目录归档"
         self.files: Dict[str, Dict] = {}
+        # 根目录必须保留的入口/核心文档（这些文件通常被 README/导航引用）
+        self.keep_files = {
+            "README.md",
+            "PROJECT-SUMMARY.md",
+            "START-HERE.md",
+            "QUICKSTART.md",
+            "QUICK-REFERENCE.md",
+            "CHANGELOG.md",
+            "WHATS-NEW.md",
+            "ROADMAP-2025.md",
+            "LEARNING-PATH.md",
+            "BEST-PRACTICES.md",
+            "FAQ.md",
+            "CONTRIBUTING.md",
+            "COMPLETION-REPORT.md",
+            "FINAL-MILESTONE.md",
+        }
         
     def scan_root_files(self) -> None:
         """扫描根目录文件"""
@@ -61,6 +79,10 @@ class RootDirectoryOrganizer:
     def categorize_file(self, filename: str) -> str:
         """根据文件名分类"""
         filename_lower = filename.lower()
+
+        # 入口/核心文档：强制保留在根目录
+        if filename in self.keep_files:
+            return '入口文档'
         
         # 完成报告类
         if any(keyword in filename for keyword in ['完成', '完成报告', '完成总结', '最终完成', '圆满完成', 'COMPLETE']):
@@ -154,7 +176,7 @@ class RootDirectoryOrganizer:
                 size_kb = info['size'] / 1024
                 report_lines.extend([
                     f"- **`{filename}`** ({size_kb:.1f} KB)",
-                    f"  - 建议操作: {'保留在根目录' if category in ['导航文档', '快速开始', '用户手册', 'README'] else '归档到99-Archive/根目录归档/' + category}",
+                    f"  - 建议操作: {'保留在根目录' if category in ['入口文档', '导航文档', '快速开始', '用户手册'] else '归档到archive/根目录归档/' + category}",
                     ""
                 ])
         
@@ -171,14 +193,11 @@ class RootDirectoryOrganizer:
             "",
         ])
         
-        keep_categories = ['导航文档', '快速开始', '用户手册']
+        keep_categories = ['入口文档', '导航文档', '快速开始', '用户手册']
         keep_files = []
         for category in keep_categories:
             if category in plan:
                 keep_files.extend(plan[category])
-        
-        if 'README.md' in self.files:
-            keep_files.append('README.md')
         
         for filename in sorted(keep_files):
             report_lines.append(f"- `{filename}`")
@@ -187,7 +206,7 @@ class RootDirectoryOrganizer:
             "",
             "### 建议归档的文件",
             "",
-            "以下文件建议归档到 `99-Archive/根目录归档/` 目录：",
+            "以下文件建议归档到 `archive/根目录归档/` 目录：",
             "",
         ])
         
@@ -200,7 +219,10 @@ class RootDirectoryOrganizer:
         for filename in sorted(archive_files):
             info = self.files[filename]
             category = info['category']
-            report_lines.append(f"- `{filename}` → `99-Archive/根目录归档/{category}/`")
+            # 仅输出需要归档的文件（入口/导航/快速开始/用户手册不在此列表）
+            if category in keep_categories:
+                continue
+            report_lines.append(f"- `{filename}` → `archive/根目录归档/{category}/`")
         
         # 执行步骤
         report_lines.extend([
@@ -212,7 +234,7 @@ class RootDirectoryOrganizer:
             "### 步骤1: 创建归档目录",
             "",
             "```bash",
-            "mkdir -p 99-Archive/根目录归档/{完成报告,计划文档,总结文档,状态文档,分析文档,模板文档,其他}",
+            "mkdir -p archive/根目录归档/{完成报告,计划文档,总结文档,状态文档,分析文档,模板文档,其他}",
             "```",
             "",
             "### 步骤2: 移动文件",
@@ -223,7 +245,9 @@ class RootDirectoryOrganizer:
         for filename in sorted(archive_files):
             info = self.files[filename]
             category = info['category']
-            report_lines.append(f"mv \"{filename}\" \"99-Archive/根目录归档/{category}/\"")
+            if category in keep_categories:
+                continue
+            report_lines.append(f"mv \"{filename}\" \"archive/根目录归档/{category}/\"")
         
         report_lines.extend([
             "```",

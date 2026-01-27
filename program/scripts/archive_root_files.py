@@ -17,6 +17,8 @@ import re
 import shutil
 from pathlib import Path
 import argparse
+import os
+import stat
 
 
 def parse_organize_report(report_file: str):
@@ -54,8 +56,29 @@ def archive_files(suggestions: list, dry_run: bool = True):
 
     print(f"找到 {len(suggestions)} 个文件需要归档\n")
 
-    # 创建归档目录
-    archive_base = Path("99-Archive/根目录归档")
+    def _ensure_writable(path: Path) -> None:
+        """尽量去掉只读属性，避免 Windows 上无法移动/删除。"""
+        try:
+            os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+        except Exception:
+            pass
+
+    def _unique_file_path(path: Path) -> Path:
+        """如目标文件已存在，则生成不冲突的新文件路径（追加 __dupN）。"""
+        if not path.exists():
+            return path
+        stem = path.stem
+        suffix = path.suffix
+        parent = path.parent
+        n = 1
+        while True:
+            candidate = parent / f"{stem}__dup{n}{suffix}"
+            if not candidate.exists():
+                return candidate
+            n += 1
+
+    # 创建归档目录（对齐项目现有 archive/ 体系）
+    archive_base = Path("archive/根目录归档")
     subdirs = [
         "完成报告",
         "计划文档",
@@ -82,14 +105,29 @@ def archive_files(suggestions: list, dry_run: bool = True):
         target_path = Path(suggestion['target'])
 
         # 构建完整目标路径
-        # 从target_path中提取子目录名（去掉"99-Archive/根目录归档/"前缀）
+        # 从target_path中提取子目录名（兼容旧前缀 99-Archive/根目录归档/ 与新前缀 archive/根目录归档/）
         target_str = str(target_path)
         if target_str.startswith("99-Archive/根目录归档/"):
             target_str = target_str.replace("99-Archive/根目录归档/", "")
         elif target_str.startswith("99-Archive\\根目录归档\\"):
             target_str = target_str.replace("99-Archive\\根目录归档\\", "")
+        elif target_str.startswith("archive/根目录归档/"):
+            target_str = target_str.replace("archive/根目录归档/", "")
+        elif target_str.startswith("archive\\根目录归档\\"):
+            target_str = target_str.replace("archive\\根目录归档\\", "")
 
-        target_path = archive_base / target_str
+        # 报告里通常给的是“目标目录”（以 / 或 \ 结尾），也兼容直接给出“目标文件路径”
+        target_clean = target_str.strip("\\/").strip()
+        target_path = archive_base / target_clean
+
+        if target_path.suffix.lower() == ".md":
+            # 目标是文件路径
+            dest_dir = target_path.parent
+            dest_file = _unique_file_path(target_path)
+        else:
+            # 目标是目录路径：文件名沿用原文件名
+            dest_dir = target_path
+            dest_file = _unique_file_path(dest_dir / source_file.name)
 
         if not source_file.exists():
             print(f"⚠️  跳过（文件不存在）: {source_file}")
@@ -97,15 +135,28 @@ def archive_files(suggestions: list, dry_run: bool = True):
             continue
 
         if dry_run:
-            print(f"📋 预览: {source_file} → {target_path}")
+            print(f"📋 预览: {source_file} → {dest_file}")
         else:
             try:
                 # 确保目标目录存在
-                target_path.parent.mkdir(parents=True, exist_ok=True)
+                dest_dir.mkdir(parents=True, exist_ok=True)
 
-                # 移动文件
-                shutil.move(str(source_file), str(target_path))
-                print(f"✅ 已归档: {source_file} → {target_path}")
+                # Windows 下很多文件可能带只读属性，先尝试去掉
+                _ensure_writable(source_file)
+
+                # 优先尝试原子重命名（同盘最快）
+                try:
+                    source_file.replace(dest_file)
+                except Exception:
+                    # 回退到 copy + delete（避免部分环境下 rename 受限）
+                    shutil.copy2(str(source_file), str(dest_file))
+                    try:
+                        source_file.unlink()
+                    except Exception:
+                        _ensure_writable(source_file)
+                        source_file.unlink()
+
+                print(f"✅ 已归档: {source_file} → {dest_file}")
                 success_count += 1
             except Exception as e:
                 print(f"❌ 归档失败: {source_file} - {e}")
