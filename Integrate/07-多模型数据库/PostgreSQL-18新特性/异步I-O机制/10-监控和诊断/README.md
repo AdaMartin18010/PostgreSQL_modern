@@ -439,7 +439,7 @@ SELECT * FROM pg_stat_io;
 -- 发现I/O并发度很低
 
 -- 3. 检查系统支持
-SELECT version();  -- PostgreSQL 18.0
+SELECT version();  -- PostgreSQL 18.1
 ```
 
 **解决方案**:

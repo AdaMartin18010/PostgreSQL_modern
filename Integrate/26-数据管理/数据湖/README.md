@@ -117,7 +117,7 @@
 
 - [../README.md](../README.md) - 数据管理主题
 - [../数据仓库/README.md](../数据仓库/README.md) - 数据仓库主题
-- [../分区表管理/README.md](../分区表管理/README.md) - 分区表管理
+- [../分区表管理/README.md](../../02-查询与优化/README.md) - 分区表管理
 - [../数据管理模型/README.md](../数据管理模型/README.md) - 数据管理模型理论
 
 ---

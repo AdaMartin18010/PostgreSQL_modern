@@ -3357,7 +3357,7 @@ SELECT ST_ShortestLine(
 ```sql
 -- 检查PostgreSQL版本
 SELECT version();
--- 需要: PostgreSQL 18.0 或更高版本
+-- 需要: PostgreSQL 18.1 或更高版本
 
 ```
 
@@ -4091,7 +4091,7 @@ CREATE TABLE sensor_readings (
 
 ---
 
-### 10-AI与机器学习\02-技术架构\PostgreSQL-AI全栈架构.md
+### 10-AI与机器学习\01-核心基础\PostgreSQL-AI全栈架构.md
 
 **行 152** (sql):
 
@@ -4108,7 +4108,7 @@ SELECT ai.create_vectorizer(
 
 ---
 
-### 10-AI与机器学习\02-技术架构\PostgreSQL生态体系架构.md
+### 10-AI与机器学习\01-核心基础\PostgreSQL生态体系架构.md
 
 **行 273** (sql):
 
@@ -4159,7 +4159,7 @@ SELECT ai.create_vectorizer(...);
 
 ---
 
-### 10-AI与机器学习\03-核心能力\AI原生调用-pgai.md
+### 10-AI与机器学习\01-核心基础\AI原生调用-pgai.md
 
 **行 199** (sql):
 
@@ -4288,7 +4288,7 @@ SELECT pg_reload_conf();
 
 ---
 
-### 10-AI与机器学习\03-核心能力\内置机器学习-PostgresML.md
+### 10-AI与机器学习\01-核心基础\内置机器学习-PostgresML.md
 
 **行 157** (sql):
 
@@ -4344,7 +4344,7 @@ SELECT pgml.load_model('fraud_detection');
 
 ---
 
-### 10-AI与机器学习\03-核心能力\数据注入与治理.md
+### 10-AI与机器学习\01-核心基础\数据注入与治理.md
 
 **行 120** (sql):
 
@@ -4410,7 +4410,7 @@ BEGIN
 
 ---
 
-### 10-AI与机器学习\04-应用场景\AI-Agent数据支撑.md
+### 10-AI与机器学习\19-实战案例\AI-Agent数据支撑.md
 
 **行 280** (sql):
 
@@ -4432,7 +4432,7 @@ DECLARE
 
 ---
 
-### 10-AI与机器学习\04-应用场景\智能推荐系统.md
+### 10-AI与机器学习\19-实战案例\智能推荐系统.md
 
 **行 211** (sql):
 
@@ -4448,7 +4448,7 @@ SELECT ai.create_vectorizer(
 
 ---
 
-### 10-AI与机器学习\05-实践案例\Qunar途家案例.md
+### 10-AI与机器学习\19-实战案例\Qunar途家案例.md
 
 **行 372** (sql):
 
@@ -4498,7 +4498,7 @@ BEGIN
 
 ---
 
-### 10-AI与机器学习\05-实践案例\Timescale-MarketReader案例.md
+### 10-AI与机器学习\19-实战案例\Timescale-MarketReader案例.md
 
 **行 165** (sql):
 
@@ -4596,7 +4596,7 @@ SELECT ai.create_vectorizer(
 
 ---
 
-### 10-AI与机器学习\07-实施路径\成本优化指南.md
+### 10-AI与机器学习\21-最佳实践\成本优化指南.md
 
 **行 272** (sql):
 
@@ -4642,7 +4642,7 @@ SELECT ai.create_vectorizer(
 
 ---
 
-### 10-AI与机器学习\07-实施路径\渐进式演进路线.md
+### 10-AI与机器学习\21-最佳实践\渐进式演进路线.md
 
 **行 404** (sql):
 
@@ -4695,7 +4695,7 @@ DECLARE
 
 ---
 
-### 10-AI与机器学习\07-实施路径\部署方案设计.md
+### 10-AI与机器学习\21-最佳实践\部署方案设计.md
 
 **行 584** (sql):
 
@@ -4733,7 +4733,7 @@ GRANT SELECT, INSERT, UPDATE, DE
 
 ---
 
-### 10-AI与机器学习\08-未来趋势\AI原生数据库演进.md
+### 10-AI与机器学习\ROADMAP-2025.md\AI原生数据库演进.md
 
 **行 90** (sql):
 
@@ -4881,7 +4881,7 @@ SELECT deploy_model(
 
 ---
 
-### 10-AI与机器学习\08-未来趋势\云原生集成趋势.md
+### 10-AI与机器学习\ROADMAP-2025.md\云原生集成趋势.md
 
 **行 289** (sql):
 
@@ -4899,7 +4899,7 @@ SELECT pg_create_physical_replication_slot('standby1');
 
 ---
 
-### 10-AI与机器学习\08-未来趋势\战略实施建议.md
+### 10-AI与机器学习\ROADMAP-2025.md\战略实施建议.md
 
 **行 124** (sql):
 
@@ -4920,7 +4920,7 @@ SELECT ai.embedding_openai('text-embedding-3-small', 'text');
 
 ---
 
-### 10-AI与机器学习\08-未来趋势\扩展生态完善方向.md
+### 10-AI与机器学习\ROADMAP-2025.md\扩展生态完善方向.md
 
 **行 336** (sql):
 
@@ -4941,7 +4941,7 @@ SELECT huggingface.embed(
 
 ---
 
-### 10-AI与机器学习\08-未来趋势\技术发展趋势.md
+### 10-AI与机器学习\ROADMAP-2025.md\技术发展趋势.md
 
 **行 191** (sql):
 
@@ -5910,7 +5910,7 @@ EXCEPTION
 
 ---
 
-### 12-监控与诊断\06.03-性能调优变更闭环.md
+### 12-监控与诊断\30-性能调优/README.md
 
 **行 684** (sql):
 
@@ -15526,7 +15526,7 @@ SELECT pg_stat_statements_reset();
 
 ---
 
-### 30-性能调优\PostgreSQL-18-自动化运维与自我监测\PostgreSQL-18-自动化运维与自我监测完整指南.md
+### 30-性能调优\PostgreSQL-18-自动化运维与自我监测\12-监控与诊断/README.md
 
 **行 307** (sql):
 

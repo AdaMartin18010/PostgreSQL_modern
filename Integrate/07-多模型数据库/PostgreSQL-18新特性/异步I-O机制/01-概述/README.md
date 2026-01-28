@@ -169,7 +169,7 @@ timeline
 ```sql
 -- 检查PostgreSQL版本
 SELECT version();
--- 需要: PostgreSQL 18.0 或更高版本
+-- 需要: PostgreSQL 18.1 或更高版本
 ```
 
 **操作系统要求**：

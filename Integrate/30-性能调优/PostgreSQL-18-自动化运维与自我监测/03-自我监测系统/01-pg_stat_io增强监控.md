@@ -632,7 +632,7 @@ C3: 可以优化I/O性能
 ## 📚 参考资料
 
 - [PostgreSQL 18 pg_stat_io文档](https://www.postgresql.org/docs/18/monitoring-stats.html#MONITORING-PG-STAT-IO-VIEW)
-- [PostgreSQL性能调优指南](../PostgreSQL性能调优完整指南.md)
+- [PostgreSQL性能调优指南](../../PostgreSQL性能调优完整指南.md)
 
 ---
 

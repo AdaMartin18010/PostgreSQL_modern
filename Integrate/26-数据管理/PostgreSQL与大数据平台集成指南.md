@@ -359,7 +359,7 @@ PostgreSQL → Kafka → Spark → S3 → PostgreSQL（结果）
 ### 相关文档
 
 - [数据湖与PostgreSQL集成](./数据湖/数据湖与PostgreSQL集成.md)
-- [实时数据同步与CDC完整指南](../09-逻辑复制/实时数据同步与CDC完整指南.md)
+- [实时数据同步与CDC完整指南](../09-逻辑复制/README.md)
 
 ---
 

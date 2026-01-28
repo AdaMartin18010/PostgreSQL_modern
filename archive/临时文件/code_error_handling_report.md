@@ -1119,7 +1119,7 @@ systemctl start postgresql@18-main
 
 # 检查状态
 psql -U postgres -c "SELECT version();"
-# PostgreSQL 18.0 ...
+# PostgreSQL 18.1 ...
 
 ```
 

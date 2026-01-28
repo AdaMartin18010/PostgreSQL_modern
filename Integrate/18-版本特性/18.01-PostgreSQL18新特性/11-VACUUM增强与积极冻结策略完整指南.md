@@ -1374,7 +1374,7 @@ ORDER BY last_start_time DESC;
   内核: 6.2.0
   文件系统: ext4 (noatime,data=ordered)
   PostgreSQL 17.1: 对照组
-  PostgreSQL 18.0: 实验组
+  PostgreSQL 18.1: 实验组
 
 数据集:
   表结构: TPC-C订单表模型

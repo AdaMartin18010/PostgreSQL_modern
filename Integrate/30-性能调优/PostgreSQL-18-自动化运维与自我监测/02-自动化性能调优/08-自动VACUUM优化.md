@@ -490,7 +490,7 @@ C3: 结合并行VACUUM，总体性能提升可达3-5倍
 
 - [PostgreSQL 18 VACUUM文档](https://www.postgresql.org/docs/18/sql-vacuum.html)
 - [PostgreSQL 18 autovacuum配置文档](https://www.postgresql.org/docs/18/runtime-config-autovacuum.html)
-- [PostgreSQL性能调优指南](../PostgreSQL性能调优完整指南.md)
+- [PostgreSQL性能调优指南](../../PostgreSQL性能调优完整指南.md)
 - [VACUUM最佳实践](../10-最佳实践/01-推荐做法与注意事项.md)
 
 ---

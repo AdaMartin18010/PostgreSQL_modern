@@ -310,10 +310,10 @@ tail -f /var/log/postgresql/postgresql-18-main.log
 
 ## 📖 相关文档
 
-- [性能调优实战指南](../docs/01-PostgreSQL18/08-性能调优实战指南.md)
-- [生产环境检查清单](../docs/05-Production/20-生产环境检查清单.md)
-- [VACUUM增强完整指南](../docs/01-PostgreSQL18/11-VACUUM增强与积极冻结策略完整指南.md)
-- [工具脚本完整集](../DataBaseTheory/22-工具脚本/)
+- [性能调优实战指南](../../Integrate/30-性能调优/README.md)
+- [生产环境检查清单](../../Integrate/21-最佳实践/README.md)
+- [VACUUM增强完整指南](../../Integrate/18-版本特性/18.01-PostgreSQL18新特性/11-VACUUM增强与积极冻结策略完整指南.md)
+- [工具脚本完整集](../../Integrate/22-工具与资源/)
 
 ---
 

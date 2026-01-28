@@ -19,7 +19,7 @@
 └─ OS: Ubuntu 22.04 LTS
 
 软件配置:
-├─ PostgreSQL: 18.0
+├─ PostgreSQL: 18.1
 ├─ TPC-H: Scale Factor 100 (100GB)
 └─ 内核: Linux 5.15
 ```

@@ -201,7 +201,7 @@ Theory_Evolution ⟹ adapt_to(Practice_Environment)
 
 - [MVCC-ACID-CAP统一框架](./MVCC-ACID-CAP统一框架.md) - MVCC、ACID、CAP结构同构性深度探析
 - [概念演化视角-一致性概念演进](概念演化视角-一致性概念演进.md) - CAP-ARG-006
-- [BASE理论详解](../../01-理论基础/CAP理论/BASE理论详解.md)
+- [BASE理论详解](../25-理论体系/CAP理论/CAP定理的批判性分析.md)
 - [MVCC-ACID-CAP统一框架](MVCC-ACID-CAP统一框架.md)
 
 ---

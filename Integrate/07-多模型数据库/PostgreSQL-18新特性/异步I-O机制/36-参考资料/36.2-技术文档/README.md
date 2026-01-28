@@ -40,8 +40,8 @@
 
 ### 多模型数据库
 
-- **[多模数据模型设计](../../技术原理/多模数据模型设计.md)** - Multi-modal Data Model Design
-- **[PostgreSQL 18 新特性](../../技术原理/多模数据模型设计.md#23-postgresql-18-新特性)** - PostgreSQL 18 New Features
+- **[多模数据模型设计](../../../../技术原理/多模数据模型设计.md)** - Multi-modal Data Model Design
+- **[PostgreSQL 18 新特性](../../../../技术原理/多模数据模型设计.md#23-postgresql-18-新特性)** - PostgreSQL 18 New Features
 
 ### 性能优化
 

@@ -18,7 +18,7 @@
   内存: 64GB DDR4
   存储: NVMe SSD (Samsung 980 PRO)
   操作系统: Ubuntu 22.04
-  PostgreSQL: 18.0
+  PostgreSQL: 18.1
 
 测试数据:
   表大小: 1亿行

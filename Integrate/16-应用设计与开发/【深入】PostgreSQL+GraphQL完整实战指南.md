@@ -3820,9 +3820,9 @@ const server = new ApolloServer({
    - 自定义Scalar类型
 
 2. **相关课程**:
-   - [PostgreSQL安全深化](../07-安全/【深入】PostgreSQL安全深化-RLS与审计完整指南.md)
-   - [PostgreSQL高可用](../09-高可用/)
-   - [PostgreSQL性能调优](../11-性能调优/)
+   - [PostgreSQL安全深化](../05-安全与合规/README.md)
+   - [PostgreSQL高可用](../13-高可用架构/)
+   - [PostgreSQL性能调优](../30-性能调优/)
 
 ---
 

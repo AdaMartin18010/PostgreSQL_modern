@@ -125,7 +125,7 @@
 本子主题整合了以下源目录的文档：
 
 - `PostgreSQL培训/07-安全/`
-- `PostgreSQL_View/05-合规与可信/`
+- `PostgreSQL_View/05-安全与合规/`
 - `DataBaseTheory/07-安全与合规/`
 
 **原则**: 所有文档均为复制，原文件保持不变。

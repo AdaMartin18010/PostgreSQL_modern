@@ -267,26 +267,26 @@
 1. [QUICK-REFERENCE.md](QUICK-REFERENCE.md) - 命令速查
 2. [FAQ.md](FAQ.md) - 常见问题
 3. [LEARNING-PATH.md](LEARNING-PATH.md) - 学习路径
-4. [开发者速查表](docs/01-PostgreSQL18/41-PostgreSQL开发者速查表.md)
+4. [开发者速查表](Integrate/18-版本特性/18.01-PostgreSQL18新特性/README.md)
 
 ### 生产必备
 
 1. [BEST-PRACTICES.md](BEST-PRACTICES.md) - 最佳实践
-2. [生产配置模板](configs/) - 开箱即用
-3. [生产故障案例集](docs/05-Production/22-生产故障案例集.md)
-4. [故障排查手册](docs/01-PostgreSQL18/42-PostgreSQL故障排查手册.md)
+2. [生产配置模板](program/configs) - 开箱即用
+3. [生产故障案例集](Integrate/20-故障诊断案例/README.md)
+4. [故障排查手册](Integrate/20-故障诊断案例/README.md)
 
 ### 性能优化
 
-1. [慢查询优化10案例](docs/01-PostgreSQL18/35-慢查询优化实战案例.md)
-2. [SQL优化速查手册](docs/01-PostgreSQL18/43-SQL优化速查手册.md)
-3. [批量操作优化](docs/01-PostgreSQL18/33-批量操作性能优化.md)
+1. [慢查询优化10案例](Integrate/02-查询与优化/02.06-性能调优/【案例集】PostgreSQL慢查询优化完整实战手册.md)
+2. [SQL优化速查手册](Integrate/02-查询与优化/02.06-性能调优/性能调优体系详解.md)
+3. [批量操作优化](Integrate/02-查询与优化/02.06-性能调优/性能调优深入.md)
 
 ### AI/ML开发
 
-1. [LangChain深度集成](DataBaseTheory/21-AI知识库/)（3篇新文档，48,000字）
-2. [企业知识库完整案例](DataBaseTheory/21-AI知识库/11-LangChain企业知识库完整案例.md)
-3. [向量数据库对比](docs/06-Comparison/02-向量数据库完整对比.md)
+1. [LangChain深度集成](Integrate/10-AI与机器学习)（3篇新文档，48,000字）
+2. [企业知识库完整案例](Integrate/10-AI与机器学习/README.md)
+3. [向量数据库对比](Integrate/23-对比分析/README.md)
 
 ---
 

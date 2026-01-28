@@ -18,7 +18,7 @@
   内存: 128GB DDR4
   存储: NVMe SSD
   操作系统: Ubuntu 22.04
-  PostgreSQL: 18.0
+  PostgreSQL: 18.1
   OAuth Provider: Google OAuth 2.0
 
 测试场景:

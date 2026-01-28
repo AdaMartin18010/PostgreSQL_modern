@@ -546,7 +546,7 @@ SELECT * FROM analyze_olap_query('SELECT t.year, SUM(f.sales_amount) FROM fact_s
 ## 📚 相关文档
 
 - [数据仓库设计指南.md](./数据仓库设计指南.md) - 数据仓库设计
-- [数据库数据仓库模型-OLAP查询与多维分析的形式化.md](./数据库数据仓库模型-OLAP查询与多维分析的形式化.md) - OLAP理论
+- [数据库数据仓库模型-OLAP查询与多维分析的形式化.md](../数据管理模型/12.02-数据库数据仓库模型-OLAP查询与多维分析的形式化.md) - OLAP理论
 - [26-数据管理/README.md](../README.md) - 数据管理主题
 
 ---

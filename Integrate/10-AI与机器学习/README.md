@@ -88,9 +88,24 @@ flowchart TD
 
 ---
 
+## 🆕 最新文档 (2025-01-29)
+
+### pgvector 0.8.1新特性完整指南 ✅
+
+**文件**: [pgvector-0.8.1-新特性完整指南.md](./pgvector-0.8.1-新特性完整指南.md)
+**字数**: 25,000字
+**内容**:
+- StreamingDiskANN索引完整指南
+- Statistical Binary Quantization (SBQ)详解
+- 性能对比 (vs Pinecone等)
+- PostgreSQL 18兼容性测试
+- 生产部署和迁移指南
+
+---
+
 ## 📋 计划创建的指南
 
-### P5-1: pgvector 0.7+ 完整深化指南 ⭐⭐⭐⭐⭐
+### P5-1: pgvector 0.7+ 完整深化指南 ⭐⭐⭐⭐⭐ ✅ 已完成
 
 **重要性**: 最高（AI应用基础）
 

@@ -256,7 +256,7 @@ docker-compose up -d
 | **生产运维** | docs/05-Production/ | 22篇 |
 | **对比分析** | docs/06-Comparison/ | 2篇 |
 | **实战案例** | DataBaseTheory/19-场景案例库/ | 10个 |
-| **工具脚本** | scripts/ + DataBaseTheory/22-工具脚本/ | 24个 |
+| **工具脚本** | scripts/ + DataBaseTheory/22-工具与资源/ | 24个 |
 | **配置模板** | configs/ + kubernetes/ | 20套 |
 
 ---

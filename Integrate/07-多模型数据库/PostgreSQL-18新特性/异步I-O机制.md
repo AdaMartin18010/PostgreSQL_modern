@@ -3389,7 +3389,7 @@ END $$;
 
 | 类别 | 检查项 | 检查方法 | 通过标准 | 优先级 |
 |------|--------|----------|----------|--------|
-| **版本** | PostgreSQL版本 | `SELECT version();` | >= 18.0 | P0 |
+| **版本** | PostgreSQL版本 | `SELECT version();` | >= 18.1 | P0 |
 | **配置** | io_direct | `SHOW io_direct;` | != 'off' | P0 |
 | **配置** | effective_io_concurrency | `SHOW effective_io_concurrency;` | >= 200 (SSD) | P0 |
 | **配置** | maintenance_io_concurrency | `SHOW maintenance_io_concurrency;` | >= 200 (SSD) | P1 |
@@ -4060,7 +4060,7 @@ BEGIN
 
     -- 检查1: PostgreSQL版本
     total_checks := total_checks + 1;
-    check_item := 'PostgreSQL版本 >= 18.0';
+    check_item := 'PostgreSQL版本 >= 18.1';
     IF version() LIKE 'PostgreSQL 18%' THEN
         check_result := '✅ 通过';
         passed_checks := passed_checks + 1;

@@ -2285,7 +2285,7 @@ hardware:
   storage: "2TB NVMe SSD"
 
 database:
-  version: "PostgreSQL 18.0"
+  version: "PostgreSQL 18.1"
   shared_buffers: "32GB"
   work_mem: "256MB"
   max_parallel_workers: 28

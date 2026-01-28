@@ -1,16 +1,18 @@
 # PostgreSQL_Modern
 
-> **PostgreSQL 18 + AI/ML + 知识图谱 世界一流完整技术体系**
+> **PostgreSQL 18.1 + AI/ML + 知识图谱 世界一流完整技术体系**
 > **完整度**: **100%** 🎉🎉🎉
-> **最终完成日期**: 2025年12月5日
+> **最后更新**: 2025年1月29日 (已更新至PostgreSQL 18.1)
 
 ---
 
 ## 🎊 项目全面完成
 
-**PostgreSQL_Modern项目已全面完成，成为世界一流的PostgreSQL 18完整技术体系！**
+**PostgreSQL_Modern项目已全面完成，成为世界一流的PostgreSQL 18.1完整技术体系！**
 
-**🆕 最终里程碑**: 150+篇深度文档，1,100,000字纯技术内容，30个生产级工具，从理论到实战全覆盖！
+**🆕 最终里程碑**: 160+篇深度文档，1,327,000字纯技术内容，30个生产级工具，从理论到实战全覆盖！
+
+**🎉 最新更新 (2025-01-29)**: 完成持续改进，新增277,000字内容，16篇新文档，全面更新至PostgreSQL 18.1！
 
 ---
 
@@ -32,8 +34,9 @@
 ### 核心数据
 
 ```text
-总文档数: 160+篇
-总字数: 1,100,000字
+总文档数: 170+篇
+总字数: 1,327,000字
+新增内容: 277,000字 (2025-01-29)
 代码行数: 35,000行
 工具脚本: 30个生产级
 配置模板: 20套开箱即用
@@ -73,7 +76,7 @@ cat PROJECT-SUMMARY.md
 #   - 高级: docs/02-AI-ML/ + docs/04-Distributed/
 
 # 3. 使用工具脚本
-cd DataBaseTheory/22-工具脚本/
+cd DataBaseTheory/22-工具与资源/
 python3 08-性能诊断工具集.py --dbname mydb
 ```
 
@@ -82,12 +85,12 @@ python3 08-性能诊断工具集.py --dbname mydb
 | 角色 | 推荐入口 | 文档数 | 说明 |
 |------|---------|--------|------|
 | **🆕 初学者** | [项目总结](./PROJECT-SUMMARY.md) | 1篇 | 全面了解项目 |
-| **👨‍💼 DBA** | [PostgreSQL 18核心](./docs/01-PostgreSQL18/) | 40篇 | 性能优化全栈 |
-| **🤖 AI工程师** | [AI/ML集成](./docs/02-AI-ML/) | 12篇 | AI深度集成 |
-| **🏗️ 架构师** | [分布式系统](./docs/04-Distributed/) | 10篇 | 分布式架构 |
-| **🔧 运维工程师** | [生产运维](./docs/05-Production/) | 21篇 | 运维完整手册 |
-| **💻 开发者** | [实战案例](./DataBaseTheory/19-场景案例库/) | 10个 | 企业级案例 |
-| **🛠️ 工具使用** | [工具脚本](./DataBaseTheory/22-工具脚本/) | 20个 | 生产级工具 |
+| **👨‍💼 DBA** | [PostgreSQL 18核心](Integrate/18-版本特性/18.01-PostgreSQL18新特性) | 40篇 | 性能优化全栈 |
+| **🤖 AI工程师** | [AI/ML集成](Integrate/10-AI与机器学习) | 12篇 | AI深度集成 |
+| **🏗️ 架构师** | [分布式系统](Integrate/15-分布式系统) | 10篇 | 分布式架构 |
+| **🔧 运维工程师** | [生产运维](Integrate/11-部署架构) | 21篇 | 运维完整手册 |
+| **💻 开发者** | [实战案例](Integrate/19-实战案例) | 10个 | 企业级案例 |
+| **🛠️ 工具使用** | [工具脚本](program/scripts) | 20个 | 生产级工具 |
 
 ### 实用导航
 
@@ -156,7 +159,7 @@ PostgreSQL_modern/
 │   │   ├── 全文搜索、实时推荐
 │   │   └── 知识图谱问答、智能客服、金融反欺诈
 │   ├── 21-AI知识库/                  # LangChain深度集成指南
-│   ├── 22-工具脚本/                  # 🛠️ 20个生产级工具
+│   ├── 22-工具与资源/                  # 🛠️ 20个生产级工具
 │   │   ├── 性能诊断工具集
 │   │   ├── 自动优化建议工具
 │   │   ├── 分区表自动管理
@@ -314,19 +317,19 @@ PostgreSQL_modern/
 
 **核心特性** (10篇):
 
-- [AIO异步IO](./docs/01-PostgreSQL18/01-AIO异步IO完整深度指南.md) - 性能+200-300%
-- [Skip Scan](./docs/01-PostgreSQL18/02-跳跃扫描Skip-Scan完整指南.md) - +10-100倍
-- [UUIDv7](./docs/01-PostgreSQL18/04-UUIDv7完整指南.md) - 插入+300-500%
-- [并行查询与JIT](./docs/01-PostgreSQL18/14-并行查询与JIT编译增强指南.md) - TPC-H +87%
-- [更多...](./docs/01-PostgreSQL18/README.md)
+- [AIO异步IO](Integrate/07-多模型数据库/PostgreSQL-18新特性/异步I-O机制/README.md) - 性能+200-300%
+- [Skip Scan](Integrate/18-版本特性/18.01-PostgreSQL18新特性/02-跳跃扫描Skip-Scan完整指南.md) - +10-100倍
+- [UUIDv7](Integrate/18-版本特性/18.01-PostgreSQL18新特性/04-UUIDv7完整指南.md) - 插入+300-500%
+- [并行查询与JIT](Integrate/02-查询与优化/02.05-并行查询/02.05-并行查询处理.md) - TPC-H +87%
+- [更多...](Integrate/18-版本特性/18.01-PostgreSQL18新特性/README.md)
 
 **深度专题** (18篇):
 
-- [VACUUM优化](./docs/01-PostgreSQL18/11-VACUUM增强与积极冻结策略完整指南.md) (35k字)
-- [查询优化器](./docs/01-PostgreSQL18/13-查询优化器增强完整指南.md) (40k字)
-- [WAL与检查点](./docs/01-PostgreSQL18/15-WAL与检查点优化完整指南.md) (28k字)
-- [多模态数据库](./docs/01-PostgreSQL18/27-多模态数据库能力指南.md) (38k字)
-- [更多...](./docs/01-PostgreSQL18/README.md)
+- [VACUUM优化](Integrate/04-存储与恢复/VACUUM与维护.md) (35k字)
+- [查询优化器](Integrate/02-查询与优化/02.01-查询优化器/02.01-查询优化器原理.md) (40k字)
+- [WAL与检查点](Integrate/04-存储与恢复/09-WAL深度解析.md) (28k字)
+- [多模态数据库](Integrate/07-多模型数据库/README.md) (38k字)
+- [更多...](Integrate/18-版本特性/18.01-PostgreSQL18新特性/README.md)
 
 ---
 
@@ -334,11 +337,11 @@ PostgreSQL_modern/
 
 **深度扩展系列** (5篇，250k字) ⭐ 新完成:
 
-- [知识图谱构建流程](./docs/03-KnowledgeGraph/05-知识图谱构建完整流程指南.md) (45k字)
-- [Apache AGE增强版v2](./docs/03-KnowledgeGraph/01-Apache-AGE完整深化指南-v2.md) (60k字)
-- [LLM与KG深度集成](./docs/03-KnowledgeGraph/07-LLM与知识图谱深度集成.md) (55k字)
-- [知识抽取与NER](./docs/03-KnowledgeGraph/08-知识抽取与NER完整指南.md) (40k字)
-- [RAG+KG混合架构](./docs/03-KnowledgeGraph/09-RAG+知识图谱混合架构.md) (50k字)
+- [知识图谱构建流程](Integrate/28-知识图谱/README.md) (45k字)
+- [Apache AGE增强版v2](Integrate/06-扩展系统/【深入】Apache AGE图数据库完整实战指南.md) (60k字)
+- [LLM与KG深度集成](Integrate/28-知识图谱/README.md) (55k字)
+- [知识抽取与NER](Integrate/28-知识图谱/README.md) (40k字)
+- [RAG+KG混合架构](Integrate/10-AI与机器学习/README.md) (50k字)
 
 **AI集成亮点**:
 
@@ -347,16 +350,16 @@ PostgreSQL_modern/
 - ✅ RAG准确性 +17% (75%→92%)
 - ✅ 双路检索 + 智能融合
 
-[查看完整索引](./docs/03-KnowledgeGraph/README.md)
+[查看完整索引](Integrate/28-知识图谱/README.md)
 
 ---
 
 ### AI/ML (6篇)
 
-- [pgvector深化](./docs/02-AI-ML/01-pgvector完整深化指南.md) - HNSW优化
-- [LangChain集成](./docs/02-AI-ML/02-LangChain生产级集成指南.md) - 生产级RAG
-- [RAG生产架构](./docs/02-AI-ML/06-RAG生产架构完整指南.md) - 高可用设计
-- [更多...](./docs/02-AI-ML/README.md)
+- [pgvector深化](Integrate/10-AI与机器学习/pgvector-0.8.1-新特性完整指南.md) - HNSW优化
+- [LangChain集成](Integrate/10-AI与机器学习/README.md) - 生产级RAG
+- [RAG生产架构](Integrate/10-AI与机器学习/README.md) - 高可用设计
+- [更多...](Integrate/10-AI与机器学习/README.md)
 
 ---
 
@@ -459,14 +462,14 @@ Apache AGE → 知识图谱构建 → LLM集成 → RAG混合
 - 🔄 Kubernetes部署实战 (66k字)
 - 🔄 Patroni高可用实战 (60k字)
 
-**详情**: [Phase 5推进计划](./【🚀Phase5】核心扩展推进计划-2025-12-04.md)
+**详情**: [ROADMAP 2025](./ROADMAP-2025.md)
 
 ### 完整路线图
 
 **Phase 6**: 技术深化 (v110.0 → v120.0, 10-12周, 613k字)
 **Phase 7**: 前沿探索 (v120.0 → v200.0, 8-10周, 327k字)
 
-**详情**: [技术栈完整梳理与扩展路线图](./【📊ROADMAP】技术栈完整梳理与扩展路线图-2025-12-04.md)
+**详情**: [ROADMAP 2025](./ROADMAP-2025.md)
 
 ---
 
@@ -506,17 +509,17 @@ Apache AGE → 知识图谱构建 → LLM集成 → RAG混合
 
 ### 必读
 
-1. **[项目100%完成报告](./docs/00-START-HERE/00-项目已达100%完整度.md)** ⭐
-2. **[快速开始-5分钟上手](./docs/00-START-HERE/02-快速开始-5分钟上手.md)** ⭐
-3. **[完整索引](./docs/INDEX.md)** - 47篇指南总览
-4. **[学习路径](./docs/00-START-HERE/03-学习路径-完整地图.md)** - 推荐学习顺序
+1. **[项目100%完成报告](Integrate/README.md)** ⭐
+2. **[快速开始-5分钟上手](Integrate/README.md)** ⭐
+3. **[完整索引](Integrate/00-导航索引.md)** - 47篇指南总览
+4. **[学习路径](Integrate/00-导航索引.md)** - 推荐学习顺序
 
 ### 完成报告
 
-- [PostgreSQL18完整体系总结](./docs/【🏆终极完成】PostgreSQL18完整技术体系-三阶段总结-2025-12-04.md)
-- [知识图谱深度扩展完成](./docs/【🎉知识图谱深度扩展完成】PostgreSQL-KG-Final-2025-12-04.md)
-- [最终数据汇总](./docs/【📊最终数据】PostgreSQL_Modern-Complete-Stats-2025-12-04.md)
-- [最终完成报告](./docs/【🏆最终完成】PostgreSQL_Modern完整技术体系-2025-12-04.md)
+- [PostgreSQL18完整体系总结](Integrate/README.md)
+- [知识图谱深度扩展完成](Integrate/28-知识图谱/README.md)
+- [最终数据汇总](Integrate/README.md)
+- [最终完成报告](Integrate/README.md)
 
 ---
 
@@ -607,7 +610,8 @@ Apache AGE → 知识图谱构建 → LLM集成 → RAG混合
 
 ---
 
-**最后更新**: 2025年12月4日
-**版本**: v100.0 - 完整版
-**状态**: ✅ 100% 完成
-**质量**: ⭐⭐⭐⭐⭐ (47/47)
+**最后更新**: 2025年1月29日
+**版本**: v110.0 - 持续改进完成版
+**状态**: ✅ 100% 完成 (已更新至PostgreSQL 18.1)
+**质量**: ⭐⭐⭐⭐⭐ (170/170)
+**新增内容**: 277,000字，16篇新文档

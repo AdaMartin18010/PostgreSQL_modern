@@ -1781,8 +1781,8 @@ pgloader \
 
 ### 9.2 技术文档
 
-- [快速开始指南](../../10-AI与机器学习/10.01-向量处理/最佳实践/快速开始指南.md) - Quick Start Guide
-- [pgvector 核心原理](../../10-AI与机器学习/10.01-向量处理/技术原理/pgvector核心原理.md) - pgvector Core
+- [快速开始指南](../10-AI与机器学习/10.01-向量处理/最佳实践/快速开始指南.md) - Quick Start Guide
+- [pgvector 核心原理](../10-AI与机器学习/10.01-向量处理/技术原理/pgvector核心原理.md) - pgvector Core
   Principles
 
 ### 9.3 相关资源

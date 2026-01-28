@@ -813,7 +813,7 @@ WHERE id >= gen_uuid_v7_at('2024-12-01'::timestamptz)
   内存: 128GB DDR4
   存储: NVMe SSD (Samsung 980 PRO, 7GB/s读取)
   操作系统: Ubuntu 22.04, Linux 6.2
-  PostgreSQL: 18.0
+  PostgreSQL: 18.1
 
 测试数据:
   表大小: 1000万行

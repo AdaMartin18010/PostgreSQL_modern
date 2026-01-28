@@ -2193,7 +2193,7 @@ $$, jsonb_build_object(
 
 3. **相关课程**：
    - [PostgreSQL扩展开发完整指南](./【深入】PostgreSQL扩展开发完整实战指南.md)
-   - [PostgreSQL高可用架构](../09-高可用/)
+   - [PostgreSQL高可用架构](../13-高可用架构/)
 
 ---
 

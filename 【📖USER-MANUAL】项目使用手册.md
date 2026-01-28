@@ -206,7 +206,7 @@ PostgreSQL_modern/
 - docs/01-PostgreSQL18/11-VACUUM增强与积极冻结策略完整指南.md
 - docs/01-PostgreSQL18/13-查询优化器增强完整指南.md
 - docs/01-PostgreSQL18/14-并行查询与JIT编译增强指南.md
-- theory/DataBaseTheory/22-工具脚本/01-性能监控脚本.sh
+- theory/DataBaseTheory/22-工具与资源/01-性能监控脚本.sh
 
 ---
 
@@ -252,7 +252,7 @@ PostgreSQL_modern/
 
 - theory/DataBaseTheory/19-场景案例库/ (10个案例)
 - docs/05-Production/ (4篇生产手册)
-- theory/DataBaseTheory/22-工具脚本/ (12个工具)
+- theory/DataBaseTheory/22-工具与资源/ (12个工具)
 - theory/DataBaseTheory/23-性能基准测试/ (3套测试)
 
 ---
@@ -441,7 +441,7 @@ cat 03-Text-to-Cypher实现.md
 pip install openai psycopg2 sentence-transformers
 
 # 4. 运行KBQA测试工具
-cd ../22-工具脚本/
+cd ../22-工具与资源/
 python 07-KBQA测试工具.py --api-url http://localhost:8000
 
 # 5. 查看测试结果
@@ -455,11 +455,11 @@ python 07-KBQA测试工具.py --api-url http://localhost:8000
 
 | 工具 | 位置 | 用途 |
 |------|------|------|
-| **性能监控脚本** | theory/DataBaseTheory/22-工具脚本/01 | 实时监控 |
-| **自动优化建议** | theory/DataBaseTheory/22-工具脚本/02 | 优化建议 |
-| **健康检查** | theory/DataBaseTheory/22-工具脚本/03 | 健康检查 |
-| **AI向量索引** | theory/DataBaseTheory/22-工具脚本/06 | 向量索引 |
-| **KBQA测试** | theory/DataBaseTheory/22-工具脚本/07 | KBQA测试 |
+| **性能监控脚本** | theory/DataBaseTheory/22-工具与资源/01 | 实时监控 |
+| **自动优化建议** | theory/DataBaseTheory/22-工具与资源/02 | 优化建议 |
+| **健康检查** | theory/DataBaseTheory/22-工具与资源/03 | 健康检查 |
+| **AI向量索引** | theory/DataBaseTheory/22-工具与资源/06 | 向量索引 |
+| **KBQA测试** | theory/DataBaseTheory/22-工具与资源/07 | KBQA测试 |
 | **MVCC验证** | theory/MVCC-ACID-CAP/05-验证工具/ | MVCC验证 |
 
 ### 使用示例
@@ -468,7 +468,7 @@ python 07-KBQA测试工具.py --api-url http://localhost:8000
 
 ```bash
 # 运行性能监控脚本
-cd theory/DataBaseTheory/22-工具脚本/
+cd theory/DataBaseTheory/22-工具与资源/
 ./01-性能监控脚本.sh --connection "dbname=mydb user=postgres"
 
 # 查看输出

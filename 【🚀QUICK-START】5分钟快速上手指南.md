@@ -33,7 +33,7 @@
 
 #### 🆕 初学者
 
-**推荐入口**: [START-HERE导航](./docs/00-START-HERE/)
+**推荐入口**: [START-HERE导航](Integrate)
 
 ```bash
 # 阅读这3个文档
@@ -48,7 +48,7 @@
 
 #### 👨‍💼 DBA（数据库管理员）
 
-**推荐入口**: [PostgreSQL 18核心](./docs/01-PostgreSQL18/)
+**推荐入口**: [PostgreSQL 18核心](Integrate/18-版本特性/18.01-PostgreSQL18新特性)
 
 ```bash
 # 必读文档（按优先级）
@@ -65,7 +65,7 @@
 
 #### 🤖 AI工程师
 
-**推荐入口**: [AI/ML + 知识图谱](./docs/03-KnowledgeGraph/)
+**推荐入口**: [AI/ML + 知识图谱](Integrate/28-知识图谱)
 
 ```bash
 # 必读文档
@@ -86,7 +86,7 @@
 
 #### 🏗️ 架构师
 
-**推荐入口**: [完整索引](./docs/INDEX.md)
+**推荐入口**: [完整索引](Integrate/00-导航索引.md)
 
 ```bash
 # 系统化学习
@@ -107,7 +107,7 @@
 
 #### 🔬 理论研究者
 
-**推荐入口**: [MVCC-ACID-CAP理论](./theory/MVCC-ACID-CAP/)
+**推荐入口**: [MVCC-ACID-CAP理论](Integrate/25-理论体系/)
 
 ```bash
 # 理论学习
@@ -128,7 +128,7 @@
 
 #### 💻 实战开发者
 
-**推荐入口**: [场景案例库](./theory/DataBaseTheory/19-场景案例库/)
+**推荐入口**: [场景案例库](Integrate/19-实战案例/)
 
 ```bash
 # 企业级案例（10个）
@@ -141,7 +141,7 @@
 7. 金融反欺诈 - 图算法检测
 
 # 工具脚本（12个）
-- theory/DataBaseTheory/22-工具脚本/
+- theory/DataBaseTheory/22-工具与资源/
 - theory/MVCC-ACID-CAP/05-验证工具/
 ```
 
@@ -199,7 +199,7 @@ cd theory/DataBaseTheory/21-AI知识库/
 cat 03-Text-to-Cypher实现.md
 
 # 3. 运行KBQA测试工具
-cd ../22-工具脚本/
+cd ../22-工具与资源/
 python 07-KBQA测试工具.py
 ```
 
@@ -227,13 +227,13 @@ cat 05-性能测试.md
 
 ```bash
 # 性能监控
-theory/DataBaseTheory/22-工具脚本/01-性能监控脚本.sh
+theory/DataBaseTheory/22-工具与资源/01-性能监控脚本.sh
 
 # AI向量索引
-theory/DataBaseTheory/22-工具脚本/06-AI向量索引工具.py
+theory/DataBaseTheory/program/scripts/README.md
 
 # KBQA测试
-theory/DataBaseTheory/22-工具脚本/07-KBQA测试工具.py
+theory/DataBaseTheory/program/scripts/README.md
 
 # MVCC验证
 theory/MVCC-ACID-CAP/05-验证工具/
@@ -388,9 +388,9 @@ cat theory/DataBaseTheory/19-场景案例库/README.md
 ### 文档导航
 
 - **项目主页**: [README.md](./README.md)
-- **完整索引**: [docs/INDEX.md](./docs/INDEX.md)
-- **学习路径**: [docs/00-START-HERE/03-学习路径-完整地图.md](./docs/00-START-HERE/03-学习路径-完整地图.md)
-- **FAQ**: [docs/00-START-HERE/05-FAQ常见问题.md](./docs/00-START-HERE/05-FAQ常见问题.md)
+- **完整索引**: [docs/INDEX.md](Integrate/00-导航索引.md)
+- **学习路径**: [docs/00-START-HERE/03-学习路径-完整地图.md](Integrate/00-导航索引.md)
+- **FAQ**: [docs/00-START-HERE/05-FAQ常见问题.md](FAQ.md)
 
 ---
 

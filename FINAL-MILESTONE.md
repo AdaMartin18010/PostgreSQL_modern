@@ -273,16 +273,16 @@ TPC-H基准测试（1TB数据）:
 
 ### 专业深入
 
-1. [PostgreSQL 18核心](./docs/01-PostgreSQL18/) - 40篇深度文档
-2. [AI/ML集成](./docs/02-AI-ML/) - 12篇完整指南
-3. [生产运维](./docs/05-Production/) - 21篇运维手册
-4. [工具脚本](./DataBaseTheory/22-工具脚本/) - 20个自动化工具
+1. [PostgreSQL 18核心](Integrate/18-版本特性/18.01-PostgreSQL18新特性) - 40篇深度文档
+2. [AI/ML集成](Integrate/10-AI与机器学习) - 12篇完整指南
+3. [生产运维](Integrate/11-部署架构) - 21篇运维手册
+4. [工具脚本](program/scripts) - 20个自动化工具
 
 ### 配置部署
 
-1. [配置文件集](./configs/) - 8套生产配置
-2. [Docker编排](./configs/docker-compose.yml) - 一键部署
-3. [监控告警](./configs/alerts/) - 完整告警规则
+1. [配置文件集](program/configs) - 8套生产配置
+2. [Docker编排](program/configs/docker-compose.yml) - 一键部署
+3. [监控告警](program/configs/alerts) - 完整告警规则
 
 ---
 
@@ -347,10 +347,10 @@ open docs/01-PostgreSQL18/
 
 ## 📞 获取帮助
 
-- 📖 [完整文档](./docs/)
-- 🛠️ [工具脚本](./DataBaseTheory/22-工具脚本/)
-- ⚙️ [配置模板](./configs/)
-- 📊 [性能测试](./DataBaseTheory/23-性能基准测试/)
+- 📖 [完整文档](Integrate)
+- 🛠️ [工具脚本](program/scripts)
+- ⚙️ [配置模板](program/configs)
+- 📊 [性能测试](Integrate/22-工具与资源)
 
 ---
 

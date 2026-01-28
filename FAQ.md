@@ -54,7 +54,7 @@ docker-compose up -d
 psql -h localhost -p 5432 -U postgres
 ```
 
-**参考**: [Docker容器化完整指南](docs/05-Production/17-Docker容器化完整指南.md)
+**参考**: [Docker容器化完整指南](Integrate/14-云原生与容器化/README.md)
 
 ---
 
@@ -87,7 +87,7 @@ sudo systemctl start postgresql
 ./analyze_new_cluster.sh
 ```
 
-**参考**: [升级迁移完整指南](docs/05-Production/09-升级迁移完整指南.md)
+**参考**: [升级迁移完整指南](Integrate/24-迁移指南/README.md)
 
 ---
 
@@ -113,7 +113,7 @@ enable_skip_scan = on
 sudo systemctl restart postgresql
 ```
 
-**参考**: [生产环境配置模板](configs/postgresql-18-production.conf)
+**参考**: [生产环境配置模板](program/configs/postgresql-18-production.conf)
 
 ---
 
@@ -144,7 +144,7 @@ ORDER BY n_dead_tup DESC;
 python3 scripts/health-check-advanced.py --dbname mydb
 ```
 
-**参考**: [慢查询优化10个实战案例](docs/01-PostgreSQL18/35-慢查询优化实战案例.md)
+**参考**: [慢查询优化10个实战案例](Integrate/02-查询与优化/02.06-性能调优/【案例集】PostgreSQL慢查询优化完整实战手册.md)
 
 ---
 
@@ -176,7 +176,7 @@ SELECT pg_reload_conf();
 - Skip Scan: 节省30-50%存储
 - 并行查询: +50-200% (复杂查询)
 
-**参考**: [PostgreSQL 18新特性总结](docs/01-PostgreSQL18/40-PostgreSQL18新特性总结.md)
+**参考**: [PostgreSQL 18新特性总结](Integrate/18-版本特性/18.01-PostgreSQL18新特性/README.md)
 
 ---
 
@@ -204,7 +204,7 @@ default_pool_size = 25
 psql -h localhost -p 6432 -U postgres -d mydb
 ```
 
-**参考**: [连接池实战指南](docs/05-Production/13-连接池实战指南.md)
+**参考**: [连接池实战指南](Integrate/11-部署架构/README.md)
 
 ---
 
@@ -238,7 +238,7 @@ ls -la /var/lib/postgresql/18/main
 # - 权限问题 → chown postgres:postgres
 ```
 
-**参考**: [故障排查完整手册](docs/05-Production/11-故障排查完整手册.md)
+**参考**: [故障排查完整手册](Integrate/20-故障诊断案例/README.md)
 
 ---
 
@@ -288,7 +288,7 @@ python3 scripts/health-check-advanced.py --dbname mydb
 # 5. 长事务 =0
 
 # 如有问题，执行自动优化
-python3 DataBaseTheory/22-工具脚本/09-自动优化建议工具.py --dbname mydb
+python3 DataBaseTheory/program/scripts/README.md --dbname mydb
 ```
 
 ---
@@ -315,7 +315,7 @@ pgbackrest backup --stanza=main --type=full
 0 2 * * * pg_dump mydb | gzip > /backup/mydb_$(date +\%Y\%m\%d).sql.gz
 ```
 
-**参考**: [备份恢复完整实战](docs/05-Production/08-备份恢复完整实战.md)
+**参考**: [备份恢复完整实战](Integrate/04-存储与恢复/备份恢复体系详解.md)
 
 ---
 
@@ -375,7 +375,7 @@ bash scripts/performance-benchmark.sh
 
 **性能提升**: I/O密集查询+35%，全表扫描+40%
 
-**参考**: [异步I/O深度解析](docs/01-PostgreSQL18/01-异步IO深度解析.md)
+**参考**: [异步I/O深度解析](Integrate/07-多模型数据库/PostgreSQL-18新特性/异步I-O机制/README.md)
 
 ---
 
@@ -403,7 +403,7 @@ SELECT pg_reload_conf();
 
 **优势**: 无需创建冗余索引，节省存储30-50%
 
-**参考**: [Skip Scan深度解析](docs/01-PostgreSQL18/02-Skip-Scan深度解析.md)
+**参考**: [Skip Scan深度解析](Integrate/18-版本特性/18.01-PostgreSQL18新特性/02-跳跃扫描Skip-Scan完整指南.md)
 
 ---
 
@@ -438,7 +438,7 @@ INSERT INTO logs_v7 (data) VALUES ('test');
 - INSERT性能更好
 - 索引更小
 
-**参考**: [UUIDv7实战指南](docs/01-PostgreSQL18/03-UUIDv7实战指南.md)
+**参考**: [UUIDv7实战指南](Integrate/18-版本特性/18.01-PostgreSQL18新特性/04-UUIDv7完整指南.md)
 
 ---
 
@@ -460,7 +460,7 @@ query = f"SELECT * FROM users WHERE username = '{username}'"
 cursor.execute(query)
 ```
 
-**参考**: [SQL注入防御完整指南](docs/01-PostgreSQL18/36-SQL注入防御完整指南.md)
+**参考**: [SQL注入防御完整指南](Integrate/05-安全与合规/安全加固/PostgreSQL安全加固完整指南.md)
 
 ---
 
@@ -490,7 +490,7 @@ CREATE POLICY user_policy ON users
     USING (user_id = current_setting('app.user_id')::INT);
 ```
 
-**参考**: [安全加固完整指南](docs/05-Production/10-安全加固完整指南.md)
+**参考**: [安全加固完整指南](Integrate/05-安全与合规/零信任架构完整指南.md)
 
 ---
 
@@ -516,7 +516,7 @@ docker-compose up -d
 # configs/alerts/postgresql-alerts.yml
 ```
 
-**参考**: [监控告警完整方案](docs/05-Production/12-监控告警完整方案.md)
+**参考**: [监控告警完整方案](Integrate/12-监控与诊断/README.md)
 
 ---
 
@@ -543,7 +543,7 @@ patroni /etc/patroni/patroni.yml
 
 **架构**: 1主2从 + Patroni自动故障转移 + HAProxy负载均衡
 
-**参考**: [Patroni高可用完整指南](docs/05-Production/07-Patroni高可用完整指南.md)
+**参考**: [Patroni高可用完整指南](Integrate/13-高可用架构/README.md)
 
 ---
 
@@ -567,7 +567,7 @@ python3 docs/05-Production/21-容量规划计算器.md
 # - 预估TPS: 5,000
 ```
 
-**参考**: [容量规划计算器](docs/05-Production/21-容量规划计算器.md)
+**参考**: [容量规划计算器](Integrate/31-容量规划/README.md)
 
 ---
 
@@ -591,7 +591,7 @@ crontab -e
 0 4 * * * python3 scripts/vacuum-scheduler.py --dbname mydb --auto
 ```
 
-**20个工具脚本**: [工具脚本集合](DataBaseTheory/22-工具脚本/)
+**20个工具脚本**: [工具脚本集合](program/scripts)
 
 ---
 
@@ -601,7 +601,7 @@ crontab -e
 - [快速参考](QUICK-REFERENCE.md) - 命令速查手册
 - [学习路径](LEARNING-PATH.md) - 系统学习指南
 - [最佳实践](BEST-PRACTICES.md) - 生产环境最佳实践
-- [完整文档](docs/) - 109篇深度文档
+- [完整文档](Integrate) - 109篇深度文档
 
 ---
 

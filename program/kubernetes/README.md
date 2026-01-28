@@ -418,7 +418,7 @@ kubectl describe backup backup-name -n postgresql-system
 
 ## 📚 相关文档
 
-- [Kubernetes生产部署完整指南](../docs/05-Production/06-Kubernetes生产部署完整指南.md)
+- [Kubernetes生产部署完整指南](../../Integrate/14-云原生与容器化/05.13-Kubernetes部署.md)
 - [配置模板](../configs/)
 - [监控告警](../configs/alerts/)
 

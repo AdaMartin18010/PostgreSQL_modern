@@ -15,7 +15,7 @@
 - **适用版本**: PostgreSQL 16+ & Apache AGE 1.5+
 - **难度级别**: ⭐⭐⭐⭐⭐ (专家级)
 - **预计阅读**: 120分钟
-- **配套资源**: [完整代码库](./examples/age/) | [性能测试套件](./benchmarks/)
+- **配套资源**: [完整代码库](../../program/scripts/README.md) | [性能测试套件](../../program/scripts/README.md)
 - **更新重点**: AI集成、LLM应用、企业案例深度解析
 
 ---

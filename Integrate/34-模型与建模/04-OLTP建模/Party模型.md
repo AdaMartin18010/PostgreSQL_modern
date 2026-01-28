@@ -4905,7 +4905,7 @@ WHERE pr.role_type = 'CUSTOMER'
 
 - [Silverston数据模型资源手册](../02-权威资源与标准/Silverston数据模型资源手册.md) - Party模型来源
 - [范式化设计](./范式化设计.md) - OLTP设计原则
-- [PostgreSQL实现](./PostgreSQL实现.md) - PostgreSQL特定实现
+- [PostgreSQL实现](../../PostgreSQL实现.md) - PostgreSQL特定实现
 - [约束设计](../08-PostgreSQL建模实践/约束设计.md) - 约束设计实践
 
 ---

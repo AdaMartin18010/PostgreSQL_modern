@@ -24,7 +24,7 @@
 
 软件:
   OS: Ubuntu 22.04 LTS
-  PostgreSQL: 17.0 vs 18.0
+  PostgreSQL: 17.0 vs 18.1
   数据规模: SF100 (100GB原始数据)
 ```
 

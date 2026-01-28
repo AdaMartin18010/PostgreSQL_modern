@@ -1906,9 +1906,9 @@ SELECT COUNT(*) FROM events;  -- 在两边执行对比
    - 混合事务/分析处理（HTAP）
 
 2. **相关课程**:
-   - [PostgreSQL高可用架构](../09-高可用/)
-   - [PostgreSQL性能调优](../11-性能调优/)
-   - [TimescaleDB时序数据库](./【深入】TimescaleDB时序数据库完整指南.md)
+   - [PostgreSQL高可用架构](../13-高可用架构/)
+   - [PostgreSQL性能调优](../30-性能调优/)
+   - [TimescaleDB时序数据库](../08-流处理与时序/README.md)
 
 ---
 

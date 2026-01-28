@@ -15,7 +15,7 @@
 - **技术栈**: spaCy 3.7+ | HuggingFace Transformers 4.35+ | OpenAI GPT-4 | PostgreSQL 16+
 - **难度级别**: ⭐⭐⭐⭐ (高级)
 - **预计阅读**: 100分钟
-- **配套代码**: [GitHub仓库](./examples/knowledge-extraction/)
+- **配套代码**: [GitHub仓库](../../program/scripts/README.md)
 
 ---
 

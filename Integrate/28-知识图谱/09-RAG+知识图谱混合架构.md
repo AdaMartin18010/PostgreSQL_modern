@@ -15,7 +15,7 @@
 - **技术栈**: PostgreSQL 16+ | Apache AGE 1.5+ | pgvector 0.7+ | LangChain 0.1+ | OpenAI API
 - **难度级别**: ⭐⭐⭐⭐⭐ (专家级)
 - **预计阅读**: 130分钟
-- **配套代码**: [GitHub](./examples/rag-kg-hybrid/)
+- **配套代码**: [GitHub](../../program/scripts/README.md)
 
 ---
 

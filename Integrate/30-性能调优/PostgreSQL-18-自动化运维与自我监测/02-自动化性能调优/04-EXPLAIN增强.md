@@ -547,7 +547,7 @@ C3: 可以提升参数调优效率
 
 - [PostgreSQL 18 EXPLAIN文档](https://www.postgresql.org/docs/18/sql-explain.html)
 - [PostgreSQL 18 查询性能调优](https://www.postgresql.org/docs/18/performance-tips.html)
-- [PostgreSQL性能调优指南](../PostgreSQL性能调优完整指南.md)
+- [PostgreSQL性能调优指南](../../PostgreSQL性能调优完整指南.md)
 
 ---
 

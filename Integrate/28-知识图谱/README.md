@@ -213,8 +213,8 @@ print(answer)
 
 ## 🔧 工具脚本
 
-- [AI向量索引工具](../22-工具脚本/06-AI向量索引工具.py)
-- [KBQA测试工具](../22-工具脚本/07-KBQA测试工具.py)
+- [AI向量索引工具](../../program/scripts/README.md)
+- [KBQA测试工具](../../program/scripts/README.md)
 
 ---
 
@@ -356,7 +356,7 @@ open http://localhost:3000  # Grafana
 
 ## 🔗 相关资源
 
-- [AI与机器学习](../../10-AI与机器学习/README.md) - AI/ML主题文档
+- [AI与机器学习](../00-归档-项目管理文档/README.md) - AI/ML主题文档
 - [实战案例库](../19-实战案例/) - 实战案例库
 - [对比分析](../23-对比分析/) - 对比分析相关
 

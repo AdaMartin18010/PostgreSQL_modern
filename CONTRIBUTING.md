@@ -10,7 +10,7 @@
 
 发现Bug或有改进建议？
 
-- 搜索现有[Issues](../../issues)确认未被报告
+- 搜索现有[Issues](https://github.com/AdaMartin18010/PostgreSQL_modern/issues)确认未被报告
 - 创建新Issue，提供详细信息：
   - 问题描述
   - 复现步骤
@@ -377,9 +377,9 @@ make benchmark
 
 ### 获取帮助
 
-- 📖 查阅[文档](docs/)
-- 🔍 搜索[Issues](../../issues)
-- 💬 提问[Discussions](../../discussions)
+- 📖 查阅[文档](Integrate)
+- 🔍 搜索[Issues](https://github.com/AdaMartin18010/PostgreSQL_modern/issues)
+- 💬 提问[Discussions](https://github.com/AdaMartin18010/PostgreSQL_modern/discussions)
 
 ### 报告安全问题
 
@@ -399,7 +399,7 @@ make benchmark
 
 - [PostgreSQL内核](https://www.postgresql.org/docs/18/source.html)
 - [项目架构设计](PROJECT-SUMMARY.md)
-- [性能优化指南](docs/01-PostgreSQL18/08-性能调优实战指南.md)
+- [性能优化指南](Integrate/30-性能调优/PostgreSQL性能调优完整指南.md)
 
 ---
 

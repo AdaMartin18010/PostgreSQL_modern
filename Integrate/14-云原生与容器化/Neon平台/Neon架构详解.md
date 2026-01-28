@@ -4908,7 +4908,7 @@ for variant in variants:
 > **注意**: 本节专注于 **Neon 平台**的学习和培训。如果您需要 **PostgreSQL SQL 基础**培训，请参考：
 >
 > - [核心基础](../../01-核心基础/README.md) - PostgreSQL基础培训
-> - [SQL语言](../../01-核心基础/01.04-SQL语言/README.md) - SQL语言规范与标准
+> - [SQL语言](../../00-归档-项目管理文档/README.md) - SQL语言规范与标准
 
 ### 44.1 初学者学习路径
 

@@ -348,14 +348,14 @@ FROM pg_stat_database;
    - [FAQ](FAQ.md) - 常见问题解答
 
 2. **进阶主题**
-   - [PostgreSQL 18新特性](docs/01-PostgreSQL18/40-PostgreSQL18新特性总结.md)
-   - [性能优化](docs/01-PostgreSQL18/08-性能调优实战指南.md)
+   - [PostgreSQL 18新特性](Integrate/18-版本特性/18.01-PostgreSQL18新特性/40-PostgreSQL18新特性总结.md)
+   - [性能优化](Integrate/30-性能调优/PostgreSQL性能调优完整指南.md)
    - [最佳实践](BEST-PRACTICES.md)
 
 3. **生产部署**
-   - [高可用架构](docs/05-Production/07-Patroni高可用完整指南.md)
-   - [监控告警](docs/05-Production/12-监控告警完整方案.md)
-   - [生产检查清单](docs/05-Production/20-生产环境检查清单.md)
+   - [高可用架构](Integrate/13-高可用架构/README.md)
+   - [监控告警](Integrate/12-监控与诊断/README.md)
+   - [生产检查清单](Integrate/21-最佳实践/README.md)
 
 ### 工具脚本
 
@@ -418,9 +418,9 @@ python3 scripts/vacuum-scheduler.py --dbname myapp --dry-run
 
 ## 📞 获取帮助
 
-- 📖 [完整文档](docs/)
+- 📖 [完整文档](Integrate)
 - 🔍 [FAQ](FAQ.md)
-- 💬 [提问](../../issues)
+- 💬 [提问](https://github.com/AdaMartin18010/PostgreSQL_modern/issues)
 - 🌟 [项目主页](README.md)
 
 ---

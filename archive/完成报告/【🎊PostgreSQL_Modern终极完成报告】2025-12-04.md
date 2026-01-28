@@ -347,7 +347,7 @@ theory/DataBaseTheory/21-AI知识库/
 
 ```
 theory/DataBaseTheory/
-├─ 22-工具脚本/ (7个)
+├─ 22-工具与资源/ (7个)
 │  ├─ 01-05: 传统工具
 │  ├─ 06-AI向量索引工具.py 🆕
 │  └─ 07-KBQA测试工具.py 🆕

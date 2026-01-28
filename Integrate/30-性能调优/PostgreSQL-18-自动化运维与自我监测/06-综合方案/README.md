@@ -133,7 +133,7 @@ PostgreSQL 18 自动化运维架构
 | 6.1 | 自动化运维架构 | [01-自动化运维架构.md](./01-自动化运维架构.md) | ✅ 架构设计和流程图 |
 | 6.2 | Autovacuum配置 | [02-Autovacuum配置.md](./02-Autovacuum配置.md) | ✅ Autovacuum自动化配置检查与优化 |
 | 6.3 | 性能基准测试 | [03-性能基准测试.md](./03-性能基准测试.md) | ✅ 自动化性能基准测试系统 |
-| 6.4 | 应用场景案例 | [04-应用场景案例.md](./04-应用场景案例.md) | ✅ OLTP/OLAP/混合负载场景配置 |
+| 6.4 | 应用场景案例 | [19-实战案例案例.md](./04-应用场景案例.md) | ✅ OLTP/OLAP/混合负载场景配置 |
 | 6.5 | 故障自动恢复 | [05-故障自动恢复.md](./05-故障自动恢复.md) | ✅ 自动故障检测与恢复机制 |
 
 > **注意**: ✅ 所有章节已完成内容拆分
@@ -152,7 +152,7 @@ PostgreSQL 18 自动化运维架构
 
 ### 参考资料
 
-- [PostgreSQL 18 自动化运维完整指南](../PostgreSQL-18-自动化运维与自我监测完整指南.md)
+- [PostgreSQL 18 自动化运维完整指南](../../../12-监控与诊断/README.md)
 - [PostgreSQL 18 Autovacuum文档](https://www.postgresql.org/docs/18/runtime-config-autovacuum.html)
 - [PostgreSQL 18 性能调优文档](https://www.postgresql.org/docs/18/performance-tips.html)
 

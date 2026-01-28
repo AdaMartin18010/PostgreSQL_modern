@@ -420,7 +420,7 @@ docker-compose exec postgres pgbench -c 32 -j 32 -T 300 -U postgres -d pgbench_t
 2. 在 GitHub Actions 页面手动触发或等待自动运行
 3. 查看测试结果和 artifacts
 
-详见 [.github/workflows/README.md](./.github/workflows/README.md)
+详见 [.github/workflows/README.md](./README.md)
 
 ---
 

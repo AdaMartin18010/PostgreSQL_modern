@@ -172,7 +172,7 @@ psql -d fraud_detection -f code/test_fraud_detection.sql
 ### 理论基础
 
 - [PostgreSQL 18新特性](../../25-理论体系/25.01-形式化方法/01.07-PostgreSQL18新特性完整分析.md)
-- [事务与并发](../03-事务与并发/README.md)
+- [事务与并发](../../00-归档-项目管理文档/README.md)
 
 ### 参考案例
 

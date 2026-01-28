@@ -71,7 +71,7 @@
 - **内存**: 64GB DDR4
 - **存储**: NVMe SSD (Samsung PM9A3, 2TB)
 - **操作系统**: Ubuntu 22.04, Linux Kernel 6.2
-- **数据库版本**: PostgreSQL 18.0 vs MySQL 8.0.35
+- **数据库版本**: PostgreSQL 18.1 vs MySQL 8.0.35
 
 **测试场景1: 批量写入性能**:
 

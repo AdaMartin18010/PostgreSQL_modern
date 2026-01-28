@@ -184,7 +184,7 @@ ANALYZE users;
 - [异步I/O文档](../02-自动化性能调优/01-异步I-O支持.md)
 - [Autovacuum配置文档](../06-综合方案/02-Autovacuum配置.md)
 - [EXPLAIN增强文档](../02-自动化性能调优/04-EXPLAIN增强.md)
-- [PostgreSQL性能调优指南](../PostgreSQL性能调优完整指南.md)
+- [PostgreSQL性能调优指南](../../PostgreSQL性能调优完整指南.md)
 
 ---
 

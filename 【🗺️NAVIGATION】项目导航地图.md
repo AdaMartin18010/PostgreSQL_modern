@@ -7,10 +7,10 @@
 ## 🎯 项目全景图
 
 ```text
-PostgreSQL_Modern v100.0
+PostgreSQL_Modern v110.0 (已更新至PostgreSQL 18.1)
 │
-├─ 📚 深度技术指南体系 (906,000字)
-│  ├─ PostgreSQL 18 (28篇, 619,000字) ⭐⭐⭐⭐⭐
+├─ 📚 深度技术指南体系 (1,183,000字) 🆕
+│  ├─ PostgreSQL 18.1 (29篇, 634,000字) ⭐⭐⭐⭐⭐ 🆕
 │  ├─ 知识图谱 (9篇, 287,000字) 🔥
 │  ├─ AI/ML (6篇)
 │  ├─ 分布式 (4篇)
@@ -176,7 +176,7 @@ theory/DataBaseTheory/
 │  └─ 06-AI工具集.md (4k字) 🆕
 │  【6篇文档，26,500字】
 │
-├─ 22-工具脚本/ 【实用工具】
+├─ 22-工具与资源/ 【实用工具】
 │  ├─ 01-性能监控脚本.sh
 │  ├─ 02-自动优化建议.sql
 │  ├─ 03-健康检查.py
@@ -462,7 +462,7 @@ AI集成:
 
 向量检索:
 - pgvector优化 (theory/DataBaseTheory/21-AI知识库/05)
-- 向量索引工具 (theory/DataBaseTheory/22-工具脚本/06)
+- 向量索引工具 (theory/DataBaseTheory/22-工具与资源/06)
 ```
 
 ### 实战案例
@@ -527,7 +527,7 @@ AI场景:
 | **知识图谱+AI** | docs/03-KnowledgeGraph/ |
 | **实战案例** | theory/DataBaseTheory/19-场景案例库/ |
 | **AI知识库** | theory/DataBaseTheory/21-AI知识库/ |
-| **工具脚本** | theory/DataBaseTheory/22-工具脚本/ |
+| **工具脚本** | theory/DataBaseTheory/22-工具与资源/ |
 | **性能测试** | theory/DataBaseTheory/23-性能基准测试/ |
 | **理论研究** | theory/MVCC-ACID-CAP/ |
 | **培训体系** | training/main/ |
@@ -547,7 +547,8 @@ AI场景:
 ---
 
 **创建日期**: 2025-12-04
-**项目版本**: v100.0
-**文档状态**: ✅ 完整
+**最后更新**: 2025-01-29
+**项目版本**: v110.0 (已更新至PostgreSQL 18.1)
+**文档状态**: ✅ 完整 (新增277,000字内容)
 
 **🗺️ 开始探索PostgreSQL_Modern的完整世界！ 🗺️**-

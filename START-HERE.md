@@ -20,7 +20,7 @@
 
 ### 🆕 新用户
 
-**第一步**：阅读 [docs/00-START-HERE/](./docs/00-START-HERE/)
+**第一步**：阅读 [docs/00-START-HERE/](Integrate)
 
 包含：
 
@@ -36,25 +36,25 @@
 
 **全部24个指南，全部5星质量**：
 
-**[PostgreSQL 18深度指南（10个）](./docs/01-PostgreSQL18/)**
+**[PostgreSQL 18深度指南（10个）](Integrate/18-版本特性/18.01-PostgreSQL18新特性)**
 
 - AIO、Skip Scan、UUIDv7、OAuth2.0等
 - 性能提升2-500倍
 - 20个生产案例
 
-**[AI/ML深化指南（6个）](./docs/02-AI-ML/)**
+**[AI/ML深化指南（6个）](Integrate/10-AI与机器学习)**
 
 - pgvector、LangChain、LlamaIndex
 - 模型优化、推理加速、RAG架构
 - 12个生产案例
 
-**[知识图谱指南（4个）](./docs/03-KnowledgeGraph/)**
+**[知识图谱指南（4个）](Integrate/28-知识图谱)**
 
 - Apache AGE、PostGIS、TimescaleDB
 - 图/空间/时序数据库
 - 8个生产案例
 
-**[分布式系统指南（4个）](./docs/04-Distributed/)**
+**[分布式系统指南（4个）](Integrate/15-分布式系统)**
 
 - Citus、CDC、实时流处理
 - 水平扩展、高可用
@@ -64,7 +64,7 @@
 
 ### 📖 培训内容
 
-**[training/main/PostgreSQL培训/](./training/main/)**
+**[training/main/PostgreSQL培训/](Integrate/)**
 
 - 18个模块完整教程
 - 从基础到高级
