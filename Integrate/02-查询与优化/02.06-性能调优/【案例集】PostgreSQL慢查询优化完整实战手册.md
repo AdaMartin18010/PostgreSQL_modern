@@ -25,7 +25,7 @@
   - [2. 慢查询诊断工具](#2-慢查询诊断工具)
     - [2.1 pg\_stat\_statements](#21-pg_stat_statements)
       - [安装与配置](#安装与配置)
-    - [2.2 EXPLAIN (ANALYZE, BUFFERS, TIMING)](#22-explain-analyze)
+    - [2.2 EXPLAIN (ANALYZE, BUFFERS, TIMING)](#22-explain-analyze-buffers-timing)
     - [2.3 慢查询日志](#23-慢查询日志)
     - [2.4 实时监控](#24-实时监控)
   - [3. 案例1：缺失索引](#3-案例1缺失索引)

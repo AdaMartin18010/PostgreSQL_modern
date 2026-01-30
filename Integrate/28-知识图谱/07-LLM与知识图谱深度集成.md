@@ -15,7 +15,7 @@
 - **适用技术栈**: PostgreSQL 16+ | Apache AGE 1.5+ | pgvector 0.7+ | OpenAI/Anthropic API
 - **难度级别**: ⭐⭐⭐⭐⭐ (专家级)
 - **预计阅读**: 150分钟
-- **配套资源**: [完整代码](../../program/scripts/README.md) | [Jupyter Notebooks](../notebooks/)
+- **配套资源**: [完整代码](../../program/scripts/README.md) | 示例代码见项目 `program/scripts` 及各章节
 
 ---
 

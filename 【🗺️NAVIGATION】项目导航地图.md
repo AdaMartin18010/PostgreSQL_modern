@@ -58,6 +58,22 @@ PostgreSQL_modern/
 
 ---
 
+## 📖 与官方文档 Part I–V 对应关系
+
+本项目按主题(01–34)划分，与 [PostgreSQL 官方文档](https://www.postgresql.org/docs/current/) 五部分结构不同但内容对应，便于对照查阅：
+
+| 官方文档 Part | 官方章节概要 | 本项目主要入口 |
+|---------------|--------------|----------------|
+| **Part I. Tutorial** | 入门教程 | [【🚀QUICK-START】5分钟快速上手指南](【🚀QUICK-START】5分钟快速上手指南.md)、[02-查询与优化](Integrate/02-查询与优化/) |
+| **Part II. The SQL Language** | SQL 语言 | [02-查询与优化](Integrate/02-查询与优化/)、[04-DDL与数据定义](Integrate/04-DDL与数据定义/)、[34-模型与建模](Integrate/34-模型与建模/) |
+| **Part III. Server Administration** | 服务端管理 | [11-部署架构](Integrate/11-部署架构/)、[12-监控与诊断](Integrate/12-监控与诊断/)、[26-数据管理](Integrate/26-数据管理/)、[30-性能调优](Integrate/30-性能调优/) |
+| **Part IV. Client Interfaces** | 客户端接口 | [09-应用开发与连接](Integrate/09-应用开发与连接/)、[12-监控与诊断](Integrate/12-监控与诊断/) |
+| **Part V. Server Programming** | 服务端编程 | [08-函数与存储过程](Integrate/08-函数与存储过程/)、[33-数据处理与统计算法](Integrate/33-数据处理与统计算法/)、[18-版本特性](Integrate/18-版本特性/) |
+
+更多国际对标与官方参考见 [00-国际对齐与对标报告-2025-01](Integrate/00-国际对齐与对标报告-2025-01.md)。
+
+---
+
 ## 📚 深度技术指南 (docs/)
 
 ### 目录结构

@@ -14,6 +14,7 @@
 > **最后更新**: 2025年1月
 > **目标**: PostgreSQL 18与AI/ML深度集成的完整技术体系
 > **涵盖**: pgvector、LangChain、RAG、KBQA、Text-to-Cypher
+> **对标与关联**: 网络对标（GraphRAG、Azure PG GraphRAG、pgrag 等）与思维表征见 [00-主题26-34网络对标与思维表征报告-2025-01](../00-主题26-34网络对标与思维表征报告-2025-01.md)。
 
 ---
 
@@ -57,6 +58,20 @@ mindmap
 ## 📋 主题概述
 
 PostgreSQL作为知识图谱存储和查询平台，支持Apache AGE图数据库、RDF/SPARQL标准，以及RAG+知识图谱混合架构。
+
+---
+
+## 🌐 国际方案对标（GraphRAG、Azure PG、pgrag）
+
+本主题 RAG+知识图谱、LLM+KG 与以下国际方案对标，便于选型与扩展：
+
+| 方案 | 说明 | 与本项目对应 |
+|------|------|--------------|
+| **GraphRAG** | 用图结构增强 RAG：社区摘要、实体关系索引，提升多跳与全局问答（Neo4j、微软等） | 本主题 [09-RAG+知识图谱混合架构](./09-RAG+知识图谱混合架构.md)、[07-LLM与知识图谱深度集成](./07-LLM与知识图谱深度集成.md) |
+| **Azure Database for PostgreSQL GraphRAG** | 微软在 Azure PG 上的 GraphRAG 方案，PG 同时作关系库与图检索 | 架构思路与本主题「PG + AGE + pgvector + RAG」一致 |
+| **pgrag（Neon）** | Neon 的 pgrag 扩展，在 PostgreSQL 上集成 RAG 能力 | 与本主题 pgvector + RAG、LangChain 集成可对照使用 |
+
+**参考**：[GraphRAG 生态](https://neo4j.com/developer-blog/graphrag-ecosystem-tools/)、[Azure PG GraphRAG](https://techcommunity.microsoft.com/blog/adforpostgresql/introducing-the-graphrag-solution-for-azure-database-for-postgresql/4299871)、[Neon pgrag](https://neon.tech/docs/extensions/pgrag)。
 
 ---
 

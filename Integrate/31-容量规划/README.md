@@ -52,6 +52,22 @@ mindmap
 
 ---
 
+## 🌐 云厂商与 FinOps 参考
+
+容量规划与成本优化可结合云厂商文档与 FinOps 实践：
+
+| 来源 | 说明 | 链接 |
+|------|------|------|
+| **PostgreSQL 官方** | 资源消耗与配置（shared_buffers、work_mem 等） | [Resource Consumption](https://www.postgresql.org/docs/current/runtime-config-resource.html) |
+| **Timescale** | PostgreSQL 容量与性能调优、数据库规模估算 | [How to Size Your Database](https://www.timescale.com/learn/postgresql-performance-tuning-how-to-size-your-database) |
+| **Google AlloyDB** | 容量与部署建议、存储与计算解耦 | [Sizing and deployment recommendations](https://cloud.google.com/alloydb/docs/use-sizing-recommendations) |
+| **Oracle OCI** | PostgreSQL 存储最佳实践 | [OCI PostgreSQL Storage Best Practices](https://docs.oracle.com/en-us/iaas/Content/postgresql/storage-best-practices.htm) |
+| **FinOps 基金会** | FinOps 原则与实践 | [finops.org](https://www.finops.org/) |
+
+本主题 [PostgreSQL成本优化（FinOps）指南](./PostgreSQL成本优化（FinOps）指南.md) 与上述实践对齐；云上 autovacuum 与 I/O 限制对容量的影响见官方与各云文档。
+
+---
+
 ## 📚 核心文档
 
 ### 成本优化指南

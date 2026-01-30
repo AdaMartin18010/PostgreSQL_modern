@@ -411,14 +411,14 @@ WHERE condition = 'value';
 
 ### 基准测试工具
 
-- **DBT-3**: https://github.com/gregrahn/dbt3
+- **DBT-3**: <https://github.com/gregrahn/dbt3>
 - **pgbench**: PostgreSQL内置工具
-- **TPC-H**: http://www.tpc.org/tpch/
+- **TPC-H**: <http://www.tpc.org/tpch/>
 
 ### 相关文档
 
 - [TPC-H基准测试](../22-工具与资源/01-TPC-H基准测试.md)
-- [性能调优实战指南](./30-性能调优/README.md)
+- [性能调优实战指南](./README.md)
 - [查询优化器增强指南](../18-版本特性/18.01-PostgreSQL18新特性/13-查询优化器增强完整指南.md)
 
 ---

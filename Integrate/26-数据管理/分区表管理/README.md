@@ -54,6 +54,20 @@
 
 ---
 
+## 🔧 pg_partman 与云分区自动化
+
+分区表的**自动化创建与维护**可借助扩展与云能力，与本子主题「分区维护」「分区表高级优化」配合使用：
+
+| 方式 | 说明 | 参考 |
+|------|------|------|
+| **pg_partman** | PostgreSQL 分区管理扩展，支持按时间/序列自动创建、归档、删除分区，减少手工维护 | [pg_partman](https://github.com/pgpartman/pg_partman)；AWS RDS 支持 12.5+，见 [Managing PostgreSQL partitions with pg_partman](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/PostgreSQL_Partitions.html) |
+| **云厂商分区能力** | 部分云托管 PostgreSQL（如 AWS RDS、Azure Database for PostgreSQL）提供分区最佳实践或与 pg_partman 的集成说明 | 各云文档「分区」「Partitioning」章节 |
+| **声明式分区 + 调度** | 使用 cron/pg_cron 或外部调度器，按策略执行 `CREATE TABLE ... PARTITION OF`、`DROP TABLE`、`ATTACH PARTITION` 等 | 见本子主题 [分区表维护](./分区表维护.md)、[PostgreSQL分区表高级优化指南](./PostgreSQL分区表高级优化指南.md) |
+
+**建议**：大规模时序或按时间分区场景下，优先考虑 pg_partman 或等效自动化，并配合 DEFAULT 分区与 ATTACH 最佳实践（见 [分区表完整指南](./分区表完整指南.md)）。
+
+---
+
 ## 🎯 学习路径
 
 ### 初学者
