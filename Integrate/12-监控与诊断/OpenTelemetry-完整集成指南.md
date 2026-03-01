@@ -10,16 +10,76 @@
 
 ## 📋 目录
 
-- [概述](#概述)
-- [架构设计](#架构设计)
-- [Collector配置](#collector配置)
-- [Metrics收集](#metrics收集)
-- [Logs收集](#logs收集)
-- [Traces收集](#traces收集)
-- [Grafana LGTM+ Stack](#grafana-lgtm-stack)
-- [生产最佳实践](#生产最佳实践)
-- [实战案例](#实战案例)
-- [参考资源](#参考资源)
+- [OpenTelemetry PostgreSQL 完整集成指南](#opentelemetry-postgresql-完整集成指南)
+  - [📋 目录](#-目录)
+  - [📊 概述](#-概述)
+    - [什么是OpenTelemetry](#什么是opentelemetry)
+    - [核心优势](#核心优势)
+    - [三支柱模型](#三支柱模型)
+  - [🏗️ 架构设计](#️-架构设计)
+    - [组件架构](#组件架构)
+    - [数据流](#数据流)
+  - [⚙️ Collector配置](#️-collector配置)
+    - [安装Collector](#安装collector)
+      - [Linux](#linux)
+      - [Docker](#docker)
+    - [基础配置](#基础配置)
+  - [📈 Metrics收集](#-metrics收集)
+    - [PostgreSQL Exporter](#postgresql-exporter)
+      - [安装](#安装)
+      - [配置](#配置)
+      - [自定义指标](#自定义指标)
+    - [Prometheus集成](#prometheus集成)
+      - [配置Prometheus](#配置prometheus)
+      - [查询示例](#查询示例)
+  - [📝 Logs收集](#-logs收集)
+    - [PostgreSQL日志配置](#postgresql日志配置)
+      - [日志格式](#日志格式)
+      - [结构化日志](#结构化日志)
+    - [Loki集成](#loki集成)
+      - [配置Loki](#配置loki)
+      - [日志查询](#日志查询)
+  - [🔍 Traces收集](#-traces收集)
+    - [应用集成](#应用集成)
+      - [Python (psycopg2)](#python-psycopg2)
+      - [Java (JDBC)](#java-jdbc)
+      - [Go (database/sql)](#go-databasesql)
+    - [Tempo集成](#tempo集成)
+      - [配置Tempo](#配置tempo)
+      - [查询追踪](#查询追踪)
+  - [📊 Grafana LGTM+ Stack](#-grafana-lgtm-stack)
+    - [架构介绍](#架构介绍)
+    - [Docker Compose部署](#docker-compose部署)
+    - [Grafana数据源配置](#grafana数据源配置)
+      - [配置Prometheus](#配置prometheus-1)
+      - [配置Loki](#配置loki-1)
+      - [配置Tempo](#配置tempo-1)
+    - [仪表板配置](#仪表板配置)
+      - [PostgreSQL Metrics仪表板](#postgresql-metrics仪表板)
+  - [🎯 生产最佳实践](#-生产最佳实践)
+    - [性能优化](#性能优化)
+      - [采样策略](#采样策略)
+      - [数据压缩](#数据压缩)
+      - [存储优化](#存储优化)
+    - [成本控制](#成本控制)
+      - [数据保留策略](#数据保留策略)
+      - [采样配置](#采样配置)
+    - [安全考虑](#安全考虑)
+      - [TLS加密](#tls加密)
+      - [访问控制](#访问控制)
+  - [💼 实战案例](#-实战案例)
+    - [案例1: 单机部署](#案例1-单机部署)
+      - [场景描述](#场景描述)
+      - [实施方案](#实施方案)
+      - [效果评估](#效果评估)
+    - [案例2: 分布式部署](#案例2-分布式部署)
+      - [场景描述](#场景描述-1)
+      - [实施方案](#实施方案-1)
+      - [效果评估](#效果评估-1)
+  - [📚 参考资源](#-参考资源)
+    - [官方资源](#官方资源)
+    - [相关文档](#相关文档)
+  - [📝 更新日志](#-更新日志)
 
 ---
 
@@ -480,6 +540,7 @@ curl "http://tempo:3200/api/search?tags=db.name=mydb&limit=10"
 ### 架构介绍
 
 LGTM+ Stack包括：
+
 - **Loki**: 日志聚合
 - **Grafana**: 可视化
 - **Tempo**: 追踪存储
@@ -540,22 +601,22 @@ volumes:
 
 #### 配置Prometheus
 
-1. 进入Grafana: http://localhost:3000
+1. 进入Grafana: <http://localhost:3000>
 2. Configuration → Data Sources → Add data source
 3. 选择Prometheus
-4. URL: http://prometheus:9090
+4. URL: <http://prometheus:9090>
 5. Save & Test
 
 #### 配置Loki
 
 1. Add data source → Loki
-2. URL: http://loki:3100
+2. URL: <http://loki:3100>
 3. Save & Test
 
 #### 配置Tempo
 
 1. Add data source → Tempo
-2. URL: http://tempo:3200
+2. URL: <http://tempo:3200>
 3. 关联Prometheus数据源（用于服务映射）
 4. Save & Test
 
@@ -766,10 +827,10 @@ scrape_configs:
 
 ### 官方资源
 
-- **OpenTelemetry官网**: https://opentelemetry.io/
-- **PostgreSQL Exporter**: https://github.com/prometheus-community/postgres_exporter
-- **Grafana LGTM+**: https://grafana.com/docs/lgtm/
-- **Tempo文档**: https://grafana.com/docs/tempo/
+- **OpenTelemetry官网**: <https://opentelemetry.io/>
+- **PostgreSQL Exporter**: <https://github.com/prometheus-community/postgres_exporter>
+- **Grafana LGTM+**: <https://grafana.com/docs/lgtm/>
+- **Tempo文档**: <https://grafana.com/docs/tempo/>
 
 ### 相关文档
 

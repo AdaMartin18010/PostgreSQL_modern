@@ -62,6 +62,7 @@ PostgreSQL 18.1修复了**2个严重安全漏洞**，这些漏洞在PostgreSQL 1
 PostgreSQL在处理`CREATE STATISTICS`命令时，权限检查存在缺陷。表所有者可以在**未授权的schema**中创建统计信息对象，即使该用户没有该schema的`CREATE`权限。
 
 这违反了PostgreSQL的**最小权限原则**，可能导致：
+
 - 权限绕过
 - 违反安全策略
 - 审计合规性问题
@@ -71,6 +72,7 @@ PostgreSQL在处理`CREATE STATISTICS`命令时，权限检查存在缺陷。表
 #### 问题根源
 
 PostgreSQL的权限检查逻辑中，`CREATE STATISTICS`命令只检查了：
+
 1. ✅ 表的所有者权限
 2. ❌ **缺失**: Schema的CREATE权限检查
 
@@ -143,12 +145,14 @@ ON data FROM sensitive_schema.secret_table;
 #### 风险评估
 
 **高风险场景**:
+
 - 多租户SaaS应用
 - 金融系统
 - 医疗系统
 - 政府系统
 
 **低风险场景**:
+
 - 单用户数据库
 - 开发环境
 - 所有用户都有完整权限的环境
@@ -248,6 +252,7 @@ char *buffer = malloc(total_size);  // 分配了过小的缓冲区
 攻击者可以通过以下方式利用：
 
 1. **恶意连接参数**
+
    ```c
    // 攻击者构造的连接字符串
    char *conninfo = "host=evil.com port=5432 "
@@ -255,12 +260,14 @@ char *buffer = malloc(total_size);  // 分配了过小的缓冲区
    ```
 
 2. **恶意查询结果**
+
    ```sql
    -- 攻击者控制的查询返回大量数据
    SELECT array_agg(generate_series(1, 999999999999));
    ```
 
 3. **恶意COPY数据**
+
    ```sql
    -- COPY命令处理大量数据时可能触发
    COPY large_table FROM '/path/to/huge/file';
@@ -305,12 +312,14 @@ char *buffer = malloc(total_size);
 #### 风险评估
 
 **高风险场景**:
+
 - 面向互联网的PostgreSQL服务
 - 处理用户输入的应用
 - 处理大量数据的应用
 - 使用COPY命令的应用
 
 **低风险场景**:
+
 - 内部网络环境
 - 受信任的用户
 - 数据量可控的环境
@@ -358,22 +367,26 @@ psql -h localhost -U postgres -d testdb -c "
 #### 1. 升级PostgreSQL客户端库
 
 **Linux (Ubuntu/Debian)**:
+
 ```bash
 sudo apt-get update
 sudo apt-get install postgresql-client-18
 ```
 
 **Linux (RHEL/CentOS)**:
+
 ```bash
 sudo yum install postgresql18
 ```
 
 **macOS**:
+
 ```bash
 brew upgrade postgresql@18
 ```
 
 **Windows**:
+
 - 从PostgreSQL官网下载18.1安装包
 - 重新安装PostgreSQL客户端
 
@@ -392,6 +405,7 @@ pip install --force-reinstall psycopg2-binary
 #### 3. 更新依赖库
 
 **Python**:
+
 ```bash
 pip install --upgrade psycopg2-binary psycopg2
 # 或
@@ -399,11 +413,13 @@ pip install --upgrade psycopg3
 ```
 
 **Ruby**:
+
 ```bash
 gem update pg
 ```
 
 **Node.js**:
+
 ```bash
 npm update pg
 ```
@@ -589,28 +605,33 @@ ORDER BY query_start DESC;
 ### 快速升级步骤
 
 1. **备份数据库**
+
    ```bash
    pg_dump -Fc -f backup.dump mydatabase
    ```
 
 2. **升级PostgreSQL**
+
    ```bash
    # 根据你的操作系统执行相应命令
    sudo apt-get install postgresql-18
    ```
 
 3. **升级客户端库**
+
    ```bash
    sudo apt-get install postgresql-client-18
    ```
 
 4. **验证升级**
+
    ```bash
    psql --version
    # 预期: psql (PostgreSQL) 18.1
    ```
 
 5. **重新编译应用程序**
+
    ```bash
    # 根据你的应用类型执行相应命令
    pip install --upgrade psycopg2-binary
@@ -624,10 +645,10 @@ ORDER BY query_start DESC;
 
 ### 官方资源
 
-- **PostgreSQL安全公告**: https://www.postgresql.org/support/security/
+- **PostgreSQL安全公告**: <https://www.postgresql.org/support/security/>
 - **CVE-2025-12817详情**: PostgreSQL Security Advisory
 - **CVE-2025-12818详情**: PostgreSQL Security Advisory
-- **PostgreSQL 18.1下载**: https://www.postgresql.org/download/
+- **PostgreSQL 18.1下载**: <https://www.postgresql.org/download/>
 
 ### 相关文档
 

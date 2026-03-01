@@ -350,7 +350,7 @@ BEGIN
         -- 如果需要性能测试，可以使用：
         -- EXPLAIN (ANALYZE, BUFFERS, TIMING)
         -- SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = v_slot_name);
-        
+
         SELECT EXISTS (
             SELECT 1 FROM pg_replication_slots WHERE slot_name = v_slot_name
         ) INTO v_slot_exists;

@@ -9,16 +9,79 @@
 
 ## 📋 目录
 
-- [概述](#概述)
-- [AWS RDS PostgreSQL](#aws-rds-postgresql)
-- [Azure Database for PostgreSQL](#azure-database-for-postgresql)
-- [Google Cloud SQL for PostgreSQL](#google-cloud-sql-for-postgresql)
-- [阿里云RDS PostgreSQL](#阿里云rds-postgresql)
-- [平台对比分析](#平台对比分析)
-- [多云部署策略](#多云部署策略)
-- [成本优化](#成本优化)
-- [迁移指南](#迁移指南)
-- [参考资源](#参考资源)
+- [云平台PostgreSQL最佳实践深度指南](#云平台postgresql最佳实践深度指南)
+  - [📋 目录](#-目录)
+  - [📊 概述](#-概述)
+    - [云平台PostgreSQL服务对比](#云平台postgresql服务对比)
+    - [选择建议](#选择建议)
+  - [☁️ AWS RDS PostgreSQL](#️-aws-rds-postgresql)
+    - [服务概述](#服务概述)
+    - [核心特性](#核心特性)
+    - [部署配置](#部署配置)
+      - [基础部署](#基础部署)
+      - [Terraform配置](#terraform配置)
+    - [高可用配置](#高可用配置)
+      - [多可用区部署](#多可用区部署)
+      - [只读副本](#只读副本)
+    - [性能优化](#性能优化)
+      - [参数组配置](#参数组配置)
+      - [性能洞察](#性能洞察)
+    - [备份和恢复](#备份和恢复)
+      - [自动备份配置](#自动备份配置)
+      - [手动快照](#手动快照)
+    - [监控和告警](#监控和告警)
+      - [CloudWatch指标](#cloudwatch指标)
+  - [🔷 Azure Database for PostgreSQL](#-azure-database-for-postgresql)
+    - [服务概述](#服务概述-1)
+    - [核心特性](#核心特性-1)
+    - [部署配置](#部署配置-1)
+      - [Azure CLI部署](#azure-cli部署)
+      - [ARM模板](#arm模板)
+    - [高可用配置](#高可用配置-1)
+      - [区域冗余高可用](#区域冗余高可用)
+    - [性能优化](#性能优化-1)
+      - [参数配置](#参数配置)
+  - [🔵 Google Cloud SQL for PostgreSQL](#-google-cloud-sql-for-postgresql)
+    - [服务概述](#服务概述-2)
+    - [核心特性](#核心特性-2)
+    - [部署配置](#部署配置-2)
+      - [gcloud CLI部署](#gcloud-cli部署)
+      - [Terraform配置](#terraform配置-1)
+    - [高可用配置](#高可用配置-2)
+      - [区域高可用](#区域高可用)
+    - [性能优化](#性能优化-2)
+      - [Cloud SQL Insights](#cloud-sql-insights)
+  - [🟢 阿里云RDS PostgreSQL](#-阿里云rds-postgresql)
+    - [服务概述](#服务概述-3)
+    - [核心特性](#核心特性-3)
+    - [部署配置](#部署配置-3)
+      - [阿里云CLI部署](#阿里云cli部署)
+    - [高可用配置](#高可用配置-3)
+      - [主备实例](#主备实例)
+  - [📊 平台对比分析](#-平台对比分析)
+    - [功能对比](#功能对比)
+    - [成本对比](#成本对比)
+      - [相同配置成本（月度）](#相同配置成本月度)
+    - [性能对比](#性能对比)
+  - [🌐 多云部署策略](#-多云部署策略)
+    - [架构设计](#架构设计)
+    - [数据同步](#数据同步)
+      - [逻辑复制配置](#逻辑复制配置)
+  - [💰 成本优化](#-成本优化)
+    - [实例类型选择](#实例类型选择)
+      - [AWS RDS](#aws-rds)
+      - [存储优化](#存储优化)
+    - [预留实例](#预留实例)
+      - [AWS RDS Reserved Instances](#aws-rds-reserved-instances)
+  - [🔄 迁移指南](#-迁移指南)
+    - [AWS RDS迁移到Azure](#aws-rds迁移到azure)
+      - [步骤1: 导出数据](#步骤1-导出数据)
+      - [步骤2: 导入到Azure](#步骤2-导入到azure)
+    - [云平台间迁移最佳实践](#云平台间迁移最佳实践)
+  - [📚 参考资源](#-参考资源)
+    - [官方文档](#官方文档)
+    - [相关文档](#相关文档)
+  - [📝 更新日志](#-更新日志)
 
 ---
 
@@ -36,21 +99,25 @@
 ### 选择建议
 
 **选择AWS RDS如果**:
+
 - ✅ 需要最新PostgreSQL版本（18）
 - ✅ 需要与AWS生态深度集成
 - ✅ 需要全球部署
 
 **选择Azure Database如果**:
+
 - ✅ 已有Azure基础设施
 - ✅ 需要与Microsoft生态集成
 - ✅ 需要企业级支持
 
 **选择Google Cloud SQL如果**:
+
 - ✅ 需要与GCP服务集成
 - ✅ 需要AI/ML功能
 - ✅ 需要全球低延迟
 
 **选择阿里云RDS如果**:
+
 - ✅ 主要服务中国市场
 - ✅ 需要本地化支持
 - ✅ 需要合规性支持
@@ -640,10 +707,10 @@ pg_restore -h azure-server.postgres.database.azure.com \
 
 ### 官方文档
 
-- **AWS RDS**: https://docs.aws.amazon.com/rds/
-- **Azure Database**: https://docs.microsoft.com/azure/postgresql/
-- **Google Cloud SQL**: https://cloud.google.com/sql/docs/postgres
-- **阿里云RDS**: https://help.aliyun.com/product/26090.html
+- **AWS RDS**: <https://docs.aws.amazon.com/rds/>
+- **Azure Database**: <https://docs.microsoft.com/azure/postgresql/>
+- **Google Cloud SQL**: <https://cloud.google.com/sql/docs/postgres>
+- **阿里云RDS**: <https://help.aliyun.com/product/26090.html>
 
 ### 相关文档
 
