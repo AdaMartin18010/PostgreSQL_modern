@@ -1381,7 +1381,7 @@ BEGIN
         WHERE hypertable_name = 'device_telemetry'
           AND is_compressed = false
           AND range_end < NOW() - INTERVAL '7 days';
-        
+
         IF v_chunk_count > 0 THEN
             PERFORM compress_chunk(chunk)
             FROM timescaledb_information.chunks
@@ -1439,13 +1439,13 @@ BEGIN
         INSERT INTO device_telemetry_archive
         SELECT * FROM device_telemetry
         WHERE time < NOW() - INTERVAL '1 year';
-        
+
         GET DIAGNOSTICS v_archived_count = ROW_COUNT;
         RAISE NOTICE '已归档 % 条记录到归档表', v_archived_count;
 
         DELETE FROM device_telemetry
         WHERE time < NOW() - INTERVAL '1 year';
-        
+
         RAISE NOTICE '已删除 % 条旧数据', v_archived_count;
     EXCEPTION
         WHEN OTHERS THEN

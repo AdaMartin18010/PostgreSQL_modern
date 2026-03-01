@@ -3387,26 +3387,26 @@ BEGIN
         ('POSTAL_ADDRESS', '100 Main Street')
         ON CONFLICT DO NOTHING
         RETURNING contact_mechanism_id INTO v_phone_contact_id;
-        
+
         IF v_phone_contact_id IS NULL THEN
             SELECT contact_mechanism_id INTO v_phone_contact_id
             FROM contact_mechanism WHERE contact_value = '(212) 234-0958' LIMIT 1;
         END IF;
-        
+
         IF v_phone_contact_id IS NOT NULL THEN
             INSERT INTO telecommunications_number (contact_mechanism_id, area_code, phone_number) VALUES
             (v_phone_contact_id, '212', '234-0958')
             ON CONFLICT DO NOTHING;
-            
+
             INSERT INTO party_contact_mechanism (party_id, party_type, contact_mechanism_id) VALUES
             (100, 'O', v_phone_contact_id)
             ON CONFLICT DO NOTHING;
-            
+
             INSERT INTO contact_mechanism_purpose (party_id, party_type, contact_mechanism_id, purpose_type) VALUES
             (100, 'O', v_phone_contact_id, 'GENERAL_PHONE')
             ON CONFLICT DO NOTHING;
         END IF;
-        
+
         RAISE NOTICE '联系方式创建成功';
     EXCEPTION
         WHEN OTHERS THEN
@@ -3561,16 +3561,16 @@ BEGIN
         ('WAREHOUSE', 'Main Warehouse', 50000.00, 1),
         ('PLANT', 'Manufacturing Plant A', 100000.00, 1)
         ON CONFLICT DO NOTHING;
-        
+
         SELECT contact_mechanism_id INTO v_contact_id
         FROM contact_mechanism WHERE contact_value = '(212) 234-0958' LIMIT 1;
-        
+
         IF v_contact_id IS NOT NULL THEN
             INSERT INTO facility_contact_mechanism (facility_id, contact_mechanism_id) VALUES
             (1, v_contact_id)
             ON CONFLICT DO NOTHING;
         END IF;
-        
+
         RAISE NOTICE '设施创建成功';
     EXCEPTION
         WHEN OTHERS THEN
