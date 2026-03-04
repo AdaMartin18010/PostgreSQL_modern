@@ -488,14 +488,14 @@ $$
 
 **IVFFlat参数公式**:
 
-```
+```text
 lists = sqrt(n)  # 最优理论值
 nprobe = min(10, lists / 10)  # 平衡性能和召回率
 ```
 
 **HNSW参数公式**:
 
-```
+```text
 m = max(16, min(64, 2 * ln(n)))  # 连接数
 ef_construction = max(64, m * 4)  # 构建质量
 ef_search = max(10, k * 2)  # 搜索质量，k是返回数量
