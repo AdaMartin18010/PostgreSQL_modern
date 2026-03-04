@@ -66,6 +66,7 @@
 #### 2. 批量修复失效链接
 
 **方法**:
+
 1. 识别常见模式（如路径错误）
 2. 使用脚本批量修复
 3. 手动修复特殊案例
@@ -81,6 +82,7 @@
 #### 3. 运行代码验证
 
 **行动**:
+
 ```bash
 python program/scripts/code_example_validator.py --root Integrate --output code_validation_report.md
 ```
@@ -125,15 +127,15 @@ python program/scripts/code_example_validator.py --root Integrate --output code_
 
 ### 明天
 
-4. ⏳ 完成链接修复
-5. ⏳ 运行代码验证工具
-6. ⏳ 开始修复代码问题
+1. ⏳ 完成链接修复
+2. ⏳ 运行代码验证工具
+3. ⏳ 开始修复代码问题
 
 ### 本周
 
-7. ⏳ 完成代码验证和修复
-8. ⏳ 完善错误处理
-9. ⏳ 运行拼写检查
+1. ⏳ 完成代码验证和修复
+2. ⏳ 完善错误处理
+3. ⏳ 运行拼写检查
 
 ---
 

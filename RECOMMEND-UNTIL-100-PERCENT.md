@@ -52,6 +52,7 @@
    - 修复后重新跑 `check_links.py`，直到失效数为 0。
 
 **命令**:
+
 ```bash
 python program/scripts/check_links.py --root Integrate --output link_check_report_latest.md
 ```
@@ -75,6 +76,7 @@ python program/scripts/check_links.py --root Integrate --output link_check_repor
    - 重新运行 `code_example_validator.py`，确认问题数下降。
 
 **命令**:
+
 ```bash
 python program/scripts/code_example_validator.py --root Integrate --output code_validation_report_v2.md
 ```

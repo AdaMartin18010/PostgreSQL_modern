@@ -1,6 +1,6 @@
 # PostgreSQL架构演进时间线
 
-```
+```text
 1996: PostgreSQL诞生
   │
 2005: PG 8.0 - Windows支持

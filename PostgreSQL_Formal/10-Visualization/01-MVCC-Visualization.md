@@ -2,7 +2,7 @@
 
 ## 1. 版本链示意图
 
-```
+```text
 Timeline →
 
 T1: [INSERT x=10] ----→ [COMMIT] --------→
@@ -27,7 +27,7 @@ T3: [SELECT] @ snapshot [100, 200]
 
 ## 2. 快照可见性图
 
-```
+```text
 Transaction Timeline:
 
 T1: |---[BEGIN]--------[COMMIT]---|

@@ -2,7 +2,7 @@
 
 ## 1. 执行计划树
 
-```
+```text
 Nested Loop Join
 ├── Seq Scan on orders
 │   └── Filter: amount > 100

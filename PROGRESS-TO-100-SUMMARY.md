@@ -56,6 +56,7 @@
   - `../13-运维管理`、`../05-数据管理`、`../04-分布式系统理论` 等 → 实际存在路径或归档。
 - 图片、目录链接等无法规则化的，按报告逐个改或改成归档引用。
 - 每轮修复后重跑：
+
   ```bash
   python program/scripts/check_links.py --root Integrate --output link_check_report_latest.md
   ```
@@ -66,6 +67,7 @@
 - 占位符（如 `SELECT ...`）：改为可运行示例或加 `-- 示例` 等说明。
 - 语法错误：按 SQL/Python/Bash 等分语言修复。
 - 修复后再跑：
+
   ```bash
   python program/scripts/code_example_validator.py --root Integrate --output code_validation_report_v2.md
   ```
