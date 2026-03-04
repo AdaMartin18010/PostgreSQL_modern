@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # PostgreSQL监控
+  - job_name: 'postgresql-primary'
+    static_configs:
+      - targets: ['postgres-primary:9187']
+    metrics_path: /metrics
+    scrape_interval: 10s
+    
+  - job_name: 'postgresql-standby'
+    static_configs:
+      - targets: 
+        - 'standby1:9187'
+        - 'standby2:9187'
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # PgBouncer监控
+  - job_name: 'pgbouncer'
+    static_configs:
+      - targets: ['pgbouncer:9127']
+    scrape_interval: 10s
+
+  # 应用监控
+  - job_name: 'dca-backend'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # 节点监控
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: 
+        - 'postgres-primary:9100'
+        - 'standby1:9100'
+        - 'standby2:9100'
+    scrape_interval: 15s

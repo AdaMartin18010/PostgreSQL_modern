@@ -1,0 +1,196 @@
+name: DCA CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'database/**'
+      - 'backend/**'
+      - 'tests/**'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-database:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dca_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+
+    - name: Install pgTAP
+      run: |
+        sudo apt-get install -y cpanminus
+        sudo cpanm TAP::Parser::SourceHandler::pgTAP
+
+    - name: Initialize database schema
+      run: |
+        psql -h localhost -U postgres -d dca_test -f database/01_schema.sql
+        psql -h localhost -U postgres -d dca_test -f database/02_procedures.sql
+      env:
+        PGPASSWORD: postgres
+
+    - name: Run database tests
+      run: |
+        psql -h localhost -U postgres -d dca_test -f tests/test_procedures.sql
+      env:
+        PGPASSWORD: postgres
+
+    - name: Validate SQL syntax
+      run: |
+        find database -name "*.sql" -exec psql -h localhost -U postgres -d dca_test -f {} \;
+      env:
+        PGPASSWORD: postgres
+
+  test-backend:
+    runs-on: ubuntu-latest
+    needs: test-database
+    
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dca_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+
+    - name: Initialize database
+      run: |
+        psql -h localhost -U postgres -d dca_test -f database/01_schema.sql
+        psql -h localhost -U postgres -d dca_test -f database/02_procedures.sql
+      env:
+        PGPASSWORD: postgres
+
+    - name: Run Python tests
+      run: |
+        cd backend
+        pytest ../tests/test_integration.py -v --cov=.
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: dca_test
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: [test-database, test-backend]
+    if: github.ref == 'refs/heads/main'
+    
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dca_perf
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install psycopg2-binary
+
+    - name: Initialize database with test data
+      run: |
+        psql -h localhost -U postgres -d dca_perf -f database/01_schema.sql
+        psql -h localhost -U postgres -d dca_perf -f database/02_procedures.sql
+        psql -h localhost -U postgres -d dca_perf -f tests/setup_perf_data.sql
+      env:
+        PGPASSWORD: postgres
+
+    - name: Run performance tests
+      run: |
+        python tests/test_performance.py
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: dca_perf
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+
+  lint-sql:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install SQLFluff
+      run: |
+        pip install sqlfluff
+
+    - name: Lint SQL files
+      run: |
+        sqlfluff lint database/ --dialect postgres
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
