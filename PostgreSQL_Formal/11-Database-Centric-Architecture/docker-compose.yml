@@ -1,0 +1,134 @@
+# ============================================
+# Docker Compose - DCA完整开发环境
+# 包含: PostgreSQL 18, PgBouncer, 监控工具
+# ============================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL主库
+  postgres-primary:
+    image: postgres:18-alpine
+    container_name: dca-postgres
+    environment:
+      POSTGRES_DB: dca_demo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./examples/init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - dca-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dca_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres 
+      -c shared_buffers=256MB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c wal_level=logical
+      -c max_replication_slots=4
+      -c max_wal_senders=4
+      -c log_min_duration_statement=1000
+      -c log_statement=all
+      -c log_destination=stderr
+
+  # PgBouncer连接池
+  pgbouncer:
+    image: pgbouncer/pgbouncer:1.21
+    container_name: dca-pgbouncer
+    environment:
+      DATABASES_HOST: postgres-primary
+      DATABASES_PORT: 5432
+      DATABASES_DATABASE: dca_demo
+      DATABASES_USER: postgres
+      DATABASES_PASSWORD: postgres
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      SERVER_IDLE_TIMEOUT: 600
+      SERVER_LIFETIME: 3600
+      VERBOSE: 0
+    ports:
+      - "6432:6432"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    networks:
+      - dca-network
+
+  # pgAdmin管理工具
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: dca-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres-primary
+    networks:
+      - dca-network
+
+  # Prometheus监控
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dca-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - dca-network
+
+  # Grafana仪表盘
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dca-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - dca-network
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: dca-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:postgres@postgres-primary:5432/dca_demo?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres-primary
+    networks:
+      - dca-network
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  dca-network:
+    driver: bridge
