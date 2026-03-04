@@ -66,7 +66,8 @@ $$
 **定义 1.2 (共享内存)**:
 
 $$
-\text{Memory}_{shared} = \text{shared\_buffers} + \text{WAL\_buffers} + \text{Clog\_buffers} + \text{Locks} + \text{Other}
+\text{Memory}_{shared} =
+\text{shared\_buffers} + \text{WAL\_buffers} + \text{Clog\_buffers} + \text{Locks} + \text{Other}
 $$
 
 **定义 1.3 (后端内存)**:
@@ -395,7 +396,7 @@ $$
 
 **并行查询内存计算**:
 
-```
+```text
 总work_mem = work_mem × 并行度
 
 例如:
@@ -430,7 +431,7 @@ $$
 
 当操作内存超出work_mem，PostgreSQL使用临时文件:
 
-```
+```text
 位置: $PGDATA/base/pgsql_tmp/
 命名: pgsql_tmp{PID}.{NN}
 ```
@@ -727,7 +728,7 @@ PostgreSQL内存映射:
 
 ### 7.1 正例
 
-**实例1: 正确设置shared_buffers**
+**实例1: 正确设置shared_buffers**:
 
 ```sql
 -- 场景: 64GB内存服务器，OLTP负载
@@ -747,7 +748,7 @@ shared_buffers = 16GB  -- 内存的25%
 -- 吞吐量提升35%
 ```
 
-**实例2: 优化work_mem避免磁盘排序**
+**实例2: 优化work_mem避免磁盘排序**:
 
 ```sql
 -- 问题查询
@@ -767,7 +768,7 @@ SELECT * FROM orders ORDER BY created_at DESC LIMIT 100;
 -- 性能提升: 7.6倍
 ```
 
-**实例3: 使用Huge Pages**
+**实例3: 使用Huge Pages**:
 
 ```bash
 # 配置Huge Pages
@@ -784,7 +785,7 @@ shared_buffers = 16GB
 
 ### 7.2 反例
 
-**反例1: shared_buffers设置过大**
+**反例1: shared_buffers设置过大**:
 
 ```ini
 # 问题配置
@@ -800,7 +801,7 @@ shared_buffers = 16GB
 effective_cache_size = 56GB  # shared_buffers + OS缓存
 ```
 
-**反例2: work_mem设置过大**
+**反例2: work_mem设置过大**:
 
 ```ini
 # 问题配置
@@ -818,7 +819,7 @@ SET work_mem = '512MB';  -- 执行大查询
 RESET work_mem;
 ```
 
-**反例3: 忽视临时文件清理**
+**反例3: 忽视临时文件清理**:
 
 ```bash
 # 问题: 临时文件目录膨胀
