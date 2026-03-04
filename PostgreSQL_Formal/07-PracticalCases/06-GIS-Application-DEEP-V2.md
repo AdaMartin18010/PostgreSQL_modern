@@ -271,7 +271,7 @@ CREATE TABLE poi (
 DO $$
 BEGIN
     FOR i IN 0..15 LOOP
-        EXECUTE format('CREATE TABLE poi_%s PARTITION OF poi 
+        EXECUTE format('CREATE TABLE poi_%s PARTITION OF poi
                        FOR VALUES WITH (MODULUS 16, REMAINDER %s)', i, i);
     END LOOP;
 END $$;
@@ -280,14 +280,14 @@ END $$;
 CREATE INDEX idx_poi_geom ON poi USING GIST(geom);
 
 -- 复合索引: 城市+分类 (支持本地生活服务查询)
-CREATE INDEX idx_poi_city_category ON poi(city, category_id) 
+CREATE INDEX idx_poi_city_category ON poi(city, category_id)
 WHERE status = 1;
 
 -- GIN索引: 扩展属性搜索
 CREATE INDEX idx_poi_attrs ON poi USING GIN(attributes);
 
 -- 全文搜索索引
-CREATE INDEX idx_poi_name_fulltext ON poi 
+CREATE INDEX idx_poi_name_fulltext ON poi
 USING GIN(to_tsvector('chinese', name || ' ' || COALESCE(address, '')));
 
 COMMENT ON TABLE poi IS '兴趣点(POI)主表，存储地理位置信息';
@@ -342,11 +342,11 @@ CREATE TABLE trajectory_points_y2026m02 PARTITION OF trajectory_points
     FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
 
 -- BRIN索引: 适合时序追加数据
-CREATE INDEX idx_traj_time_brin ON trajectory_points 
+CREATE INDEX idx_traj_time_brin ON trajectory_points
 USING BRIN(timestamp);
 
 -- 空间索引
-CREATE INDEX idx_traj_geom ON trajectory_points 
+CREATE INDEX idx_traj_geom ON trajectory_points
 USING GIST(geom);
 
 -- 设备+时间索引 (轨迹查询)
@@ -393,7 +393,7 @@ COMMENT ON TABLE road_network IS '道路网络数据，支持pgRouting路径规�
 CREATE TABLE geofence_zones (
     zone_id         BIGSERIAL PRIMARY KEY,
     name            VARCHAR(128) NOT NULL,
-    zone_type       SMALLINT NOT NULL CHECK (zone_type IN (1, 2, 3)), 
+    zone_type       SMALLINT NOT NULL CHECK (zone_type IN (1, 2, 3)),
                     -- 1:禁止进入 2:限速 3:通知
     geom            GEOMETRY(POLYGON, 4326) NOT NULL,
     altitude_min    INTEGER, -- 最低高度(米)，用于空域
@@ -409,7 +409,7 @@ CREATE TABLE geofence_zones (
 );
 
 -- 空间索引 (GiST支持多边形包含查询)
-CREATE INDEX idx_geofence_geom ON geofence_zones 
+CREATE INDEX idx_geofence_geom ON geofence_zones
 USING GIST(geom) WHERE is_active = TRUE;
 
 -- 类型索引
@@ -425,7 +425,7 @@ CREATE TABLE administrative_regions (
     code            VARCHAR(12) NOT NULL UNIQUE, -- 国家统计局编码
     parent_code     VARCHAR(12),
     name            VARCHAR(64) NOT NULL,
-    level           SMALLINT NOT NULL CHECK (level IN (1, 2, 3, 4)), 
+    level           SMALLINT NOT NULL CHECK (level IN (1, 2, 3, 4)),
                     -- 1:省 2:市 3:区县 4:乡镇
     center_geom     GEOMETRY(POINT, 4326),
     boundary_geom   GEOMETRY(MULTIPOLYGON, 4326),
@@ -508,17 +508,17 @@ COMMENT ON TABLE administrative_regions IS '中国行政区划边界数据';
 CREATE INDEX idx_poi_geom_gist ON poi USING GIST(geom);
 
 -- GiST索引带缓冲参数 (数据更新频繁时使用)
-CREATE INDEX idx_poi_geom_gist_buffered ON poi 
+CREATE INDEX idx_poi_geom_gist_buffered ON poi
 USING GIST(geom) WITH (buffering = 'on', fillfactor = 90);
 
 -- 3D空间索引 (包含高度)
-CREATE INDEX idx_geofence_3d ON geofence_zones 
+CREATE INDEX idx_geofence_3d ON geofence_zones
 USING GIST(geom) WITH (dimension = 3);
 
 -- ============================================
 -- 3.2.2 SP-GiST点数据索引
 -- ============================================
-CREATE INDEX idx_traj_spgist ON trajectory_points 
+CREATE INDEX idx_traj_spgist ON trajectory_points
 USING SPGIST(geom);
 
 -- ============================================
@@ -526,11 +526,11 @@ USING SPGIST(geom);
 -- ============================================
 
 -- 基本BRIN索引
-CREATE INDEX idx_traj_brin ON trajectory_points 
+CREATE INDEX idx_traj_brin ON trajectory_points
 USING BRIN(timestamp);
 
 -- 带空间范围的BRIN (需要PostGIS 3.0+)
-CREATE INDEX idx_traj_brin_geom ON trajectory_points 
+CREATE INDEX idx_traj_brin_geom ON trajectory_points
 USING BRIN(geom) WITH (pages_per_range = 128);
 
 -- ============================================
@@ -549,19 +549,19 @@ CREATE OR REPLACE FUNCTION recommend_spatial_index(
 ) AS $$
 BEGIN
     IF p_data_type = 'point' AND p_data_volume > 10000000 THEN
-        RETURN QUERY SELECT 
+        RETURN QUERY SELECT
             'SP-GiST'::TEXT,
             '点数据量大，SP-GiST索引更小更快'::TEXT,
             format('CREATE INDEX idx_%s_spgist ON %I USING SPGIST(%I);',
                    p_table_name, p_table_name, p_geom_column);
     ELSIF p_data_volume > 50000000 AND p_update_frequency = 'low' THEN
-        RETURN QUERY SELECT 
+        RETURN QUERY SELECT
             'BRIN'::TEXT,
             '海量历史数据，BRIN索引极小'::TEXT,
             format('CREATE INDEX idx_%s_brin ON %I USING BRIN(%I);',
                    p_table_name, p_table_name, p_geom_column);
     ELSE
-        RETURN QUERY SELECT 
+        RETURN QUERY SELECT
             'GiST'::TEXT,
             '通用选择，支持所有几何类型和查询'::TEXT,
             format('CREATE INDEX idx_%s_geom ON %I USING GIST(%I);',
@@ -599,9 +599,9 @@ DECLARE
 BEGIN
     -- 创建搜索点
     v_search_point := ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326);
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         p.poi_id,
         p.name,
         p.category_id,
@@ -609,10 +609,10 @@ BEGIN
         ST_DistanceSphere(p.geom, v_search_point)::DECIMAL AS distance_meters,
         p.rating
     FROM poi p
-    WHERE 
+    WHERE
         -- 使用 && 操作符利用空间索引进行边界框过滤
         p.geom && ST_Expand(
-            ST_Transform(v_search_point, 3857), 
+            ST_Transform(v_search_point, 3857),
             p_radius_meters
         )::geometry
         -- 精确距离过滤
@@ -642,15 +642,15 @@ DECLARE
 BEGIN
     -- 解析GeoJSON
     v_polygon := ST_GeomFromGeoJSON(p_polygon_geojson);
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         p.poi_id,
         p.name,
         p.category_id,
         ST_AsGeoJSON(p.geom)::GEOJSON
     FROM poi p
-    WHERE 
+    WHERE
         -- ST_Within 完全包含
         ST_Within(p.geom, v_polygon)
         -- 或 ST_Intersects 相交
@@ -679,9 +679,9 @@ DECLARE
     v_point GEOMETRY;
 BEGIN
     v_point := ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326);
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         gz.zone_id,
         gz.name,
         CASE gz.zone_type
@@ -695,13 +695,13 @@ BEGIN
             WHEN 3 THEN 1
         END
     FROM geofence_zones gz
-    WHERE 
+    WHERE
         gz.is_active = TRUE
         -- 空间包含判断
         AND ST_Contains(gz.geom, v_point)
         -- 高度检查 (如果有高度数据)
-        AND (p_altitude IS NULL 
-             OR gz.altitude_min IS NULL 
+        AND (p_altitude IS NULL
+             OR gz.altitude_min IS NULL
              OR p_altitude BETWEEN gz.altitude_min AND COALESCE(gz.altitude_max, 99999))
         -- 时间有效性检查
         AND (
@@ -735,7 +735,7 @@ CREATE OR REPLACE FUNCTION compress_trajectory(
 BEGIN
     RETURN QUERY
     WITH raw_points AS (
-        SELECT 
+        SELECT
             tp.point_id,
             ST_X(tp.geom) AS lon,
             ST_Y(tp.geom) AS lat,
@@ -750,7 +750,7 @@ BEGIN
         SELECT ST_MakeLine(ARRAY_AGG(geom ORDER BY timestamp)) AS geom
         FROM raw_points
     )
-    SELECT 
+    SELECT
         rp.point_id,
         rp.lon,
         rp.lat,
@@ -779,17 +779,17 @@ CREATE EXTENSION IF NOT EXISTS pgrouting;
 SELECT pgr_createTopology('road_network', 0.00001, 'geom', 'road_id');
 
 -- 添加拓扑分析列
-ALTER TABLE road_network 
+ALTER TABLE road_network
 ADD COLUMN IF NOT EXISTS cost DOUBLE PRECISION,
 ADD COLUMN IF NOT EXISTS reverse_cost DOUBLE PRECISION;
 
 -- 计算通行成本 (基于距离和速度)
 UPDATE road_network SET
-    cost = CASE 
+    cost = CASE
         WHEN oneway = -1 THEN -1  -- 禁止通行
         ELSE length_m / NULLIF(max_speed, 0) / 1000 * 60  -- 分钟
     END,
-    reverse_cost = CASE 
+    reverse_cost = CASE
         WHEN oneway = 1 THEN -1   -- 禁止通行
         ELSE length_m / NULLIF(max_speed, 0) / 1000 * 60
     END;
@@ -821,16 +821,16 @@ BEGIN
     WHERE status = 1
     ORDER BY geom <-> ST_SetSRID(ST_MakePoint(p_from_lon, p_from_lat), 4326)
     LIMIT 1;
-    
+
     -- 找到最近的结束节点
     SELECT target_node INTO v_end_node
     FROM road_network
     WHERE status = 1
     ORDER BY geom <-> ST_SetSRID(ST_MakePoint(p_to_lon, p_to_lat), 4326)
     LIMIT 1;
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         r.seq::INTEGER,
         r.node,
         r.edge,
@@ -838,7 +838,7 @@ BEGIN
         r.agg_cost,
         rn.geom
     FROM pgr_dijkstra(
-        format('SELECT road_id, source_node, target_node, %I AS cost, reverse_cost 
+        format('SELECT road_id, source_node, target_node, %I AS cost, reverse_cost
                 FROM road_network WHERE status = 1', p_cost_column),
         v_start_node,
         v_end_node,
@@ -864,13 +864,13 @@ BEGIN
     -- 实际实现需要将waypoints转换为matrix并使用pgr_TSP
     RETURN QUERY
     WITH waypoints AS (
-        SELECT 
+        SELECT
             (ordinality - 1) AS seq,
             (value->>'lon')::DECIMAL AS lon,
             (value->>'lat')::DECIMAL AS lat
         FROM jsonb_array_elements(p_waypoints) WITH ORDINALITY
     )
-    SELECT 
+    SELECT
         seq::INTEGER,
         lon,
         lat,
@@ -895,23 +895,23 @@ CREATE OR REPLACE FUNCTION generate_isochrone(
 BEGIN
     RETURN QUERY
     WITH nodes AS (
-        SELECT 
+        SELECT
             node,
             agg_cost
         FROM pgr_drivingDistance(
-            format('SELECT road_id, source_node, target_node, %I AS cost 
+            format('SELECT road_id, source_node, target_node, %I AS cost
                     FROM road_network WHERE status = 1', p_cost_column),
-            (SELECT source_node 
-             FROM road_network 
+            (SELECT source_node
+             FROM road_network
              ORDER BY geom <-> ST_SetSRID(ST_MakePoint(p_center_lon, p_center_lat), 4326)
              LIMIT 1),
             p_max_cost,
             TRUE
         )
     )
-    SELECT 
+    SELECT
         ST_ConvexHull(ST_Collect(rn.geom)) AS geom,
-        CASE 
+        CASE
             WHEN n.agg_cost <= p_max_cost / 3 THEN '0-' || (p_max_cost/3)::TEXT || '分钟'
             WHEN n.agg_cost <= p_max_cost * 2 / 3 THEN (p_max_cost/3)::TEXT || '-' || (p_max_cost*2/3)::TEXT || '分钟'
             ELSE (p_max_cost*2/3)::TEXT || '-' || p_max_cost::TEXT || '分钟'
@@ -944,14 +944,14 @@ CREATE OR REPLACE FUNCTION poi_hotspot_analysis(
 BEGIN
     RETURN QUERY
     WITH clusters AS (
-        SELECT 
+        SELECT
             poi_id,
-            ST_ClusterDBSCAN(geom, p_eps_meters / 111320.0, p_min_points) 
+            ST_ClusterDBSCAN(geom, p_eps_meters / 111320.0, p_min_points)
                 OVER () AS cluster_id
         FROM poi
         WHERE city = p_city AND status = 1
     )
-    SELECT 
+    SELECT
         c.cluster_id::INTEGER,
         ST_X(ST_Centroid(ST_Collect(p.geom)))::DECIMAL,
         ST_Y(ST_Centroid(ST_Collect(p.geom)))::DECIMAL,
@@ -984,28 +984,28 @@ CREATE OR REPLACE FUNCTION detect_stay_points(
 BEGIN
     RETURN QUERY
     WITH stay_detection AS (
-        SELECT 
+        SELECT
             point_id,
             geom,
             timestamp,
             -- 标记驻留开始
-            CASE 
+            CASE
                 WHEN timestamp - LAG(timestamp) OVER (ORDER BY timestamp) > p_time_threshold
                     OR ST_DistanceSphere(geom, LAG(geom) OVER (ORDER BY timestamp)) > p_distance_threshold_meters
-                THEN 1 
-                ELSE 0 
+                THEN 1
+                ELSE 0
             END AS is_new_stay
         FROM trajectory_points
         WHERE device_id = p_device_id
         ORDER BY timestamp
     ),
     stay_groups AS (
-        SELECT 
+        SELECT
             *,
             SUM(is_new_stay) OVER (ORDER BY timestamp) AS stay_group
         FROM stay_detection
     )
-    SELECT 
+    SELECT
         stay_group::INTEGER,
         ST_X(ST_Centroid(ST_Collect(geom)))::DECIMAL,
         ST_Y(ST_Centroid(ST_Collect(geom)))::DECIMAL,
@@ -1035,18 +1035,18 @@ DECLARE
     v_region_geom GEOMETRY;
     v_area_km2 DECIMAL;
 BEGIN
-    SELECT boundary_geom, area_km2 
+    SELECT boundary_geom, area_km2
     INTO v_region_geom, v_area_km2
-    FROM administrative_regions 
+    FROM administrative_regions
     WHERE code = p_region_code;
-    
+
     RETURN QUERY
-    SELECT 
-        (SELECT COUNT(*) FROM poi 
+    SELECT
+        (SELECT COUNT(*) FROM poi
          WHERE ST_Within(geom, v_region_geom) AND status = 1),
-        (SELECT COUNT(*)::DECIMAL / NULLIF(v_area_km2, 0) 
+        (SELECT COUNT(*)::DECIMAL / NULLIF(v_area_km2, 0)
          FROM poi WHERE ST_Within(geom, v_region_geom)),
-        (SELECT AVG(rating) FROM poi 
+        (SELECT AVG(rating) FROM poi
          WHERE ST_Within(geom, v_region_geom) AND rating > 0),
         (SELECT JSONB_OBJECT_AGG(category_id, cnt)
          FROM (
@@ -1057,8 +1057,8 @@ BEGIN
              ORDER BY cnt DESC
              LIMIT 5
          ) sub),
-        (SELECT SUM(length_m) / 1000 
-         FROM road_network 
+        (SELECT SUM(length_m) / 1000
+         FROM road_network
          WHERE ST_Intersects(geom, v_region_geom));
 END;
 $$ LANGUAGE plpgsql;
@@ -1086,12 +1086,12 @@ DECLARE
 BEGIN
     -- 计算瓦片边界
     v_bounds := ST_TileEnvelope(p_z, p_x, p_y);
-    
+
     -- 生成MVT
     SELECT ST_AsMVT(mvt, 'poi', 4096, 'geom')
     INTO v_mvt
     FROM (
-        SELECT 
+        SELECT
             poi_id AS id,
             name,
             category_id,
@@ -1104,7 +1104,7 @@ BEGIN
                 TRUE   -- 裁剪几何
             ) AS geom
         FROM poi
-        WHERE 
+        WHERE
             -- 空间索引过滤
             geom && ST_Transform(v_bounds, 4326)
             -- 层级过滤 (避免低层级数据过多)
@@ -1112,7 +1112,7 @@ BEGIN
             AND (p_category_id IS NULL OR category_id = p_category_id)
             AND status = 1
     ) mvt;
-    
+
     RETURN v_mvt;
 END;
 $$ LANGUAGE plpgsql;
@@ -1131,12 +1131,12 @@ DECLARE
     v_mvt BYTEA;
 BEGIN
     v_bounds := ST_TileEnvelope(p_z, p_x, p_y);
-    
+
     IF p_data_type = 'poi' THEN
         SELECT ST_AsMVT(mvt, 'heatmap', 4096, 'geom')
         INTO v_mvt
         FROM (
-            SELECT 
+            SELECT
                 COUNT(*) AS density,
                 ST_AsMVTGeom(
                     ST_Centroid(ST_Collect(ST_Transform(geom, 3857))),
@@ -1148,15 +1148,15 @@ BEGIN
             FROM poi
             WHERE geom && ST_Transform(v_bounds, 4326)
               AND status = 1
-            GROUP BY ST_SnapToGrid(ST_Transform(geom, 3857), 
-                                   CASE p_z 
+            GROUP BY ST_SnapToGrid(ST_Transform(geom, 3857),
+                                   CASE p_z
                                        WHEN < 10 THEN 10000
                                        WHEN < 14 THEN 1000
                                        ELSE 100
                                    END)
         ) mvt;
     END IF;
-    
+
     RETURN v_mvt;
 END;
 $$ LANGUAGE plpgsql;
@@ -1174,11 +1174,11 @@ DECLARE
     v_mvt BYTEA;
 BEGIN
     v_bounds := ST_TileEnvelope(p_z, p_x, p_y);
-    
+
     SELECT ST_AsMVT(mvt, 'roads', 4096, 'geom')
     INTO v_mvt
     FROM (
-        SELECT 
+        SELECT
             road_id,
             name,
             road_type,
@@ -1192,7 +1192,7 @@ BEGIN
                 TRUE
             ) AS geom
         FROM road_network
-        WHERE 
+        WHERE
             geom && ST_Transform(v_bounds, 4326)
             -- 根据层级过滤道路类型
             AND (
@@ -1204,7 +1204,7 @@ BEGIN
             )
             AND status = 1
     ) mvt;
-    
+
     RETURN v_mvt;
 END;
 $$ LANGUAGE plpgsql;
@@ -1232,7 +1232,7 @@ BEGIN
     v_min_lat := v_bbox_parts[2]::DECIMAL;
     v_max_lon := v_bbox_parts[3]::DECIMAL;
     v_max_lat := v_bbox_parts[4]::DECIMAL;
-    
+
     RETURN (
         SELECT JSONB_BUILD_OBJECT(
             'type', 'FeatureCollection',
@@ -1275,7 +1275,7 @@ BEGIN
         )
     ) INTO v_line
     FROM jsonb_array_elements(p_path_points) WITH ORDINALITY AS p(p, ord);
-    
+
     RETURN JSONB_BUILD_OBJECT(
         'type', 'Feature',
         'geometry', ST_AsGeoJSON(v_line)::JSONB,
@@ -1359,7 +1359,7 @@ DECLARE
     v_count INTEGER;
 BEGIN
     INSERT INTO poi_cache (cache_key, city, category_id, poi_data)
-    SELECT 
+    SELECT
         MD5(city || '_' || category_id::TEXT),
         city,
         category_id,
@@ -1376,7 +1376,7 @@ BEGIN
     ON CONFLICT (cache_key) DO UPDATE SET
         poi_data = EXCLUDED.poi_data,
         cached_at = NOW();
-    
+
     GET DIAGNOSTICS v_count = ROW_COUNT;
     RETURN v_count;
 END;
@@ -1410,26 +1410,26 @@ DECLARE
     v_tile BYTEA;
 BEGIN
     v_key := format('%s_%s_%s_%s', p_z, p_x, p_y, p_layer);
-    
+
     -- 查询缓存
     SELECT tile_data INTO v_tile
     FROM mvt_cache
     WHERE tile_key = v_key AND expires_at > NOW();
-    
+
     IF FOUND THEN
         -- 更新命中率统计
         UPDATE mvt_cache SET hit_count = COALESCE(hit_count, 0) + 1
         WHERE tile_key = v_key;
         RETURN v_tile;
     END IF;
-    
+
     -- 生成新瓦片
     CASE p_layer
         WHEN 'poi' THEN v_tile := get_poi_mvt(p_z, p_x, p_y);
         WHEN 'road' THEN v_tile := get_road_mvt(p_z, p_x, p_y);
         ELSE v_tile := NULL;
     END CASE;
-    
+
     -- 写入缓存
     IF v_tile IS NOT NULL THEN
         INSERT INTO mvt_cache (tile_key, z, x, y, layer, tile_data)
@@ -1439,7 +1439,7 @@ BEGIN
             created_at = NOW(),
             expires_at = NOW() + INTERVAL '1 day';
     END IF;
-    
+
     RETURN v_tile;
 END;
 $$ LANGUAGE plpgsql;
@@ -1510,23 +1510,23 @@ $$\forall p \in R, \forall q \in D \setminus R: distance(p, center) \leq distanc
 
 ### 8.2 PostGIS官方文档
 
-4. **PostGIS Project (2024)**. "PostGIS 3.4 Manual." *PostGIS Documentation*. https://postgis.net/documentation/
+1. **PostGIS Project (2024)**. "PostGIS 3.4 Manual." *PostGIS Documentation*. <https://postgis.net/documentation/>
 
-5. **PostGIS Project (2024)**. "Raster Data Management." *PostGIS Raster Documentation*. https://postgis.net/docs/using_raster_dataman.html
+2. **PostGIS Project (2024)**. "Raster Data Management." *PostGIS Raster Documentation*. <https://postgis.net/docs/using_raster_dataman.html>
 
-6. **PostGIS Project (2024)**. "Topology." *PostGIS Topology Documentation*. https://postgis.net/docs/Topology.html
+3. **PostGIS Project (2024)**. "Topology." *PostGIS Topology Documentation*. <https://postgis.net/docs/Topology.html>
 
 ### 8.3 pgRouting官方文档
 
-7. **pgRouting Project (2024)**. "pgRouting Manual." *pgRouting Documentation*. https://docs.pgrouting.org/
+1. **pgRouting Project (2024)**. "pgRouting Manual." *pgRouting Documentation*. <https://docs.pgrouting.org/>
 
 ### 8.4 行业标准
 
-8. **OGC (2024)**. "GeoJSON Specification (RFC 7946)." *Open Geospatial Consortium*.
+1. **OGC (2024)**. "GeoJSON Specification (RFC 7946)." *Open Geospatial Consortium*.
 
-9. **Mapbox (2024)**. "Vector Tile Specification." *Mapbox Documentation*. https://github.com/mapbox/vector-tile-spec
+2. **Mapbox (2024)**. "Vector Tile Specification." *Mapbox Documentation*. <https://github.com/mapbox/vector-tile-spec>
 
-10. **EPSG (2024)**. "Geodetic Parameter Dataset." *EPSG Registry*. https://epsg.org/
+3. **EPSG (2024)**. "Geodetic Parameter Dataset." *EPSG Registry*. <https://epsg.org/>
 
 ---
 
@@ -1542,6 +1542,6 @@ $$\forall p \in R, \forall q \in D \setminus R: distance(p, center) \leq distanc
 
 ---
 
-**文档版本**: v2.0  
-**最后更新**: 2026-03-04  
+**文档版本**: v2.0
+**最后更新**: 2026-03-04
 **维护者**: PostgreSQL_Formal Team

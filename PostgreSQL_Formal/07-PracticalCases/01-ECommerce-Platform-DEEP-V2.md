@@ -10,7 +10,9 @@
 
 ## 摘要
 
-本文基于千万级日活电商平台实战场景，深入剖析PostgreSQL在高并发电商系统中的架构设计、性能优化与高可用方案。涵盖订单、库存、商品、用户、秒杀五大核心子系统，提供完整的数据库设计（含ER图、索引策略）、核心流程实现（存储过程、函数）、并发控制方案、分库分表策略及监控告警体系。通过形式化方法定义库存扣减模型，给出防止超卖的数学证明，并基于生产环境实测数据验证方案有效性。
+本文基于千万级日活电商平台实战场景，深入剖析PostgreSQL在高并发电商系统中的架构设计、性能优化与高可用方案。
+涵盖订单、库存、商品、用户、秒杀五大核心子系统，提供完整的数据库设计（含ER图、索引策略）、核心流程实现（存储过程、函数）、并发控制方案、分库分表策略及监控告警体系。
+通过形式化方法定义库存扣减模型，给出防止超卖的数学证明，并基于生产环境实测数据验证方案有效性。
 
 **关键词**: 电商架构、高并发、库存扣减、秒杀系统、分库分表、PostgreSQL
 
@@ -179,17 +181,17 @@ CREATE TABLE users (
     phone           VARCHAR(20),
     password_hash   VARCHAR(255) NOT NULL,
     status          SMALLINT DEFAULT 1, -- 0:禁用, 1:正常, 2:未验证
-    
+
     -- 用户画像JSON (PostgreSQL JSONB优势)
     profile         JSONB DEFAULT '{}',
-    
+
     -- 统计字段 (反规范化设计)
     order_count     INTEGER DEFAULT 0,
     total_amount    NUMERIC(15,2) DEFAULT 0,
-    
+
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    
+
     -- 约束
     CONSTRAINT uk_users_email UNIQUE (email),
     CONSTRAINT uk_users_phone UNIQUE (phone),
@@ -226,24 +228,24 @@ CREATE TABLE orders (
     order_id        BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
     order_no        VARCHAR(32) NOT NULL,
-    
+
     -- 金额信息
     total_amount    NUMERIC(15,2) NOT NULL,
     discount_amount NUMERIC(15,2) DEFAULT 0,
     pay_amount      NUMERIC(15,2) NOT NULL,
-    
+
     -- 状态机: 0-待支付, 1-已支付, 2-已发货, 3-已完成, 4-已取消
     status          SMALLINT DEFAULT 0,
-    
+
     -- 地址信息 (JSONB存储，灵活扩展)
     address         JSONB NOT NULL,
-    
+
     -- 扩展字段
     extra           JSONB DEFAULT '{}',
-    
+
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     paid_at         TIMESTAMPTZ,
-    
+
     PRIMARY KEY (order_id, created_at)
 ) PARTITION BY RANGE (created_at);
 
@@ -260,23 +262,23 @@ BEGIN
     partition_name := 'orders_' || TO_CHAR(partition_date, 'YYYY_MM');
     start_date := partition_date;
     end_date := partition_date + INTERVAL '1 month';
-    
+
     IF NOT EXISTS (
-        SELECT 1 FROM pg_tables 
+        SELECT 1 FROM pg_tables
         WHERE tablename = partition_name
     ) THEN
         EXECUTE format(
             'CREATE TABLE %I PARTITION OF orders FOR VALUES FROM (%L) TO (%L)',
             partition_name, start_date, end_date
         );
-        
+
         -- 为新分区创建索引
         EXECUTE format(
             'CREATE INDEX %I ON %I(user_id)',
             partition_name || '_user_idx', partition_name
         );
     END IF;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -290,7 +292,7 @@ CREATE TABLE orders_2025_04 PARTITION OF orders
 -- 全局索引
 CREATE UNIQUE INDEX idx_orders_order_no ON orders(order_no);
 CREATE INDEX idx_orders_user_created ON orders(user_id, created_at DESC);
-CREATE INDEX idx_orders_status_created ON orders(status, created_at) 
+CREATE INDEX idx_orders_status_created ON orders(status, created_at)
     WHERE status = 0; -- 待支付订单索引 (用于超时取消任务)
 
 -- BRIN索引: 适合时间序列数据 (轻量级)
@@ -307,18 +309,18 @@ CREATE TABLE inventory (
     sku_id          BIGINT PRIMARY KEY,
     quantity        INTEGER NOT NULL DEFAULT 0, -- 可用库存
     locked          INTEGER NOT NULL DEFAULT 0, -- 已锁定库存
-    
+
     -- 乐观锁版本号
     version         INTEGER NOT NULL DEFAULT 1,
-    
+
     -- 安全库存阈值
     safety_stock    INTEGER DEFAULT 10,
-    
+
     -- 统计
     sale_count      BIGINT DEFAULT 0,
-    
+
     updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    
+
     -- 约束: 可用库存不能为负
     CONSTRAINT chk_inventory_quantity CHECK (quantity >= 0),
     CONSTRAINT chk_inventory_locked CHECK (locked >= 0),
@@ -362,18 +364,18 @@ BEGIN
     FROM inventory
     WHERE sku_id = p_sku_id
     FOR UPDATE;
-    
+
     -- 检查库存
     IF v_available IS NULL THEN
         RETURN QUERY SELECT FALSE, 'SKU不存在'::TEXT, 0;
         RETURN;
     END IF;
-    
+
     IF v_available < p_quantity THEN
         RETURN QUERY SELECT FALSE, '库存不足'::TEXT, v_available;
         RETURN;
     END IF;
-    
+
     -- 扣减库存 (原子操作)
     UPDATE inventory
     SET quantity = quantity - p_quantity,
@@ -382,17 +384,17 @@ BEGIN
         updated_at = NOW()
     WHERE sku_id = p_sku_id
       AND version = v_version; -- 乐观锁检查
-    
+
     IF NOT FOUND THEN
         -- 版本冲突，扣减失败
         RETURN QUERY SELECT FALSE, '并发冲突，请重试'::TEXT, v_available;
         RETURN;
     END IF;
-    
+
     -- 记录流水
     INSERT INTO inventory_log (sku_id, type, quantity, before_qty, after_qty, order_id, remark)
     VALUES (p_sku_id, 2, p_quantity, v_available + p_quantity, v_available, p_order_id, '订单扣减');
-    
+
     RETURN QUERY SELECT TRUE, '扣减成功'::TEXT, v_available - p_quantity;
 END;
 $$ LANGUAGE plpgsql;
@@ -444,8 +446,8 @@ $$
 
 ```sql
 -- 示例: 订单查询优化
--- 查询: SELECT * FROM orders 
---       WHERE user_id = ? AND status = 0 
+-- 查询: SELECT * FROM orders
+--       WHERE user_id = ? AND status = 0
 --       AND created_at > '2025-01-01'
 --       ORDER BY created_at DESC
 --       LIMIT 20;
@@ -550,42 +552,42 @@ DECLARE
 BEGIN
     p_success := FALSE;
     p_message := '';
-    
+
     -- 生成订单号: 时间戳 + 用户ID后4位 + 随机数
-    p_order_no := TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') || 
+    p_order_no := TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') ||
                   LPAD(MOD(p_user_id, 10000)::TEXT, 4, '0') ||
                   LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0');
-    
+
     -- 1. 开始事务 (存储过程自动在事务中)
-    
+
     -- 2. 验证并扣减库存
-    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) 
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items)
                   AS x(sku_id BIGINT, quantity INTEGER, price NUMERIC(15,2))
     LOOP
         v_sku_id := v_item.sku_id;
         v_quantity := v_item.quantity;
         v_price := v_item.price;
-        
+
         -- 调用库存扣减函数
-        SELECT * INTO v_stock_result 
+        SELECT * INTO v_stock_result
         FROM deduct_inventory(v_sku_id, v_quantity, NULL);
-        
+
         IF NOT v_stock_result.success THEN
             p_message := '商品库存不足: SKU=' || v_sku_id || ', ' || v_stock_result.message;
             RAISE EXCEPTION '%', p_message;
         END IF;
-        
+
         v_total_amount := v_total_amount + (v_price * v_quantity);
     END LOOP;
-    
+
     -- 3. 计算优惠
     -- 满减活动: 满200减20
     IF v_total_amount >= 200 THEN
         v_discount := 20;
     END IF;
-    
+
     -- 4. 创建订单
-    INSERT INTO orders (order_id, user_id, order_no, total_amount, discount_amount, 
+    INSERT INTO orders (order_id, user_id, order_no, total_amount, discount_amount,
                         pay_amount, status, address, extra, created_at)
     VALUES (
         nextval('orders_order_id_seq'),
@@ -600,33 +602,33 @@ BEGIN
         NOW()
     )
     RETURNING order_id INTO p_order_id;
-    
+
     -- 5. 创建订单项
-    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) 
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items)
                   AS x(sku_id BIGINT, quantity INTEGER, price NUMERIC(15,2))
     LOOP
         INSERT INTO order_items (order_id, sku_id, quantity, price, total)
-        VALUES (p_order_id, v_item.sku_id, v_item.quantity, 
+        VALUES (p_order_id, v_item.sku_id, v_item.quantity,
                 v_item.price, v_item.quantity * v_item.price);
     END LOOP;
-    
+
     -- 6. 更新库存流水的订单ID
-    UPDATE inventory_log 
-    SET order_id = p_order_id 
+    UPDATE inventory_log
+    SET order_id = p_order_id
     WHERE order_id IS NULL AND sku_id IN (
-        SELECT (x->>'sku_id')::BIGINT 
+        SELECT (x->>'sku_id')::BIGINT
         FROM jsonb_array_elements(p_items) AS x
     );
-    
+
     -- 7. 更新用户统计 (异步队列处理更好，这里简化)
-    UPDATE users 
+    UPDATE users
     SET order_count = order_count + 1,
         total_amount = total_amount + (v_total_amount - v_discount)
     WHERE user_id = p_user_id;
-    
+
     p_success := TRUE;
     p_message := '下单成功';
-    
+
 EXCEPTION
     WHEN OTHERS THEN
         p_success := FALSE;
@@ -639,7 +641,7 @@ $$ LANGUAGE plpgsql;
 -- 使用示例
 SELECT * FROM create_order(
     10001,
-    '[{"sku_id": 1, "quantity": 2, "price": 99.99}, 
+    '[{"sku_id": 1, "quantity": 2, "price": 99.99},
        {"sku_id": 2, "quantity": 1, "price": 199.00}]'::jsonb,
     '{"name": "张三", "phone": "13800138000", "address": "北京市..."}'::jsonb
 );
@@ -698,7 +700,7 @@ $$
 -- 缺点: 高并发写时冲突率高，需要重试
 
 -- 方案3: 数据库原子操作 (推荐用于简单场景)
-UPDATE inventory 
+UPDATE inventory
 SET quantity = quantity - ?
 WHERE sku_id = ? AND quantity >= ?;
 -- 利用数据库的原子性和约束保证一致性
@@ -721,8 +723,8 @@ DECLARE
     v_bucket RECORD;
 BEGIN
     -- 随机顺序遍历桶
-    FOR v_bucket IN 
-        SELECT * FROM inventory_buckets 
+    FOR v_bucket IN
+        SELECT * FROM inventory_buckets
         WHERE sku_id = p_sku_id AND quantity >= p_quantity
         ORDER BY RANDOM()
     LOOP
@@ -730,12 +732,12 @@ BEGIN
         SET quantity = quantity - p_quantity
         WHERE bucket_id = v_bucket.bucket_id
           AND quantity >= p_quantity;
-        
+
         IF FOUND THEN
             RETURN TRUE;
         END IF;
     END LOOP;
-    
+
     RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql;
@@ -831,14 +833,14 @@ BEGIN
     -- 将UNLOGGED表数据同步到常规库存表
     UPDATE inventory i
     SET quantity = quantity - (
-        SELECT total_stock - remaining 
-        FROM flash_sale_inventory 
+        SELECT total_stock - remaining
+        FROM flash_sale_inventory
         WHERE sale_id = p_sale_id
     )
     FROM flash_sale_inventory fsi
     WHERE i.sku_id = fsi.sku_id
       AND fsi.sale_id = p_sale_id;
-    
+
     -- 更新秒杀状态
     UPDATE flash_sale_inventory
     SET status = 2
@@ -886,7 +888,7 @@ redis.call('SET', user_key, 1)
 redis.call('EXPIRE', user_key, 86400) -- 24小时过期
 
 -- 5. 记录订单创建任务到队列
-redis.call('LPUSH', 'flash:order:queue', 
+redis.call('LPUSH', 'flash:order:queue',
     cjson.encode({
         sale_id = sale_id,
         user_id = user_id,
@@ -947,8 +949,8 @@ LIMIT 20 OFFSET 0;
 -- 3. 查询字段过多 (SELECT *)
 
 -- 优化步骤1: 创建最优复合索引
-CREATE INDEX CONCURRENTLY idx_orders_user_created_status 
-ON orders(user_id, created_at DESC) 
+CREATE INDEX CONCURRENTLY idx_orders_user_created_status
+ON orders(user_id, created_at DESC)
 INCLUDE (order_no, total_amount, pay_amount, status);
 -- INCLUDE 包含列避免回表查询
 
@@ -975,9 +977,9 @@ GROUP BY order_id;
 ```sql
 -- 查看执行计划
 EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
-SELECT * FROM orders 
-WHERE user_id = 10001 
-ORDER BY created_at DESC 
+SELECT * FROM orders
+WHERE user_id = 10001
+ORDER BY created_at DESC
 LIMIT 20;
 
 -- 优化前执行计划
@@ -1050,8 +1052,8 @@ Execution Time: 0.678 ms
 ```sql
 -- 分区表剪枝示例
 EXPLAIN (ANALYZE, COSTS OFF)
-SELECT * FROM orders 
-WHERE created_at >= '2025-03-01' 
+SELECT * FROM orders
+WHERE created_at >= '2025-03-01'
   AND created_at < '2025-04-01';
 
 /*
@@ -1070,7 +1072,7 @@ DECLARE
     v_partition TEXT;
 BEGIN
     -- 找到6个月前的分区
-    FOR v_partition IN 
+    FOR v_partition IN
         SELECT tablename FROM pg_tables
         WHERE tablename LIKE 'orders_2025_%'
           AND tablename < 'orders_' || TO_CHAR(NOW() - INTERVAL '6 months', 'YYYY_MM')
@@ -1080,10 +1082,10 @@ BEGIN
             'INSERT INTO orders_archive SELECT * FROM %I',
             v_partition
         );
-        
+
         -- 删除原分区
         EXECUTE format('DROP TABLE %I', v_partition);
-        
+
         RAISE NOTICE 'Archived partition: %', v_partition;
     END LOOP;
 END;
@@ -1298,7 +1300,7 @@ tags:
 
 ```sql
 -- 1. 活跃连接监控
-SELECT 
+SELECT
     datname,
     state,
     COUNT(*) as count,
@@ -1308,7 +1310,7 @@ WHERE datname = 'ecommerce'
 GROUP BY datname, state;
 
 -- 2. 慢查询监控
-SELECT 
+SELECT
     pid,
     now() - query_start as duration,
     state,
@@ -1319,7 +1321,7 @@ WHERE state != 'idle'
 ORDER BY duration DESC;
 
 -- 3. 锁等待监控
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -1327,18 +1329,18 @@ SELECT
     blocked_activity.query AS blocked_statement,
     blocking_activity.query AS blocking_statement
 FROM pg_catalog.pg_locks blocked_locks
-JOIN pg_catalog.pg_stat_activity blocked_activity 
+JOIN pg_catalog.pg_stat_activity blocked_activity
     ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
     ON blocking_locks.locktype = blocked_locks.locktype
     AND blocking_locks.relation = blocked_locks.relation
     AND blocking_locks.pid != blocked_locks.pid
-JOIN pg_catalog.pg_stat_activity blocking_activity 
+JOIN pg_catalog.pg_stat_activity blocking_activity
     ON blocking_activity.pid = blocking_locks.pid
 WHERE NOT blocked_locks.granted;
 
 -- 4. 复制延迟监控
-SELECT 
+SELECT
     client_addr,
     state,
     sent_lsn,
@@ -1351,7 +1353,7 @@ SELECT
 FROM pg_stat_replication;
 
 -- 5. 表膨胀监控
-SELECT 
+SELECT
     schemaname,
     tablename,
     n_tup_ins,
@@ -1365,7 +1367,7 @@ WHERE n_dead_tup > 10000
 ORDER BY n_dead_tup DESC;
 
 -- 6. 库存超卖监控 (关键业务指标)
-SELECT 
+SELECT
     sku_id,
     quantity,
     locked,
@@ -1375,7 +1377,7 @@ WHERE quantity < 0 OR quantity - locked < 0;
 
 -- 7. 创建监控视图
 CREATE OR REPLACE VIEW v_db_health AS
-SELECT 
+SELECT
     (SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active') as active_connections,
     (SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'idle in transaction') as idle_in_tx,
     (SELECT COUNT(*) FROM pg_stat_replication WHERE replay_lag > interval '10 seconds') as lagging_replicas,
@@ -1398,7 +1400,7 @@ groups:
         annotations:
           summary: "PostgreSQL active connections high"
           description: "Active connections > 200 for 5 minutes"
-      
+
       # 复制延迟告警
       - alert: PostgreSQLReplicationLag
         expr: pg_stat_replication_replay_lag_seconds > 10
@@ -1408,10 +1410,10 @@ groups:
         annotations:
           summary: "PostgreSQL replication lag high"
           description: "Replication lag > 10s for 2 minutes"
-      
+
       # 慢查询告警
       - alert: PostgreSQLSlowQueries
-        expr: rate(pg_stat_statements_calls{datname="ecommerce"}[5m]) > 0 
+        expr: rate(pg_stat_statements_calls{datname="ecommerce"}[5m]) > 0
               and pg_stat_statements_mean_time > 100
         for: 5m
         labels:
@@ -1419,11 +1421,11 @@ groups:
         annotations:
           summary: "Slow queries detected"
           description: "Queries taking > 100ms average"
-      
+
       # 库存超卖告警 (业务关键)
       - alert: InventoryOversold
         expr: |
-          SELECT COUNT(*) FROM inventory 
+          SELECT COUNT(*) FROM inventory
           WHERE quantity < 0 OR quantity - locked < 0
         for: 0m
         labels:
@@ -1431,7 +1433,7 @@ groups:
         annotations:
           summary: "INVENTORY OVERSOLD DETECTED"
           description: "Immediate attention required"
-      
+
       # 事务ID回卷告警
       - alert: PostgreSQLXIDWraparound
         expr: pg_database_datfrozenxid > 2000000000
@@ -1463,7 +1465,7 @@ BEGIN
     -- 41位时间戳 + 10位机器ID + 12位序列号
     v_timestamp := (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT - 1609459200000; -- 2021-01-01基准
     v_sequence := nextval('global_id_seq') % 4096;
-    
+
     RETURN (v_timestamp << 22) | (p_machine_id << 12) | v_sequence;
 END;
 $$ LANGUAGE plpgsql;
@@ -1509,12 +1511,12 @@ BEGIN
         RETURN OLD;
     ELSIF (TG_OP = 'UPDATE') THEN
         INSERT INTO audit_log (table_name, operation, old_data, new_data, changed_by)
-        VALUES (TG_TABLE_NAME, TG_OP, row_to_json(OLD), row_to_json(NEW), 
+        VALUES (TG_TABLE_NAME, TG_OP, row_to_json(OLD), row_to_json(NEW),
                 current_setting('app.current_user_id')::BIGINT);
         RETURN NEW;
     ELSIF (TG_OP = 'INSERT') THEN
         INSERT INTO audit_log (table_name, operation, new_data, changed_by)
-        VALUES (TG_TABLE_NAME, TG_OP, row_to_json(NEW), 
+        VALUES (TG_TABLE_NAME, TG_OP, row_to_json(NEW),
                 current_setting('app.current_user_id')::BIGINT);
         RETURN NEW;
     END IF;
@@ -1531,9 +1533,9 @@ $$ LANGUAGE plpgsql;
 
 # 1. 自动VACUUM分析
 psql -U postgres -d ecommerce -c "
-    SELECT schemaname, tablename, 
+    SELECT schemaname, tablename,
            pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
-    FROM pg_tables 
+    FROM pg_tables
     WHERE schemaname = 'public'
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     LIMIT 20;
@@ -1567,7 +1569,7 @@ psql -U postgres -d ecommerce -c "
     DECLARE
         r RECORD;
     BEGIN
-        FOR r IN 
+        FOR r IN
             SELECT schemaname, tablename
             FROM pg_stat_user_tables
             WHERE n_dead_tup > 100000
@@ -1585,7 +1587,7 @@ ls -lt /backup/postgresql/ | head -5
 
 # 6. 复制延迟检查
 psql -U postgres -c "
-    SELECT client_addr, replay_lag 
+    SELECT client_addr, replay_lag
     FROM pg_stat_replication
     WHERE replay_lag > interval '5 seconds';
 " | grep -q "." && echo "WARNING: Replication lag detected!"
@@ -1610,17 +1612,17 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO app_read_write;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- 使用crypt存储密码
--- INSERT INTO users (username, password_hash) 
+-- INSERT INTO users (username, password_hash)
 -- VALUES ('user1', crypt('password', gen_salt('bf', 8)));
 
 -- 验证密码
--- SELECT * FROM users 
--- WHERE username = 'user1' 
+-- SELECT * FROM users
+-- WHERE username = 'user1'
 --   AND password_hash = crypt('password', password_hash);
 
 -- 3. 数据脱敏视图
 CREATE OR REPLACE VIEW v_users_masked AS
-SELECT 
+SELECT
     user_id,
     username,
     CONCAT(LEFT(email, 2), '****', RIGHT(email, POSITION('@' IN email) - 1)) as email_masked,

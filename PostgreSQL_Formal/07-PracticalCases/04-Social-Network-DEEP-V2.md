@@ -249,7 +249,7 @@ CREATE TABLE relationships (
 DO $$
 BEGIN
     FOR i IN 0..15 LOOP
-        EXECUTE format('CREATE TABLE relationships_%s PARTITION OF relationships 
+        EXECUTE format('CREATE TABLE relationships_%s PARTITION OF relationships
                        FOR VALUES WITH (MODULUS 16, REMAINDER %s)', i, i);
     END LOOP;
 END $$;
@@ -321,7 +321,7 @@ CREATE TABLE likes (
 DO $$
 BEGIN
     FOR i IN 0..15 LOOP
-        EXECUTE format('CREATE TABLE likes_%s PARTITION OF likes 
+        EXECUTE format('CREATE TABLE likes_%s PARTITION OF likes
                        FOR VALUES WITH (MODULUS 16, REMAINDER %s)', i, i);
     END LOOP;
 END $$;
@@ -371,7 +371,7 @@ CREATE TABLE messages (
     msg_id          BIGSERIAL,
     conv_id         BIGINT NOT NULL REFERENCES conversations(conv_id) ON DELETE CASCADE,
     sender_id       BIGINT NOT NULL REFERENCES users(user_id),
-    msg_type        SMALLINT NOT NULL CHECK (msg_type IN (1, 2, 3, 4, 5)), 
+    msg_type        SMALLINT NOT NULL CHECK (msg_type IN (1, 2, 3, 4, 5)),
                     -- 1:text 2:image 3:voice 4:video 5:file
     content         TEXT, -- 文本内容或富文本JSON
     media_url       VARCHAR(500),
@@ -394,7 +394,7 @@ CREATE TABLE user_feeds (
     user_id         BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     post_id         BIGINT NOT NULL REFERENCES posts(post_id) ON DELETE CASCADE,
     author_id       BIGINT NOT NULL REFERENCES users(user_id),
-    feed_type       SMALLINT DEFAULT 1 CHECK (feed_type IN (1, 2, 3)), 
+    feed_type       SMALLINT DEFAULT 1 CHECK (feed_type IN (1, 2, 3)),
                     -- 1:关注 2:推荐 3:广告
     score           DOUBLE PRECISION DEFAULT 0, -- 排序分数
     created_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -404,7 +404,7 @@ CREATE TABLE user_feeds (
 DO $$
 BEGIN
     FOR i IN 0..15 LOOP
-        EXECUTE format('CREATE TABLE user_feeds_%s PARTITION OF user_feeds 
+        EXECUTE format('CREATE TABLE user_feeds_%s PARTITION OF user_feeds
                        FOR VALUES WITH (MODULUS 16, REMAINDER %s)', i, i);
     END LOOP;
 END $$;
@@ -440,44 +440,44 @@ BEGIN
     -- 检查是否已存在关系
     SELECT status INTO v_existing_status
     FROM relationships
-    WHERE follower_id = p_follower_id 
+    WHERE follower_id = p_follower_id
       AND following_id = p_following_id;
-    
+
     IF v_existing_status = 1 OR v_existing_status = 2 THEN
         RETURN QUERY SELECT FALSE, FALSE, '已经关注该用户'::TEXT;
         RETURN;
     END IF;
-    
+
     -- 检查对方是否关注了我（互相关注）
     SELECT EXISTS(
-        SELECT 1 FROM relationships 
-        WHERE follower_id = p_following_id 
-          AND following_id = p_follower_id 
+        SELECT 1 FROM relationships
+        WHERE follower_id = p_following_id
+          AND following_id = p_follower_id
           AND status = 1
     ) INTO v_is_mutual;
-    
+
     -- 插入或更新关系
     INSERT INTO relationships (follower_id, following_id, status, updated_at)
-    VALUES (p_follower_id, p_following_id, 
+    VALUES (p_follower_id, p_following_id,
             CASE WHEN v_is_mutual THEN 2 ELSE 1 END, NOW())
     ON CONFLICT (follower_id, following_id)
     DO UPDATE SET status = CASE WHEN v_is_mutual THEN 2 ELSE 1 END,
                   updated_at = NOW();
-    
+
     -- 如果对方已关注我，更新对方关系为互相关注
     IF v_is_mutual THEN
-        UPDATE relationships 
+        UPDATE relationships
         SET status = 2, updated_at = NOW()
-        WHERE follower_id = p_following_id 
+        WHERE follower_id = p_following_id
           AND following_id = p_follower_id;
     END IF;
-    
+
     -- 更新计数器
     INSERT INTO user_stats_counters (user_id, counter_type, delta)
-    VALUES 
+    VALUES
         (p_follower_id, 'following', 1),
         (p_following_id, 'followers', 1);
-    
+
     RETURN QUERY SELECT TRUE, v_is_mutual, '关注成功'::TEXT;
 END;
 $$ LANGUAGE plpgsql;
@@ -498,35 +498,35 @@ BEGIN
     -- 检查关系是否存在
     SELECT status = 2 INTO v_was_mutual
     FROM relationships
-    WHERE follower_id = p_follower_id 
+    WHERE follower_id = p_follower_id
       AND following_id = p_following_id
       AND status IN (1, 2);
-    
+
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, '未关注该用户'::TEXT;
         RETURN;
     END IF;
-    
+
     -- 软删除关系
-    UPDATE relationships 
+    UPDATE relationships
     SET status = 0, updated_at = NOW()
-    WHERE follower_id = p_follower_id 
+    WHERE follower_id = p_follower_id
       AND following_id = p_following_id;
-    
+
     -- 如果之前是互相关注，更新对方关系
     IF v_was_mutual THEN
-        UPDATE relationships 
+        UPDATE relationships
         SET status = 1, updated_at = NOW()
-        WHERE follower_id = p_following_id 
+        WHERE follower_id = p_following_id
           AND following_id = p_follower_id;
     END IF;
-    
+
     -- 更新计数器
     INSERT INTO user_stats_counters (user_id, counter_type, delta)
-    VALUES 
+    VALUES
         (p_follower_id, 'following', -1),
         (p_following_id, 'followers', -1);
-    
+
     RETURN QUERY SELECT TRUE, '取消关注成功'::TEXT;
 END;
 $$ LANGUAGE plpgsql;
@@ -555,19 +555,19 @@ CREATE OR REPLACE FUNCTION get_following_list(
 BEGIN
     RETURN QUERY
     WITH following AS (
-        SELECT 
+        SELECT
             r.relation_id,
             r.following_id AS target_user_id,
             r.status = 2 AS mutual,
             r.created_at AS follow_time
         FROM relationships r
-        WHERE r.follower_id = p_user_id 
+        WHERE r.follower_id = p_user_id
           AND r.status IN (1, 2)
           AND (p_cursor IS NULL OR r.relation_id > p_cursor)
         ORDER BY r.created_at DESC
         LIMIT p_limit + 1
     )
-    SELECT 
+    SELECT
         f.relation_id,
         f.target_user_id,
         u.username,
@@ -575,9 +575,9 @@ BEGIN
         up.avatar_url,
         f.mutual AS is_mutual,
         f.follow_time AS created_at,
-        CASE WHEN ROW_NUMBER() OVER (ORDER BY f.follow_time DESC) = p_limit + 1 
-             THEN f.relation_id 
-             ELSE NULL 
+        CASE WHEN ROW_NUMBER() OVER (ORDER BY f.follow_time DESC) = p_limit + 1
+             THEN f.relation_id
+             ELSE NULL
         END AS next_cursor
     FROM following f
     JOIN users u ON u.user_id = f.target_user_id
@@ -602,19 +602,19 @@ CREATE OR REPLACE FUNCTION get_common_following(
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         u.user_id,
         u.username,
         up.nickname,
         up.avatar_url
     FROM relationships r1
-    JOIN relationships r2 
+    JOIN relationships r2
         ON r1.following_id = r2.following_id
     JOIN users u ON u.user_id = r1.following_id
     LEFT JOIN user_profiles up ON up.user_id = u.user_id
-    WHERE r1.follower_id = p_user_id1 
+    WHERE r1.follower_id = p_user_id1
       AND r1.status IN (1, 2)
-      AND r2.follower_id = p_user_id2 
+      AND r2.follower_id = p_user_id2
       AND r2.status IN (1, 2)
     ORDER BY u.user_id
     LIMIT p_limit;
@@ -645,36 +645,36 @@ BEGIN
     IF p_visibility != 1 THEN
         RETURN 0;
     END IF;
-    
+
     LOOP
         -- 批量获取粉丝ID
         SELECT ARRAY_AGG(follower_id) INTO v_followers
         FROM (
             SELECT follower_id
             FROM relationships
-            WHERE following_id = p_author_id 
+            WHERE following_id = p_author_id
               AND status IN (1, 2)
             ORDER BY follower_id
             LIMIT v_batch_size OFFSET v_offset
         ) sub;
-        
+
         EXIT WHEN v_followers IS NULL OR array_length(v_followers, 1) IS NULL;
-        
+
         -- 批量插入到粉丝Feed流
         INSERT INTO user_feeds (user_id, post_id, author_id, feed_type, created_at)
-        SELECT 
+        SELECT
             unnest(v_followers),
             p_post_id,
             p_author_id,
             1, -- 关注类型
             NOW()
         ON CONFLICT (user_id, post_id) DO NOTHING;
-        
+
         GET DIAGNOSTICS v_inserted_count = v_inserted_count + ROW_COUNT;
-        
+
         v_offset := v_offset + v_batch_size;
     END LOOP;
-    
+
     RETURN v_inserted_count;
 END;
 $$ LANGUAGE plpgsql;
@@ -702,14 +702,14 @@ BEGIN
     INSERT INTO posts (user_id, content, media_urls, visibility, reply_to, location, tags)
     VALUES (p_user_id, p_content, p_media_urls, p_visibility, p_reply_to, p_location, p_tags)
     RETURNING posts.post_id INTO v_post_id;
-    
+
     -- 推送给粉丝
     SELECT push_post_to_followers(v_post_id, p_user_id, p_visibility) INTO v_pushed;
-    
+
     -- 更新用户发帖数
     INSERT INTO user_stats_counters (user_id, counter_type, delta)
     VALUES (p_user_id, 'posts', 1);
-    
+
     RETURN QUERY SELECT v_post_id, v_pushed;
 END;
 $$ LANGUAGE plpgsql;
@@ -738,7 +738,7 @@ CREATE OR REPLACE FUNCTION get_user_feed(
 BEGIN
     RETURN QUERY
     WITH feed_data AS (
-        SELECT 
+        SELECT
             f.feed_id,
             f.post_id,
             f.author_id,
@@ -749,7 +749,7 @@ BEGIN
         ORDER BY f.created_at DESC
         LIMIT p_limit + 1
     )
-    SELECT 
+    SELECT
         fd.feed_id,
         fd.post_id,
         fd.author_id,
@@ -761,9 +761,9 @@ BEGIN
         p.likes_count,
         p.comments_count,
         p.created_at,
-        CASE WHEN ROW_NUMBER() OVER (ORDER BY fd.feed_time DESC) = p_limit + 1 
-             THEN fd.feed_time 
-             ELSE NULL 
+        CASE WHEN ROW_NUMBER() OVER (ORDER BY fd.feed_time DESC) = p_limit + 1
+             THEN fd.feed_time
+             ELSE NULL
         END AS next_cursor
     FROM feed_data fd
     JOIN posts p ON p.post_id = fd.post_id
@@ -792,7 +792,7 @@ CREATE OR REPLACE FUNCTION calculate_hot_score(
 DECLARE
     v_gravity CONSTANT DOUBLE PRECISION := 1.5;
 BEGIN
-    RETURN (p_likes * 1.0 + p_comments * 2.0 + p_shares * 3.0) 
+    RETURN (p_likes * 1.0 + p_comments * 2.0 + p_shares * 3.0)
            / POWER(p_age_hours + 2.0, v_gravity);
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
@@ -821,7 +821,7 @@ CREATE OR REPLACE FUNCTION get_hot_feed(
 BEGIN
     RETURN QUERY
     WITH hot_posts AS (
-        SELECT 
+        SELECT
             p.post_id,
             p.user_id AS author_id,
             p.content,
@@ -831,27 +831,27 @@ BEGIN
             p.shares_count,
             p.created_at,
             calculate_hot_score(
-                p.likes_count, 
-                p.comments_count, 
+                p.likes_count,
+                p.comments_count,
                 p.shares_count,
                 EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 3600.0
             ) AS score
         FROM posts p
         WHERE p.visibility = 1
           AND p.created_at > NOW() - INTERVAL '7 days'
-          AND (p_cursor IS NULL OR 
+          AND (p_cursor IS NULL OR
                calculate_hot_score(p.likes_count, p.comments_count, p.shares_count,
                    EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 3600.0) < p_cursor)
           AND NOT EXISTS (
-              SELECT 1 FROM relationships r 
-              WHERE r.follower_id = p_user_id 
-                AND r.following_id = p.user_id 
+              SELECT 1 FROM relationships r
+              WHERE r.follower_id = p_user_id
+                AND r.following_id = p.user_id
                 AND r.status IN (1, 2)
           ) -- 排除已关注用户的帖子
         ORDER BY score DESC
         LIMIT p_limit + 1
     )
-    SELECT 
+    SELECT
         hp.post_id,
         hp.author_id,
         u.username,
@@ -863,9 +863,9 @@ BEGIN
         hp.comments_count,
         hp.shares_count,
         hp.score AS hot_score,
-        CASE WHEN ROW_NUMBER() OVER (ORDER BY hp.score DESC) = p_limit + 1 
-             THEN hp.score 
-             ELSE NULL 
+        CASE WHEN ROW_NUMBER() OVER (ORDER BY hp.score DESC) = p_limit + 1
+             THEN hp.score
+             ELSE NULL
         END AS next_cursor
     FROM hot_posts hp
     JOIN users u ON u.user_id = hp.author_id
@@ -896,51 +896,51 @@ DECLARE
 BEGIN
     -- 检查是否已点赞
     SELECT EXISTS(
-        SELECT 1 FROM likes 
-        WHERE user_id = p_user_id 
-          AND target_id = p_target_id 
+        SELECT 1 FROM likes
+        WHERE user_id = p_user_id
+          AND target_id = p_target_id
           AND target_type = p_target_type
     ) INTO v_exists;
-    
+
     IF v_exists THEN
         -- 取消点赞
-        DELETE FROM likes 
-        WHERE user_id = p_user_id 
-          AND target_id = p_target_id 
+        DELETE FROM likes
+        WHERE user_id = p_user_id
+          AND target_id = p_target_id
           AND target_type = p_target_type;
-        
+
         -- 更新计数器
         IF p_target_type = 1 THEN
-            UPDATE posts SET likes_count = likes_count - 1 
+            UPDATE posts SET likes_count = likes_count - 1
             WHERE post_id = p_target_id;
             SELECT likes_count INTO new_count FROM posts WHERE post_id = p_target_id;
         ELSE
-            UPDATE comments SET likes_count = likes_count - 1 
+            UPDATE comments SET likes_count = likes_count - 1
             WHERE comment_id = p_target_id;
             SELECT likes_count INTO new_count FROM comments WHERE comment_id = p_target_id;
         END IF;
-        
+
         RETURN QUERY SELECT 'unliked'::VARCHAR, new_count;
     ELSE
         -- 添加点赞
         INSERT INTO likes (user_id, target_id, target_type)
         VALUES (p_user_id, p_target_id, p_target_type);
-        
+
         -- 更新计数器
         IF p_target_type = 1 THEN
-            UPDATE posts SET likes_count = likes_count + 1 
+            UPDATE posts SET likes_count = likes_count + 1
             WHERE post_id = p_target_id;
             SELECT likes_count INTO new_count FROM posts WHERE post_id = p_target_id;
-            
+
             -- 更新用户获赞数
             INSERT INTO user_stats_counters (user_id, counter_type, delta)
             SELECT user_id, 'likes', 1 FROM posts WHERE post_id = p_target_id;
         ELSE
-            UPDATE comments SET likes_count = likes_count + 1 
+            UPDATE comments SET likes_count = likes_count + 1
             WHERE comment_id = p_target_id;
             SELECT likes_count INTO new_count FROM comments WHERE comment_id = p_target_id;
         END IF;
-        
+
         RETURN QUERY SELECT 'liked'::VARCHAR, new_count;
     END IF;
 END;
@@ -966,12 +966,12 @@ BEGIN
     INSERT INTO comments (post_id, user_id, content, parent_id)
     VALUES (p_post_id, p_user_id, p_content, p_parent_id)
     RETURNING comments.comment_id INTO v_comment_id;
-    
+
     -- 更新帖子评论数
-    UPDATE posts SET comments_count = comments_count + 1 
+    UPDATE posts SET comments_count = comments_count + 1
     WHERE post_id = p_post_id;
-    
-    RETURN QUERY 
+
+    RETURN QUERY
     SELECT v_comment_id, p_parent_id, NOW()::TIMESTAMPTZ;
 END;
 $$ LANGUAGE plpgsql;
@@ -1000,7 +1000,7 @@ CREATE OR REPLACE FUNCTION get_post_comments(
 BEGIN
     RETURN QUERY
     WITH top_comments AS (
-        SELECT 
+        SELECT
             c.comment_id,
             c.user_id,
             c.content,
@@ -1008,7 +1008,7 @@ BEGIN
             c.parent_id,
             c.created_at
         FROM comments c
-        WHERE c.post_id = p_post_id 
+        WHERE c.post_id = p_post_id
           AND c.parent_id IS NULL
           AND (p_cursor IS NULL OR c.comment_id > p_cursor)
         ORDER BY c.likes_count DESC, c.created_at DESC
@@ -1016,7 +1016,7 @@ BEGIN
     ),
     -- 获取每条顶级评论的前3条回复
     nested_replies AS (
-        SELECT 
+        SELECT
             c.parent_id,
             JSONB_AGG(
                 JSONB_BUILD_OBJECT(
@@ -1040,7 +1040,7 @@ BEGIN
         LEFT JOIN user_profiles up ON up.user_id = c.user_id
         GROUP BY c.parent_id
     )
-    SELECT 
+    SELECT
         tc.comment_id,
         tc.user_id,
         u.username,
@@ -1052,9 +1052,9 @@ BEGIN
         COALESCE(nr.total_replies, 0),
         tc.created_at,
         COALESCE(nr.reply_list, '[]'::JSONB),
-        CASE WHEN ROW_NUMBER() OVER (ORDER BY tc.likes_count DESC, tc.created_at DESC) = p_limit + 1 
-             THEN tc.comment_id 
-             ELSE NULL 
+        CASE WHEN ROW_NUMBER() OVER (ORDER BY tc.likes_count DESC, tc.created_at DESC) = p_limit + 1
+             THEN tc.comment_id
+             ELSE NULL
         END
     FROM top_comments tc
     JOIN users u ON u.user_id = tc.user_id
@@ -1083,25 +1083,25 @@ BEGIN
     FROM conversation_members cm1
     JOIN conversation_members cm2 ON cm1.conv_id = cm2.conv_id
     JOIN conversations c ON c.conv_id = cm1.conv_id
-    WHERE cm1.user_id = p_user_id1 
+    WHERE cm1.user_id = p_user_id1
       AND cm2.user_id = p_user_id2
       AND c.conv_type = 1;
-    
+
     IF FOUND THEN
         RETURN v_conv_id;
     END IF;
-    
+
     -- 创建新会话
     INSERT INTO conversations (conv_type, member_count, owner_id)
     VALUES (1, 2, p_user_id1)
     RETURNING conv_id INTO v_conv_id;
-    
+
     -- 添加成员
     INSERT INTO conversation_members (conv_id, user_id, role)
-    VALUES 
+    VALUES
         (v_conv_id, p_user_id1, 1),
         (v_conv_id, p_user_id2, 1);
-    
+
     RETURN v_conv_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -1125,30 +1125,30 @@ DECLARE
 BEGIN
     -- 验证发送者是否在会话中
     IF NOT EXISTS (
-        SELECT 1 FROM conversation_members 
+        SELECT 1 FROM conversation_members
         WHERE conv_id = p_conv_id AND user_id = p_sender_id
     ) THEN
         RAISE EXCEPTION 'User is not a member of this conversation';
     END IF;
-    
+
     -- 插入消息
     INSERT INTO messages (conv_id, sender_id, msg_type, content, media_url, extra)
     VALUES (p_conv_id, p_sender_id, p_msg_type, p_content, p_media_url, p_extra)
     RETURNING messages.msg_id INTO v_msg_id;
-    
+
     -- 更新会话最后消息
-    UPDATE conversations 
+    UPDATE conversations
     SET last_msg_id = v_msg_id,
         last_msg_time = NOW(),
         updated_at = NOW()
     WHERE conv_id = p_conv_id;
-    
+
     -- 更新其他成员未读数
     UPDATE conversation_members
     SET unread_count = unread_count + 1
-    WHERE conv_id = p_conv_id 
+    WHERE conv_id = p_conv_id
       AND user_id != p_sender_id;
-    
+
     RETURN QUERY SELECT v_msg_id, NOW()::TIMESTAMPTZ;
 END;
 $$ LANGUAGE plpgsql;
@@ -1179,9 +1179,9 @@ BEGIN
     UPDATE conversation_members
     SET unread_count = 0, last_read_at = NOW()
     WHERE conv_id = p_conv_id AND user_id = p_user_id;
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         m.msg_id,
         m.sender_id,
         COALESCE(up.nickname, u.username) AS sender_name,
@@ -1192,9 +1192,9 @@ BEGIN
         m.extra,
         (m.sender_id = p_user_id) AS is_self,
         m.created_at,
-        CASE WHEN ROW_NUMBER() OVER (ORDER BY m.created_at DESC) = p_limit + 1 
-             THEN m.created_at 
-             ELSE NULL 
+        CASE WHEN ROW_NUMBER() OVER (ORDER BY m.created_at DESC) = p_limit + 1
+             THEN m.created_at
+             ELSE NULL
         END
     FROM messages m
     JOIN users u ON u.user_id = m.sender_id
@@ -1227,14 +1227,14 @@ CREATE OR REPLACE FUNCTION get_conversation_list(
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         c.conv_id,
         c.conv_type,
         COALESCE(c.name, (
-            SELECT up.nickname 
+            SELECT up.nickname
             FROM conversation_members cm2
             JOIN user_profiles up ON up.user_id = cm2.user_id
-            WHERE cm2.conv_id = c.conv_id 
+            WHERE cm2.conv_id = c.conv_id
               AND cm2.user_id != p_user_id
             LIMIT 1
         ))::VARCHAR,
@@ -1243,9 +1243,9 @@ BEGIN
         m.content AS last_msg_content,
         c.last_msg_time,
         cm.unread_count,
-        CASE WHEN ROW_NUMBER() OVER (ORDER BY c.last_msg_time DESC NULLS LAST) = p_limit + 1 
-             THEN c.last_msg_time 
-             ELSE NULL 
+        CASE WHEN ROW_NUMBER() OVER (ORDER BY c.last_msg_time DESC NULLS LAST) = p_limit + 1
+             THEN c.last_msg_time
+             ELSE NULL
         END
     FROM conversation_members cm
     JOIN conversations c ON c.conv_id = cm.conv_id
@@ -1283,18 +1283,18 @@ BEGIN
     RETURN QUERY
     WITH RECURSIVE friend_chain AS (
         -- 基线：用户的一度好友
-        SELECT 
+        SELECT
             r.following_id AS friend_id,
             ARRAY[p_user_id, r.following_id] AS path,
             1 AS depth
         FROM relationships r
-        WHERE r.follower_id = p_user_id 
+        WHERE r.follower_id = p_user_id
           AND r.status IN (1, 2)
-        
+
         UNION ALL
-        
+
         -- 递归：好友的好友
-        SELECT 
+        SELECT
             r.following_id,
             fc.path || r.following_id,
             fc.depth + 1
@@ -1305,7 +1305,7 @@ BEGIN
           AND NOT r.following_id = ANY(fc.path) -- 避免环路
           AND r.following_id != p_user_id -- 排除自己
     )
-    SELECT 
+    SELECT
         fc.friend_id,
         u.username,
         up.nickname,
@@ -1317,8 +1317,8 @@ BEGIN
     LEFT JOIN user_profiles up ON up.user_id = fc.friend_id
     WHERE fc.depth = 2
       AND NOT EXISTS (
-          SELECT 1 FROM relationships r2 
-          WHERE r2.follower_id = p_user_id 
+          SELECT 1 FROM relationships r2
+          WHERE r2.follower_id = p_user_id
             AND r2.following_id = fc.friend_id
       ) -- 排除已是好友的
     GROUP BY fc.friend_id, u.username, up.nickname, up.avatar_url
@@ -1343,14 +1343,14 @@ BEGIN
     RETURN QUERY
     WITH RECURSIVE connection_path AS (
         -- 基线
-        SELECT 
+        SELECT
             ARRAY[p_from_user_id] AS path,
             0 AS depth
-        
+
         UNION ALL
-        
+
         -- 递归扩展
-        SELECT 
+        SELECT
             cp.path || r.following_id,
             cp.depth + 1
         FROM connection_path cp
@@ -1359,11 +1359,11 @@ BEGIN
           AND cp.depth < p_max_depth
           AND NOT r.following_id = ANY(cp.path)
     )
-    SELECT 
+    SELECT
         cp.path,
         cp.depth,
         ARRAY(
-            SELECT u.username 
+            SELECT u.username
             FROM unnest(cp.path) AS uid
             JOIN users u ON u.user_id = uid
         )
@@ -1422,14 +1422,14 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 
 -- 覆盖索引：Feed流查询无需回表
-CREATE INDEX idx_feeds_covering ON user_feeds(user_id, created_at DESC) 
+CREATE INDEX idx_feeds_covering ON user_feeds(user_id, created_at DESC)
 INCLUDE (post_id, author_id, feed_type);
 
 -- BRIN索引：适用于按时序追加的数据
 CREATE INDEX idx_posts_brin ON posts USING BRIN(created_at);
 
 -- 部分索引：仅热门帖子
-CREATE INDEX idx_hot_posts ON posts(created_at DESC) 
+CREATE INDEX idx_hot_posts ON posts(created_at DESC)
 WHERE likes_count > 1000 AND visibility = 1;
 
 -- ============================================
@@ -1437,7 +1437,7 @@ WHERE likes_count > 1000 AND visibility = 1;
 -- ============================================
 
 -- 复合索引支持会话消息查询
-CREATE INDEX idx_messages_conv_time ON messages(conv_id, created_at DESC, is_deleted) 
+CREATE INDEX idx_messages_conv_time ON messages(conv_id, created_at DESC, is_deleted)
 WHERE NOT is_deleted;
 
 --  Bloom索引：用于大量IN查询
@@ -1465,7 +1465,7 @@ CREATE OR REPLACE FUNCTION refresh_feed_cache(p_user_id BIGINT)
 RETURNS VOID AS $$
 BEGIN
     INSERT INTO feed_cache (user_id, feed_data)
-    SELECT 
+    SELECT
         p_user_id,
         JSONB_AGG(
             JSONB_BUILD_OBJECT(
@@ -1477,8 +1477,8 @@ BEGIN
     FROM user_feeds f
     WHERE f.user_id = p_user_id
       AND f.created_at > NOW() - INTERVAL '7 days'
-    ON CONFLICT (user_id) 
-    DO UPDATE SET 
+    ON CONFLICT (user_id)
+    DO UPDATE SET
         feed_data = EXCLUDED.feed_data,
         cached_at = NOW();
 END;
@@ -1491,10 +1491,11 @@ $$ LANGUAGE plpgsql;
 
 ### 6.1 关注关系一致性定理
 
-**定理 1 (互相关注对称性)**: 
+**定理 1 (互相关注对称性)**:
 $$\forall u_1, u_2 \in Users: mutual(u_1, u_2) \iff mutual(u_2, u_1)$$
 
 **证明**:
+
 ```
 设 follows(u1, u2) 表示u1关注u2
 设 status(u1, u2) ∈ {0,1,2} 表示关系状态
@@ -1554,7 +1555,7 @@ BEGIN
     v_start_date := DATE_TRUNC('month', NOW() + INTERVAL '1 month');
     v_end_date := v_start_date + INTERVAL '1 month';
     v_next_month := TO_CHAR(v_start_date, 'YYYYMM');
-    
+
     EXECUTE format(
         'CREATE TABLE IF NOT EXISTS messages_y%s PARTITION OF messages
          FOR VALUES FROM (%L) TO (%L)',
@@ -1573,23 +1574,23 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE VIEW social_network_metrics AS
 SELECT
     -- Feed流指标
-    (SELECT COUNT(*) FROM user_feeds 
+    (SELECT COUNT(*) FROM user_feeds
      WHERE created_at > NOW() - INTERVAL '1 hour') AS feeds_generated_1h,
-    
+
     -- 消息指标
-    (SELECT COUNT(*) FROM messages 
+    (SELECT COUNT(*) FROM messages
      WHERE created_at > NOW() - INTERVAL '1 hour') AS messages_sent_1h,
-    
+
     -- 关系指标
-    (SELECT COUNT(*) FROM relationships 
+    (SELECT COUNT(*) FROM relationships
      WHERE created_at > NOW() - INTERVAL '1 hour' AND status = 1) AS new_follows_1h,
-    
+
     -- 活跃用户
-    (SELECT COUNT(DISTINCT user_id) FROM posts 
+    (SELECT COUNT(DISTINCT user_id) FROM posts
      WHERE created_at > NOW() - INTERVAL '24 hours') AS active_posters_24h,
-    
+
     -- 缓存命中率 (需pg_stat_statements)
-    (SELECT ROUND(100.0 * sum(heap_blks_hit) / 
+    (SELECT ROUND(100.0 * sum(heap_blks_hit) /
         NULLIF(sum(heap_blks_hit) + sum(heap_blks_read), 0), 2)
      FROM pg_statio_user_tables) AS cache_hit_ratio;
 ```
@@ -1648,25 +1649,25 @@ CREATE POLICY messages_member_policy ON messages
 
 ### 8.2 PostgreSQL官方文档
 
-4. **PostgreSQL Global Development Group (2024)**. "Table Partitioning." *PostgreSQL 16 Documentation*. https://www.postgresql.org/docs/16/ddl-partitioning.html
+1. **PostgreSQL Global Development Group (2024)**. "Table Partitioning." *PostgreSQL 16 Documentation*. <https://www.postgresql.org/docs/16/ddl-partitioning.html>
 
-5. **PostgreSQL Global Development Group (2024)**. "Recursive Queries." *PostgreSQL 16 Documentation*. https://www.postgresql.org/docs/16/queries-with.html
+2. **PostgreSQL Global Development Group (2024)**. "Recursive Queries." *PostgreSQL 16 Documentation*. <https://www.postgresql.org/docs/16/queries-with.html>
 
-6. **PostgreSQL Global Development Group (2024)**. "Row Security Policies." *PostgreSQL 16 Documentation*. https://www.postgresql.org/docs/16/ddl-rowsecurity.html
+3. **PostgreSQL Global Development Group (2024)**. "Row Security Policies." *PostgreSQL 16 Documentation*. <https://www.postgresql.org/docs/16/ddl-rowsecurity.html>
 
 ### 8.3 行业最佳实践
 
-7. **Twitter Engineering (2017)**. "The Infrastructure Behind Twitter: Scale." *Twitter Blog*. 介绍了Twitter Feed流系统的架构演进。
+1. **Twitter Engineering (2017)**. "The Infrastructure Behind Twitter: Scale." *Twitter Blog*. 介绍了Twitter Feed流系统的架构演进。
 
-8. **Instagram Engineering (2016)**. "Sharding & IDs at Instagram." *Instagram Engineering Blog*. 分享了Instagram分片策略经验。
+2. **Instagram Engineering (2016)**. "Sharding & IDs at Instagram." *Instagram Engineering Blog*. 分享了Instagram分片策略经验。
 
-9. **Discord Engineering (2017)**. "How Discord Stores Billions of Messages." *Discord Blog*. 消息存储架构实践。
+3. **Discord Engineering (2017)**. "How Discord Stores Billions of Messages." *Discord Blog*. 消息存储架构实践。
 
 ### 8.4 相关扩展文档
 
-10. **TimescaleDB (2024)**. "Hypertables." *TimescaleDB Documentation*. https://docs.timescale.com/
+1. **TimescaleDB (2024)**. "Hypertables." *TimescaleDB Documentation*. <https://docs.timescale.com/>
 
-11. **Apache AGE (2024)**. "Graph Data Processing in PostgreSQL." *Apache AGE Documentation*.
+2. **Apache AGE (2024)**. "Graph Data Processing in PostgreSQL." *Apache AGE Documentation*.
 
 ---
 
@@ -1684,6 +1685,6 @@ CREATE POLICY messages_member_policy ON messages
 
 ---
 
-**文档版本**: v2.0  
-**最后更新**: 2026-03-04  
+**文档版本**: v2.0
+**最后更新**: 2026-03-04
 **维护者**: PostgreSQL_Formal Team

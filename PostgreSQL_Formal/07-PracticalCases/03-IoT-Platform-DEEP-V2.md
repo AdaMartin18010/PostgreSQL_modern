@@ -2,9 +2,11 @@
 
 ## 摘要
 
-随着物联网(IoT)技术的快速发展，海量设备产生的时序数据对数据存储和分析提出了前所未有的挑战。本文档基于 PostgreSQL 和 TimescaleDB 构建了一套完整的 IoT 平台解决方案，涵盖设备管理、数据采集、实时监控、数据分析和设备控制五大核心场景。
+随着物联网(IoT)技术的快速发展，海量设备产生的时序数据对数据存储和分析提出了前所未有的挑战。
+本文档基于 PostgreSQL 和 TimescaleDB 构建了一套完整的 IoT 平台解决方案，涵盖设备管理、数据采集、实时监控、数据分析和设备控制五大核心场景。
 
-本方案通过时序数据模型设计、分区策略优化、高并发写入调优、实时分析引擎等技术手段，实现了单集群每秒 100 万+数据点的写入能力和亚秒级的查询响应。文档提供完整的架构设计、数学模型、实施代码和性能调优指南，适用于智能制造、能源监控、智慧城市等大规模 IoT 场景。
+本方案通过时序数据模型设计、分区策略优化、高并发写入调优、实时分析引擎等技术手段，实现了单集群每秒 100 万+数据点的写入能力和亚秒级的查询响应。
+文档提供完整的架构设计、数学模型、实施代码和性能调优指南，适用于智能制造、能源监控、智慧城市等大规模 IoT 场景。
 
 **关键词**：PostgreSQL、TimescaleDB、IoT平台、时序数据库、边缘计算、实时分析
 
@@ -19,6 +21,7 @@ IoT 设备产生的时序数据具有独特的时间相关性特征。设设备 
 $$D_i(t) = \{timestamp, device_id, metrics, tags, values\}$$
 
 其中：
+
 - $timestamp$：时间戳 $t \in \mathbb{R}^+$
 - $device_id$：设备唯一标识符
 - $metrics$：度量指标集合 $\{m_1, m_2, ..., m_n\}$
@@ -32,6 +35,7 @@ $$D_i(t) = \{timestamp, device_id, metrics, tags, values\}$$
 $$R_{total} = N_{devices} \times F_{sampling} \times M_{metrics}$$
 
 其中：
+
 - $N_{devices}$：设备数量
 - $F_{sampling}$：采样频率（Hz）
 - $M_{metrics}$：每设备指标数
@@ -125,6 +129,7 @@ $$V_{daily} = R_{total} \times 3,600 \times 24 \times S_{record} \approx 414 \te
 *表 2：IoT 数据库选型对比*
 
 本方案采用 **TimescaleDB + PostgreSQL** 双库架构：
+
 - **TimescaleDB**：存储海量时序数据
 - **PostgreSQL**：存储设备元数据、用户数据、配置信息
 
@@ -166,7 +171,7 @@ CREATE TABLE device_metrics (
 );
 
 -- 转换为超表，按时间自动分区
-SELECT create_hypertable('device_metrics', 'time', 
+SELECT create_hypertable('device_metrics', 'time',
     chunk_time_interval => INTERVAL '1 day',
     if_not_exists => TRUE
 );
@@ -233,7 +238,7 @@ VALUES (NOW(), 'device-001', 'temperature', 25.5);
 -- 批量插入（推荐）
 -- 性能：~50,000 inserts/second
 INSERT INTO device_metrics (time, device_id, metric_name, metric_value, quality)
-VALUES 
+VALUES
     (NOW(), 'device-001', 'temperature', 25.5, 100),
     (NOW(), 'device-001', 'humidity', 60.2, 100),
     (NOW(), 'device-002', 'temperature', 26.1, 100),
@@ -266,7 +271,7 @@ from io import StringIO
 async def batch_insert_metrics(records: list):
     """
     高性能批量插入数据
-    
+
     性能指标：
     - 单批次：1000 条记录
     - 并发连接：10 个
@@ -278,7 +283,7 @@ async def batch_insert_metrics(records: list):
         user='iot_writer',
         password='secure_password'
     )
-    
+
     try:
         # 使用 copy_records_to_table 实现最高性能
         await conn.copy_records_to_table(
@@ -299,18 +304,18 @@ async def optimized_writer():
         min_size=10,
         max_size=50
     )
-    
+
     batch_size = 1000
     buffer = []
-    
+
     async with pool.acquire() as conn:
         # 准备预处理语句
         stmt = await conn.prepare('''
-            INSERT INTO device_metrics 
+            INSERT INTO device_metrics
             (time, device_id, metric_name, metric_value, quality, metadata)
             VALUES ($1, $2, $3, $4, $5, $6)
         ''')
-        
+
         # 批量执行
         await conn.executemany(stmt, buffer)
 ```
@@ -322,6 +327,7 @@ async def optimized_writer():
 $$T_{write} = N_{connections} \times \frac{B_{batch}}{L_{latency} + \frac{B_{batch}}{R_{network}}}$$
 
 其中：
+
 - $N_{connections}$：并发连接数
 - $B_{batch}$：批次大小
 - $L_{latency}$：网络延迟
@@ -369,7 +375,7 @@ BEGIN
             '"NULL_VALUE"'
         );
     END IF;
-    
+
     -- 范围检查（示例：温度范围 -50 ~ 150°C）
     IF NEW.metric_name = 'temperature' THEN
         IF NEW.metric_value < -50 OR NEW.metric_value > 150 THEN
@@ -381,7 +387,7 @@ BEGIN
             );
         END IF;
     END IF;
-    
+
     -- 异常值检测（3σ 原则）
     IF abs(NEW.metric_value) > 3 * (
         SELECT COALESCE(stddev(metric_value), 0)
@@ -397,7 +403,7 @@ BEGIN
             '"ANOMALY_DETECTED"'
         );
     END IF;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -498,7 +504,7 @@ CREATE TABLE alert_events (
 );
 
 -- 转换为超表
-SELECT create_hypertable('alert_events', 'triggered_at', 
+SELECT create_hypertable('alert_events', 'triggered_at',
     chunk_time_interval => INTERVAL '1 month'
 );
 
@@ -509,7 +515,7 @@ DECLARE
     alert_rec RECORD;
 BEGIN
     FOR alert_rec IN
-        SELECT 
+        SELECT
             r.rule_id,
             r.device_id,
             r.metric_name,
@@ -535,14 +541,14 @@ BEGIN
            (alert_rec.operator = '<' AND alert_rec.metric_value < alert_rec.threshold_value) OR
            (alert_rec.operator = '>=' AND alert_rec.metric_value >= alert_rec.threshold_value) OR
            (alert_rec.operator = '<=' AND alert_rec.metric_value <= alert_rec.threshold_value) THEN
-            
+
             -- 插入告警事件
-            INSERT INTO alert_events (rule_id, device_id, metric_name, 
+            INSERT INTO alert_events (rule_id, device_id, metric_name,
                                       triggered_value, threshold_value, severity, message)
             VALUES (alert_rec.rule_id, alert_rec.device_id, alert_rec.metric_name,
                     alert_rec.metric_value, alert_rec.threshold_value, alert_rec.severity,
-                    format('阈值告警: %s %s %s, 当前值: %s', 
-                           alert_rec.metric_name, alert_rec.operator, 
+                    format('阈值告警: %s %s %s, 当前值: %s',
+                           alert_rec.metric_name, alert_rec.operator,
                            alert_rec.threshold_value, alert_rec.metric_value));
         END IF;
     END LOOP;
@@ -550,7 +556,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 创建定时任务（每 30 秒检查一次）
-SELECT cron.schedule('check-alerts', '*/30 * * * * *', 
+SELECT cron.schedule('check-alerts', '*/30 * * * * *',
                      'SELECT check_threshold_alerts()');
 ```
 
@@ -559,7 +565,7 @@ SELECT cron.schedule('check-alerts', '*/30 * * * * *',
 ```sql
 -- 最近 5 分钟实时数据查询
 -- 利用时序索引，亚秒级响应
-SELECT 
+SELECT
     time_bucket('10 seconds', time) as bucket,
     device_id,
     metric_name,
@@ -573,26 +579,26 @@ ORDER BY bucket DESC;
 -- 设备健康度评分查询
 -- 基于数据质量和最新数据时间
 WITH device_health AS (
-    SELECT 
+    SELECT
         d.device_id,
         d.device_name,
         d.last_seen,
         EXTRACT(EPOCH FROM (NOW() - d.last_seen)) / 60 as minutes_since_seen,
         COALESCE(
-            (SELECT avg(quality) 
-             FROM device_metrics m 
-             WHERE m.device_id = d.device_id 
+            (SELECT avg(quality)
+             FROM device_metrics m
+             WHERE m.device_id = d.device_id
                AND m.time > NOW() - INTERVAL '1 hour'),
             0
         ) as avg_quality
     FROM devices d
     WHERE d.status = 'active'
 )
-SELECT 
+SELECT
     device_id,
     device_name,
     last_seen,
-    CASE 
+    CASE
         WHEN minutes_since_seen < 5 AND avg_quality >= 90 THEN 'healthy'
         WHEN minutes_since_seen < 15 AND avg_quality >= 70 THEN 'warning'
         ELSE 'critical'
@@ -619,24 +625,24 @@ $$Compression = \begin{cases}
 
 ```sql
 -- 查看压缩统计
-SELECT 
+SELECT
     hypertable_name,
     chunk_name,
     compression_status,
     before_compression_total_bytes,
     after_compression_total_bytes,
     round(
-        (1 - after_compression_total_bytes::numeric / before_compression_total_bytes) * 100, 
+        (1 - after_compression_total_bytes::numeric / before_compression_total_bytes) * 100,
         2
     ) as compression_ratio
 FROM chunks_detailed_size('device_metrics');
 
 -- 手动压缩特定时间范围
-SELECT compress_chunk(i) FROM show_chunks('device_metrics', 
+SELECT compress_chunk(i) FROM show_chunks('device_metrics',
     older_than => INTERVAL '7 days') i;
 
 -- 手动解压缩（需要查询历史数据时）
-SELECT decompress_chunk(i) FROM show_chunks('device_metrics', 
+SELECT decompress_chunk(i) FROM show_chunks('device_metrics',
     newer_than => INTERVAL '30 days',
     older_than => INTERVAL '7 days') i;
 ```
@@ -646,34 +652,34 @@ SELECT decompress_chunk(i) FROM show_chunks('device_metrics',
 ```sql
 -- 数据分层视图
 CREATE OR REPLACE VIEW data_tiering AS
-SELECT 
+SELECT
     'hot' as tier,
     count(*) as chunk_count,
     pg_size_pretty(sum(before_compression_total_bytes)) as size
 FROM chunks_detailed_size('device_metrics')
 WHERE chunk_name IN (
-    SELECT chunk_name FROM show_chunks('device_metrics', 
+    SELECT chunk_name FROM show_chunks('device_metrics',
         newer_than => INTERVAL '7 days')
 )
 UNION ALL
-SELECT 
+SELECT
     'warm' as tier,
     count(*) as chunk_count,
     pg_size_pretty(sum(after_compression_total_bytes)) as size
 FROM chunks_detailed_size('device_metrics')
 WHERE chunk_name IN (
-    SELECT chunk_name FROM show_chunks('device_metrics', 
+    SELECT chunk_name FROM show_chunks('device_metrics',
         older_than => INTERVAL '7 days',
         newer_than => INTERVAL '90 days')
 )
 UNION ALL
-SELECT 
+SELECT
     'cold' as tier,
     count(*) as chunk_count,
     pg_size_pretty(sum(after_compression_total_bytes)) as size
 FROM chunks_detailed_size('device_metrics')
 WHERE chunk_name IN (
-    SELECT chunk_name FROM show_chunks('device_metrics', 
+    SELECT chunk_name FROM show_chunks('device_metrics',
         older_than => INTERVAL '90 days')
 );
 
@@ -697,12 +703,12 @@ DECLARE
     total_archived_bytes BIGINT := 0;
 BEGIN
     FOR chunk_rec IN
-        SELECT 
+        SELECT
             chunk_schema || '.' || chunk_name as chunk_full_name,
             before_compression_total_bytes
         FROM chunks_detailed_size('device_metrics')
         WHERE chunk_name IN (
-            SELECT chunk_name FROM show_chunks('device_metrics', 
+            SELECT chunk_name FROM show_chunks('device_metrics',
                 older_than => older_than)
         )
         AND compression_status = 'Compressed'
@@ -712,20 +718,20 @@ BEGIN
             'COPY (SELECT * FROM %s) TO ''/archive/%s.csv'' WITH (FORMAT CSV, HEADER)',
             chunk_full_name, chunk_name
         );
-        
+
         -- 上传到 S3（通过外部脚本调用）
         PERFORM pg_background_launch(
-            format('aws s3 cp /archive/%s.csv s3://iot-archive/%s/', 
+            format('aws s3 cp /archive/%s.csv s3://iot-archive/%s/',
                    chunk_name, chunk_name)
         );
-        
+
         archived_count := archived_count + 1;
         total_archived_bytes := total_archived_bytes + before_compression_total_bytes;
-        
+
         -- 删除本地 chunk（可选，谨慎使用）
         -- EXECUTE format('DROP TABLE %s', chunk_full_name);
     END LOOP;
-    
+
     RETURN QUERY SELECT archived_count, total_archived_bytes;
 END;
 $$ LANGUAGE plpgsql;
@@ -795,19 +801,19 @@ class SensorReading:
 class EdgeDataAggregator:
     """
     边缘数据聚合器
-    
+
     功能：
     1. 数据降采样（减少传输量）
     2. 异常检测（本地实时告警）
     3. 数据缓存（断网续传）
     """
-    
+
     def __init__(self, buffer_size: int = 10000):
         self.buffer: List[SensorReading] = []
         self.buffer_size = buffer_size
         self.local_db = sqlite3.connect(':memory:')  # 或使用磁盘存储
         self._init_local_storage()
-        
+
     def _init_local_storage(self):
         """初始化本地存储"""
         self.local_db.execute('''
@@ -820,20 +826,20 @@ class EdgeDataAggregator:
             )
         ''')
         self.local_db.commit()
-    
-    def downsample(self, readings: List[SensorReading], 
+
+    def downsample(self, readings: List[SensorReading],
                    interval_seconds: int = 60) -> List[SensorReading]:
         """
         降采样算法：基于时间窗口的平均值
-        
+
         数学公式：
         $$\bar{x}_{window} = \frac{1}{n} \sum_{i=1}^{n} x_i$$
-        
+
         其中 $n$ 为时间窗口内的数据点数量
         """
         if not readings:
             return []
-        
+
         # 按时间窗口分组
         windowed_data: Dict[str, List[SensorReading]] = {}
         for r in readings:
@@ -841,17 +847,17 @@ class EdgeDataAggregator:
                 second=r.timestamp.second // interval_seconds * interval_seconds,
                 microsecond=0
             ).isoformat()
-            
+
             if window_key not in windowed_data:
                 windowed_data[window_key] = []
             windowed_data[window_key].append(r)
-        
+
         # 计算每个窗口的平均值
         downsampled = []
         for window_key, values in windowed_data.items():
             avg_value = np.mean([v.value for v in values])
             avg_quality = int(np.mean([v.quality for v in values]))
-            
+
             downsampled.append(SensorReading(
                 timestamp=datetime.fromisoformat(window_key),
                 device_id=values[0].device_id,
@@ -859,72 +865,72 @@ class EdgeDataAggregator:
                 value=round(avg_value, 4),
                 quality=avg_quality
             ))
-        
+
         return downsampled
-    
-    def detect_anomaly(self, reading: SensorReading, 
+
+    def detect_anomaly(self, reading: SensorReading,
                        window_size: int = 100) -> Optional[str]:
         """
         边缘异常检测：基于 3σ 准则
-        
+
         公式：
         $$\text{anomaly} = |x - \mu| > 3\sigma$$
-        
+
         其中：
         - $\mu$ 为历史均值
         - $\sigma$ 为标准差
         """
         # 查询历史数据
         cursor = self.local_db.execute('''
-            SELECT value FROM sensor_buffer 
+            SELECT value FROM sensor_buffer
             WHERE device_id = ? AND metric_name = ?
             ORDER BY timestamp DESC LIMIT ?
         ''', (reading.device_id, reading.metric_name, window_size))
-        
+
         history = [row[0] for row in cursor.fetchall()]
-        
+
         if len(history) < 10:
             return None  # 数据不足
-        
+
         mean = np.mean(history)
         std = np.std(history)
-        
+
         if std == 0:
             return None
-        
+
         z_score = abs(reading.value - mean) / std
-        
+
         if z_score > 3:
             return f"ANOMALY_DETECTED: z_score={z_score:.2f}"
         elif z_score > 2:
             return f"WARNING: z_score={z_score:.2f}"
-        
+
         return None
-    
+
     def compress_for_transmission(self, readings: List[SensorReading]) -> bytes:
         """
         数据压缩算法：Delta 编码 + GZIP
-        
+
         压缩率公式：
         $$R = \frac{V_{original} - V_{compressed}}{V_{original}} \times 100\%$$
         """
         import gzip
         import json
-        
+
         # Delta 编码
         if not readings:
             return b''
-        
+
         base_time = readings[0].timestamp.timestamp()
         delta_encoded = []
-        
+
         for r in readings:
             delta_encoded.append({
                 'dt': round(r.timestamp.timestamp() - base_time, 3),
                 'v': r.value,
                 'q': r.quality
             })
-        
+
         # JSON 序列化 + GZIP 压缩
         json_data = json.dumps({
             'base_time': base_time,
@@ -932,16 +938,16 @@ class EdgeDataAggregator:
             'metric': readings[0].metric_name,
             'data': delta_encoded
         })
-        
+
         compressed = gzip.compress(json_data.encode(), compresslevel=6)
-        
+
         # 计算压缩率
         original_size = len(json_data)
         compressed_size = len(compressed)
         ratio = (1 - compressed_size / original_size) * 100
-        
+
         print(f"压缩率: {ratio:.1f}% ({original_size} -> {compressed_size} bytes)")
-        
+
         return compressed
 ```
 
@@ -962,7 +968,7 @@ CREATE TABLE edge_sync_queue (
     error_message TEXT
 );
 
-SELECT create_hypertable('edge_sync_queue', 'created_at', 
+SELECT create_hypertable('edge_sync_queue', 'created_at',
     chunk_time_interval => INTERVAL '1 day');
 
 -- 批量数据合并存储过程
@@ -985,13 +991,13 @@ BEGIN
                 COALESCE((rec->>'quality')::INT, 100)
             )
             ON CONFLICT DO NOTHING;
-            
+
             inserted_count := inserted_count + 1;
         EXCEPTION WHEN OTHERS THEN
             failed_count := failed_count + 1;
         END;
     END LOOP;
-    
+
     RETURN QUERY SELECT inserted_count, 0, failed_count;
 END;
 $$ LANGUAGE plpgsql;
@@ -1022,7 +1028,7 @@ CREATE TABLE device_commands (
     max_retries INT DEFAULT 3
 );
 
-SELECT create_hypertable('device_commands', 'created_at', 
+SELECT create_hypertable('device_commands', 'created_at',
     chunk_time_interval => INTERVAL '7 days');
 
 CREATE INDEX idx_commands_device_status ON device_commands(device_id, status);
@@ -1042,14 +1048,14 @@ BEGIN
     INSERT INTO device_commands (device_id, command_type, payload, priority)
     VALUES (p_device_id, p_command_type, p_payload, p_priority)
     RETURNING command_id INTO cmd_id;
-    
+
     -- 触发 MQTT 发布（通过外部通知）
     PERFORM pg_notify('device_command', json_build_object(
         'command_id', cmd_id,
         'device_id', p_device_id,
         'type', p_command_type
     )::text);
-    
+
     RETURN cmd_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -1106,7 +1112,7 @@ CREATE TABLE ota_device_records (
     retry_count INT DEFAULT 0
 );
 
-SELECT create_hypertable('ota_device_records', 'started_at', 
+SELECT create_hypertable('ota_device_records', 'started_at',
     chunk_time_interval => INTERVAL '30 days');
 
 -- 灰度发布策略
@@ -1140,7 +1146,7 @@ $$ LANGUAGE plpgsql;
 -- 创建性能监控视图
 CREATE OR REPLACE VIEW iot_performance_kpis AS
 WITH write_stats AS (
-    SELECT 
+    SELECT
         count(*) as total_writes_1h,
         count(DISTINCT device_id) as active_devices,
         avg(EXTRACT(EPOCH FROM (lead(time) OVER (ORDER BY time) - time))) as avg_write_interval
@@ -1148,7 +1154,7 @@ WITH write_stats AS (
     WHERE time > NOW() - INTERVAL '1 hour'
 ),
 query_stats AS (
-    SELECT 
+    SELECT
         sum(calls) as total_queries,
         avg(mean_exec_time) as avg_query_time_ms,
         max(max_exec_time) as max_query_time_ms
@@ -1156,12 +1162,12 @@ query_stats AS (
     WHERE query LIKE '%device_metrics%'
 ),
 storage_stats AS (
-    SELECT 
+    SELECT
         pg_size_pretty(pg_total_relation_size('device_metrics')) as total_size,
-        (SELECT count(*) FROM timescaledb_information.chunks 
+        (SELECT count(*) FROM timescaledb_information.chunks
          WHERE hypertable_name = 'device_metrics') as chunk_count
 )
-SELECT 
+SELECT
     w.total_writes_1h,
     w.active_devices,
     round((w.total_writes_1h::numeric / 3600), 2) as writes_per_second,
@@ -1181,7 +1187,7 @@ FROM write_stats w, query_stats q, storage_stats s;
 
 ```sql
 -- 慢查询分析
-SELECT 
+SELECT
     query,
     calls,
     round(total_exec_time::numeric, 2) as total_time_ms,
@@ -1194,7 +1200,7 @@ ORDER BY total_exec_time DESC
 LIMIT 10;
 
 -- 索引使用分析
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexrelname,
@@ -1259,20 +1265,20 @@ timescaledb.max_cached_chunks_per_hypertable = 100
 -- 每日健康检查脚本
 WITH health_checks AS (
     -- 检查 1：超表统计
-    SELECT 
+    SELECT
         'hypertable_stats' as check_name,
         jsonb_build_object(
             'hypertable', hypertable_name,
-            'num_chunks', (SELECT count(*) FROM timescaledb_information.chunks 
+            'num_chunks', (SELECT count(*) FROM timescaledb_information.chunks
                           WHERE hypertable_name = h.hypertable_name),
             'compression_enabled', compression_enabled
         ) as details
     FROM timescaledb_information.hypertables h
-    
+
     UNION ALL
-    
+
     -- 检查 2：连续聚合状态
-    SELECT 
+    SELECT
         'cagg_health' as check_name,
         jsonb_build_object(
             'view_name', view_name,
@@ -1280,11 +1286,11 @@ WITH health_checks AS (
             'compression_enabled', compression_enabled
         ) as details
     FROM timescaledb_information.continuous_aggregates
-    
+
     UNION ALL
-    
+
     -- 检查 3：数据写入延迟
-    SELECT 
+    SELECT
         'write_lag' as check_name,
         jsonb_build_object(
             'latest_data', max(time),
@@ -1368,6 +1374,6 @@ SELECT * FROM health_checks;
 
 ---
 
-**文档版本**: v2.0  
-**最后更新**: 2025年3月  
+**文档版本**: v2.0
+**最后更新**: 2025年3月
 **适用版本**: PostgreSQL 16+, TimescaleDB 2.11+
