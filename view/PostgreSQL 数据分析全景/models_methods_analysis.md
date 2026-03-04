@@ -827,7 +827,10 @@ $$\frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}} \xrightarrow{d} N(0, 1)$$
 
 **概率密度函数**:
 
-$$f(x; \alpha, x_{min}) = \frac{\alpha - 1}{x_{min}} \left(\frac{x}{x_{min}}\right)^{-\alpha}, \quad x \geq x_{min}$$
+$$
+f(x; \alpha, x_{min}) =
+\frac{\alpha - 1}{x_{min}} \left(\frac{x}{x_{min}}\right)^{-\alpha}, \quad x \geq x_{min}
+$$
 
 其中 $\alpha > 1$ 是幂指数。
 
@@ -846,7 +849,10 @@ $$\log P(X > x) = -(\alpha - 1)\log x + (\alpha - 1)\log x_{min}$$
 
 对于 $X \sim \text{PowerLaw}(\alpha, x_{min})$：
 
-$$E[X^k] = \begin{cases} \frac{\alpha - 1}{\alpha - 1 - k} x_{min}^k & k < \alpha - 1 \\ \infty & k \geq \alpha - 1 \end{cases}$$
+$$
+E[X^k] =
+\begin{cases} \frac{\alpha - 1}{\alpha - 1 - k} x_{min}^k & k < \alpha - 1 \\ \infty & k \geq \alpha - 1 \end{cases}
+$$
 
 **Hill估计量**:
 
@@ -1117,11 +1123,16 @@ $$I_{FV}(X_i) = \frac{P(\bigcup_{C: X_i \in C} C)}{P(T)}$$
 
 **定义**:
 
-$$\rho_{X,Y} = \frac{\text{Cov}(X,Y)}{\sigma_X \sigma_Y} = \frac{E[(X-\mu_X)(Y-\mu_Y)]}{\sqrt{E[(X-\mu_X)^2]E[(Y-\mu_Y)^2]}}$$
+$$
+\rho_{X,Y} = \frac{\text{Cov}(X,Y)}{\sigma_X \sigma_Y} = \frac{E[(X-\mu_X)(Y-\mu_Y)]}{\sqrt{E[(X-\mu_X)^2]E[(Y-\mu_Y)^2]}}
+$$
 
 **样本估计**:
 
-$$r = \frac{\sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^n (x_i - \bar{x})^2 \sum_{i=1}^n (y_i - \bar{y})^2}}$$
+$$
+r =
+\frac{\sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^n (x_i - \bar{x})^2 \sum_{i=1}^n (y_i - \bar{y})^2}}
+$$
 
 **性质**:
 
@@ -1146,7 +1157,9 @@ $$t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}} \sim t_{n-2}$$
 
 **Fisher Z变换**:
 
-$$z = \frac{1}{2}\ln\left(\frac{1+r}{1-r}\right) \approx N\left(\frac{1}{2}\ln\left(\frac{1+\rho}{1-\rho}\right), \frac{1}{n-3}\right)$$
+$$
+z = \frac{1}{2}\ln\left(\frac{1+r}{1-r}\right) \approx N\left(\frac{1}{2}\ln\left(\frac{1+\rho}{1-\rho}\right), \frac{1}{n-3}\right)
+$$
 
 ---
 
@@ -1154,7 +1167,9 @@ $$z = \frac{1}{2}\ln\left(\frac{1+r}{1-r}\right) \approx N\left(\frac{1}{2}\ln\l
 
 **定义**:
 
-$$\rho_s = \frac{\sum_{i=1}^n (R_i - \bar{R})(S_i - \bar{S})}{\sqrt{\sum_{i=1}^n (R_i - \bar{R})^2 \sum_{i=1}^n (S_i - \bar{S})^2}}$$
+$$
+\rho_s = \frac{\sum_{i=1}^n (R_i - \bar{R})(S_i - \bar{S})}{\sqrt{\sum_{i=1}^n (R_i - \bar{R})^2 \sum_{i=1}^n (S_i - \bar{S})^2}}
+$$
 
 其中 $R_i = \text{rank}(x_i)$，$S_i = \text{rank}(y_i)$。
 
@@ -1384,8 +1399,6 @@ $$\text{Cov}(Y_{ij} - Y_{ij'}, Y_{ij} - Y_{ij'}) = 2\sigma^2$$
 $$\hat{\varepsilon} = \frac{k^2(\bar{d}_{ii} - \bar{d}_{..})^2}{(k-1)\sum_{i,j}(d_{ij} - \bar{d}_{i\cdot} - \bar{d}_{\cdot j} + \bar{d}_{..})^2}$$
 
 校正后自由度：$\tilde{df} = \hat{\varepsilon} \cdot df$
-
-
 
 ## 4. 预测性分析模型
 
@@ -2416,8 +2429,6 @@ $$\theta \leftarrow \theta + \alpha \sum_t \nabla_\theta \log \pi_\theta(a_t|s_t
 $$\theta \leftarrow \theta + \alpha \sum_t \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot \delta_t$$
 
 其中 $\delta_t = r_{t+1} + \gamma V(s_{t+1}) - V(s_t)$ 是TD误差。
-
-
 
 ## 6. 高频经典算法
 
