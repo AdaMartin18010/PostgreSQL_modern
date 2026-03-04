@@ -54,6 +54,9 @@
   - [10. 测试方案](#10-测试方案)
     - [10.1 单元测试](#101-单元测试)
     - [10.2 性能测试](#102-性能测试)
+  - [10.3 交易撤销/冲正功能 (新增)](#103-交易撤销冲正功能-新增)
+  - [10.4 分区表自动维护 (新增)](#104-分区表自动维护-新增)
+  - [10.5 完整测试数据初始化脚本 (新增)](#105-完整测试数据初始化脚本-新增)
   - [11. 总结](#11-总结)
     - [11.1 核心特性](#111-核心特性)
     - [11.2 存储过程清单](#112-存储过程清单)
@@ -1378,6 +1381,9 @@ BEGIN
         RETURN QUERY SELECT NULL::BIGINT, NULL::VARCHAR, -2, '不能转账给自己'::VARCHAR;
         RETURN;
     END IF;
+
+    -- 设置事务隔离级别为SERIALIZABLE (金融交易强一致性)
+    SET LOCAL TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
     -- 幂等性检查
     IF p_biz_no IS NOT NULL THEN
@@ -2966,6 +2972,303 @@ ORDER BY settle_date DESC;
 
 ---
 
+## 10.3 交易撤销/冲正功能 (新增)
+
+```sql
+-- =============================================
+-- 存储过程: 交易撤销/冲正
+-- 用于处理支付失败、重复支付等情况
+-- =============================================
+
+CREATE OR REPLACE FUNCTION sp_transfer_reverse(
+    p_original_tx_no    VARCHAR(32),     -- 原交易流水号
+    p_reverse_reason    VARCHAR(255),    -- 撤销原因
+    p_operator_id       BIGINT,          -- 操作员ID
+    p_biz_no            VARCHAR(64) DEFAULT NULL  -- 业务方幂等号
+) RETURNS TABLE (
+    reverse_tx_no       VARCHAR(32),     -- 冲正交易号
+    result_code         INTEGER,         -- 结果码: 0=成功
+    result_msg          VARCHAR(255)
+) AS $$
+DECLARE
+    v_original_tx       RECORD;
+    v_reverse_tx_no     VARCHAR(32);
+    v_reverse_tx_id     BIGINT;
+    v_from_bal          RECORD;
+    v_to_bal            RECORD;
+BEGIN
+    -- 1. 查找原交易
+    SELECT * INTO v_original_tx
+    FROM transactions
+    WHERE tx_no = p_original_tx_no;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT NULL::VARCHAR, -1, '原交易不存在'::VARCHAR;
+        RETURN;
+    END IF;
+
+    -- 2. 检查交易状态
+    IF v_original_tx.status != 2 THEN
+        RETURN QUERY SELECT NULL::VARCHAR, -2, '原交易未成功，无需冲正'::VARCHAR;
+        RETURN;
+    END IF;
+
+    -- 3. 检查是否已冲正
+    IF EXISTS(SELECT 1 FROM transactions
+              WHERE original_tx_id = v_original_tx.tx_id AND tx_type = 'REVERSE') THEN
+        RETURN QUERY SELECT NULL::VARCHAR, -3, '该交易已冲正'::VARCHAR;
+        RETURN;
+    END IF;
+
+    -- 4. 幂等性检查
+    IF p_biz_no IS NOT NULL THEN
+        SELECT tx_no INTO v_reverse_tx_no
+        FROM transactions WHERE biz_no = p_biz_no;
+
+        IF FOUND THEN
+            RETURN QUERY SELECT v_reverse_tx_no, 0, '冲正已处理'::VARCHAR;
+            RETURN;
+        END IF;
+    END IF;
+
+    -- 5. 生成冲正交易号
+    v_reverse_tx_no := 'RV' || TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') ||
+                       LPAD(FLOOR(RANDOM() * 100000000)::TEXT, 8, '0');
+
+    -- 6. 执行冲正 (反向操作)
+    BEGIN
+        -- 锁定余额记录
+        SELECT * INTO v_from_bal FROM account_balances
+        WHERE account_no = v_original_tx.from_account_no FOR UPDATE;
+
+        SELECT * INTO v_to_bal FROM account_balances
+        WHERE account_no = v_original_tx.to_account_no FOR UPDATE;
+
+        -- 创建冲正交易记录
+        INSERT INTO transactions (
+            tx_no, tx_type, tx_subtype, amount, currency,
+            from_account_no, to_account_no, original_tx_id, status,
+            remark, biz_no
+        ) VALUES (
+            v_reverse_tx_no, 'REVERSE', 'TRANSFER_REVERSE', v_original_tx.amount,
+            v_original_tx.currency, v_original_tx.to_account_no,  -- 反向
+            v_original_tx.from_account_no, v_original_tx.tx_id, 2,
+            '冲正原交易:' || p_original_tx_no || ',原因:' || p_reverse_reason,
+            p_biz_no
+        ) RETURNING tx_id INTO v_reverse_tx_id;
+
+        -- 恢复付款方余额 (原交易的收款方变为付款方)
+        UPDATE account_balances SET
+            current_balance = current_balance - v_original_tx.amount,
+            available_balance = available_balance - v_original_tx.amount,
+            total_out_amount = total_out_amount + v_original_tx.amount,
+            version = version + 1,
+            last_tx_id = v_reverse_tx_id,
+            last_tx_time = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE account_no = v_original_tx.to_account_no;
+
+        -- 恢复收款方余额 (原交易的付款方变为收款方)
+        UPDATE account_balances SET
+            current_balance = current_balance + v_original_tx.amount,
+            available_balance = available_balance + v_original_tx.amount,
+            total_in_amount = total_in_amount + v_original_tx.amount,
+            version = version + 1,
+            last_tx_id = v_reverse_tx_id,
+            last_tx_time = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE account_no = v_original_tx.from_account_no;
+
+        -- 标记原交易为已冲正
+        UPDATE transactions
+        SET status = 4, remark = remark || ' [已冲正:' || v_reverse_tx_no || ']'
+        WHERE tx_id = v_original_tx.tx_id;
+
+        -- 记录审计日志
+        INSERT INTO audit_logs (table_name, record_id, operation, new_data, operated_by)
+        VALUES ('transactions', v_reverse_tx_id, 'REVERSE',
+                jsonb_build_object('original_tx', p_original_tx_no, 'reason', p_reverse_reason),
+                p_operator_id);
+
+        RETURN QUERY SELECT v_reverse_tx_no, 0, '冲正成功'::VARCHAR;
+
+    EXCEPTION WHEN OTHERS THEN
+        RETURN QUERY SELECT NULL::VARCHAR, -99, ('冲正失败:' || SQLERRM)::VARCHAR;
+    END;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION sp_transfer_reverse IS '交易冲正: 将已完成的转账交易撤销，恢复双方余额';
+```
+
+## 10.4 分区表自动维护 (新增)
+
+```sql
+-- =============================================
+-- 分区表自动维护脚本
+-- 每月自动创建未来3个月的分区
+-- =============================================
+
+-- 创建分区维护函数
+CREATE OR REPLACE FUNCTION fn_create_monthly_partitions(
+    p_months_ahead INT DEFAULT 3
+) RETURNS TABLE (
+    partition_name TEXT,
+    start_date DATE,
+    end_date DATE,
+    created BOOLEAN
+) AS $$
+DECLARE
+    v_table_name TEXT;
+    v_partition_name TEXT;
+    v_start_date DATE;
+    v_end_date DATE;
+    v_sql TEXT;
+    v_exists BOOLEAN;
+BEGIN
+    -- 需要维护分区表的列表
+    FOR v_table_name IN
+        SELECT unnest(ARRAY['account_entries', 'transactions'])
+    LOOP
+        FOR i IN 0..p_months_ahead LOOP
+            v_start_date := DATE_TRUNC('month', CURRENT_DATE + (i || ' months')::INTERVAL)::DATE;
+            v_end_date := (v_start_date + INTERVAL '1 month')::DATE;
+            v_partition_name := v_table_name || '_' || TO_CHAR(v_start_date, 'YYYY_MM');
+
+            -- 检查分区是否已存在
+            SELECT EXISTS(
+                SELECT 1 FROM pg_class c
+                JOIN pg_namespace n ON c.relnamespace = n.oid
+                WHERE n.nspname = 'public' AND c.relname = v_partition_name
+            ) INTO v_exists;
+
+            IF NOT v_exists THEN
+                v_sql := format(
+                    'CREATE TABLE %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
+                    v_partition_name, v_table_name, v_start_date, v_end_date
+                );
+                EXECUTE v_sql;
+                created := TRUE;
+            ELSE
+                created := FALSE;
+            END IF;
+
+            partition_name := v_partition_name;
+            start_date := v_start_date;
+            end_date := v_end_date;
+            RETURN NEXT;
+        END LOOP;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 创建定时任务 (需要pg_cron扩展)
+-- SELECT cron.schedule('create-partitions', '0 1 1 * *', 'SELECT fn_create_monthly_partitions(3)');
+
+COMMENT ON FUNCTION fn_create_monthly_partitions IS '自动创建未来N个月的分区表';
+```
+
+## 10.5 完整测试数据初始化脚本 (新增)
+
+```sql
+-- =============================================
+-- 金融系统测试数据初始化脚本
+-- 一键初始化完整的测试环境
+-- =============================================
+
+-- 执行方式: psql -d finance_db -f 10.5_test_data_init.sql
+
+DO $$
+DECLARE
+    v_cust_id BIGINT;
+    v_acct1_no VARCHAR(32);
+    v_acct2_no VARCHAR(32);
+    v_tx_result RECORD;
+BEGIN
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '开始初始化金融系统测试数据';
+    RAISE NOTICE '========================================';
+
+    -- 1. 创建测试客户
+    RAISE NOTICE '[1/5] 创建测试客户...';
+
+    INSERT INTO customers (customer_no, name, id_type, id_number, phone, email, status, risk_level)
+    VALUES
+        ('C001', '张三', 'ID_CARD', '110101199001011234', '13800138001', 'zhangsan@example.com', 1, 'LOW'),
+        ('C002', '李四', 'ID_CARD', '110101199002022345', '13800138002', 'lisi@example.com', 1, 'MEDIUM'),
+        ('C003', '王五', 'ID_CARD', '110101199003033456', '13800138003', 'wangwu@example.com', 1, 'HIGH')
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE '  ✓ 已创建3个测试客户';
+
+    -- 2. 开立测试账户
+    RAISE NOTICE '[2/5] 开立测试账户...';
+
+    SELECT customer_id INTO v_cust_id FROM customers WHERE customer_no = 'C001';
+    SELECT account_no INTO v_acct1_no FROM sp_account_open(v_cust_id, 'SAVINGS', 'CNY', 100000);
+    SELECT account_no INTO v_acct2_no FROM sp_account_open(v_cust_id, 'CHECKING', 'CNY', 50000);
+
+    RAISE NOTICE '  ✓ 储蓄账户: % (余额: 100,000)', v_acct1_no;
+    RAISE NOTICE '  ✓ 支票账户: % (余额: 50,000)', v_acct2_no;
+
+    -- 3. 设置账户限额
+    RAISE NOTICE '[3/5] 设置账户限额...';
+
+    INSERT INTO account_limits (account_no, limit_type, single_limit, daily_limit, daily_count_limit)
+    VALUES
+        (v_acct1_no, 'TRANSFER_OUT', 50000, 200000, 10),
+        (v_acct1_no, 'WITHDRAW', 20000, 50000, 5)
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE '  ✓ 已设置转账限额: 单笔50,000/日累计200,000';
+
+    -- 4. 执行测试转账
+    RAISE NOTICE '[4/5] 执行测试转账...';
+
+    SELECT * INTO v_tx_result FROM sp_transfer_realtime(
+        v_acct1_no, v_acct2_no, 10000, '测试转账', 'TEST001'
+    );
+
+    IF v_tx_result.result_code = 0 THEN
+        RAISE NOTICE '  ✓ 转账成功: 交易号=%', v_tx_result.tx_no;
+    ELSE
+        RAISE NOTICE '  ✗ 转账失败: %', v_tx_result.result_msg;
+    END IF;
+
+    -- 5. 验证数据
+    RAISE NOTICE '[5/5] 验证数据一致性...';
+
+    -- 验证会计恒等式
+    PERFORM test_accounting_equation();
+    RAISE NOTICE '  ✓ 会计恒等式验证通过';
+
+    RAISE NOTICE '';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '测试数据初始化完成!';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '可用测试账户:';
+    RAISE NOTICE '  付款方: %', v_acct1_no;
+    RAISE NOTICE '  收款方: %', v_acct2_no;
+
+END;
+$$;
+
+-- 显示初始化后的账户余额
+SELECT
+    a.account_no,
+    c.name as customer_name,
+    a.account_type,
+    b.current_balance,
+    b.available_balance
+FROM accounts a
+JOIN customers c ON a.customer_id = c.customer_id
+JOIN account_balances b ON a.account_no = b.account_no
+WHERE a.status = 1
+ORDER BY a.account_id;
+```
+
+---
+
 ## 11. 总结
 
 ### 11.1 核心特性
@@ -2999,6 +3302,8 @@ ORDER BY settle_date DESC;
 | 13 | sp_daily_settlement | 日终清算 | 清算系统 |
 | 14 | sp_account_reconciliation | 账户对账 | 清算系统 |
 | 15 | sp_generate_recon_report | 对账报表 | 清算系统 |
+| 16 | sp_transfer_reverse | 交易冲正 | 转账系统 |
+| 17 | fn_create_monthly_partitions | 分区维护 | 运维工具 |
 
 ### 11.3 风控规则清单
 

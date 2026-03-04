@@ -2607,6 +2607,19 @@ CREATE TABLE system.audit_log (
 SELECT create_hypertable('system.audit_log', 'occurred_at',
     chunk_time_interval => INTERVAL '1 month', if_not_exists => TRUE);
 
+-- 安全事件表 (记录认证失败、异常访问等安全事件)
+CREATE TABLE system.security_events (
+    event_id        BIGSERIAL PRIMARY KEY,
+    event_type      VARCHAR(50) NOT NULL,           -- 事件类型: device_auth_failed, abnormal_access等
+    source_ip       INET,                           -- 来源IP
+    device_sn       VARCHAR(100),                   -- 设备序列号(如适用)
+    details         JSONB,                          -- 事件详情
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_security_events_type ON system.security_events(event_type);
+CREATE INDEX idx_security_events_time ON system.security_events(created_at);
+
 -- 审计触发器函数
 CREATE OR REPLACE FUNCTION system.audit_trigger()
 RETURNS TRIGGER AS $$

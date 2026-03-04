@@ -423,6 +423,19 @@ CREATE TABLE product_skus (
 
 CREATE INDEX idx_sku_product ON product_skus(product_id);
 
+--- 商品图片表
+CREATE TABLE product_images (
+    image_id        BIGSERIAL PRIMARY KEY,
+    product_id      BIGINT NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
+    image_url       VARCHAR(500) NOT NULL,
+    is_main         BOOLEAN DEFAULT FALSE,  -- 是否主图
+    sort_order      INTEGER DEFAULT 0,      -- 排序
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_image_product ON product_images(product_id);
+CREATE INDEX idx_image_main ON product_images(product_id, is_main);
+
 -- =============================================
 -- 3. 库存相关表
 -- =============================================
@@ -503,10 +516,15 @@ CREATE TABLE orders (
 
     -- 时间戳
     created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    expired_at      TIMESTAMPTZ,                      -- 订单过期时间
     paid_at         TIMESTAMPTZ,
     shipped_at      TIMESTAMPTZ,
     completed_at    TIMESTAMPTZ,
     cancelled_at    TIMESTAMPTZ,
+
+    -- 退款信息
+    refund_amount   DECIMAL(15,2) DEFAULT 0,         -- 已退款金额
 
     -- 其他
     remark          VARCHAR(500),

@@ -311,6 +311,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;       -- GiST索引支持
 CREATE EXTENSION IF NOT EXISTS uuid-ossp;        -- UUID生成
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements; -- 查询统计
 CREATE EXTENSION IF NOT EXISTS pgcrypto;         -- 加密函数
+CREATE EXTENSION IF NOT EXISTS ltree;            -- 树形结构支持
 
 -- 创建Schema
 CREATE SCHEMA IF NOT EXISTS content;
@@ -858,6 +859,7 @@ CREATE TABLE auth.users (
     real_name       VARCHAR(100),
     avatar_url      VARCHAR(500),
     department_id   UUID,                             -- 部门
+    org_id          UUID,                             -- 所属组织(租户)
 
     -- 账户状态
     is_active       BOOLEAN DEFAULT TRUE,
@@ -984,6 +986,7 @@ CREATE TABLE search.search_index (
     content_id      UUID NOT NULL,
 
     -- 搜索内容(分词后)
+    search_vector   TSVECTOR,                       -- 综合搜索向量(所有字段合并)
     title_vector    TSVECTOR,
     summary_vector  TSVECTOR,
     body_vector     TSVECTOR,
