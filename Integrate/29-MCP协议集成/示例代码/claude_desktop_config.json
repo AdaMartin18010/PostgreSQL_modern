@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "postgresql": {
+      "command": "python",
+      "args": ["C:/path/to/postgres_mcp_server.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:your_password@localhost:5432/your_database",
+        "READ_ONLY_MODE": "true",
+        "MAX_QUERY_RESULTS": "10000",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}

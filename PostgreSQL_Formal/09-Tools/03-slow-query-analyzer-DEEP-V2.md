@@ -28,6 +28,7 @@ C_{query} = T_{exec} \times C_{cpu} + IO_{pages} \times C_{io} + W_{lock} \times
 $$
 
 **级联效应**:
+
 ```
 慢查询 → 连接堆积 → 内存压力 → 缓存失效 → 更多慢查询
      ↓
@@ -48,12 +49,14 @@ $$
 ### 1.2 慢查询分析的挑战
 
 **多维复杂性**:
+
 - 执行计划选择
 - 数据分布变化
 - 并发竞争
 - 资源配置
 
 **观测困难**:
+
 - 生产环境难以复现
 - 参数 sniffing 问题
 - 计划漂移
@@ -89,14 +92,16 @@ $$
 $$
 
 其中：
+
 - $V$: 操作符节点集合
 - $E \subseteq V \times V$: 父子边
 - $r \in V$: 根节点
 - $C_{total} = \sum_{v \in V} C(v)$: 总代价
 
 **树遍历代价累积**:
+
 ```
-Cost(node) = StartupCost(node) + 
+Cost(node) = StartupCost(node) +
              (OutputRows(node) × PerRowCost(node))
 ```
 
@@ -138,6 +143,7 @@ pg_stat_statements通过共享内存累积查询统计信息：
 | pg_stat_statements.track_planning | off | on | 追踪计划时间 |
 
 **安装启用**:
+
 ```sql
 -- postgresql.conf
 shared_preload_libraries = 'pg_stat_statements'
@@ -151,8 +157,9 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 ### 3.2 核心指标解读
 
 **查询标识**:
+
 ```sql
-SELECT 
+SELECT
     queryid,          -- 规范化后的查询ID
     dbid,             -- 数据库ID
     userid,           -- 执行用户ID
@@ -172,8 +179,9 @@ LIMIT 5;
 | rows | 返回行数 | 数据量评估 |
 
 **资源指标**:
+
 ```sql
-SELECT 
+SELECT
     shared_blks_hit,      -- 共享缓存命中
     shared_blks_read,     -- 共享缓存读取(磁盘)
     local_blks_hit,       -- 本地缓存命中
@@ -187,47 +195,48 @@ WHERE queryid = 12345678;
 ### 3.3 慢查询识别算法
 
 **多维评分模型**:
+
 ```sql
 CREATE OR REPLACE VIEW v_slow_query_candidates AS
-SELECT 
+SELECT
     queryid,
     left(query, 80) as query_preview,
     calls,
-    
+
     -- 总耗时评分 (权重: 40%)
-    CASE 
+    CASE
         WHEN total_exec_time > 3600000 THEN 40
         WHEN total_exec_time > 600000 THEN 30
         WHEN total_exec_time > 60000 THEN 20
         WHEN total_exec_time > 10000 THEN 10
         ELSE 5
     END as total_time_score,
-    
+
     -- 平均耗时评分 (权重: 35%)
-    CASE 
+    CASE
         WHEN mean_exec_time > 10000 THEN 35
         WHEN mean_exec_time > 1000 THEN 25
         WHEN mean_exec_time > 100 THEN 15
         WHEN mean_exec_time > 10 THEN 5
         ELSE 0
     END as mean_time_score,
-    
+
     -- 执行频率评分 (权重: 15%)
-    CASE 
+    CASE
         WHEN calls > 100000 THEN 15
         WHEN calls > 10000 THEN 10
         WHEN calls > 1000 THEN 5
         ELSE 0
     END as frequency_score,
-    
+
     -- I/O效率评分 (权重: 10%)
-    CASE 
-        WHEN shared_blks_hit + shared_blks_read > 0 
-        THEN 10 * shared_blks_hit::numeric / 
+    CASE
+        WHEN shared_blks_hit + shared_blks_read > 0
+        THEN 10 * shared_blks_hit::numeric /
              (shared_blks_hit + shared_blks_read)
         ELSE 0
     END as io_efficiency_score,
-    
+
     total_exec_time,
     mean_exec_time,
     stddev_exec_time,
@@ -237,8 +246,8 @@ SELECT
 
 FROM pg_stat_statements
 WHERE calls > 10
-ORDER BY 
-    (total_time_score + mean_time_score + 
+ORDER BY
+    (total_time_score + mean_time_score +
      frequency_score + io_efficiency_score) DESC
 LIMIT 50;
 ```
@@ -258,6 +267,7 @@ LIMIT 50;
 | FORMAT JSON | JSON格式输出 | 程序化处理 |
 
 **完整示例**:
+
 ```sql
 EXPLAIN (ANALYZE, BUFFERS, COSTS, TIMING, FORMAT JSON)
 SELECT o.order_id, c.customer_name, SUM(oi.quantity * oi.price)
@@ -318,21 +328,22 @@ suggestion: "执行ANALYZE更新统计信息"
 ```
 
 **自动问题检测SQL**:
+
 ```sql
 -- 查找估计严重不准的计划节点
 WITH plan_nodes AS (
-    SELECT 
+    SELECT
         queryid,
         plan_node,
         estimated_rows,
         actual_rows,
-        CASE WHEN actual_rows > 0 
+        CASE WHEN actual_rows > 0
              THEN ABS(estimated_rows - actual_rows)::numeric / actual_rows
-             ELSE 0 
+             ELSE 0
         END as estimation_error
     FROM pg_stat_statements_plan_nodes  -- 假设存在此视图
 )
-SELECT 
+SELECT
     queryid,
     plan_node,
     estimated_rows,
@@ -361,6 +372,7 @@ LIMIT 20;
 | 结构 | 缺少分区 | 中 | 高 |
 
 **规则实现**:
+
 ```sql
 CREATE TABLE query_optimization_rules (
     rule_id serial PRIMARY KEY,
@@ -373,7 +385,7 @@ CREATE TABLE query_optimization_rules (
 );
 
 -- 示例规则
-INSERT INTO query_optimization_rules 
+INSERT INTO query_optimization_rules
 (rule_name, pattern, condition_sql, suggestion_template, confidence)
 VALUES (
     'missing_index_on_filter',
@@ -388,6 +400,7 @@ VALUES (
 ### 5.2 智能建议生成
 
 **建议生成函数**:
+
 ```sql
 CREATE OR REPLACE FUNCTION generate_optimization_suggestions(
     p_queryid bigint
@@ -405,7 +418,7 @@ BEGIN
     SELECT * INTO v_query_record
     FROM pg_stat_statements
     WHERE queryid = p_queryid;
-    
+
     -- 建议1: 统计信息检查
     IF v_query_record.stddev_exec_time / NULLIF(v_query_record.mean_exec_time, 0) > 0.5 THEN
         category := '统计信息';
@@ -415,32 +428,32 @@ BEGIN
         impact_estimate := '可能减少30-50%的执行时间波动';
         RETURN NEXT;
     END IF;
-    
+
     -- 建议2: 索引建议
     IF v_query_record.shared_blks_read > v_query_record.shared_blks_hit * 2 THEN
         category := '索引';
         severity := '高';
-        suggestion := '缓存命中率低(' || 
-            round(100.0 * v_query_record.shared_blks_hit / 
-                  NULLIF(v_query_record.shared_blks_hit + v_query_record.shared_blks_read, 0), 2) 
+        suggestion := '缓存命中率低(' ||
+            round(100.0 * v_query_record.shared_blks_hit /
+                  NULLIF(v_query_record.shared_blks_hit + v_query_record.shared_blks_read, 0), 2)
             || '%)，建议检查索引使用';
         confidence := 0.80;
         impact_estimate := '可能减少50-80%的I/O时间';
         RETURN NEXT;
     END IF;
-    
+
     -- 建议3: 临时文件
     IF v_query_record.temp_blks_written > 0 THEN
         category := '内存';
         severity := '高';
-        suggestion := '查询使用了临时文件(' || 
-            pg_size_pretty(v_query_record.temp_blks_written * 8192) || 
+        suggestion := '查询使用了临时文件(' ||
+            pg_size_pretty(v_query_record.temp_blks_written * 8192) ||
             ')，建议增加work_mem';
         confidence := 0.90;
         impact_estimate := '可能减少20-60%的执行时间';
         RETURN NEXT;
     END IF;
-    
+
     RETURN;
 END;
 $$ LANGUAGE plpgsql;
@@ -452,6 +465,7 @@ SELECT * FROM generate_optimization_suggestions(12345678);
 ### 5.3 慢查询报告生成
 
 **综合报告脚本**:
+
 ```python
 #!/usr/bin/env python3
 """PostgreSQL慢查询分析报告生成器"""
@@ -463,17 +477,17 @@ from datetime import datetime
 def generate_slow_query_report(conn_str, top_n=20):
     conn = psycopg2.connect(conn_str)
     cur = conn.cursor()
-    
+
     report = {
         'generated_at': datetime.now().isoformat(),
         'summary': {},
         'top_slow_queries': [],
         'optimization_suggestions': []
     }
-    
+
     # 1. 总体统计
     cur.execute("""
-        SELECT 
+        SELECT
             count(*) as total_queries,
             sum(calls) as total_calls,
             sum(total_exec_time) as total_time_ms,
@@ -487,10 +501,10 @@ def generate_slow_query_report(conn_str, top_n=20):
         'total_execution_time_ms': row[2],
         'average_execution_time_ms': round(row[3], 2)
     }
-    
+
     # 2. Top慢查询
     cur.execute("""
-        SELECT 
+        SELECT
             queryid,
             left(query, 200) as query_preview,
             calls,
@@ -505,7 +519,7 @@ def generate_slow_query_report(conn_str, top_n=20):
         ORDER BY total_exec_time DESC
         LIMIT %s
     """, (top_n,))
-    
+
     for row in cur.fetchall():
         query_info = {
             'queryid': row[0],
@@ -520,7 +534,7 @@ def generate_slow_query_report(conn_str, top_n=20):
             ) if (row[7] + row[8]) > 0 else 0
         }
         report['top_slow_queries'].append(query_info)
-        
+
         # 生成优化建议
         cur.execute("SELECT * FROM generate_optimization_suggestions(%s)", (row[0],))
         suggestions = cur.fetchall()
@@ -537,10 +551,10 @@ def generate_slow_query_report(conn_str, top_n=20):
                     for s in suggestions
                 ]
             })
-    
+
     cur.close()
     conn.close()
-    
+
     return report
 
 if __name__ == '__main__':
@@ -548,7 +562,7 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Usage: slow_query_report.py <connection_string>")
         sys.exit(1)
-    
+
     report = generate_slow_query_report(sys.argv[1])
     print(json.dumps(report, indent=2, ensure_ascii=False))
 ```
@@ -560,14 +574,16 @@ if __name__ == '__main__':
 ### 6.1 案例1: N+1查询问题
 
 **症状**:
+
 - API响应时间: 5秒+
 - 数据库QPS异常高
 - 大量相似小查询
 
 **诊断**:
+
 ```sql
 -- 发现模式: 大量单条查询
-SELECT 
+SELECT
     queryid,
     query,
     calls,
@@ -579,6 +595,7 @@ ORDER BY calls DESC;
 ```
 
 **根本原因**:
+
 ```python
 # 问题代码 (ORM导致的N+1)
 orders = Order.objects.filter(status='pending')
@@ -588,6 +605,7 @@ for order in orders:  # 1次查询
 ```
 
 **解决方案**:
+
 ```python
 # 优化后 (预加载)
 orders = Order.objects.filter(status='pending').select_related('user')
@@ -596,17 +614,20 @@ for order in orders:  # 1次查询
 ```
 
 **效果**:
+
 - 查询次数: 50000 → 2
 - 响应时间: 5秒 → 150ms
 
 ### 6.2 案例2: 统计信息过时
 
 **症状**:
+
 - 查询计划突然变差
 - 行数估计严重不准
 - 执行时间波动大
 
 **诊断**:
+
 ```sql
 -- 查看计划变化
 EXPLAIN (ANALYZE, BUFFERS)
@@ -618,7 +639,7 @@ SELECT * FROM events WHERE event_type = 'click' AND created_at > '2024-03-01';
 -- 估计100行，实际500万行！
 
 -- 检查统计信息时间
-SELECT 
+SELECT
     schemaname,
     tablename,
     last_vacuum,
@@ -631,6 +652,7 @@ WHERE tablename = 'events';
 ```
 
 **解决方案**:
+
 ```sql
 -- 立即更新统计信息
 ANALYZE events;
@@ -643,20 +665,23 @@ ALTER TABLE events SET (
 ```
 
 **效果**:
+
 - 计划从Seq Scan变为Index Scan
 - 执行时间: 4.5秒 → 45ms
 
 ### 6.3 案例3: 锁竞争导致的慢查询
 
 **症状**:
+
 - 查询本身很快(<10ms)
 - 实际响应时间很高(>1秒)
 - 并发时问题加剧
 
 **诊断**:
+
 ```sql
 -- 查看锁等待
-SELECT 
+SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
     blocking_locks.pid AS blocking_pid,
@@ -670,7 +695,7 @@ JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_activity.pid = bl
 WHERE NOT blocked_locks.granted;
 
 -- 查看pg_stat_statements中的等待时间 (PostgreSQL 16+)
-SELECT 
+SELECT
     queryid,
     left(query, 100),
     mean_exec_time,
@@ -683,6 +708,7 @@ ORDER BY stddev_exec_time DESC;
 
 **根本原因**:
 长事务持有锁，阻塞其他查询:
+
 ```sql
 -- 问题事务
 BEGIN;
@@ -693,6 +719,7 @@ COMMIT;
 ```
 
 **解决方案**:
+
 ```sql
 -- 1. 缩短事务
 BEGIN;
@@ -713,6 +740,7 @@ SET lock_timeout = '2s';
 ### 7.1 auto_explain使用
 
 **配置**:
+
 ```sql
 -- 自动记录慢查询计划
 LOAD 'auto_explain';
@@ -723,6 +751,7 @@ SET auto_explain.log_format = json;
 ```
 
 **日志分析**:
+
 ```python
 # 解析auto_explain日志
 import json
@@ -744,6 +773,7 @@ def parse_auto_explain_log(log_file):
 ### 7.2 查询计划稳定性
 
 **计划漂移检测**:
+
 ```sql
 -- 保存基线计划
 CREATE TABLE query_plan_baselines (
@@ -754,11 +784,11 @@ CREATE TABLE query_plan_baselines (
 );
 
 -- 检测计划变化
-SELECT 
+SELECT
     b.queryid,
     b.baseline_plan_hash as old_hash,
     md5(current_plan::text) as new_hash,
-    CASE WHEN b.baseline_plan_hash != md5(current_plan::text) 
+    CASE WHEN b.baseline_plan_hash != md5(current_plan::text)
          THEN 'CHANGED' ELSE 'STABLE' END as status
 FROM query_plan_baselines b
 JOIN LATERAL (
