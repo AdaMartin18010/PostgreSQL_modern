@@ -1,0 +1,256 @@
+# PostgreSQL_Formal 月度链接检查自动化
+#
+# 触发条件:
+# 1. 每月 1 日自动运行 (cron 调度)
+# 2. 手动触发 (workflow_dispatch)
+# 3. PR 中修改了链接检查相关文件时
+#
+# 功能:
+# - 运行链接检查脚本
+# - 生成详细报告
+# - 上传报告为工作流产物
+# - 在发现失效链接时创建 Issue
+
+name: Monthly Link Check
+
+on:
+  # 每月 1 日 UTC 时间 02:00 运行
+  schedule:
+    - cron: '0 2 1 * *'
+  
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      create_issue:
+        description: '发现失效链接时是否创建 Issue'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  
+  # PR 触发（当修改了链接检查相关文件或 Markdown 文件时）
+  pull_request:
+    paths:
+      - '**.md'
+      - 'tools/monthly-link-check.sh'
+      - '.github/workflows/monthly-link-check.yml'
+
+env:
+  REPORT_DIR: reports
+
+jobs:
+  link-check:
+    name: Check Markdown Links
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史以便比较
+
+      # 设置环境
+      - name: Setup environment
+        run: |
+          echo "REPORT_DATE=$(date +'%Y-%m')" >> $GITHUB_ENV
+          echo "CHECK_DATE=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          mkdir -p ${{ env.REPORT_DIR }}
+
+      # 运行链接检查脚本
+      - name: Run link check
+        working-directory: PostgreSQL_Formal
+        run: |
+          chmod +x tools/monthly-link-check.sh
+          ./tools/monthly-link-check.sh --quiet
+        continue-on-error: true  # 即使有失效链接也不中断工作流
+
+      # 上传报告为产物
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-check-reports-${{ env.REPORT_DATE }}
+          path: |
+            PostgreSQL_Formal/reports/monthly-link-report-*.md
+            PostgreSQL_Formal/reports/monthly-link-summary-*.txt
+          retention-days: 365  # 保留一年
+
+      # 解析检查结果
+      - name: Parse results
+        id: parse
+        working-directory: PostgreSQL_Formal
+        run: |
+          SUMMARY_FILE="reports/monthly-link-summary-${{ env.REPORT_DATE }}.txt"
+          
+          if [[ -f "$SUMMARY_FILE" ]]; then
+            # 提取关键数据
+            BROKEN=$(grep "失效链接:" "$SUMMARY_FILE" | awk '{print $2}')
+            WARNING=$(grep "警告链接:" "$SUMMARY_FILE" | awk '{print $2}')
+            TOTAL=$(grep "总链接数:" "$SUMMARY_FILE" | awk '{print $2}')
+            VALID=$(grep "有效链接:" "$SUMMARY_FILE" | awk '{print $2}')
+            HEALTH=$(grep "评分:" "$SUMMARY_FILE" | awk '{print $2}')
+            
+            echo "broken=$BROKEN" >> $GITHUB_OUTPUT
+            echo "warning=$WARNING" >> $GITHUB_OUTPUT
+            echo "total=$TOTAL" >> $GITHUB_OUTPUT
+            echo "valid=$VALID" >> $GITHUB_OUTPUT
+            echo "health=$HEALTH" >> $GITHUB_OUTPUT
+            
+            # 判断是否失败
+            if [[ "$BROKEN" -gt 0 ]]; then
+              echo "has_broken=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_broken=false" >> $GITHUB_OUTPUT
+            fi
+            
+            # 输出到 job 摘要
+            echo "## 🔗 链接检查结果" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| 指标 | 数值 |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+            echo "| 总链接数 | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "| 有效链接 | $VALID |" >> $GITHUB_STEP_SUMMARY
+            echo "| 失效链接 | $BROKEN |" >> $GITHUB_STEP_SUMMARY
+            echo "| 警告链接 | $WARNING |" >> $GITHUB_STEP_SUMMARY
+            echo "| 健康度 | $HEALTH |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [[ "$BROKEN" -gt 0 ]]; then
+              echo "⚠️ 发现 $BROKEN 个失效链接，请查看详细报告。" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ 未发现失效链接！" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "has_broken=false" >> $GITHUB_OUTPUT
+            echo "⚠️ 未找到摘要文件" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # 创建 Issue（如果发现有失效链接且配置为创建 Issue）
+      - name: Create Issue for broken links
+        if: |
+          steps.parse.outputs.has_broken == 'true' && 
+          (github.event_name == 'schedule' || github.event.inputs.create_issue == 'true')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reportDate = process.env.REPORT_DATE;
+            const brokenCount = '${{ steps.parse.outputs.broken }}';
+            const warningCount = '${{ steps.parse.outputs.warning }}';
+            const healthScore = '${{ steps.parse.outputs.health }}';
+            
+            const title = `🔗 月度链接检查报告 - ${reportDate} (${brokenCount} 个失效链接)`;
+            
+            const body = `## 📊 链接检查报告 - ${reportDate}
+
+**检查时间:** ${process.env.CHECK_DATE}  
+**工作流运行:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+### 统计摘要
+
+| 指标 | 数值 |
+|------|------|
+| 总链接数 | ${{ steps.parse.outputs.total }} |
+| 有效链接 | ${{ steps.parse.outputs.valid }} |
+| **失效链接** | **${{ steps.parse.outputs.broken }}** 🔴 |
+| **警告链接** | **${{ steps.parse.outputs.warning }}** ⚠️ |
+| 健康度评分 | ${{ steps.parse.outputs.health }} |
+
+### 处理建议
+
+1. 下载工作流产物查看详细报告
+2. 根据报告中的**失效链接详情**表格进行修复
+3. 修复后重新运行链接检查确认
+
+### 常见修复方法
+
+**锚点错误:**
+- 检查标题是否被修改
+- 更新链接中的锚点名称
+
+**文件路径错误:**
+- 确认目标文件存在
+- 修正相对路径
+
+**自动修复提示:**
+- 部分锚点错误可以通过脚本自动修复
+- 参考报告中的"建议修复"列
+
+---
+*本 Issue 由月度链接检查工作流自动创建*`
+
+            // 检查是否已存在相同月份的 Issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'link-check,automated'
+            });
+            
+            const existingIssue = issues.find(issue => 
+              issue.title.includes(`月度链接检查报告 - ${reportDate}`)
+            );
+            
+            if (existingIssue) {
+              // 更新现有 Issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: body
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // 创建新 Issue
+              const { data: newIssue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['link-check', 'automated', 'documentation']
+              });
+              console.log(`Created new issue #${newIssue.number}`);
+            }
+
+      # PR 评论（如果是 PR 触发）
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const broken = '${{ steps.parse.outputs.broken }}';
+            const warning = '${{ steps.parse.outputs.warning }}';
+            const health = '${{ steps.parse.outputs.health }}';
+            
+            let status = '✅ 所有链接正常';
+            if (broken > 0) status = '🔴 发现失效链接';
+            else if (warning > 0) status = '⚠️ 发现警告链接';
+            
+            const body = `## 🔗 PR 链接检查报告
+
+${status}
+
+| 指标 | 数值 |
+|------|------|
+| 失效链接 | ${broken} |
+| 警告链接 | ${warning} |
+| 健康度 | ${health} |
+
+${broken > 0 ? '⚠️ 请在合并前修复失效链接。' : '✅ 可以安全合并！'}
+
+[查看详细报告](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      # 失败通知（如果有失效链接）
+      - name: Notify on failure
+        if: steps.parse.outputs.has_broken == 'true'
+        run: |
+          echo "::error::发现 ${{ steps.parse.outputs.broken }} 个失效链接，请查看报告并修复！"
+          # 这里可以添加更多通知方式，如 Slack、Email 等

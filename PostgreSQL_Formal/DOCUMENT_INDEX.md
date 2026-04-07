@@ -1,7 +1,7 @@
 # PostgreSQL_Formal 文档索引
 
 > **索引版本**: 2026-04-07
-> **文档总数**: 20 篇 (PG17: 8篇, PG18: 12篇)
+> **文档总数**: 21 篇 (PG17: 9篇, PG18: 12篇)
 > **索引类型**: 版本索引 + 主题索引
 
 ---
@@ -20,6 +20,7 @@
 | [17.06 pg_maintain 角色](./00-Version-Specific/17-Released/17.06-pg_maintain-Role-DEEP-V2.md) | 特性分析 | 中级 | 稳定 | 安全, 权限管理, RBAC |
 | [17.07 监控与诊断](./00-Version-Specific/17-Released/17.07-Monitoring-Diagnostics-DEEP-V2.md) | 特性分析 | 中级 | 稳定 | 监控, 可观测性, pg_wait_events |
 | [17.08 升级指南](./00-Version-Specific/17-Released/17.08-Upgrade-Guide-DEEP-V2.md) | 操作指南 | 高级 | 稳定 | 升级, pg_upgrade, 迁移 |
+| [17.09 JSON 性能优化](./00-Version-Specific/17-Released/17.09-JSON-Performance-Optimization-DEEP-V2.md) | 性能优化 | 高级 | 稳定 | JSON, GIN, 并行构建, 性能 |
 
 ### PostgreSQL 18
 
@@ -48,6 +49,7 @@
 - [18.01 AIO 异步 I/O](./00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md) - Linux io_uring 异步 I/O
 - [18.02 B-tree Skip Scan](./00-Version-Specific/18-Released/18.02-SkipScan-DEEP-V2.md) - 多列索引优化
 - [18.03 UUIDv7](./00-Version-Specific/18-Released/18.03-UUIDv7-DEEP-V2.md) - 时序主键性能优化
+- [17.09 JSON 性能优化](./00-Version-Specific/17-Released/17.09-JSON-Performance-Optimization-DEEP-V2.md) - GIN 索引并行构建与查询优化
 - [18.07 并行 GIN 构建](./00-Version-Specific/18-Released/18.07-Parallel-GIN-Build-DEEP-V2.md) - 全文检索索引并行构建
 - [18.12 LZ4 压缩](./00-Version-Specific/18-Released/18.12-LZ4-Compression-DEEP-V2.md) - TOAST/WAL 压缩优化
 
