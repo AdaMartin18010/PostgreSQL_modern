@@ -1,53 +1,50 @@
 ---
-name: Bug Report / 错误报告
-about: 报告代码示例错误、文档错误或技术问题
-title: '[BUG] '
-labels: 'bug'
+name: 🐛 错误报告
+about: 报告文档中的错误或问题
+title: '[Bug] '
+labels: ['bug', 'needs-triage']
 assignees: ''
 ---
 
-## 🐛 问题描述 / Bug Description
+## 错误描述
 
-<!-- 清晰简洁地描述这个问题 -->
+<!-- 清晰简洁地描述错误 -->
 
-## 📍 位置 / Location
+## 位置信息
 
-- **文件路径**：`path/to/file.md` 或 `path/to/script.sql`
-- **章节/行号**：第XX行 或 "## 章节标题"
+- **文件路径**：例如 `PostgreSQL_Formal/01-Theory/01-transaction.md`
+- **章节**：例如 "3.2 并发控制"
+- **段落**：简要描述位置
 
-## 🔄 复现步骤 / Steps to Reproduce
+## 错误类型
 
-1.
-2.
-3.
+- [ ] 技术错误（内容不准确）
+- [ ] 代码示例错误（无法运行）
+- [ ] 链接错误（无法访问）
+- [ ] 格式错误（Markdown 渲染问题）
+- [ ] 错别字或语法错误
+- [ ] 其他
 
-## ❌ 当前行为 / Current Behavior
+## 期望的修正
 
-<!-- 描述实际发生了什么 -->
+<!-- 描述应该如何修正 -->
 
-## ✅ 期望行为 / Expected Behavior
+## 环境信息
 
-<!-- 描述应该发生什么 -->
+- **PostgreSQL 版本**：（如适用）
+- **操作系统**：（如适用）
+- **浏览器**：（如适用）
 
-## 💻 环境信息 / Environment
+## 截图
 
-- **PostgreSQL版本**：（如 17.0）
-- **操作系统**：（如 Ubuntu 22.04, macOS 14, Windows 11）
-- **相关扩展**：（如 pgvector 0.5.1, TimescaleDB 2.13.0）
+<!-- 如有必要，添加截图说明问题 -->
 
-## 📸 截图/错误日志 / Screenshots or Error Logs
+## 附加信息
 
-```text
-粘贴错误日志或截图
-```
+<!-- 任何其他相关信息 -->
 
-## 🔧 可能的解决方案 / Possible Solution
+## 验证清单
 
-<!-- 可选：如果你有解决思路，请分享 -->
-
-## ✅ 自检清单 / Checklist
-
-- [ ] 我已搜索现有的Issue，确认这不是重复报告
-- [ ] 我已阅读相关文档和CONTRIBUTING.md
-- [ ] 我已尝试在最新版本（PG17）上复现此问题
-- [ ] 我愿意提交PR修复此问题（可选）
+- [ ] 我已搜索现有 Issue，确认此问题未被报告
+- [ ] 我已提供足够的信息以定位和修复问题
+- [ ] 如有代码示例错误，我已验证其可复现

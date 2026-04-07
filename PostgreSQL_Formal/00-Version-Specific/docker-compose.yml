@@ -1,0 +1,173 @@
+# PostgreSQL 多版本实验环境
+# 支持 PG16/PG17/PG18 三个版本，便于对比测试和文档验证
+# 
+# 快速开始:
+#   docker-compose up -d
+# 
+# 查看日志:
+#   docker-compose logs -f <service_name>
+# 
+# 停止环境:
+#   docker-compose down
+#   docker-compose down -v  # 同时删除数据卷
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # PostgreSQL 16 - 参考版本 (稳定版)
+  # ==========================================
+  postgres16:
+    image: postgres:16-alpine
+    container_name: pg16
+    hostname: postgres16
+    environment:
+      POSTGRES_USER: dca
+      POSTGRES_PASSWORD: dca_demo
+      POSTGRES_DB: dca_demo
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # 时区设置
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+    volumes:
+      - pg16_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      - ./config/postgresql16.conf:/etc/postgresql/postgresql.conf:ro
+    ports:
+      - "5433:5432"
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c shared_preload_libraries='pg_stat_statements,pgcrypto'
+    networks:
+      - pg-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dca -d dca_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==========================================
+  # PostgreSQL 17 - 当前稳定版 (推荐)
+  # ==========================================
+  postgres17:
+    image: postgres:17-alpine
+    container_name: pg17
+    hostname: postgres17
+    environment:
+      POSTGRES_USER: dca
+      POSTGRES_PASSWORD: dca_demo
+      POSTGRES_DB: dca_demo
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+    volumes:
+      - pg17_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      - ./config/postgresql17.conf:/etc/postgresql/postgresql.conf:ro
+    ports:
+      - "5432:5432"
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c shared_preload_libraries='pg_stat_statements,pgcrypto'
+    networks:
+      - pg-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dca -d dca_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==========================================
+  # PostgreSQL 18 - 最新版 (测试版)
+  # 注意: PG18 尚未正式发布，使用 snapshot 镜像
+  # ==========================================
+  postgres18:
+    image: postgres:18-alpine  # 如果 18 未发布，可临时改为 17-alpine 或 snapshot
+    container_name: pg18
+    hostname: postgres18
+    environment:
+      POSTGRES_USER: dca
+      POSTGRES_PASSWORD: dca_demo
+      POSTGRES_DB: dca_demo
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+    volumes:
+      - pg18_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      - ./config/postgresql18.conf:/etc/postgresql/postgresql.conf:ro
+    ports:
+      - "5434:5432"
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c shared_preload_libraries='pg_stat_statements,pgcrypto'
+    networks:
+      - pg-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dca -d dca_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # PG18 可能不存在，添加容错配置
+    profiles:
+      - pg18
+
+  # ==========================================
+  # pgAdmin 4 - Web 管理界面
+  # ==========================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    hostname: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@dca.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./config/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    ports:
+      - "8080:80"
+    networks:
+      - pg-network
+    depends_on:
+      postgres16:
+        condition: service_healthy
+      postgres17:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:80/misc/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# ==========================================
+# 数据卷定义
+# ==========================================
+volumes:
+  pg16_data:
+    driver: local
+  pg17_data:
+    driver: local
+  pg18_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# ==========================================
+# 网络配置
+# ==========================================
+networks:
+  pg-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

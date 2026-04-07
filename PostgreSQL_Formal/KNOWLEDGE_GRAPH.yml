@@ -1,0 +1,823 @@
+# PostgreSQL_Formal 知识图谱
+# 用于建立文档间的关联关系，便于导航和学习路径规划
+# 
+# 使用说明:
+# 1. concepts: 定义核心概念节点，包含关联文档和相关概念
+# 2. learning_paths: 定义学习路径，引导用户系统化学习
+# 3. categories: 按主题分类文档
+# 4. version_matrix: 版本特性矩阵
+# 5. relationships: 文档间显式关系
+
+metadata:
+  name: "PostgreSQL_Formal 知识图谱"
+  version: "1.0.0"
+  last_updated: "2026-04-07"
+  total_documents: 194
+  
+# ============================================
+# 1. 概念节点 (Concepts)
+# ============================================
+concepts:
+  # 存储引擎核心概念
+  - id: "mvcc"
+    name: "MVCC (多版本并发控制)"
+    category: "concurrency"
+    description: "PostgreSQL 的核心并发控制机制，通过保存数据多个版本来实现读写不阻塞"
+    documents:
+      - "04-Concurrency/01-MVCC-DEEP-V2.md"
+      - "04-Concurrency/01-MVCC-Formally-Specified.md"
+      - "10-Visualization/01-MVCC-Visualization-DEEP-V2.md"
+    related: ["transaction", "isolation", "wal", "vacuum", "snapshot"]
+    difficulty: "advanced"
+    
+  - id: "wal"
+    name: "WAL (预写式日志)"
+    category: "storage"
+    description: "保证数据持久性和崩溃恢复的核心机制"
+    documents:
+      - "02-Storage/02.03-WAL-DEEP-V2.md"
+      - "02-Storage/02.03-WAL-Theory.md"
+    related: ["transaction", "mvcc", "replication", "recovery"]
+    difficulty: "advanced"
+    
+  - id: "buffer_pool"
+    name: "Buffer Pool (缓冲池)"
+    category: "storage"
+    description: "内存中的数据页缓存管理机制"
+    documents:
+      - "02-Storage/02.01-BufferPool-DEEP-V2.md"
+      - "02-Storage/02.01-BufferPool-Formal.md"
+    related: ["storage", "wal", "performance"]
+    difficulty: "intermediate"
+    
+  - id: "btree"
+    name: "B-Tree 索引"
+    category: "storage"
+    description: "PostgreSQL 默认的索引类型，基于 B-Tree 数据结构"
+    documents:
+      - "02-Storage/02.02-BTree-DEEP-V2.md"
+      - "02-Storage/02.02-BTree-Formal.md"
+      - "02-Storage/02.05-Index-Types-Matrix-DEEP-V2.md"
+    related: ["index", "query_optimization", "storage"]
+    difficulty: "intermediate"
+    
+  - id: "heap_am"
+    name: "Heap Access Method"
+    category: "storage"
+    description: "堆表存储访问方法，管理表数据的物理存储"
+    documents:
+      - "02-Storage/02.04-HeapAM-DEEP-V2.md"
+      - "02-Storage/02.04-HeapAM-Formal.md"
+    related: ["storage", "mvcc", "toast"]
+    difficulty: "advanced"
+
+  # 并发控制概念
+  - id: "transaction"
+    name: "事务 (Transaction)"
+    category: "concurrency"
+    description: "数据库事务的原子性操作单元"
+    documents:
+      - "01-Theory/01.02-Transaction-Theory-DEEP-V2.md"
+      - "01-Theory/01.02-Transaction-Theory.md"
+      - "01-Theory/01.03-ACID-Formalization-DEEP-V2.md"
+      - "01-Theory/01.03-ACID-Formalization.md"
+    related: ["acid", "isolation", "mvcc", "wal", "locking"]
+    difficulty: "beginner"
+    
+  - id: "isolation"
+    name: "隔离级别 (Isolation Levels)"
+    category: "concurrency"
+    description: "SQL 标准定义的事务隔离级别及其实现"
+    documents:
+      - "01-Theory/01.04-Isolation-Levels-Adya-DEEP-V2.md"
+      - "01-Theory/01.04-Isolation-Levels-Adya.md"
+    related: ["transaction", "mvcc", "ssi", "phenomena"]
+    difficulty: "advanced"
+    
+  - id: "acid"
+    name: "ACID 属性"
+    category: "theory"
+    description: "原子性、一致性、隔离性、持久性"
+    documents:
+      - "01-Theory/01.03-ACID-Formalization-DEEP-V2.md"
+      - "01-Theory/01.03-ACID-Formalization.md"
+    related: ["transaction", "consistency", "durability"]
+    difficulty: "beginner"
+    
+  - id: "locking"
+    name: "锁机制 (Locking)"
+    category: "concurrency"
+    description: "表级锁、行级锁、死锁检测等并发控制机制"
+    documents:
+      - "04-Concurrency/04.02-Locking-Protocols-DEEP-V2.md"
+      - "04-Concurrency/04.02-Locking-Protocols.md"
+    related: ["deadlock", "concurrency", "transaction"]
+    difficulty: "intermediate"
+    
+  - id: "deadlock"
+    name: "死锁检测 (Deadlock Detection)"
+    category: "concurrency"
+    description: "自动检测和解决事务间的循环等待"
+    documents:
+      - "04-Concurrency/04.03-Deadlock-Detection-DEEP-V2.md"
+      - "04-Concurrency/04.03-Deadlock-Detection.md"
+    related: ["locking", "concurrency"]
+    difficulty: "intermediate"
+    
+  - id: "ssi"
+    name: "SSI (可串行化快照隔离)"
+    category: "concurrency"
+    description: "PostgreSQL 实现的可串行化隔离级别"
+    documents:
+      - "04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md"
+      - "04-Concurrency/04.04-SSI-Serializable.md"
+    related: ["isolation", "mvcc", "serialization"]
+    difficulty: "advanced"
+
+  # 查询处理概念
+  - id: "query_optimizer"
+    name: "查询优化器 (Query Optimizer)"
+    category: "query"
+    description: "基于代价模型的 SQL 查询计划生成"
+    documents:
+      - "03-Query/03.01-QueryOptimizer-CostModel-DEEP-V2.md"
+      - "03-Query/03.01-QueryOptimizer-CostModel.md"
+    related: ["cost_model", "statistics", "join"]
+    difficulty: "advanced"
+    
+  - id: "cost_model"
+    name: "代价模型 (Cost Model)"
+    category: "query"
+    description: "评估查询计划执行代价的数学模型"
+    documents:
+      - "03-Query/03.01-QueryOptimizer-CostModel-DEEP-V2.md"
+    related: ["query_optimizer", "statistics"]
+    difficulty: "advanced"
+    
+  - id: "join_algorithms"
+    name: "连接算法 (Join Algorithms)"
+    category: "query"
+    description: "Nested Loop、Hash Join、Merge Join 等连接实现"
+    documents:
+      - "03-Query/03.02-Join-Algorithms-Analysis-DEEP-V2.md"
+      - "03-Query/03.02-Join-Algorithms-Analysis.md"
+    related: ["query_optimizer", "performance"]
+    difficulty: "intermediate"
+    
+  - id: "statistics"
+    name: "统计信息 (Statistics)"
+    category: "query"
+    description: "用于查询优化的数据分布统计"
+    documents:
+      - "03-Query/03.03-Statistics-Derivation-DEEP-V2.md"
+      - "03-Query/03.03-Statistics-Derivation.md"
+    related: ["query_optimizer", "cost_model"]
+    difficulty: "intermediate"
+    
+  - id: "jit"
+    name: "JIT 编译 (Just-In-Time)"
+    category: "query"
+    description: "运行时表达式编译加速"
+    documents:
+      - "03-Query/03.04-JIT-Compilation-DEEP-V2.md"
+      - "03-Query/03.04-JIT-Compilation.md"
+    related: ["performance", "query_execution"]
+    difficulty: "advanced"
+
+  # 分布式系统概念
+  - id: "logical_replication"
+    name: "逻辑复制 (Logical Replication)"
+    category: "distributed"
+    description: "基于发布-订阅模式的数据复制"
+    documents:
+      - "05-Distributed/05.01-Logical-Replication-DEEP-V2.md"
+      - "05-Distributed/05.01-Logical-Replication-Model.md"
+      - "00-Version-Specific/17-Released/17.05-Logical-Replication-Upgrades-DEEP-V2.md"
+    related: ["replication", "streaming", "conflict_resolution"]
+    difficulty: "advanced"
+    
+  - id: "citus"
+    name: "Citus 分片"
+    category: "distributed"
+    description: "PostgreSQL 的分布式扩展方案"
+    documents:
+      - "05-Distributed/05.02-Citus-Sharding-Theory-DEEP-V2.md"
+      - "05-Distributed/05.02-Citus-Sharding-Theory.md"
+    related: ["sharding", "distributed_transactions"]
+    difficulty: "advanced"
+    
+  - id: "patroni"
+    name: "Patroni 高可用"
+    category: "distributed"
+    description: "基于 Raft 的 PostgreSQL 高可用方案"
+    documents:
+      - "05-Distributed/05.03-Patroni-Raft-Formal-DEEP-V2.md"
+      - "05-Distributed/05.03-Patroni-Raft-Formal.md"
+    related: ["ha", "raft", "failover"]
+    difficulty: "advanced"
+    
+  - id: "2pc"
+    name: "两阶段提交 (2PC/3PC)"
+    category: "distributed"
+    description: "分布式事务提交协议"
+    documents:
+      - "05-Distributed/05.04-2PC-3PC-Protocol-DEEP-V2.md"
+      - "05-Distributed/05.04-2PC-3PC-Protocol.md"
+      - "01-Theory/01.05-Distributed-Transactions-DEEP-V2.md"
+      - "01-Theory/01.05-Distributed-Transactions.md"
+    related: ["distributed_transactions", "consensus"]
+    difficulty: "advanced"
+
+  # 维护与工具概念
+  - id: "vacuum"
+    name: "VACUUM 清理"
+    category: "maintenance"
+    description: "回收死元组空间，防止表膨胀"
+    documents:
+      - "09-Tools/01-vacuum-analyzer-DEEP-V2.md"
+      - "09-Tools/01-vacuum-analyzer.md"
+      - "00-Version-Specific/17-Released/17.01-VACUUM-Memory-Optimization-DEEP-V2.md"
+    related: ["mvcc", "storage", "performance", "autovacuum"]
+    difficulty: "intermediate"
+    
+  - id: "index_advisor"
+    name: "索引顾问 (Index Advisor)"
+    category: "tools"
+    description: "智能索引推荐工具"
+    documents:
+      - "09-Tools/02-index-advisor-DEEP-V2.md"
+      - "09-Tools/02-index-advisor.md"
+    related: ["index", "performance", "query_optimization"]
+    difficulty: "intermediate"
+    
+  - id: "query_analysis"
+    name: "慢查询分析"
+    category: "tools"
+    description: "慢查询诊断和优化工具"
+    documents:
+      - "09-Tools/03-slow-query-analyzer-DEEP-V2.md"
+      - "09-Tools/03-slow-query-analyzer.md"
+    related: ["performance", "query_optimizer"]
+    difficulty: "intermediate"
+
+  # 版本特性概念
+  - id: "aio"
+    name: "异步 I/O (AIO)"
+    category: "performance"
+    description: "PostgreSQL 18 引入的异步 I/O 特性"
+    documents:
+      - "00-NewFeatures-18/18.01-AIO-DEEP-V2.md"
+      - "00-NewFeatures-18/18.01-AIO-Formal.md"
+      - "00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md"
+    related: ["performance", "storage", "io_optimization"]
+    difficulty: "advanced"
+    version: "18"
+    
+  - id: "skip_scan"
+    name: "Skip Scan"
+    category: "performance"
+    description: "跳过索引前缀的优化扫描"
+    documents:
+      - "00-NewFeatures-18/18.02-SkipScan-DEEP-V2.md"
+      - "00-NewFeatures-18/18.02-SkipScan-Analysis.md"
+      - "00-Version-Specific/18-Released/18.02-SkipScan-DEEP-V2.md"
+    related: ["index", "query_optimization"]
+    difficulty: "intermediate"
+    version: "18"
+    
+  - id: "uuidv7"
+    name: "UUIDv7"
+    category: "features"
+    description: "时间排序 UUID 支持"
+    documents:
+      - "00-NewFeatures-18/18.03-UUIDv7-DEEP-V2.md"
+      - "00-NewFeatures-18/18.03-UUIDv7-Math.md"
+      - "00-Version-Specific/18-Released/18.03-UUIDv7-DEEP-V2.md"
+    related: ["data_types", "index", "performance"]
+    difficulty: "beginner"
+    version: "18"
+    
+  - id: "generated_columns"
+    name: "虚拟生成列 (Virtual Generated Columns)"
+    category: "features"
+    description: "动态计算的列值"
+    documents:
+      - "00-NewFeatures-18/18.04-Virtual-Generated-Columns-DEEP-V2.md"
+      - "00-NewFeatures-18/18.04-Virtual-Generated-Columns.md"
+      - "00-Version-Specific/18-Released/18.04-Virtual-Generated-Columns-DEEP-V2.md"
+    related: ["ddl", "computed_columns"]
+    difficulty: "intermediate"
+    version: "18"
+    
+  - id: "json_table"
+    name: "JSON_TABLE"
+    category: "features"
+    description: "将 JSON 数据转换为关系表"
+    documents:
+      - "00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md"
+    related: ["json", "sql_features"]
+    difficulty: "intermediate"
+    version: "17"
+    
+  - id: "merge"
+    name: "MERGE 语句"
+    category: "features"
+    description: "SQL 标准 MERGE (INSERT/UPDATE/DELETE)"
+    documents:
+      - "00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md"
+    related: ["dml", "sql_features"]
+    difficulty: "intermediate"
+    version: "17"
+    
+  - id: "pgvector"
+    name: "pgvector 向量扩展"
+    category: "features"
+    description: "向量相似度搜索扩展"
+    documents:
+      - "00-NewFeatures-18/18.09-pgvector-DEEP-V2.md"
+      - "00-NewFeatures-18/18.09-pgvector-Formal.md"
+      - "00-Version-Specific/18-Released/18.09-pgvector-DEEP-V2.md"
+      - "08-Performance/02-Vector-Retrieval-Benchmark-DEEP-V2.md"
+    related: ["ai", "vector_search", "index"]
+    difficulty: "advanced"
+    version: "18"
+
+  # 安全概念
+  - id: "oauth2"
+    name: "OAuth2 集成"
+    category: "security"
+    description: "外部身份认证集成"
+    documents:
+      - "00-NewFeatures-18/18.06-OAuth2-Integration-DEEP-V2.md"
+      - "00-NewFeatures-18/18.06-OAuth2-Integration.md"
+      - "00-Version-Specific/18-Released/18.06-OAuth2-Integration-DEEP-V2.md"
+    related: ["authentication", "security"]
+    difficulty: "advanced"
+    version: "18"
+    
+  - id: "pg_maintain"
+    name: "pg_maintain 角色"
+    category: "security"
+    description: "PostgreSQL 17 维护操作专用角色"
+    documents:
+      - "00-Version-Specific/17-Released/17.06-pg_maintain-Role-DEEP-V2.md"
+    related: ["rbac", "security", "maintenance"]
+    difficulty: "beginner"
+    version: "17"
+
+  # 形式化方法概念
+  - id: "tla"
+    name: "TLA+ 形式化验证"
+    category: "formal_methods"
+    description: "使用 TLA+ 对 PostgreSQL 进行形式化建模"
+    documents:
+      - "06-FormalMethods/06.01-TLA-Model-Collection-DEEP-V2.md"
+      - "06-FormalMethods/06.01-TLA-Model-Collection.md"
+    related: ["formal_verification", "model_checking"]
+    difficulty: "expert"
+    
+  - id: "concept_graph"
+    name: "概念关系图"
+    category: "formal_methods"
+    description: "系统化的概念关联分析"
+    documents:
+      - "06-FormalMethods/06.02-Concept-Relation-Graph-DEEP-V2.md"
+      - "06-FormalMethods/06.02-Concept-Relation-Graph.md"
+    related: ["knowledge_representation"]
+    difficulty: "intermediate"
+
+  # 数据库为中心架构概念
+  - id: "dca"
+    name: "数据库为中心架构 (DCA)"
+    category: "architecture"
+    description: "以数据库为核心的应用架构模式"
+    documents:
+      - "11-Database-Centric-Architecture/01-Theory-and-Principles-DEEP-V2.md"
+      - "11-Database-Centric-Architecture/02-Stored-Procedure-Patterns-DEEP-V2.md"
+    related: ["stored_procedures", "api_design"]
+    difficulty: "advanced"
+
+# ============================================
+# 2. 学习路径 (Learning Paths)
+# ============================================
+learning_paths:
+  # DBA 学习路径
+  dba_path:
+    name: "DBA 学习路径"
+    description: "从基础到高级的 PostgreSQL 数据库管理员学习路线"
+    target_audience: "DBA、运维工程师"
+    estimated_hours: 80
+    steps:
+      - name: "理论基础"
+        documents:
+          - "01-Theory/01.02-Transaction-Theory.md"
+          - "01-Theory/01.03-ACID-Formalization.md"
+          - "01-Theory/01.04-Isolation-Levels-Adya.md"
+        
+      - name: "存储引擎"
+        documents:
+          - "02-Storage/02.01-BufferPool-DEEP-V2.md"
+          - "02-Storage/02.03-WAL-DEEP-V2.md"
+          - "02-Storage/02.04-HeapAM-DEEP-V2.md"
+          
+      - name: "并发控制"
+        documents:
+          - "04-Concurrency/01-MVCC-DEEP-V2.md"
+          - "04-Concurrency/04.02-Locking-Protocols-DEEP-V2.md"
+          - "04-Concurrency/04.03-Deadlock-Detection-DEEP-V2.md"
+          
+      - name: "维护优化"
+        documents:
+          - "09-Tools/01-vacuum-analyzer-DEEP-V2.md"
+          - "00-Version-Specific/17-Released/17.01-VACUUM-Memory-Optimization-DEEP-V2.md"
+          - "00-Version-Specific/17-Released/17.02-Incremental-Backup-DEEP-V2.md"
+          
+      - name: "监控诊断"
+        documents:
+          - "00-Version-Specific/17-Released/17.07-Monitoring-Diagnostics-DEEP-V2.md"
+          - "09-Tools/03-slow-query-analyzer-DEEP-V2.md"
+          
+      - name: "高可用与分布式"
+        documents:
+          - "05-Distributed/05.01-Logical-Replication-DEEP-V2.md"
+          - "05-Distributed/05.03-Patroni-Raft-Formal-DEEP-V2.md"
+          - "00-Version-Specific/17-Released/17.05-Logical-Replication-Upgrades-DEEP-V2.md"
+
+  # 开发者学习路径
+  developer_path:
+    name: "开发者学习路径"
+    description: "面向应用开发者的 PostgreSQL 使用指南"
+    target_audience: "应用开发者、后端工程师"
+    estimated_hours: 60
+    steps:
+      - name: "SQL 基础"
+        documents:
+          - "01-Theory/01.01-Relational-Algebra.md"
+          - "01-Theory/01.02-Transaction-Theory.md"
+          
+      - name: "新特性应用"
+        documents:
+          - "00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md"
+          - "00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md"
+          - "00-Version-Specific/18-Released/18.03-UUIDv7-DEEP-V2.md"
+          - "00-Version-Specific/18-Released/18.04-Virtual-Generated-Columns-DEEP-V2.md"
+          
+      - name: "查询优化"
+        documents:
+          - "03-Query/03.01-QueryOptimizer-CostModel-DEEP-V2.md"
+          - "03-Query/03.02-Join-Algorithms-Analysis-DEEP-V2.md"
+          - "09-Tools/02-index-advisor-DEEP-V2.md"
+          
+      - name: "实践案例"
+        documents:
+          - "07-PracticalCases/01-ECommerce-Platform-DEEP-V2.md"
+          - "07-PracticalCases/02-Financial-System-DEEP-V2.md"
+          - "07-PracticalCases/05-SaaS-MultiTenant-DEEP-V2.md"
+
+  # 架构师学习路径
+  architect_path:
+    name: "架构师学习路径"
+    description: "系统架构设计和高阶优化"
+    target_audience: "系统架构师、技术负责人"
+    estimated_hours: 100
+    steps:
+      - name: "理论基础"
+        documents:
+          - "01-Theory/01.05-Distributed-Transactions-DEEP-V2.md"
+          - "04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md"
+          
+      - name: "分布式架构"
+        documents:
+          - "05-Distributed/05.02-Citus-Sharding-Theory-DEEP-V2.md"
+          - "05-Distributed/05.04-2PC-3PC-Protocol-DEEP-V2.md"
+          
+      - name: "数据库为中心架构"
+        documents:
+          - "11-Database-Centric-Architecture/01-Theory-and-Principles-DEEP-V2.md"
+          - "11-Database-Centric-Architecture/04-API-Design-and-Access-Control-DEEP-V2.md"
+          
+      - name: "性能基准"
+        documents:
+          - "08-Performance/01-TPC-H-Benchmark-DEEP-V2.md"
+          - "08-Performance/03-Concurrency-Benchmark-DEEP-V2.md"
+          - "04-Concurrency/04.05-Concurrency-Performance-DEEP-V2.md"
+          
+      - name: "前沿特性"
+        documents:
+          - "00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md"
+          - "00-Version-Specific/18-Released/18.09-pgvector-DEEP-V2.md"
+          - "00-Version-Specific/18-Released/18.10-CloudNativePG-DEEP-V2.md"
+
+  # 形式化方法专家路径
+  formal_methods_path:
+    name: "形式化方法专家路径"
+    description: "深入 PostgreSQL 内核的形式化分析"
+    target_audience: "数据库内核开发者、研究人员"
+    estimated_hours: 120
+    steps:
+      - name: "形式化基础"
+        documents:
+          - "06-FormalMethods/06.01-TLA-Model-Collection-DEEP-V2.md"
+          - "06-FormalMethods/06.02-Concept-Relation-Graph-DEEP-V2.md"
+          
+      - name: "并发形式化"
+        documents:
+          - "04-Concurrency/01-MVCC-Formally-Specified.md"
+          - "04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md"
+          
+      - name: "存储形式化"
+        documents:
+          - "02-Storage/02.01-BufferPool-Formal.md"
+          - "02-Storage/02.02-BTree-Formal.md"
+          - "02-Storage/02.04-HeapAM-Formal.md"
+          
+      - name: "验证工具"
+        documents:
+          - "06-FormalMethods/06.03-Verification-Tools-DEEP-V2.md"
+
+# ============================================
+# 3. 主题分类 (Categories)
+# ============================================
+categories:
+  performance:
+    name: "性能优化"
+    description: "性能调优、基准测试和优化技术"
+    documents:
+      - "00-NewFeatures-18/18.01-AIO-DEEP-V2.md"
+      - "00-NewFeatures-18/18.02-SkipScan-DEEP-V2.md"
+      - "00-Version-Specific/17-Released/17.01-VACUUM-Memory-Optimization-DEEP-V2.md"
+      - "03-Query/03.01-QueryOptimizer-CostModel-DEEP-V2.md"
+      - "03-Query/03.04-JIT-Compilation-DEEP-V2.md"
+      - "04-Concurrency/04.05-Concurrency-Performance-DEEP-V2.md"
+      - "08-Performance/01-TPC-H-Benchmark-DEEP-V2.md"
+      - "08-Performance/02-Vector-Retrieval-Benchmark-DEEP-V2.md"
+      - "08-Performance/03-Concurrency-Benchmark-DEEP-V2.md"
+      - "08-Performance/04-Memory-Benchmark-DEEP-V2.md"
+      - "09-Tools/02-index-advisor-DEEP-V2.md"
+      - "09-Tools/03-slow-query-analyzer-DEEP-V2.md"
+      - "11-Database-Centric-Architecture/05-Performance-Optimization-DEEP-V2.md"
+    
+  security:
+    name: "安全"
+    description: "认证、授权和安全最佳实践"
+    documents:
+      - "00-NewFeatures-18/18.06-OAuth2-Integration-DEEP-V2.md"
+      - "00-Version-Specific/17-Released/17.06-pg_maintain-Role-DEEP-V2.md"
+      - "11-Database-Centric-Architecture/04-API-Design-and-Access-Control-DEEP-V2.md"
+      - "11-Database-Centric-Architecture/22-Security-Audit-Guide.md"
+    
+  storage:
+    name: "存储引擎"
+    description: "底层存储机制和物理数据结构"
+    documents:
+      - "02-Storage/02.01-BufferPool-DEEP-V2.md"
+      - "02-Storage/02.02-BTree-DEEP-V2.md"
+      - "02-Storage/02.03-WAL-DEEP-V2.md"
+      - "02-Storage/02.04-HeapAM-DEEP-V2.md"
+      - "02-Storage/02.05-Index-Types-Matrix-DEEP-V2.md"
+      - "00-NewFeatures-18/18.12-LZ4-Compression-DEEP-V2.md"
+    
+  concurrency:
+    name: "并发控制"
+    description: "事务、锁、MVCC 和并发管理"
+    documents:
+      - "01-Theory/01.04-Isolation-Levels-Adya-DEEP-V2.md"
+      - "04-Concurrency/01-MVCC-DEEP-V2.md"
+      - "04-Concurrency/04.02-Locking-Protocols-DEEP-V2.md"
+      - "04-Concurrency/04.03-Deadlock-Detection-DEEP-V2.md"
+      - "04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md"
+      - "04-Concurrency/04.05-Concurrency-Performance-DEEP-V2.md"
+    
+  distributed:
+    name: "分布式系统"
+    description: "复制、分片和高可用架构"
+    documents:
+      - "05-Distributed/05.01-Logical-Replication-DEEP-V2.md"
+      - "05-Distributed/05.02-Citus-Sharding-Theory-DEEP-V2.md"
+      - "05-Distributed/05.03-Patroni-Raft-Formal-DEEP-V2.md"
+      - "05-Distributed/05.04-2PC-3PC-Protocol-DEEP-V2.md"
+      - "01-Theory/01.05-Distributed-Transactions-DEEP-V2.md"
+      - "11-Database-Centric-Architecture/14-Distributed-Architecture-DEEP-V2.md"
+    
+  ai_ml:
+    name: "AI/ML 集成"
+    description: "向量搜索和 AI 相关特性"
+    documents:
+      - "00-NewFeatures-18/18.09-pgvector-DEEP-V2.md"
+      - "07-PracticalCases/09-AI-ML-Platform-DEEP-V2.md"
+      - "08-Performance/02-Vector-Retrieval-Benchmark-DEEP-V2.md"
+    
+  cloud_native:
+    name: "云原生"
+    description: "Kubernetes 集成和云部署"
+    documents:
+      - "00-NewFeatures-18/18.10-CloudNativePG-DEEP-V2.md"
+      - "00-NewFeatures-18/18.11-OpenTelemetry-DEEP-V2.md"
+      - "11-Database-Centric-Architecture/18-Production-Deployment-Guide.md"
+    
+  tools:
+    name: "工具与诊断"
+    description: "维护工具、诊断和监控"
+    documents:
+      - "09-Tools/01-vacuum-analyzer-DEEP-V2.md"
+      - "09-Tools/02-index-advisor-DEEP-V2.md"
+      - "09-Tools/03-slow-query-analyzer-DEEP-V2.md"
+      - "09-Tools/04-connection-pool-monitor-DEEP-V2.md"
+      - "00-Version-Specific/17-Released/17.07-Monitoring-Diagnostics-DEEP-V2.md"
+    
+  formal_methods:
+    name: "形式化方法"
+    description: "形式化验证和数学分析"
+    documents:
+      - "06-FormalMethods/06.01-TLA-Model-Collection-DEEP-V2.md"
+      - "06-FormalMethods/06.02-Concept-Relation-Graph-DEEP-V2.md"
+      - "06-FormalMethods/06.03-Verification-Tools-DEEP-V2.md"
+
+# ============================================
+# 4. 版本特性矩阵 (Version Matrix)
+# ============================================
+version_matrix:
+  v17:
+    version: "17"
+    status: "released"
+    release_date: "2024-09"
+    features:
+      - id: "vacuum_memory"
+        name: "VACUUM 内存优化"
+        document: "00-Version-Specific/17-Released/17.01-VACUUM-Memory-Optimization-DEEP-V2.md"
+        category: "performance"
+        
+      - id: "incremental_backup"
+        name: "增量备份"
+        document: "00-Version-Specific/17-Released/17.02-Incremental-Backup-DEEP-V2.md"
+        category: "maintenance"
+        
+      - id: "json_table"
+        name: "JSON_TABLE"
+        document: "00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md"
+        category: "sql_features"
+        
+      - id: "merge_enhancements"
+        name: "MERGE 增强"
+        document: "00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md"
+        category: "sql_features"
+        
+      - id: "logical_rep_upgrade"
+        name: "逻辑复制升级"
+        document: "00-Version-Specific/17-Released/17.05-Logical-Replication-Upgrades-DEEP-V2.md"
+        category: "distributed"
+        
+      - id: "pg_maintain"
+        name: "pg_maintain 角色"
+        document: "00-Version-Specific/17-Released/17.06-pg_maintain-Role-DEEP-V2.md"
+        category: "security"
+        
+      - id: "monitoring"
+        name: "监控诊断"
+        document: "00-Version-Specific/17-Released/17.07-Monitoring-Diagnostics-DEEP-V2.md"
+        category: "tools"
+        
+      - id: "upgrade_guide"
+        name: "升级指南"
+        document: "00-Version-Specific/17-Released/17.08-Upgrade-Guide-DEEP-V2.md"
+        category: "maintenance"
+        
+  v18:
+    version: "18"
+    status: "development"
+    expected_release: "2025-09"
+    features:
+      - id: "aio"
+        name: "异步 I/O"
+        document: "00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md"
+        category: "performance"
+        
+      - id: "skip_scan"
+        name: "Skip Scan"
+        document: "00-Version-Specific/18-Released/18.02-SkipScan-DEEP-V2.md"
+        category: "performance"
+        
+      - id: "uuidv7"
+        name: "UUIDv7"
+        document: "00-Version-Specific/18-Released/18.03-UUIDv7-DEEP-V2.md"
+        category: "data_types"
+        
+      - id: "generated_columns"
+        name: "虚拟生成列"
+        document: "00-Version-Specific/18-Released/18.04-Virtual-Generated-Columns-DEEP-V2.md"
+        category: "ddl"
+        
+      - id: "temporal"
+        name: "时态约束"
+        document: "00-Version-Specific/18-Released/18.05-Temporal-Constraints-DEEP-V2.md"
+        category: "sql_features"
+        
+      - id: "oauth2"
+        name: "OAuth2 集成"
+        document: "00-Version-Specific/18-Released/18.06-OAuth2-Integration-DEEP-V2.md"
+        category: "security"
+        
+      - id: "parallel_gin"
+        name: "并行 GIN 构建"
+        document: "00-Version-Specific/18-Released/18.07-Parallel-GIN-Build-DEEP-V2.md"
+        category: "performance"
+        
+      - id: "pg_upgrade_enhancements"
+        name: "pg_upgrade 增强"
+        document: "00-Version-Specific/18-Released/18.08-pg_upgrade-Enhancements-DEEP-V2.md"
+        category: "maintenance"
+        
+      - id: "pgvector"
+        name: "pgvector 向量扩展"
+        document: "00-Version-Specific/18-Released/18.09-pgvector-DEEP-V2.md"
+        category: "ai"
+        
+      - id: "cloudnativepg"
+        name: "CloudNativePG"
+        document: "00-Version-Specific/18-Released/18.10-CloudNativePG-DEEP-V2.md"
+        category: "cloud_native"
+        
+      - id: "opentelemetry"
+        name: "OpenTelemetry"
+        document: "00-Version-Specific/18-Released/18.11-OpenTelemetry-DEEP-V2.md"
+        category: "observability"
+        
+      - id: "lz4_compression"
+        name: "LZ4 压缩"
+        document: "00-Version-Specific/18-Released/18.12-LZ4-Compression-DEEP-V2.md"
+        category: "storage"
+
+# ============================================
+# 5. 文档关系 (Relationships)
+# ============================================
+relationships:
+  # 前置依赖关系
+  - from: "04-Concurrency/01-MVCC-DEEP-V2.md"
+    to: "01-Theory/01.02-Transaction-Theory-DEEP-V2.md"
+    type: "prerequisite"
+    description: "学习 MVCC 前需要了解事务基础"
+    
+  - from: "04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md"
+    to: "04-Concurrency/01-MVCC-DEEP-V2.md"
+    type: "prerequisite"
+    description: "SSI 基于 MVCC 实现"
+    
+  - from: "03-Query/03.01-QueryOptimizer-CostModel-DEEP-V2.md"
+    to: "03-Query/03.03-Statistics-Derivation-DEEP-V2.md"
+    type: "prerequisite"
+    description: "代价模型依赖统计信息"
+    
+  # 扩展关系
+  - from: "02-Storage/02.03-WAL-DEEP-V2.md"
+    to: "05-Distributed/05.01-Logical-Replication-DEEP-V2.md"
+    type: "extends"
+    description: "逻辑复制基于 WAL 构建"
+    
+  - from: "01-Theory/01.02-Transaction-Theory-DEEP-V2.md"
+    to: "01-Theory/01.05-Distributed-Transactions-DEEP-V2.md"
+    type: "extends"
+    description: "分布式事务扩展单机事务"
+    
+  # 相关关系
+  - from: "04-Concurrency/01-MVCC-DEEP-V2.md"
+    to: "09-Tools/01-vacuum-analyzer-DEEP-V2.md"
+    type: "related"
+    description: "MVCC 产生死元组，VACUUM 清理"
+    
+  - from: "02-Storage/02.02-BTree-DEEP-V2.md"
+    to: "09-Tools/02-index-advisor-DEEP-V2.md"
+    type: "related"
+    description: "索引顾问推荐 B-Tree 等索引"
+    
+  - from: "03-Query/03.01-QueryOptimizer-CostModel-DEEP-V2.md"
+    to: "09-Tools/03-slow-query-analyzer-DEEP-V2.md"
+    type: "related"
+    description: "慢查询分析依赖查询优化器"
+    
+  # 对比关系
+  - from: "04-Concurrency/04.02-Locking-Protocols-DEEP-V2.md"
+    to: "04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md"
+    type: "contrasts"
+    description: "悲观锁 vs 乐观并发控制"
+
+# ============================================
+# 6. 标签系统 (Tags)
+# ============================================
+tags:
+  difficulty:
+    - beginner      # 入门级
+    - intermediate  # 中级
+    - advanced      # 高级
+    - expert        # 专家级
+    
+  document_type:
+    - theory        # 理论
+    - practice      # 实践
+    - formal        # 形式化
+    - case_study    # 案例
+    - tool          # 工具
+    
+  status:
+    - stable        # 稳定
+    - experimental  # 实验性
+    - deprecated    # 已废弃

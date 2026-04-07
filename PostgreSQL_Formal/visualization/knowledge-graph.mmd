@@ -1,0 +1,148 @@
+```mermaid
+graph TB
+    mvcc["MVCC (多版本并发控制)"]
+    wal["WAL (预写式日志)"]
+    buffer_pool["Buffer Pool (缓冲池)"]
+    btree["B-Tree 索引"]
+    heap_am["Heap Access Method"]
+    transaction["事务 (Transaction)"]
+    isolation["隔离级别 (Isolation Levels)"]
+    acid["ACID 属性"]
+    locking["锁机制 (Locking)"]
+    deadlock["死锁检测 (Deadlock Detection)"]
+    ssi["SSI (可串行化快照隔离)"]
+    query_optimizer["查询优化器 (Query Optimizer)"]
+    cost_model["代价模型 (Cost Model)"]
+    join_algorithms["连接算法 (Join Algorithms)"]
+    statistics["统计信息 (Statistics)"]
+    jit["JIT 编译 (Just-In-Time)"]
+    logical_replication["逻辑复制 (Logical Replication)"]
+    citus["Citus 分片"]
+    patroni["Patroni 高可用"]
+    2pc["两阶段提交 (2PC/3PC)"]
+    vacuum["VACUUM 清理"]
+    index_advisor["索引顾问 (Index Advisor)"]
+    query_analysis["慢查询分析"]
+    aio["异步 I/O (AIO)"]
+    skip_scan["Skip Scan"]
+    uuidv7["UUIDv7"]
+    generated_columns["虚拟生成列 (Virtual Generated Columns)"]
+    json_table["JSON_TABLE"]
+    merge["MERGE 语句"]
+    pgvector["pgvector 向量扩展"]
+    oauth2["OAuth2 集成"]
+    pg_maintain["pg_maintain 角色"]
+    tla["TLA+ 形式化验证"]
+    concept_graph["概念关系图"]
+    dca["数据库为中心架构 (DCA)"]
+
+    mvcc --> transaction
+    mvcc --> isolation
+    mvcc --> wal
+    mvcc --> vacuum
+    mvcc --> snapshot
+    wal --> transaction
+    wal --> mvcc
+    wal --> replication
+    wal --> recovery
+    buffer_pool --> storage
+    buffer_pool --> wal
+    buffer_pool --> performance
+    btree --> index
+    btree --> query_optimization
+    btree --> storage
+    heap_am --> storage
+    heap_am --> mvcc
+    heap_am --> toast
+    transaction --> acid
+    transaction --> isolation
+    transaction --> mvcc
+    transaction --> wal
+    transaction --> locking
+    isolation --> transaction
+    isolation --> mvcc
+    isolation --> ssi
+    isolation --> phenomena
+    acid --> transaction
+    acid --> consistency
+    acid --> durability
+    locking --> deadlock
+    locking --> concurrency
+    locking --> transaction
+    deadlock --> locking
+    deadlock --> concurrency
+    ssi --> isolation
+    ssi --> mvcc
+    ssi --> serialization
+    query_optimizer --> cost_model
+    query_optimizer --> statistics
+    query_optimizer --> join
+    cost_model --> query_optimizer
+    cost_model --> statistics
+    join_algorithms --> query_optimizer
+    join_algorithms --> performance
+    statistics --> query_optimizer
+    statistics --> cost_model
+    jit --> performance
+    jit --> query_execution
+    logical_replication --> replication
+    logical_replication --> streaming
+    logical_replication --> conflict_resolution
+    citus --> sharding
+    citus --> distributed_transactions
+    patroni --> ha
+    patroni --> raft
+    patroni --> failover
+    2pc --> distributed_transactions
+    2pc --> consensus
+    vacuum --> mvcc
+    vacuum --> storage
+    vacuum --> performance
+    vacuum --> autovacuum
+    index_advisor --> index
+    index_advisor --> performance
+    index_advisor --> query_optimization
+    query_analysis --> performance
+    query_analysis --> query_optimizer
+    aio --> performance
+    aio --> storage
+    aio --> io_optimization
+    skip_scan --> index
+    skip_scan --> query_optimization
+    uuidv7 --> data_types
+    uuidv7 --> index
+    uuidv7 --> performance
+    generated_columns --> ddl
+    generated_columns --> computed_columns
+    json_table --> json
+    json_table --> sql_features
+    merge --> dml
+    merge --> sql_features
+    pgvector --> ai
+    pgvector --> vector_search
+    pgvector --> index
+    oauth2 --> authentication
+    oauth2 --> security
+    pg_maintain --> rbac
+    pg_maintain --> security
+    pg_maintain --> maintenance
+    tla --> formal_verification
+    tla --> model_checking
+    concept_graph --> knowledge_representation
+    dca --> stored_procedures
+    dca --> api_design
+    transaction -.->|prereq| mvcc
+    mvcc -.->|prereq| ssi
+    statistics -.->|prereq| query_optimizer
+    wal ==>|extends| logical_replication
+    transaction ==>|extends| 2pc
+    mvcc --> vacuum
+    btree --> index_advisor
+    query_optimizer --> query_analysis
+    locking -.->|contrasts| ssi
+
+    classDef beginner fill:#90EE90,stroke:#228B22
+    classDef intermediate fill:#FFD700,stroke:#FFA500
+    classDef advanced fill:#FF6B6B,stroke:#DC143C
+    classDef expert fill:#DDA0DD,stroke:#8B008B
+```

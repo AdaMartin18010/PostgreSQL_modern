@@ -1,0 +1,34 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "PostgreSQL 16",
+            "Group": "DCA Demo",
+            "Host": "postgres16",
+            "Port": 5432,
+            "MaintenanceDB": "dca_demo",
+            "Username": "dca",
+            "SSLMode": "prefer",
+            "Comment": "PostgreSQL 16 参考版本"
+        },
+        "2": {
+            "Name": "PostgreSQL 17",
+            "Group": "DCA Demo",
+            "Host": "postgres17",
+            "Port": 5432,
+            "MaintenanceDB": "dca_demo",
+            "Username": "dca",
+            "SSLMode": "prefer",
+            "Comment": "PostgreSQL 17 当前稳定版"
+        },
+        "3": {
+            "Name": "PostgreSQL 18",
+            "Group": "DCA Demo",
+            "Host": "postgres18",
+            "Port": 5432,
+            "MaintenanceDB": "dca_demo",
+            "Username": "dca",
+            "SSLMode": "prefer",
+            "Comment": "PostgreSQL 18 最新版"
+        }
+    }
+}

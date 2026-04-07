@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres-json-test:
+    image: postgres:17-alpine
+    container_name: pg17-json-test
+    environment:
+      POSTGRES_PASSWORD: benchmark
+      POSTGRES_DB: json_benchmark
+      POSTGRES_USER: postgres
+    volumes:
+      - pg_json_data:/var/lib/postgresql/data
+      - ./:/benchmark
+    ports:
+      - "5433:5432"
+    command: >
+      postgres
+      -c shared_buffers=2GB
+      -c work_mem=256MB
+      -c maintenance_work_mem=512MB
+      -c max_connections=100
+      -c logging_collector=on
+      -c log_directory='pg_log'
+      -c log_filename='postgresql-%Y-%m-%d_%H%M%S.log'
+      -c log_min_duration_statement=0
+      -c auto_explain.log_min_duration=0
+      -c auto_explain.log_analyze=on
+      -c auto_explain.log_buffers=on
+      -c auto_explain.log_timing=on
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+volumes:
+  pg_json_data:

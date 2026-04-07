@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostgreSQL_Formal 知识图谱</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 0;
+            color: white;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .card h3 {
+            color: #555;
+            margin: 20px 0 10px 0;
+        }
+        
+        .mermaid {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        
+        .concept-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+        
+        .concept-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+        
+        .concept-card h4 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .concept-card p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .concept-card .meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-beginner { background: #90EE90; color: #228B22; }
+        .badge-intermediate { background: #FFD700; color: #8B7508; }
+        .badge-advanced { background: #FF6B6B; color: #8B0000; }
+        .badge-expert { background: #DDA0DD; color: #8B008B; }
+        
+        .badge-category {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .path-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .path-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .path-item h4 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .path-item p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .path-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .step-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+        }
+        
+        .step-arrow {
+            color: #999;
+        }
+        
+        .category-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        
+        .category-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border-top: 4px solid #764ba2;
+        }
+        
+        .category-item h4 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .category-item p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .doc-count {
+            color: #999;
+            font-size: 0.85rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: white;
+            opacity: 0.8;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            font-size: 1rem;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .tab:hover {
+            color: #667eea;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .concept-grid,
+            .category-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐘 PostgreSQL_Formal 知识图谱</h1>
+            <p>建立文档关联，规划学习路径，掌握 PostgreSQL 核心技术</p>
+        </header>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number">35</div>
+                <div class="label">核心概念</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">194</div>
+                <div class="label">技术文档</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">4</div>
+                <div class="label">学习路径</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">9</div>
+                <div class="label">主题分类</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('concepts')">核心概念</button>
+                <button class="tab" onclick="showTab('paths')">学习路径</button>
+                <button class="tab" onclick="showTab('categories')">主题分类</button>
+                <button class="tab" onclick="showTab('graph')">关系图谱</button>
+            </div>
+            
+            <div id="concepts" class="tab-content active">
+                <h2>核心概念</h2>
+                <div class="concept-grid">
+                    
+            <div class="concept-card">
+                <h4>MVCC (多版本并发控制)</h4>
+                <p>PostgreSQL 的核心并发控制机制，通过保存数据多个版本来实现读写不阻塞</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">concurrency</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>WAL (预写式日志)</h4>
+                <p>保证数据持久性和崩溃恢复的核心机制</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">storage</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>Buffer Pool (缓冲池)</h4>
+                <p>内存中的数据页缓存管理机制</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">storage</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>B-Tree 索引</h4>
+                <p>PostgreSQL 默认的索引类型，基于 B-Tree 数据结构</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">storage</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>Heap Access Method</h4>
+                <p>堆表存储访问方法，管理表数据的物理存储</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">storage</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>事务 (Transaction)</h4>
+                <p>数据库事务的原子性操作单元</p>
+                <div class="meta">
+                    <span class="badge badge-beginner">beginner</span>
+                    <span class="badge badge-category">concurrency</span>
+                    <span class="doc-count">4 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>隔离级别 (Isolation Levels)</h4>
+                <p>SQL 标准定义的事务隔离级别及其实现</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">concurrency</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>ACID 属性</h4>
+                <p>原子性、一致性、隔离性、持久性</p>
+                <div class="meta">
+                    <span class="badge badge-beginner">beginner</span>
+                    <span class="badge badge-category">theory</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>锁机制 (Locking)</h4>
+                <p>表级锁、行级锁、死锁检测等并发控制机制</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">concurrency</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>死锁检测 (Deadlock Detection)</h4>
+                <p>自动检测和解决事务间的循环等待</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">concurrency</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>SSI (可串行化快照隔离)</h4>
+                <p>PostgreSQL 实现的可串行化隔离级别</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">concurrency</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>查询优化器 (Query Optimizer)</h4>
+                <p>基于代价模型的 SQL 查询计划生成</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">query</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>代价模型 (Cost Model)</h4>
+                <p>评估查询计划执行代价的数学模型</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">query</span>
+                    <span class="doc-count">1 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>连接算法 (Join Algorithms)</h4>
+                <p>Nested Loop、Hash Join、Merge Join 等连接实现</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">query</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>统计信息 (Statistics)</h4>
+                <p>用于查询优化的数据分布统计</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">query</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>JIT 编译 (Just-In-Time)</h4>
+                <p>运行时表达式编译加速</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">query</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>逻辑复制 (Logical Replication)</h4>
+                <p>基于发布-订阅模式的数据复制</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">distributed</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>Citus 分片</h4>
+                <p>PostgreSQL 的分布式扩展方案</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">distributed</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>Patroni 高可用</h4>
+                <p>基于 Raft 的 PostgreSQL 高可用方案</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">distributed</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>两阶段提交 (2PC/3PC)</h4>
+                <p>分布式事务提交协议</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">distributed</span>
+                    <span class="doc-count">4 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>VACUUM 清理</h4>
+                <p>回收死元组空间，防止表膨胀</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">maintenance</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>索引顾问 (Index Advisor)</h4>
+                <p>智能索引推荐工具</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">tools</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>慢查询分析</h4>
+                <p>慢查询诊断和优化工具</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">tools</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>异步 I/O (AIO)</h4>
+                <p>PostgreSQL 18 引入的异步 I/O 特性</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">performance</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>Skip Scan</h4>
+                <p>跳过索引前缀的优化扫描</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">performance</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>UUIDv7</h4>
+                <p>时间排序 UUID 支持</p>
+                <div class="meta">
+                    <span class="badge badge-beginner">beginner</span>
+                    <span class="badge badge-category">features</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>虚拟生成列 (Virtual Generated Columns)</h4>
+                <p>动态计算的列值</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">features</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>JSON_TABLE</h4>
+                <p>将 JSON 数据转换为关系表</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">features</span>
+                    <span class="doc-count">1 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>MERGE 语句</h4>
+                <p>SQL 标准 MERGE (INSERT/UPDATE/DELETE)</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">features</span>
+                    <span class="doc-count">1 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>pgvector 向量扩展</h4>
+                <p>向量相似度搜索扩展</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">features</span>
+                    <span class="doc-count">4 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>OAuth2 集成</h4>
+                <p>外部身份认证集成</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">security</span>
+                    <span class="doc-count">3 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>pg_maintain 角色</h4>
+                <p>PostgreSQL 17 维护操作专用角色</p>
+                <div class="meta">
+                    <span class="badge badge-beginner">beginner</span>
+                    <span class="badge badge-category">security</span>
+                    <span class="doc-count">1 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>TLA+ 形式化验证</h4>
+                <p>使用 TLA+ 对 PostgreSQL 进行形式化建模</p>
+                <div class="meta">
+                    <span class="badge badge-expert">expert</span>
+                    <span class="badge badge-category">formal_methods</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>概念关系图</h4>
+                <p>系统化的概念关联分析</p>
+                <div class="meta">
+                    <span class="badge badge-intermediate">intermediate</span>
+                    <span class="badge badge-category">formal_methods</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+            <div class="concept-card">
+                <h4>数据库为中心架构 (DCA)</h4>
+                <p>以数据库为核心的应用架构模式</p>
+                <div class="meta">
+                    <span class="badge badge-advanced">advanced</span>
+                    <span class="badge badge-category">architecture</span>
+                    <span class="doc-count">2 篇文档</span>
+                </div>
+            </div>
+                </div>
+            </div>
+            
+            <div id="paths" class="tab-content">
+                <h2>学习路径</h2>
+                <div class="path-list">
+                    
+            <div class="path-item">
+                <h4>DBA 学习路径</h4>
+                <p>从基础到高级的 PostgreSQL 数据库管理员学习路线</p>
+                <p><small>目标受众: DBA、运维工程师 | 预计学时: 80 小时</small></p>
+                <div class="path-steps"><span class="step-badge">理论基础</span><span class="step-arrow">→</span><span class="step-badge">存储引擎</span><span class="step-arrow">→</span><span class="step-badge">并发控制</span><span class="step-arrow">→</span><span class="step-badge">维护优化</span><span class="step-arrow">→</span><span class="step-badge">监控诊断</span><span class="step-arrow">→</span><span class="step-badge">高可用与分布式</span></div>
+            </div>
+            <div class="path-item">
+                <h4>开发者学习路径</h4>
+                <p>面向应用开发者的 PostgreSQL 使用指南</p>
+                <p><small>目标受众: 应用开发者、后端工程师 | 预计学时: 60 小时</small></p>
+                <div class="path-steps"><span class="step-badge">SQL 基础</span><span class="step-arrow">→</span><span class="step-badge">新特性应用</span><span class="step-arrow">→</span><span class="step-badge">查询优化</span><span class="step-arrow">→</span><span class="step-badge">实践案例</span></div>
+            </div>
+            <div class="path-item">
+                <h4>架构师学习路径</h4>
+                <p>系统架构设计和高阶优化</p>
+                <p><small>目标受众: 系统架构师、技术负责人 | 预计学时: 100 小时</small></p>
+                <div class="path-steps"><span class="step-badge">理论基础</span><span class="step-arrow">→</span><span class="step-badge">分布式架构</span><span class="step-arrow">→</span><span class="step-badge">数据库为中心架构</span><span class="step-arrow">→</span><span class="step-badge">性能基准</span><span class="step-arrow">→</span><span class="step-badge">前沿特性</span></div>
+            </div>
+            <div class="path-item">
+                <h4>形式化方法专家路径</h4>
+                <p>深入 PostgreSQL 内核的形式化分析</p>
+                <p><small>目标受众: 数据库内核开发者、研究人员 | 预计学时: 120 小时</small></p>
+                <div class="path-steps"><span class="step-badge">形式化基础</span><span class="step-arrow">→</span><span class="step-badge">并发形式化</span><span class="step-arrow">→</span><span class="step-badge">存储形式化</span><span class="step-arrow">→</span><span class="step-badge">验证工具</span></div>
+            </div>
+                </div>
+            </div>
+            
+            <div id="categories" class="tab-content">
+                <h2>主题分类</h2>
+                <div class="category-list">
+                    
+            <div class="category-item">
+                <h4>性能优化</h4>
+                <p>性能调优、基准测试和优化技术</p>
+                <span class="doc-count">13 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>安全</h4>
+                <p>认证、授权和安全最佳实践</p>
+                <span class="doc-count">4 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>存储引擎</h4>
+                <p>底层存储机制和物理数据结构</p>
+                <span class="doc-count">6 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>并发控制</h4>
+                <p>事务、锁、MVCC 和并发管理</p>
+                <span class="doc-count">6 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>分布式系统</h4>
+                <p>复制、分片和高可用架构</p>
+                <span class="doc-count">6 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>AI/ML 集成</h4>
+                <p>向量搜索和 AI 相关特性</p>
+                <span class="doc-count">3 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>云原生</h4>
+                <p>Kubernetes 集成和云部署</p>
+                <span class="doc-count">3 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>工具与诊断</h4>
+                <p>维护工具、诊断和监控</p>
+                <span class="doc-count">5 篇文档</span>
+            </div>
+            <div class="category-item">
+                <h4>形式化方法</h4>
+                <p>形式化验证和数学分析</p>
+                <span class="doc-count">3 篇文档</span>
+            </div>
+                </div>
+            </div>
+            
+            <div id="graph" class="tab-content">
+                <h2>概念关系图谱</h2>
+                <div class="mermaid">
+graph TB
+    mvcc["MVCC (多版本并发控制)"]
+    wal["WAL (预写式日志)"]
+    buffer_pool["Buffer Pool (缓冲池)"]
+    btree["B-Tree 索引"]
+    heap_am["Heap Access Method"]
+    transaction["事务 (Transaction)"]
+    isolation["隔离级别 (Isolation Levels)"]
+    acid["ACID 属性"]
+    locking["锁机制 (Locking)"]
+    deadlock["死锁检测 (Deadlock Detection)"]
+    ssi["SSI (可串行化快照隔离)"]
+    query_optimizer["查询优化器 (Query Optimizer)"]
+    cost_model["代价模型 (Cost Model)"]
+    join_algorithms["连接算法 (Join Algorithms)"]
+    statistics["统计信息 (Statistics)"]
+    jit["JIT 编译 (Just-In-Time)"]
+    logical_replication["逻辑复制 (Logical Replication)"]
+    citus["Citus 分片"]
+    patroni["Patroni 高可用"]
+    2pc["两阶段提交 (2PC/3PC)"]
+    vacuum["VACUUM 清理"]
+    index_advisor["索引顾问 (Index Advisor)"]
+    query_analysis["慢查询分析"]
+    aio["异步 I/O (AIO)"]
+    skip_scan["Skip Scan"]
+    uuidv7["UUIDv7"]
+    generated_columns["虚拟生成列 (Virtual Generated Columns)"]
+    json_table["JSON_TABLE"]
+    merge["MERGE 语句"]
+    pgvector["pgvector 向量扩展"]
+    oauth2["OAuth2 集成"]
+    pg_maintain["pg_maintain 角色"]
+    tla["TLA+ 形式化验证"]
+    concept_graph["概念关系图"]
+    dca["数据库为中心架构 (DCA)"]
+
+    mvcc --> transaction
+    mvcc --> isolation
+    mvcc --> wal
+    mvcc --> vacuum
+    mvcc --> snapshot
+    wal --> transaction
+    wal --> mvcc
+    wal --> replication
+    wal --> recovery
+    buffer_pool --> storage
+    buffer_pool --> wal
+    buffer_pool --> performance
+    btree --> index
+    btree --> query_optimization
+    btree --> storage
+    heap_am --> storage
+    heap_am --> mvcc
+    heap_am --> toast
+    transaction --> acid
+    transaction --> isolation
+    transaction --> mvcc
+    transaction --> wal
+    transaction --> locking
+    isolation --> transaction
+    isolation --> mvcc
+    isolation --> ssi
+    isolation --> phenomena
+    acid --> transaction
+    acid --> consistency
+    acid --> durability
+    locking --> deadlock
+    locking --> concurrency
+    locking --> transaction
+    deadlock --> locking
+    deadlock --> concurrency
+    ssi --> isolation
+    ssi --> mvcc
+    ssi --> serialization
+    query_optimizer --> cost_model
+    query_optimizer --> statistics
+    query_optimizer --> join
+    cost_model --> query_optimizer
+    cost_model --> statistics
+    join_algorithms --> query_optimizer
+    join_algorithms --> performance
+    statistics --> query_optimizer
+    statistics --> cost_model
+    jit --> performance
+    jit --> query_execution
+    logical_replication --> replication
+    logical_replication --> streaming
+    logical_replication --> conflict_resolution
+    citus --> sharding
+    citus --> distributed_transactions
+    patroni --> ha
+    patroni --> raft
+    patroni --> failover
+    2pc --> distributed_transactions
+    2pc --> consensus
+    vacuum --> mvcc
+    vacuum --> storage
+    vacuum --> performance
+    vacuum --> autovacuum
+    index_advisor --> index
+    index_advisor --> performance
+    index_advisor --> query_optimization
+    query_analysis --> performance
+    query_analysis --> query_optimizer
+    aio --> performance
+    aio --> storage
+    aio --> io_optimization
+    skip_scan --> index
+    skip_scan --> query_optimization
+    uuidv7 --> data_types
+    uuidv7 --> index
+    uuidv7 --> performance
+    generated_columns --> ddl
+    generated_columns --> computed_columns
+    json_table --> json
+    json_table --> sql_features
+    merge --> dml
+    merge --> sql_features
+    pgvector --> ai
+    pgvector --> vector_search
+    pgvector --> index
+    oauth2 --> authentication
+    oauth2 --> security
+    pg_maintain --> rbac
+    pg_maintain --> security
+    pg_maintain --> maintenance
+    tla --> formal_verification
+    tla --> model_checking
+    concept_graph --> knowledge_representation
+    dca --> stored_procedures
+    dca --> api_design
+    transaction -.->|prereq| mvcc
+    mvcc -.->|prereq| ssi
+    statistics -.->|prereq| query_optimizer
+    wal ==>|extends| logical_replication
+    transaction ==>|extends| 2pc
+    mvcc --> vacuum
+    btree --> index_advisor
+    query_optimizer --> query_analysis
+    locking -.->|contrasts| ssi
+
+    classDef beginner fill:#90EE90,stroke:#228B22
+    classDef intermediate fill:#FFD700,stroke:#FFA500
+    classDef advanced fill:#FF6B6B,stroke:#DC143C
+    classDef expert fill:#DDA0DD,stroke:#8B008B
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>版本特性矩阵</h2>
+            <div class="mermaid">
+mindmap
+  root((PostgreSQL_Formal))
+    性能优化
+      18.01-AIO-DEEP-V2
+      18.02-SkipScan-DEEP-V2
+      17.01-VACUUM-Memory-Optimizati
+      03.01-QueryOptimizer-CostModel
+      03.04-JIT-Compilation-DEEP-V2
+    安全
+      18.06-OAuth2-Integration-DEEP-
+      17.06-pg_maintain-Role-DEEP-V2
+      04-API-Design-and-Access-Contr
+      22-Security-Audit-Guide
+    存储引擎
+      02.01-BufferPool-DEEP-V2
+      02.02-BTree-DEEP-V2
+      02.03-WAL-DEEP-V2
+      02.04-HeapAM-DEEP-V2
+      02.05-Index-Types-Matrix-DEEP-
+    并发控制
+      01.04-Isolation-Levels-Adya-DE
+      01-MVCC-DEEP-V2
+      04.02-Locking-Protocols-DEEP-V
+      04.03-Deadlock-Detection-DEEP-
+      04.04-SSI-Serializable-DEEP-V2
+    分布式系统
+      05.01-Logical-Replication-DEEP
+      05.02-Citus-Sharding-Theory-DE
+      05.03-Patroni-Raft-Formal-DEEP
+      05.04-2PC-3PC-Protocol-DEEP-V2
+      01.05-Distributed-Transactions
+    AI/ML 集成
+      18.09-pgvector-DEEP-V2
+      09-AI-ML-Platform-DEEP-V2
+      02-Vector-Retrieval-Benchmark-
+    云原生
+      18.10-CloudNativePG-DEEP-V2
+      18.11-OpenTelemetry-DEEP-V2
+      18-Production-Deployment-Guide
+    工具与诊断
+      01-vacuum-analyzer-DEEP-V2
+      02-index-advisor-DEEP-V2
+      03-slow-query-analyzer-DEEP-V2
+      04-connection-pool-monitor-DEE
+      17.07-Monitoring-Diagnostics-D
+    形式化方法
+      06.01-TLA-Model-Collection-DEE
+      06.02-Concept-Relation-Graph-D
+      06.03-Verification-Tools-DEEP-
+            </div>
+        </div>
+        
+        <footer>
+            <p>最后更新: 2026-04-07 | PostgreSQL_Formal 知识图谱 v1.0.0</p>
+        </footer>
+    </div>
+    
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose'
+        });
+        
+        function showTab(tabId) {
+            // 隐藏所有内容
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // 移除所有活动标签
+            document.querySelectorAll('.tab').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // 显示选中内容
+            document.getElementById(tabId).classList.add('active');
+            
+            // 激活对应标签
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

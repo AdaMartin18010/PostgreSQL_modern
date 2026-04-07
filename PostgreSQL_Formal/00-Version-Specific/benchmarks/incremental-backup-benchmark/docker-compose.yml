@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  postgres-primary:
+    image: postgres:17-alpine
+    container_name: pg17-backup-test
+    environment:
+      POSTGRES_PASSWORD: benchmark
+      POSTGRES_DB: backup_test
+      POSTGRES_USER: postgres
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - pg_backup:/backup
+      - ./setup.sql:/docker-entrypoint-initdb.d/setup.sql
+      - ./pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf
+    ports:
+      - "5432:5432"
+    command: >
+      postgres
+      -c shared_buffers=2GB
+      -c max_connections=100
+      -c wal_level=replica
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+      -c wal_log_hints=on
+      -c archive_mode=on
+      -c archive_command='pgbackrest --stanza=demo archive-push %p'
+      -c summarize_wal=on
+    shm_size: '4gb'
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+  pgbackrest:
+    image: pgbackrest/pgbackrest:latest
+    container_name: pgbackrest-repo
+    environment:
+      PGBACKREST_STANZA: demo
+      PGBACKREST_PG1_PATH: /var/lib/postgresql/data
+      PGBACKREST_REPO1_PATH: /backup
+      PGBACKREST_REPO1_RETENTION_FULL: 7
+      PGBACKREST_REPO1_RETENTION_DIFF: 14
+    volumes:
+      - pg_data:/var/lib/postgresql/data:ro
+      - pg_backup:/backup
+      - ./pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf
+    depends_on:
+      - postgres-primary
+    command: ["sleep", "infinity"]
+
+volumes:
+  pg_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/pg_data
+  pg_backup:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/backup
