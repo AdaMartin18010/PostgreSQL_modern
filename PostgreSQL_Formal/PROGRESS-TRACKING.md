@@ -38,47 +38,47 @@
 
 ### 01-Theory ✅ (5/5)
 
-- 01.01-Relational-Algebra.md ✅
-- 01.02-Transaction-Theory.md ✅
-- 01.03-ACID-Formalization.md ✅
-- 01.04-Isolation-Levels-Adya.md ✅
-- 01.05-Distributed-Transactions.md ✅
+- 01.01-Relational-Algebra-DEEP-V2.md ✅
+- 01.02-Transaction-Theory-DEEP-V2.md ✅
+- 01.03-ACID-Formalization-DEEP-V2.md ✅
+- 01.04-Isolation-Levels-Adya-DEEP-V2.md ✅
+- 01.05-Distributed-Transactions-DEEP-V2.md ✅
 
 ### 02-Storage ✅ (5/5)
 
-- 02.01-BufferPool-Formal.md ✅
-- 02.02-BTree-Formal.md ✅
-- 02.03-WAL-Theory.md ✅
-- 02.04-HeapAM-Formal.md ✅
-- 02.05-Index-Types-Matrix.md ✅
+- 02.01-BufferPool-DEEP-V2.md ✅
+- 02.02-BTree-DEEP-V2.md ✅
+- 02.03-WAL-DEEP-V2.md ✅
+- 02.04-HeapAM-DEEP-V2.md ✅
+- 02.05-Index-Types-Matrix-DEEP-V2.md ✅
 
 ### 03-Query ✅ (4/4)
 
-- 03.01-QueryOptimizer-CostModel.md ✅
-- 03.02-Join-Algorithms-Analysis.md ✅
-- 03.03-Statistics-Derivation.md ✅
-- 03.04-JIT-Compilation.md ✅
+- 03.01-QueryOptimizer-CostModel-DEEP-V2.md ✅
+- 03.02-Join-Algorithms-Analysis-DEEP-V2.md ✅
+- 03.03-Statistics-Derivation-DEEP-V2.md ✅
+- 03.04-JIT-Compilation-DEEP-V2.md ✅
 
 ### 04-Concurrency ✅ (5/5)
 
-- 01-MVCC-Formally-Specified.md ✅
-- 04.02-Locking-Protocols.md ✅
-- 04.03-Deadlock-Detection.md ✅
-- 04.04-SSI-Serializable.md ✅
-- 04.05-Concurrency-Performance.md ✅
+- 01-MVCC-DEEP-V2.md ✅
+- 04.02-Locking-Protocols-DEEP-V2.md ✅
+- 04.03-Deadlock-Detection-DEEP-V2.md ✅
+- 04.04-SSI-Serializable-DEEP-V2.md ✅
+- 04.05-Concurrency-Performance-DEEP-V2.md ✅
 
 ### 05-Distributed ✅ (4/4)
 
-- 05.01-Logical-Replication-Model.md ✅
-- 05.02-Citus-Sharding-Theory.md ✅
-- 05.03-Patroni-Raft-Formal.md ✅
-- 05.04-2PC-3PC-Protocol.md ✅
+- 05.01-Logical-Replication-DEEP-V2.md ✅
+- 05.02-Citus-Sharding-Theory-DEEP-V2.md ✅
+- 05.03-Patroni-Raft-Formal-DEEP-V2.md ✅
+- 05.04-2PC-3PC-Protocol-DEEP-V2.md ✅
 
 ### 06-FormalMethods ✅ (2/2)
 
-- 06.01-TLA-Model-Collection.md ✅
-- 06.02-Concept-Relation-Graph.md ✅
-- 06.03-Verification-Tools.md ✅
+- 06.01-TLA-Model-Collection-DEEP-V2.md ✅
+- 06.02-Concept-Relation-Graph-DEEP-V2.md ✅
+- 06.03-Verification-Tools-DEEP-V2.md ✅
 
 ---
 

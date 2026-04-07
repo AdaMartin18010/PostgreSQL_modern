@@ -1,130 +1,30 @@
 {
   "summary": {
-    "total_files": 229,
-    "total_links": 3550,
-    "valid_links": 3283,
-    "broken_links": 267
+    "total_files": 232,
+    "total_links": 3561,
+    "valid_links": 3350,
+    "broken_links": 211
   },
   "broken_links": [
     {
       "type": "markdown",
-      "text": "GitHub Discussions",
-      "url": "../../discussions",
-      "source_file": "COMMUNITY.md",
-      "line": 11,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
-    },
-    {
-      "type": "markdown",
-      "text": "GitHub Issues",
-      "url": "../../issues",
-      "source_file": "COMMUNITY.md",
-      "line": 23,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
-    },
-    {
-      "type": "markdown",
-      "text": "Translation Tracking Issue",
-      "url": "../../issues",
-      "source_file": "CONTRIBUTING-TRANSLATION.md",
-      "line": 60,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
-    },
-    {
-      "type": "markdown",
       "text": "Original Chinese Document",
-      "url": "../path/to/original.md",
+      "url": "./path/to/original.md",
       "source_file": "CONTRIBUTING-TRANSLATION.md",
       "line": 96,
       "link_type": "internal_doc",
       "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\path\\to\\original.md"
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\path\\to\\original.md"
     },
     {
       "type": "markdown",
-      "text": "Code of Conduct",
-      "url": "../CODE_OF_CONDUCT.md",
-      "source_file": "CONTRIBUTING-TRANSLATION.md",
-      "line": 378,
+      "text": "",
+      "url": "responseTime <= SLA` | 改为 `load == HIGH => <>[](responseTime <= SLA.md` |\n| 61 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_detected => deadlock_exists` | 改为 `deadlock_detected => deadlock_exists.md` |\n| 62 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_exists => deadlock_detected` | 改为 `deadlock_exists => deadlock_detected.md` |\n| 63 | `10-Visualization\\02-QueryPlan-Visualization-DEEP-V2.md` | `node, total_cost` | 改为 `node, total_cost.md` |\n| 64 | `11-Database-Centric-Architecture\\15-Database-Notifications-DEEP-V2.md` | `channel, data, notif.pid` | 检查文件路径或文件名 |\n| 65 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture/01-Theory-and-Principles-DEEP-V2.md` | 检查文件路径或文件名 |\n| 66 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture/02-Stored-Procedure-Patterns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 67 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/01-MVCC-DEEP-V2.md` | 检查文件路径或文件名 |\n| 68 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/01-MVCC-Formally-Specified.md` | 检查文件路径或文件名 |\n| 69 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.02-Transaction-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 70 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.02-Transaction-Theory.md` | 检查文件路径或文件名 |\n| 71 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.04-Isolation-Levels-Adya-DEEP-V2.md` | 检查文件路径或文件名 |\n| 72 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.04-Isolation-Levels-Adya.md` | 检查文件路径或文件名 |\n| 73 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.02-Locking-Protocols-DEEP-V2.md` | 检查文件路径或文件名 |\n| 74 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.02-Locking-Protocols.md` | 检查文件路径或文件名 |\n| 75 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.03-Deadlock-Detection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 76 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.03-Deadlock-Detection.md` | 检查文件路径或文件名 |\n| 77 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md` | 检查文件路径或文件名 |\n| 78 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.04-SSI-Serializable.md` | 检查文件路径或文件名 |\n| 79 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.01-Logical-Replication-DEEP-V2.md` | 检查文件路径或文件名 |\n| 80 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.01-Logical-Replication-Model.md` | 检查文件路径或文件名 |\n| 81 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.02-Citus-Sharding-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 82 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.02-Citus-Sharding-Theory.md` | 检查文件路径或文件名 |\n| 83 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.03-Patroni-Raft-Formal-DEEP-V2.md` | 检查文件路径或文件名 |\n| 84 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.03-Patroni-Raft-Formal.md` | 检查文件路径或文件名 |\n| 85 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.04-2PC-3PC-Protocol-DEEP-V2.md` | 检查文件路径或文件名 |\n| 86 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.04-2PC-3PC-Protocol.md` | 检查文件路径或文件名 |\n| 87 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.03-UUIDv7-DEEP-V2.md` | 检查文件路径或文件名 |\n| 88 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.03-UUIDv7-Math.md` | 检查文件路径或文件名 |\n| 89 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.04-Virtual-Generated-Columns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 90 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.04-Virtual-Generated-Columns.md` | 检查文件路径或文件名 |\n| 91 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md` | 检查文件路径或文件名 |\n| 92 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md` | 检查文件路径或文件名 |\n| 93 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.09-pgvector-DEEP-V2.md` | 检查文件路径或文件名 |\n| 94 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.09-pgvector-Formal.md` | 检查文件路径或文件名 |\n| 95 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.01-TLA-Model-Collection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 96 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.01-TLA-Model-Collection.md` | 检查文件路径或文件名 |\n| 97 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.02-Concept-Relation-Graph-DEEP-V2.md` | 检查文件路径或文件名 |\n| 98 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.02-Concept-Relation-Graph.md` | 检查文件路径或文件名 |\n| 99 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools/01-vacuum-analyzer-DEEP-V2.md` | 检查文件路径或文件名 |\n| 100 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools/01-vacuum-analyzer.md` | 检查文件路径或文件名 |\n| ... | ... | ... | 还有 101 个... |\n\n---\n\n## 锚点失效链接 (标题不存在",
+      "source_file": "LINK_AUDIT_FULL_REPORT.md",
+      "line": 94,
       "link_type": "internal_doc",
       "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\CODE_OF_CONDUCT.md"
-    },
-    {
-      "type": "markdown",
-      "text": "GitHub Discussion",
-      "url": "../../discussions",
-      "source_file": "CONTRIBUTING-TRANSLATION.md",
-      "line": 405,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
-    },
-    {
-      "type": "markdown",
-      "text": "Translation Tracking Issue",
-      "url": "../../issues",
-      "source_file": "CONTRIBUTING-TRANSLATION.md",
-      "line": 406,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
-    },
-    {
-      "type": "markdown",
-      "text": "GitHub Issues",
-      "url": "../../issues",
-      "source_file": "CONTRIBUTING.md",
-      "line": 18,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
-    },
-    {
-      "type": "markdown",
-      "text": "Discussions",
-      "url": "../../discussions",
-      "source_file": "CONTRIBUTING.md",
-      "line": 61,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
-    },
-    {
-      "type": "markdown",
-      "text": "GitHub Discussions",
-      "url": "../../discussions",
-      "source_file": "CONTRIBUTING.md",
-      "line": 172,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
-    },
-    {
-      "type": "markdown",
-      "text": "GitHub Issues",
-      "url": "../../issues",
-      "source_file": "CONTRIBUTING.md",
-      "line": 173,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
-    },
-    {
-      "type": "markdown",
-      "text": "学习路径文档",
-      "url": "./LEARNING-PATH.md",
-      "source_file": "KNOWLEDGE_GRAPH_README.md",
-      "line": 285,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\LEARNING-PATH.md"
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\responseTime <= SLA` | 改为 `load == HIGH => <>[](responseTime <= SLA.md` |\n| 61 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_detected => deadlock_exists` | 改为 `deadlock_detected => deadlock_exists.md` |\n| 62 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_exists => deadlock_detected` | 改为 `deadlock_exists => deadlock_detected.md` |\n| 63 | `10-Visualization\\02-QueryPlan-Visualization-DEEP-V2.md` | `node, total_cost` | 改为 `node, total_cost.md` |\n| 64 | `11-Database-Centric-Architecture\\15-Database-Notifications-DEEP-V2.md` | `channel, data, notif.pid` | 检查文件路径或文件名 |\n| 65 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture\\01-Theory-and-Principles-DEEP-V2.md` | 检查文件路径或文件名 |\n| 66 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture\\02-Stored-Procedure-Patterns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 67 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\01-MVCC-DEEP-V2.md` | 检查文件路径或文件名 |\n| 68 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\01-MVCC-Formally-Specified.md` | 检查文件路径或文件名 |\n| 69 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.02-Transaction-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 70 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.02-Transaction-Theory.md` | 检查文件路径或文件名 |\n| 71 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.04-Isolation-Levels-Adya-DEEP-V2.md` | 检查文件路径或文件名 |\n| 72 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.04-Isolation-Levels-Adya.md` | 检查文件路径或文件名 |\n| 73 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.02-Locking-Protocols-DEEP-V2.md` | 检查文件路径或文件名 |\n| 74 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.02-Locking-Protocols.md` | 检查文件路径或文件名 |\n| 75 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.03-Deadlock-Detection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 76 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.03-Deadlock-Detection.md` | 检查文件路径或文件名 |\n| 77 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.04-SSI-Serializable-DEEP-V2.md` | 检查文件路径或文件名 |\n| 78 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.04-SSI-Serializable.md` | 检查文件路径或文件名 |\n| 79 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.01-Logical-Replication-DEEP-V2.md` | 检查文件路径或文件名 |\n| 80 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.01-Logical-Replication-Model.md` | 检查文件路径或文件名 |\n| 81 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.02-Citus-Sharding-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 82 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.02-Citus-Sharding-Theory.md` | 检查文件路径或文件名 |\n| 83 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.03-Patroni-Raft-Formal-DEEP-V2.md` | 检查文件路径或文件名 |\n| 84 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.03-Patroni-Raft-Formal.md` | 检查文件路径或文件名 |\n| 85 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.04-2PC-3PC-Protocol-DEEP-V2.md` | 检查文件路径或文件名 |\n| 86 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.04-2PC-3PC-Protocol.md` | 检查文件路径或文件名 |\n| 87 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.03-UUIDv7-DEEP-V2.md` | 检查文件路径或文件名 |\n| 88 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.03-UUIDv7-Math.md` | 检查文件路径或文件名 |\n| 89 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.04-Virtual-Generated-Columns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 90 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.04-Virtual-Generated-Columns.md` | 检查文件路径或文件名 |\n| 91 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific\\17-Released\\17.03-JSON_TABLE-DEEP-V2.md` | 检查文件路径或文件名 |\n| 92 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific\\17-Released\\17.04-MERGE-Enhancements-DEEP-V2.md` | 检查文件路径或文件名 |\n| 93 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.09-pgvector-DEEP-V2.md` | 检查文件路径或文件名 |\n| 94 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.09-pgvector-Formal.md` | 检查文件路径或文件名 |\n| 95 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.01-TLA-Model-Collection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 96 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.01-TLA-Model-Collection.md` | 检查文件路径或文件名 |\n| 97 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.02-Concept-Relation-Graph-DEEP-V2.md` | 检查文件路径或文件名 |\n| 98 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.02-Concept-Relation-Graph.md` | 检查文件路径或文件名 |\n| 99 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools\\01-vacuum-analyzer-DEEP-V2.md` | 检查文件路径或文件名 |\n| 100 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools\\01-vacuum-analyzer.md` | 检查文件路径或文件名 |\n| ... | ... | ... | 还有 101 个... |\n\n---\n\n"
     },
     {
       "type": "markdown",
@@ -136,16 +36,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-选择-selection---σ",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -158,16 +58,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-选择-selection",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -180,16 +80,16 @@
       "status": "broken_anchor",
       "expected_anchor": "48位时间戳--74位随机数结构",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -202,16 +102,16 @@
       "status": "broken_anchor",
       "expected_anchor": "数据库中心架构---持续推进路线图与行动计划-v20",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -224,437 +124,17 @@
       "status": "broken_anchor",
       "expected_anchor": "️-安全监控类",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
-    },
-    {
-      "type": "markdown",
-      "text": "Relational Algebra Formalization",
-      "url": "en/01-Theory/01.01-Relational-Algebra.md",
-      "source_file": "README-en.md",
-      "line": 41,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.01-Relational-Algebra.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Transaction Theory",
-      "url": "en/01-Theory/01.02-Transaction-Theory.md",
-      "source_file": "README-en.md",
-      "line": 42,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.02-Transaction-Theory.md"
-    },
-    {
-      "type": "markdown",
-      "text": "ACID Formalization",
-      "url": "en/01-Theory/01.03-ACID-Formalization.md",
-      "source_file": "README-en.md",
-      "line": 43,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.03-ACID-Formalization.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Isolation Levels - Adya Model",
-      "url": "en/01-Theory/01.04-Isolation-Levels-Adya.md",
-      "source_file": "README-en.md",
-      "line": 44,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.04-Isolation-Levels-Adya.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Distributed Transactions",
-      "url": "en/01-Theory/01.05-Distributed-Transactions.md",
-      "source_file": "README-en.md",
-      "line": 45,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.05-Distributed-Transactions.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Buffer Pool Formalization",
-      "url": "en/02-Storage/02.01-BufferPool-Formal.md",
-      "source_file": "README-en.md",
-      "line": 49,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.01-BufferPool-Formal.md"
-    },
-    {
-      "type": "markdown",
-      "text": "B-Tree Formalization",
-      "url": "en/02-Storage/02.02-BTree-Formal.md",
-      "source_file": "README-en.md",
-      "line": 50,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.02-BTree-Formal.md"
-    },
-    {
-      "type": "markdown",
-      "text": "WAL Theory",
-      "url": "en/02-Storage/02.03-WAL-Theory.md",
-      "source_file": "README-en.md",
-      "line": 51,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.03-WAL-Theory.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Heap AM Formalization",
-      "url": "en/02-Storage/02.04-HeapAM-Formal.md",
-      "source_file": "README-en.md",
-      "line": 52,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.04-HeapAM-Formal.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Index Types Comparison Matrix",
-      "url": "en/02-Storage/02.05-Index-Types-Matrix.md",
-      "source_file": "README-en.md",
-      "line": 53,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.05-Index-Types-Matrix.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Query Optimizer Cost Model",
-      "url": "en/03-Query/03.01-QueryOptimizer-CostModel.md",
-      "source_file": "README-en.md",
-      "line": 57,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.01-QueryOptimizer-CostModel.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Join Algorithm Analysis",
-      "url": "en/03-Query/03.02-Join-Algorithms-Analysis.md",
-      "source_file": "README-en.md",
-      "line": 58,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.02-Join-Algorithms-Analysis.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Statistics Derivation",
-      "url": "en/03-Query/03.03-Statistics-Derivation.md",
-      "source_file": "README-en.md",
-      "line": 59,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.03-Statistics-Derivation.md"
-    },
-    {
-      "type": "markdown",
-      "text": "JIT Compilation",
-      "url": "en/03-Query/03.04-JIT-Compilation.md",
-      "source_file": "README-en.md",
-      "line": 60,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.04-JIT-Compilation.md"
-    },
-    {
-      "type": "markdown",
-      "text": "MVCC Formal Specification",
-      "url": "en/04-Concurrency/01-MVCC-Formally-Specified.md",
-      "source_file": "README-en.md",
-      "line": 64,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\01-MVCC-Formally-Specified.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Locking Protocols",
-      "url": "en/04-Concurrency/04.02-Locking-Protocols.md",
-      "source_file": "README-en.md",
-      "line": 65,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.02-Locking-Protocols.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Deadlock Detection",
-      "url": "en/04-Concurrency/04.03-Deadlock-Detection.md",
-      "source_file": "README-en.md",
-      "line": 66,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.03-Deadlock-Detection.md"
-    },
-    {
-      "type": "markdown",
-      "text": "SSI Serializable",
-      "url": "en/04-Concurrency/04.04-SSI-Serializable.md",
-      "source_file": "README-en.md",
-      "line": 67,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.04-SSI-Serializable.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Concurrency Performance",
-      "url": "en/04-Concurrency/04.05-Concurrency-Performance.md",
-      "source_file": "README-en.md",
-      "line": 68,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.05-Concurrency-Performance.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Logical Replication Model",
-      "url": "en/05-Distributed/05.01-Logical-Replication-Model.md",
-      "source_file": "README-en.md",
-      "line": 72,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.01-Logical-Replication-Model.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Citus Sharding Theory",
-      "url": "en/05-Distributed/05.02-Citus-Sharding-Theory.md",
-      "source_file": "README-en.md",
-      "line": 73,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.02-Citus-Sharding-Theory.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Patroni+Raft Formalization",
-      "url": "en/05-Distributed/05.03-Patroni-Raft-Formal.md",
-      "source_file": "README-en.md",
-      "line": 74,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.03-Patroni-Raft-Formal.md"
-    },
-    {
-      "type": "markdown",
-      "text": "2PC/3PC Protocols",
-      "url": "en/05-Distributed/05.04-2PC-3PC-Protocol.md",
-      "source_file": "README-en.md",
-      "line": 75,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.04-2PC-3PC-Protocol.md"
-    },
-    {
-      "type": "markdown",
-      "text": "TLA+ Model Collection",
-      "url": "en/06-FormalMethods/06.01-TLA-Model-Collection.md",
-      "source_file": "README-en.md",
-      "line": 79,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\06-FormalMethods\\06.01-TLA-Model-Collection.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Concept Relation Graph",
-      "url": "en/06-FormalMethods/06.02-Concept-Relation-Graph.md",
-      "source_file": "README-en.md",
-      "line": 80,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\06-FormalMethods\\06.02-Concept-Relation-Graph.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Verification Tools",
-      "url": "en/06-FormalMethods/06.03-Verification-Tools.md",
-      "source_file": "README-en.md",
-      "line": 81,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\06-FormalMethods\\06.03-Verification-Tools.md"
-    },
-    {
-      "type": "markdown",
-      "text": "VACUUM Memory Optimization",
-      "url": "en/00-Version-Specific/17-Released/17.01-VACUUM-Memory-Optimization-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 89,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.01-VACUUM-Memory-Optimization-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Incremental Backup",
-      "url": "en/00-Version-Specific/17-Released/17.02-Incremental-Backup-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 90,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.02-Incremental-Backup-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "JSON_TABLE",
-      "url": "en/00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 91,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.03-JSON_TABLE-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "MERGE Enhancements",
-      "url": "en/00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 92,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.04-MERGE-Enhancements-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Logical Replication Upgrades",
-      "url": "en/00-Version-Specific/17-Released/17.05-Logical-Replication-Upgrades-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 93,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.05-Logical-Replication-Upgrades-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "pg_maintain Role",
-      "url": "en/00-Version-Specific/17-Released/17.06-pg_maintain-Role-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 94,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.06-pg_maintain-Role-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Monitoring & Diagnostics",
-      "url": "en/00-Version-Specific/17-Released/17.07-Monitoring-Diagnostics-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 95,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.07-Monitoring-Diagnostics-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Upgrade Guide",
-      "url": "en/00-Version-Specific/17-Released/17.08-Upgrade-Guide-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 96,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.08-Upgrade-Guide-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "AIO (Asynchronous I/O)",
-      "url": "en/00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 100,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\18.01-AIO-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "B-tree Skip Scan",
-      "url": "en/00-Version-Specific/18-Released/18.02-SkipScan-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 101,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\18.02-SkipScan-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "More...",
-      "url": "en/00-Version-Specific/18-Released/INDEX.md",
-      "source_file": "README-en.md",
-      "line": 102,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\INDEX.md"
-    },
-    {
-      "type": "markdown",
-      "text": "00-Version-Specific/README.md",
-      "url": "en/00-Version-Specific/README.md",
-      "source_file": "README-en.md",
-      "line": 104,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\README.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Concurrency Control Methods Comparison Matrix",
-      "url": "en/04-Concurrency/01-MVCC-Formally-Specified.md",
-      "source_file": "README-en.md",
-      "line": 114,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\01-MVCC-Formally-Specified.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Index Type Selection Decision Tree",
-      "url": "en/02-Storage/02.05-Index-Types-Matrix.md",
-      "source_file": "README-en.md",
-      "line": 118,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.05-Index-Types-Matrix.md"
-    },
-    {
-      "type": "markdown",
-      "text": "AIO Architecture Diagram",
-      "url": "en/00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md",
-      "source_file": "README-en.md",
-      "line": 122,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\18.01-AIO-DEEP-V2.md"
-    },
-    {
-      "type": "markdown",
-      "text": "Serializable Proof Structure",
-      "url": "en/01-Theory/01.02-Transaction-Theory.md",
-      "source_file": "README-en.md",
-      "line": 126,
-      "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.02-Transaction-Theory.md"
     },
     {
       "type": "markdown",
@@ -666,16 +146,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-io_uring机制形式化",
       "available_anchors": [
-        "最佳实践配置",
-        "51-大数据分析平台",
-        "33-性能对比矩阵",
-        "toc",
-        "13-同步io-vs-异步io对比",
-        "正确做法",
-        "-目录",
+        "21-iouring架构",
         "4-反例与边界条件",
-        "summary",
-        "41-常见误用模式"
+        "问题",
+        "22-队列模型",
+        "3-存储设备过载",
+        "1-内存消耗过大",
+        "2-iouring机制形式化",
+        "61-aio决策树",
+        "23-性能模型",
+        "12-数学形式化定义"
       ]
     },
     {
@@ -688,16 +168,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-io_uring架构",
       "available_anchors": [
-        "最佳实践配置",
-        "51-大数据分析平台",
-        "33-性能对比矩阵",
-        "toc",
-        "13-同步io-vs-异步io对比",
-        "正确做法",
-        "-目录",
+        "21-iouring架构",
         "4-反例与边界条件",
-        "summary",
-        "41-常见误用模式"
+        "问题",
+        "22-队列模型",
+        "3-存储设备过载",
+        "1-内存消耗过大",
+        "2-iouring机制形式化",
+        "61-aio决策树",
+        "23-性能模型",
+        "12-数学形式化定义"
       ]
     },
     {
@@ -710,16 +190,16 @@
       "status": "broken_anchor",
       "expected_anchor": "uuid_generate_v7函数",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
+        "物理存储格式",
+        "toc",
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -732,38 +212,16 @@
       "status": "broken_anchor",
       "expected_anchor": "范围查询性能-1",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
-      ]
-    },
-    {
-      "type": "markdown",
-      "text": "2.1 pg\\_hba.conf OAuth配置",
-      "url": "#21-pg_hbaconf-oauth配置",
-      "source_file": "00-NewFeatures-18\\18.06-OAuth2-Integration-DEEP-V2.md",
-      "line": 18,
-      "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "21-pg_hbaconf-oauth配置",
-      "available_anchors": [
-        "postgresql配置",
+        "物理存储格式",
         "toc",
-        "11-oauth20流程",
-        "summary",
-        "21-pghbaconf-oauth配置",
-        "oauth2配置参数",
-        "pghbaconf-oauth2配置",
-        "31-keycloak集成",
-        "postgresql-18-oauth2sso集成深度分析",
-        "22-认证流程实现"
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -776,16 +234,16 @@
       "status": "broken_anchor",
       "expected_anchor": "postgresql-18-新特性深度分析pg_upgrade-增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -798,16 +256,16 @@
       "status": "broken_anchor",
       "expected_anchor": "41-pg_upgrade-cli增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -820,16 +278,16 @@
       "status": "broken_anchor",
       "expected_anchor": "总结-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -842,16 +300,16 @@
       "status": "broken_anchor",
       "expected_anchor": "参考公式汇总-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -864,16 +322,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-pg_tracing扩展架构",
       "available_anchors": [
-        "43-连接池监控",
-        "122-semantic-conventions",
-        "7-总结与最佳实践",
-        "1-可观测性理论基础",
+        "62-推荐配置",
+        "61-开销计算模型",
+        "222-触发器追踪",
+        "322-追踪查询与分析",
+        "13-采样策略理论",
         "211-系统架构图",
-        "toc",
-        "52-查询优化器追踪",
-        "212-扩展安装与配置",
-        "3-生产环境部署实践",
-        "summary"
+        "133-自适应采样",
+        "312-postgresql特定处理配置",
+        "332-告警规则配置",
+        "4-性能追踪与分析"
       ]
     },
     {
@@ -886,16 +344,16 @@
       "status": "broken_anchor",
       "expected_anchor": "快速启动",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -908,16 +366,16 @@
       "status": "broken_anchor",
       "expected_anchor": "连接信息",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -930,16 +388,16 @@
       "status": "broken_anchor",
       "expected_anchor": "服务架构",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -952,16 +410,16 @@
       "status": "broken_anchor",
       "expected_anchor": "常用命令",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -974,16 +432,16 @@
       "status": "broken_anchor",
       "expected_anchor": "如何执行文档示例",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -996,16 +454,16 @@
       "status": "broken_anchor",
       "expected_anchor": "pgadmin-使用",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -1018,16 +476,16 @@
       "status": "broken_anchor",
       "expected_anchor": "常见问题",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -1040,16 +498,16 @@
       "status": "broken_anchor",
       "expected_anchor": "特性分类矩阵",
       "available_anchors": [
+        "-postgresql-17-稳定版---8篇文档",
+        "-阅读路径指南",
         "toc",
-        "postgresql-版本特性深度解析",
-        "summary",
-        "按类别展示跨版本特性演进",
-        "-特性分类矩阵",
-        "-postgresql-18-最新版---12篇文档",
+        "-目录结构",
         "-postgresql-19-预览版",
-        "-快速导航",
         "-更新日志",
-        "-版本概览"
+        "postgresql-版本特性深度解析",
+        "按类别展示跨版本特性演进",
+        "-相关资源",
+        "性能提升对比图"
       ]
     },
     {
@@ -1062,16 +520,16 @@
       "status": "broken_anchor",
       "expected_anchor": "52-lp_redirect机制",
       "available_anchors": [
-        "2-tid结构与元组标识",
-        "12-元组形式化定义",
-        "42-版本链",
+        "41-元组可见性规则",
+        "82-mvcc正确性",
+        "9-参考文献",
         "toc",
-        "22-地址空间",
-        "64-扫描操作",
-        "-目录",
-        "summary",
-        "heap-access-method-深度形式化-v2",
-        "71-元组大小计算"
+        "7-性能分析与优化",
+        "8-形式化验证",
+        "34-元组标志位",
+        "23-tid稳定性",
+        "33-元组头结构",
+        "4-mvcc行版本控制"
       ]
     },
     {
@@ -1164,16 +622,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-shared_buffers优化",
       "available_anchors": [
-        "tps提升-12",
-        "toc",
-        "41-检测方法",
-        "52-numa优化",
+        "对于大查询临时增加",
         "1-os缓存只剩下8gb文件系统缓存不足",
-        "问题-临时文件目录膨胀",
-        "正确做法",
-        "42-诊断工具",
-        "summary",
-        "绑定到node-0"
+        "21-buffer-pool理论基础",
+        "解决方案",
+        "32gb--2mb--16384-pages",
+        "4-配置postgresql",
+        "3-性能下降20",
+        "62-内存分配流程图",
+        "检查点相关",
+        "33-内存溢出处理"
       ]
     },
     {
@@ -1186,16 +644,16 @@
       "status": "broken_anchor",
       "expected_anchor": "3-work_mem调优",
       "available_anchors": [
-        "tps提升-12",
-        "toc",
-        "41-检测方法",
-        "52-numa优化",
+        "对于大查询临时增加",
         "1-os缓存只剩下8gb文件系统缓存不足",
-        "问题-临时文件目录膨胀",
-        "正确做法",
-        "42-诊断工具",
-        "summary",
-        "绑定到node-0"
+        "21-buffer-pool理论基础",
+        "解决方案",
+        "32gb--2mb--16384-pages",
+        "4-配置postgresql",
+        "3-性能下降20",
+        "62-内存分配流程图",
+        "检查点相关",
+        "33-内存溢出处理"
       ]
     },
     {
@@ -1208,16 +666,16 @@
       "status": "broken_anchor",
       "expected_anchor": "42-pg_visibility扩展",
       "available_anchors": [
-        "53-vacuum性能优化",
-        "71-案例1-电商订单表膨胀治理",
-        "23-膨胀度量的形式化",
-        "toc",
-        "5-自动vacuum调优",
         "vacuum分析器-深度形式化分析-v20",
-        "43-自定义膨胀监控视图",
-        "summary",
-        "72-案例2-xid回绕危机处理",
-        "22-死元组判定规则"
+        "6-监控指标体系",
+        "33-冻结策略",
+        "4-膨胀检测工具与方法",
+        "7-实战案例分析",
+        "73-案例3-分区表vacuum优化",
+        "82-配置检查清单",
+        "1-问题背景与动机",
+        "12-vacuum的核心价值",
+        "toc"
       ]
     },
     {
@@ -1240,16 +698,16 @@
       "status": "broken_anchor",
       "expected_anchor": "31--fixtures模式",
       "available_anchors": [
-        "51-gitlab-ci配置",
-        "toc",
         "41-pgbench基准测试",
-        "执行测试",
-        "summary",
+        "1-测试金字塔",
         "gitlab-ciyml",
-        "2-pgtap测试框架",
-        "初始化测试数据",
-        "23-测试组织",
-        "创建测试数据库"
+        "自定义测试脚本",
+        "toc",
+        "5-持续集成",
+        "安装pgtap",
+        "51-gitlab-ci配置",
+        "数据库测试框架深度分析-v20",
+        "22-单元测试示例"
       ]
     },
     {
@@ -1263,15 +721,15 @@
       "expected_anchor": "21--strangler-fig模式-绞杀者模式",
       "available_anchors": [
         "",
-        "21-strangler-fig模式-绞杀者模式",
-        "步骤1-基础设施准备",
-        "63-数据一致性校验工具",
-        "4-回滚策略",
+        "解析命令行参数",
+        "自动执行-备份--迁移--验证--切换",
+        "步骤1-备份",
+        "62-一键迁移脚本",
+        "步骤2-创建目标数据库",
+        "配置管理",
+        "64-特性开关管理工具",
         "toc",
-        "5-验证与测试",
-        "6-自动化迁移工具集-新增",
-        "11-现状评估矩阵",
-        "自动执行-备份--迁移--验证--切换"
+        "回滚函数"
       ]
     },
     {
@@ -1284,16 +742,16 @@
       "status": "broken_anchor",
       "expected_anchor": "102-pg_stat_io视图",
       "available_anchors": [
-        "92-并行流复制默认开启",
-        "23-存储过程aio配置",
-        "21-aio架构原理",
-        "82-dca安全上下文集成",
-        "toc",
+        "11-pgupgrade-优化统计保留",
+        "12-dca架构升级路径",
+        "122-存储过程兼容性评估",
+        "2-异步io-aio-子系统",
+        "9-逻辑复制增强",
         "31-skip-scan工作原理",
-        "32-dca索引设计新模式",
-        "10-可观测性增强",
-        "4-uuidv7-原生支持",
-        "summary"
+        "3-skip-scan-多列索引优化",
+        "长期目标-3个月",
+        "21-aio架构原理",
+        "toc"
       ]
     },
     {
@@ -1306,16 +764,16 @@
       "status": "broken_anchor",
       "expected_anchor": "11-pg_upgrade-优化统计保留",
       "available_anchors": [
-        "92-并行流复制默认开启",
-        "23-存储过程aio配置",
-        "21-aio架构原理",
-        "82-dca安全上下文集成",
-        "toc",
+        "11-pgupgrade-优化统计保留",
+        "12-dca架构升级路径",
+        "122-存储过程兼容性评估",
+        "2-异步io-aio-子系统",
+        "9-逻辑复制增强",
         "31-skip-scan工作原理",
-        "32-dca索引设计新模式",
-        "10-可观测性增强",
-        "4-uuidv7-原生支持",
-        "summary"
+        "3-skip-scan-多列索引优化",
+        "长期目标-3个月",
+        "21-aio架构原理",
+        "toc"
       ]
     },
     {
@@ -1328,16 +786,16 @@
       "status": "broken_anchor",
       "expected_anchor": "61-postgres_fdw高级用法",
       "available_anchors": [
-        "82-缓存穿透防护",
-        "61-postgresfdw高级用法",
+        "6-fdw联邦架构",
+        "62-异构数据整合",
+        "51-冲突解决策略",
+        "长期目标-3个月",
+        "81-缓存一致性策略",
+        "42-读写分离实现",
         "toc",
-        "1-分布式dca架构概览",
-        "91-异地多活",
+        "分布式数据库中心架构深度分析-v20",
         "9-跨数据中心架构",
-        "43-延迟处理策略",
-        "31-citus架构组件",
-        "summary",
-        "2-数据分片策略"
+        "4-读写分离架构"
       ]
     },
     {
@@ -1361,59 +819,15 @@
       "expected_anchor": "32-pg_hbaconf配置",
       "available_anchors": [
         "",
-        "benchmarksh---性能基准测试",
-        "本地连接",
-        "pgbouncer连接",
-        "备份服务器",
-        "wal配置",
-        "pghbaconf---客户端认证配置",
-        "应用配置",
+        "32-pghbaconf配置",
         "1-基础备份",
-        "3-postgresql配置"
-      ]
-    },
-    {
-      "type": "markdown",
-      "text": "🎯 本指南目标",
-      "url": "#本指南目标",
-      "source_file": "11-Database-Centric-Architecture\\QUICKSTART.md",
-      "line": 24,
-      "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "本指南目标",
-      "available_anchors": [
-        "",
-        "使用示例",
+        "内存优化",
         "toc",
-        "1-什么是dca",
-        "22-扩展安装",
-        "-目录",
-        "summary",
-        "61-继续学习",
-        "dca-快速开始指南",
-        "检查postgresql版本"
-      ]
-    },
-    {
-      "type": "markdown",
-      "text": "🎉 总结",
-      "url": "#总结",
-      "source_file": "11-Database-Centric-Architecture\\QUICKSTART.md",
-      "line": 47,
-      "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "总结",
-      "available_anchors": [
-        "",
-        "使用示例",
-        "toc",
-        "1-什么是dca",
-        "22-扩展安装",
-        "-目录",
-        "summary",
-        "61-继续学习",
-        "dca-快速开始指南",
-        "检查postgresql版本"
+        "dca生产环境部署指南",
+        "22-操作系统配置",
+        "3-postgresql配置",
+        "pghbaconf---客户端认证配置",
+        "4-存储过程测试"
       ]
     },
     {
@@ -1426,16 +840,16 @@
       "status": "broken_anchor",
       "expected_anchor": "核心概念",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -1448,16 +862,16 @@
       "status": "broken_anchor",
       "expected_anchor": "学习路径",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -1470,16 +884,16 @@
       "status": "broken_anchor",
       "expected_anchor": "主题分类",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -1492,16 +906,16 @@
       "status": "broken_anchor",
       "expected_anchor": "版本特性",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -1514,16 +928,16 @@
       "status": "broken_anchor",
       "expected_anchor": "关系图谱",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -2886,16 +2300,16 @@
       "status": "broken_anchor",
       "expected_anchor": "pg17-pg_maintain-角色与安全增强深度分析",
       "available_anchors": [
+        "pg17-pgmaintain-角色与安全增强深度分析",
         "",
-        "2-maintain-权限详解",
-        "极少数情况下需要禁用校验和",
-        "12-pgmaintain-预定义角色的作用",
-        "42-直接-tls-握手的优势",
-        "本地连接",
-        "pghbaconf---云环境访问控制",
-        "toc",
+        "pghbaconf---强制新客户端使用-alpn",
+        "63-审计策略与监控",
+        "61-维护人员权限设计",
+        "alpn-协商设置",
+        "23-授权与撤销语法",
+        "5-数据校验和默认开启",
         "31-禁止-alter-system-的必要性",
-        "启用-ssl"
+        "4-tls-alpn-支持"
       ]
     },
     {
@@ -2908,16 +2322,16 @@
       "status": "broken_anchor",
       "expected_anchor": "12-pg_maintain-预定义角色的作用",
       "available_anchors": [
+        "pg17-pgmaintain-角色与安全增强深度分析",
         "",
-        "2-maintain-权限详解",
-        "极少数情况下需要禁用校验和",
-        "12-pgmaintain-预定义角色的作用",
-        "42-直接-tls-握手的优势",
-        "本地连接",
-        "pghbaconf---云环境访问控制",
-        "toc",
+        "pghbaconf---强制新客户端使用-alpn",
+        "63-审计策略与监控",
+        "61-维护人员权限设计",
+        "alpn-协商设置",
+        "23-授权与撤销语法",
+        "5-数据校验和默认开启",
         "31-禁止-alter-system-的必要性",
-        "启用-ssl"
+        "4-tls-alpn-支持"
       ]
     },
     {
@@ -2930,16 +2344,16 @@
       "status": "broken_anchor",
       "expected_anchor": "3-allow_alter_system-参数",
       "available_anchors": [
+        "pg17-pgmaintain-角色与安全增强深度分析",
         "",
-        "2-maintain-权限详解",
-        "极少数情况下需要禁用校验和",
-        "12-pgmaintain-预定义角色的作用",
-        "42-直接-tls-握手的优势",
-        "本地连接",
-        "pghbaconf---云环境访问控制",
-        "toc",
+        "pghbaconf---强制新客户端使用-alpn",
+        "63-审计策略与监控",
+        "61-维护人员权限设计",
+        "alpn-协商设置",
+        "23-授权与撤销语法",
+        "5-数据校验和默认开启",
         "31-禁止-alter-system-的必要性",
-        "启用-ssl"
+        "4-tls-alpn-支持"
       ]
     },
     {
@@ -2952,16 +2366,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-pg_wait_events-系统视图",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -2974,16 +2388,16 @@
       "status": "broken_anchor",
       "expected_anchor": "22-与-pg_stat_activity-结合使用",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -2996,16 +2410,16 @@
       "status": "broken_anchor",
       "expected_anchor": "42-pg_stat_progress_vacuum-新字段",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -3018,16 +2432,16 @@
       "status": "broken_anchor",
       "expected_anchor": "5-pg_stat_checkpointer-视图",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -3040,16 +2454,16 @@
       "status": "broken_anchor",
       "expected_anchor": "61-pg_stat_io-视图",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -3062,16 +2476,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-pg_upgrade-升级流程",
       "available_anchors": [
+        "pg17-行为变更参数",
         "-----------------------------",
         "",
-        "此方案需要升级前设置逻辑复制",
-        "--磁盘空间需求低",
-        "获取数据库大小",
-        "检查当前-postgresql-版本",
-        "performancebenchmarksh",
+        "回滚方案-c-逻辑复制回滚-零停机",
+        "3-逻辑复制升级-pg17-新方式",
+        "性能基准测试套件",
+        "附录-b-故障排除流程图",
         "1-在-pg16-主库配置",
-        "3-验证旧集群状态",
-        "跨版本复制配置"
+        "63-云托管环境",
+        "13-停止应用写入"
       ]
     },
     {
@@ -3084,16 +2498,16 @@
       "status": "broken_anchor",
       "expected_anchor": "️-安全监控类",
       "available_anchors": [
-        "-升级指南类",
-        "8大核心特性",
+        "postgresql-17-新特性完整指南",
+        "-完整文档列表",
+        "-快速参考卡片",
+        "官方资源",
+        "一句话总结",
+        "内部导航",
         "toc",
-        "-dba-路径运维优先",
-        "-开发者路径功能优先",
-        "-目录",
-        "summary",
-        "-运维备份类",
-        "-性能优化类",
-        "-安全监控类"
+        "-学习路径推荐",
+        "-相关资源",
+        "-特性总览"
       ]
     },
     {
@@ -3106,16 +2520,16 @@
       "status": "broken_anchor",
       "expected_anchor": "️-架构师路径全局视野",
       "available_anchors": [
-        "-升级指南类",
-        "8大核心特性",
+        "postgresql-17-新特性完整指南",
+        "-完整文档列表",
+        "-快速参考卡片",
+        "官方资源",
+        "一句话总结",
+        "内部导航",
         "toc",
-        "-dba-路径运维优先",
-        "-开发者路径功能优先",
-        "-目录",
-        "summary",
-        "-运维备份类",
-        "-性能优化类",
-        "-安全监控类"
+        "-学习路径推荐",
+        "-相关资源",
+        "-特性总览"
       ]
     },
     {
@@ -3148,16 +2562,16 @@
       "status": "broken_anchor",
       "expected_anchor": "uuid_generate_v7函数",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
+        "物理存储格式",
+        "toc",
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -3170,38 +2584,16 @@
       "status": "broken_anchor",
       "expected_anchor": "范围查询性能-1",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
-      ]
-    },
-    {
-      "type": "markdown",
-      "text": "2.1 pg\\_hba.conf OAuth配置",
-      "url": "#21-pg_hbaconf-oauth配置",
-      "source_file": "00-Version-Specific\\18-Released\\18.06-OAuth2-Integration-DEEP-V2.md",
-      "line": 42,
-      "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "21-pg_hbaconf-oauth配置",
-      "available_anchors": [
-        "postgresql配置",
+        "物理存储格式",
         "toc",
-        "11-oauth20流程",
-        "summary",
-        "21-pghbaconf-oauth配置",
-        "oauth2配置参数",
-        "pghbaconf-oauth2配置",
-        "31-keycloak集成",
-        "postgresql-18-oauth2sso集成深度分析",
-        "22-认证流程实现"
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -3214,16 +2606,16 @@
       "status": "broken_anchor",
       "expected_anchor": "postgresql-18-新特性深度分析pg_upgrade-增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -3236,16 +2628,16 @@
       "status": "broken_anchor",
       "expected_anchor": "41-pg_upgrade-cli增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -3258,16 +2650,16 @@
       "status": "broken_anchor",
       "expected_anchor": "总结-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -3280,16 +2672,16 @@
       "status": "broken_anchor",
       "expected_anchor": "参考公式汇总-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -3302,16 +2694,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-pg_tracing扩展架构",
       "available_anchors": [
-        "43-连接池监控",
-        "122-semantic-conventions",
-        "7-总结与最佳实践",
-        "1-可观测性理论基础",
+        "62-推荐配置",
+        "61-开销计算模型",
+        "222-触发器追踪",
+        "322-追踪查询与分析",
+        "13-采样策略理论",
         "211-系统架构图",
-        "toc",
-        "52-查询优化器追踪",
-        "212-扩展安装与配置",
-        "3-生产环境部署实践",
-        "summary"
+        "133-自适应采样",
+        "312-postgresql特定处理配置",
+        "332-告警规则配置",
+        "4-性能追踪与分析"
       ]
     },
     {
@@ -3324,16 +2716,16 @@
       "status": "broken_anchor",
       "expected_anchor": "测试场景-1",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -3346,16 +2738,16 @@
       "status": "broken_anchor",
       "expected_anchor": "预期性能提升-1",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -3368,16 +2760,16 @@
       "status": "broken_anchor",
       "expected_anchor": "3-json_table",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -3390,16 +2782,16 @@
       "status": "broken_anchor",
       "expected_anchor": "测试场景-2",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -3412,16 +2804,16 @@
       "status": "broken_anchor",
       "expected_anchor": "预期性能提升-2",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -3434,16 +2826,16 @@
       "status": "broken_anchor",
       "expected_anchor": "评估后升级场景-️",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -3456,20 +2848,74 @@
       "status": "broken_anchor",
       "expected_anchor": "暂缓升级场景-️",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     }
   ],
   "all_links": [
+    {
+      "type": "markdown",
+      "text": "官方文档",
+      "url": "#官方文档",
+      "source_file": "AUTHORITY_CONTENT_INDEX.md",
+      "line": 10,
+      "link_type": "anchor_only",
+      "status": "valid"
+    },
+    {
+      "type": "markdown",
+      "text": "权威书籍",
+      "url": "#权威书籍",
+      "source_file": "AUTHORITY_CONTENT_INDEX.md",
+      "line": 11,
+      "link_type": "anchor_only",
+      "status": "valid"
+    },
+    {
+      "type": "markdown",
+      "text": "顶级课程",
+      "url": "#顶级课程",
+      "source_file": "AUTHORITY_CONTENT_INDEX.md",
+      "line": 12,
+      "link_type": "anchor_only",
+      "status": "valid"
+    },
+    {
+      "type": "markdown",
+      "text": "权威博客",
+      "url": "#权威博客",
+      "source_file": "AUTHORITY_CONTENT_INDEX.md",
+      "line": 13,
+      "link_type": "anchor_only",
+      "status": "valid"
+    },
+    {
+      "type": "markdown",
+      "text": "最新版本特性",
+      "url": "#最新版本特性",
+      "source_file": "AUTHORITY_CONTENT_INDEX.md",
+      "line": 14,
+      "link_type": "anchor_only",
+      "status": "valid"
+    },
+    {
+      "type": "markdown",
+      "text": "与本项目的对齐差距分析",
+      "url": "#与本项目的对齐差距分析",
+      "source_file": "AUTHORITY_CONTENT_INDEX.md",
+      "line": 15,
+      "link_type": "anchor_only",
+      "status": "valid"
+    },
     {
       "type": "markdown",
       "text": "联系维护者",
@@ -3509,22 +2955,20 @@
     {
       "type": "markdown",
       "text": "GitHub Discussions",
-      "url": "../../discussions",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/discussions",
       "source_file": "COMMUNITY.md",
       "line": 11,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
       "text": "GitHub Issues",
-      "url": "../../issues",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/issues",
       "source_file": "COMMUNITY.md",
       "line": 23,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
@@ -3571,6 +3015,42 @@
       "url": "https://github.com/luyatshimbalanga",
       "source_file": "COMMUNITY.md",
       "line": 156,
+      "link_type": "external",
+      "status": "external"
+    },
+    {
+      "type": "markdown",
+      "text": "PostgreSQL官方发布说明",
+      "url": "https://www.postgresql.org/docs/release/",
+      "source_file": "CONTENT_FRESHNESS_AUDIT.md",
+      "line": 209,
+      "link_type": "external",
+      "status": "external"
+    },
+    {
+      "type": "markdown",
+      "text": "PostgreSQL版本支持政策",
+      "url": "https://www.postgresql.org/support/versioning/",
+      "source_file": "CONTENT_FRESHNESS_AUDIT.md",
+      "line": 210,
+      "link_type": "external",
+      "status": "external"
+    },
+    {
+      "type": "markdown",
+      "text": "PG17发布说明",
+      "url": "https://www.postgresql.org/docs/17/release-17.html",
+      "source_file": "CONTENT_FRESHNESS_AUDIT.md",
+      "line": 211,
+      "link_type": "external",
+      "status": "external"
+    },
+    {
+      "type": "markdown",
+      "text": "PostgreSQL CommitFest",
+      "url": "https://commitfest.postgresql.org/",
+      "source_file": "CONTENT_FRESHNESS_AUDIT.md",
+      "line": 212,
       "link_type": "external",
       "status": "external"
     },
@@ -3660,22 +3140,21 @@
     {
       "type": "markdown",
       "text": "Translation Tracking Issue",
-      "url": "../../issues",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/issues",
       "source_file": "CONTRIBUTING-TRANSLATION.md",
       "line": 60,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
       "text": "Original Chinese Document",
-      "url": "../path/to/original.md",
+      "url": "./path/to/original.md",
       "source_file": "CONTRIBUTING-TRANSLATION.md",
       "line": 96,
       "link_type": "internal_doc",
       "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\path\\to\\original.md"
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\path\\to\\original.md"
     },
     {
       "type": "markdown",
@@ -3747,32 +3226,30 @@
     {
       "type": "markdown",
       "text": "Code of Conduct",
-      "url": "../CODE_OF_CONDUCT.md",
+      "url": "./CODE_OF_CONDUCT.md",
       "source_file": "CONTRIBUTING-TRANSLATION.md",
       "line": 378,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\CODE_OF_CONDUCT.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\CODE_OF_CONDUCT.md"
     },
     {
       "type": "markdown",
       "text": "GitHub Discussion",
-      "url": "../../discussions",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/discussions",
       "source_file": "CONTRIBUTING-TRANSLATION.md",
       "line": 405,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
       "text": "Translation Tracking Issue",
-      "url": "../../issues",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/issues",
       "source_file": "CONTRIBUTING-TRANSLATION.md",
       "line": 406,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
@@ -3831,42 +3308,38 @@
     {
       "type": "markdown",
       "text": "GitHub Issues",
-      "url": "../../issues",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/issues",
       "source_file": "CONTRIBUTING.md",
       "line": 18,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
       "text": "Discussions",
-      "url": "../../discussions",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/discussions",
       "source_file": "CONTRIBUTING.md",
       "line": 61,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
       "text": "GitHub Discussions",
-      "url": "../../discussions",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/discussions",
       "source_file": "CONTRIBUTING.md",
       "line": 172,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\discussions"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
       "text": "GitHub Issues",
-      "url": "../../issues",
+      "url": "https://github.com/luyatshimbalanga/PostgreSQL_modern/issues",
       "source_file": "CONTRIBUTING.md",
       "line": 173,
-      "link_type": "internal_file",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\issues"
+      "link_type": "external",
+      "status": "external"
     },
     {
       "type": "markdown",
@@ -4581,12 +4054,12 @@
     {
       "type": "markdown",
       "text": "学习路径文档",
-      "url": "./LEARNING-PATH.md",
+      "url": "../LEARNING-PATH.md",
       "source_file": "KNOWLEDGE_GRAPH_README.md",
       "line": 285,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\LEARNING-PATH.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\LEARNING-PATH.md"
     },
     {
       "type": "markdown",
@@ -4600,6 +4073,16 @@
     },
     {
       "type": "markdown",
+      "text": "",
+      "url": "responseTime <= SLA` | 改为 `load == HIGH => <>[](responseTime <= SLA.md` |\n| 61 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_detected => deadlock_exists` | 改为 `deadlock_detected => deadlock_exists.md` |\n| 62 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_exists => deadlock_detected` | 改为 `deadlock_exists => deadlock_detected.md` |\n| 63 | `10-Visualization\\02-QueryPlan-Visualization-DEEP-V2.md` | `node, total_cost` | 改为 `node, total_cost.md` |\n| 64 | `11-Database-Centric-Architecture\\15-Database-Notifications-DEEP-V2.md` | `channel, data, notif.pid` | 检查文件路径或文件名 |\n| 65 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture/01-Theory-and-Principles-DEEP-V2.md` | 检查文件路径或文件名 |\n| 66 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture/02-Stored-Procedure-Patterns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 67 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/01-MVCC-DEEP-V2.md` | 检查文件路径或文件名 |\n| 68 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/01-MVCC-Formally-Specified.md` | 检查文件路径或文件名 |\n| 69 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.02-Transaction-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 70 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.02-Transaction-Theory.md` | 检查文件路径或文件名 |\n| 71 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.04-Isolation-Levels-Adya-DEEP-V2.md` | 检查文件路径或文件名 |\n| 72 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory/01.04-Isolation-Levels-Adya.md` | 检查文件路径或文件名 |\n| 73 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.02-Locking-Protocols-DEEP-V2.md` | 检查文件路径或文件名 |\n| 74 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.02-Locking-Protocols.md` | 检查文件路径或文件名 |\n| 75 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.03-Deadlock-Detection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 76 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.03-Deadlock-Detection.md` | 检查文件路径或文件名 |\n| 77 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.04-SSI-Serializable-DEEP-V2.md` | 检查文件路径或文件名 |\n| 78 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency/04.04-SSI-Serializable.md` | 检查文件路径或文件名 |\n| 79 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.01-Logical-Replication-DEEP-V2.md` | 检查文件路径或文件名 |\n| 80 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.01-Logical-Replication-Model.md` | 检查文件路径或文件名 |\n| 81 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.02-Citus-Sharding-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 82 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.02-Citus-Sharding-Theory.md` | 检查文件路径或文件名 |\n| 83 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.03-Patroni-Raft-Formal-DEEP-V2.md` | 检查文件路径或文件名 |\n| 84 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.03-Patroni-Raft-Formal.md` | 检查文件路径或文件名 |\n| 85 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.04-2PC-3PC-Protocol-DEEP-V2.md` | 检查文件路径或文件名 |\n| 86 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed/05.04-2PC-3PC-Protocol.md` | 检查文件路径或文件名 |\n| 87 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.03-UUIDv7-DEEP-V2.md` | 检查文件路径或文件名 |\n| 88 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.03-UUIDv7-Math.md` | 检查文件路径或文件名 |\n| 89 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.04-Virtual-Generated-Columns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 90 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.04-Virtual-Generated-Columns.md` | 检查文件路径或文件名 |\n| 91 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md` | 检查文件路径或文件名 |\n| 92 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md` | 检查文件路径或文件名 |\n| 93 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.09-pgvector-DEEP-V2.md` | 检查文件路径或文件名 |\n| 94 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18/18.09-pgvector-Formal.md` | 检查文件路径或文件名 |\n| 95 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.01-TLA-Model-Collection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 96 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.01-TLA-Model-Collection.md` | 检查文件路径或文件名 |\n| 97 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.02-Concept-Relation-Graph-DEEP-V2.md` | 检查文件路径或文件名 |\n| 98 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods/06.02-Concept-Relation-Graph.md` | 检查文件路径或文件名 |\n| 99 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools/01-vacuum-analyzer-DEEP-V2.md` | 检查文件路径或文件名 |\n| 100 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools/01-vacuum-analyzer.md` | 检查文件路径或文件名 |\n| ... | ... | ... | 还有 101 个... |\n\n---\n\n## 锚点失效链接 (标题不存在",
+      "source_file": "LINK_AUDIT_FULL_REPORT.md",
+      "line": 94,
+      "link_type": "internal_doc",
+      "status": "broken_file",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\responseTime <= SLA` | 改为 `load == HIGH => <>[](responseTime <= SLA.md` |\n| 61 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_detected => deadlock_exists` | 改为 `deadlock_detected => deadlock_exists.md` |\n| 62 | `06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md` | `deadlock_exists => deadlock_detected` | 改为 `deadlock_exists => deadlock_detected.md` |\n| 63 | `10-Visualization\\02-QueryPlan-Visualization-DEEP-V2.md` | `node, total_cost` | 改为 `node, total_cost.md` |\n| 64 | `11-Database-Centric-Architecture\\15-Database-Notifications-DEEP-V2.md` | `channel, data, notif.pid` | 检查文件路径或文件名 |\n| 65 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture\\01-Theory-and-Principles-DEEP-V2.md` | 检查文件路径或文件名 |\n| 66 | `visualization\\KNOWLEDGE-NAV.md` | `11-Database-Centric-Architecture\\02-Stored-Procedure-Patterns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 67 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\01-MVCC-DEEP-V2.md` | 检查文件路径或文件名 |\n| 68 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\01-MVCC-Formally-Specified.md` | 检查文件路径或文件名 |\n| 69 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.02-Transaction-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 70 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.02-Transaction-Theory.md` | 检查文件路径或文件名 |\n| 71 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.04-Isolation-Levels-Adya-DEEP-V2.md` | 检查文件路径或文件名 |\n| 72 | `visualization\\KNOWLEDGE-NAV.md` | `01-Theory\\01.04-Isolation-Levels-Adya.md` | 检查文件路径或文件名 |\n| 73 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.02-Locking-Protocols-DEEP-V2.md` | 检查文件路径或文件名 |\n| 74 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.02-Locking-Protocols.md` | 检查文件路径或文件名 |\n| 75 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.03-Deadlock-Detection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 76 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.03-Deadlock-Detection.md` | 检查文件路径或文件名 |\n| 77 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.04-SSI-Serializable-DEEP-V2.md` | 检查文件路径或文件名 |\n| 78 | `visualization\\KNOWLEDGE-NAV.md` | `04-Concurrency\\04.04-SSI-Serializable.md` | 检查文件路径或文件名 |\n| 79 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.01-Logical-Replication-DEEP-V2.md` | 检查文件路径或文件名 |\n| 80 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.01-Logical-Replication-Model.md` | 检查文件路径或文件名 |\n| 81 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.02-Citus-Sharding-Theory-DEEP-V2.md` | 检查文件路径或文件名 |\n| 82 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.02-Citus-Sharding-Theory.md` | 检查文件路径或文件名 |\n| 83 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.03-Patroni-Raft-Formal-DEEP-V2.md` | 检查文件路径或文件名 |\n| 84 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.03-Patroni-Raft-Formal.md` | 检查文件路径或文件名 |\n| 85 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.04-2PC-3PC-Protocol-DEEP-V2.md` | 检查文件路径或文件名 |\n| 86 | `visualization\\KNOWLEDGE-NAV.md` | `05-Distributed\\05.04-2PC-3PC-Protocol.md` | 检查文件路径或文件名 |\n| 87 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.03-UUIDv7-DEEP-V2.md` | 检查文件路径或文件名 |\n| 88 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.03-UUIDv7-Math.md` | 检查文件路径或文件名 |\n| 89 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.04-Virtual-Generated-Columns-DEEP-V2.md` | 检查文件路径或文件名 |\n| 90 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.04-Virtual-Generated-Columns.md` | 检查文件路径或文件名 |\n| 91 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific\\17-Released\\17.03-JSON_TABLE-DEEP-V2.md` | 检查文件路径或文件名 |\n| 92 | `visualization\\KNOWLEDGE-NAV.md` | `00-Version-Specific\\17-Released\\17.04-MERGE-Enhancements-DEEP-V2.md` | 检查文件路径或文件名 |\n| 93 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.09-pgvector-DEEP-V2.md` | 检查文件路径或文件名 |\n| 94 | `visualization\\KNOWLEDGE-NAV.md` | `00-NewFeatures-18\\18.09-pgvector-Formal.md` | 检查文件路径或文件名 |\n| 95 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.01-TLA-Model-Collection-DEEP-V2.md` | 检查文件路径或文件名 |\n| 96 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.01-TLA-Model-Collection.md` | 检查文件路径或文件名 |\n| 97 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.02-Concept-Relation-Graph-DEEP-V2.md` | 检查文件路径或文件名 |\n| 98 | `visualization\\KNOWLEDGE-NAV.md` | `06-FormalMethods\\06.02-Concept-Relation-Graph.md` | 检查文件路径或文件名 |\n| 99 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools\\01-vacuum-analyzer-DEEP-V2.md` | 检查文件路径或文件名 |\n| 100 | `visualization\\KNOWLEDGE-NAV.md` | `09-Tools\\01-vacuum-analyzer.md` | 检查文件路径或文件名 |\n| ... | ... | ... | 还有 101 个... |\n\n---\n\n"
+    },
+    {
+      "type": "markdown",
       "text": "#21-选择-selection---σ",
       "url": "#21-选择-selection---σ",
       "source_file": "LINK_VERIFICATION_SUMMARY.md",
@@ -4608,16 +4091,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-选择-selection---σ",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -4630,16 +4113,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-选择-selection",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -4652,16 +4135,16 @@
       "status": "broken_anchor",
       "expected_anchor": "48位时间戳--74位随机数结构",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -4674,16 +4157,16 @@
       "status": "broken_anchor",
       "expected_anchor": "数据库中心架构---持续推进路线图与行动计划-v20",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -4696,16 +4179,16 @@
       "status": "broken_anchor",
       "expected_anchor": "️-安全监控类",
       "available_anchors": [
-        "使用说明",
-        "建议后续行动",
+        "1-希腊字母问题批量修复",
+        "自动修复成果",
+        "执行摘要",
+        "立即修复-可批量处理",
+        "3-roadmap-文件修复",
         "toc",
-        "短期-1-2天",
-        "postgresqlformal-链接验证完成报告",
-        "修复建议",
-        "summary",
-        "中期-1周内",
-        "-中优先级-5-7-失效链接",
-        "失效链接详细分析"
+        "已修复的文件-22个",
+        "-低优先级-1-3-失效链接",
+        "使用说明",
+        "修复建议"
       ]
     },
     {
@@ -4721,422 +4204,422 @@
     {
       "type": "markdown",
       "text": "Relational Algebra Formalization",
-      "url": "en/01-Theory/01.01-Relational-Algebra.md",
+      "url": "01-Theory/01.01-Relational-Algebra.md",
       "source_file": "README-en.md",
       "line": 41,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.01-Relational-Algebra.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\01-Theory\\01.01-Relational-Algebra.md"
     },
     {
       "type": "markdown",
       "text": "Transaction Theory",
-      "url": "en/01-Theory/01.02-Transaction-Theory.md",
+      "url": "01-Theory/01.02-Transaction-Theory.md",
       "source_file": "README-en.md",
       "line": 42,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.02-Transaction-Theory.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\01-Theory\\01.02-Transaction-Theory.md"
     },
     {
       "type": "markdown",
       "text": "ACID Formalization",
-      "url": "en/01-Theory/01.03-ACID-Formalization.md",
+      "url": "01-Theory/01.03-ACID-Formalization.md",
       "source_file": "README-en.md",
       "line": 43,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.03-ACID-Formalization.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\01-Theory\\01.03-ACID-Formalization.md"
     },
     {
       "type": "markdown",
       "text": "Isolation Levels - Adya Model",
-      "url": "en/01-Theory/01.04-Isolation-Levels-Adya.md",
+      "url": "01-Theory/01.04-Isolation-Levels-Adya.md",
       "source_file": "README-en.md",
       "line": 44,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.04-Isolation-Levels-Adya.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\01-Theory\\01.04-Isolation-Levels-Adya.md"
     },
     {
       "type": "markdown",
       "text": "Distributed Transactions",
-      "url": "en/01-Theory/01.05-Distributed-Transactions.md",
+      "url": "01-Theory/01.05-Distributed-Transactions.md",
       "source_file": "README-en.md",
       "line": 45,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.05-Distributed-Transactions.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\01-Theory\\01.05-Distributed-Transactions.md"
     },
     {
       "type": "markdown",
       "text": "Buffer Pool Formalization",
-      "url": "en/02-Storage/02.01-BufferPool-Formal.md",
+      "url": "02-Storage/02.01-BufferPool-Formal.md",
       "source_file": "README-en.md",
       "line": 49,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.01-BufferPool-Formal.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\02-Storage\\02.01-BufferPool-Formal.md"
     },
     {
       "type": "markdown",
       "text": "B-Tree Formalization",
-      "url": "en/02-Storage/02.02-BTree-Formal.md",
+      "url": "02-Storage/02.02-BTree-Formal.md",
       "source_file": "README-en.md",
       "line": 50,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.02-BTree-Formal.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\02-Storage\\02.02-BTree-Formal.md"
     },
     {
       "type": "markdown",
       "text": "WAL Theory",
-      "url": "en/02-Storage/02.03-WAL-Theory.md",
+      "url": "02-Storage/02.03-WAL-Theory.md",
       "source_file": "README-en.md",
       "line": 51,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.03-WAL-Theory.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\02-Storage\\02.03-WAL-Theory.md"
     },
     {
       "type": "markdown",
       "text": "Heap AM Formalization",
-      "url": "en/02-Storage/02.04-HeapAM-Formal.md",
+      "url": "02-Storage/02.04-HeapAM-Formal.md",
       "source_file": "README-en.md",
       "line": 52,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.04-HeapAM-Formal.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\02-Storage\\02.04-HeapAM-Formal.md"
     },
     {
       "type": "markdown",
       "text": "Index Types Comparison Matrix",
-      "url": "en/02-Storage/02.05-Index-Types-Matrix.md",
+      "url": "02-Storage/02.05-Index-Types-Matrix.md",
       "source_file": "README-en.md",
       "line": 53,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.05-Index-Types-Matrix.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\02-Storage\\02.05-Index-Types-Matrix.md"
     },
     {
       "type": "markdown",
       "text": "Query Optimizer Cost Model",
-      "url": "en/03-Query/03.01-QueryOptimizer-CostModel.md",
+      "url": "03-Query/03.01-QueryOptimizer-CostModel.md",
       "source_file": "README-en.md",
       "line": 57,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.01-QueryOptimizer-CostModel.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\03-Query\\03.01-QueryOptimizer-CostModel.md"
     },
     {
       "type": "markdown",
       "text": "Join Algorithm Analysis",
-      "url": "en/03-Query/03.02-Join-Algorithms-Analysis.md",
+      "url": "03-Query/03.02-Join-Algorithms-Analysis.md",
       "source_file": "README-en.md",
       "line": 58,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.02-Join-Algorithms-Analysis.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\03-Query\\03.02-Join-Algorithms-Analysis.md"
     },
     {
       "type": "markdown",
       "text": "Statistics Derivation",
-      "url": "en/03-Query/03.03-Statistics-Derivation.md",
+      "url": "03-Query/03.03-Statistics-Derivation.md",
       "source_file": "README-en.md",
       "line": 59,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.03-Statistics-Derivation.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\03-Query\\03.03-Statistics-Derivation.md"
     },
     {
       "type": "markdown",
       "text": "JIT Compilation",
-      "url": "en/03-Query/03.04-JIT-Compilation.md",
+      "url": "03-Query/03.04-JIT-Compilation.md",
       "source_file": "README-en.md",
       "line": 60,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\03-Query\\03.04-JIT-Compilation.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\03-Query\\03.04-JIT-Compilation.md"
     },
     {
       "type": "markdown",
       "text": "MVCC Formal Specification",
-      "url": "en/04-Concurrency/01-MVCC-Formally-Specified.md",
+      "url": "04-Concurrency/01-MVCC-Formally-Specified.md",
       "source_file": "README-en.md",
       "line": 64,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\01-MVCC-Formally-Specified.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\04-Concurrency\\01-MVCC-Formally-Specified.md"
     },
     {
       "type": "markdown",
       "text": "Locking Protocols",
-      "url": "en/04-Concurrency/04.02-Locking-Protocols.md",
+      "url": "04-Concurrency/04.02-Locking-Protocols.md",
       "source_file": "README-en.md",
       "line": 65,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.02-Locking-Protocols.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\04-Concurrency\\04.02-Locking-Protocols.md"
     },
     {
       "type": "markdown",
       "text": "Deadlock Detection",
-      "url": "en/04-Concurrency/04.03-Deadlock-Detection.md",
+      "url": "04-Concurrency/04.03-Deadlock-Detection.md",
       "source_file": "README-en.md",
       "line": 66,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.03-Deadlock-Detection.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\04-Concurrency\\04.03-Deadlock-Detection.md"
     },
     {
       "type": "markdown",
       "text": "SSI Serializable",
-      "url": "en/04-Concurrency/04.04-SSI-Serializable.md",
+      "url": "04-Concurrency/04.04-SSI-Serializable.md",
       "source_file": "README-en.md",
       "line": 67,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.04-SSI-Serializable.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\04-Concurrency\\04.04-SSI-Serializable.md"
     },
     {
       "type": "markdown",
       "text": "Concurrency Performance",
-      "url": "en/04-Concurrency/04.05-Concurrency-Performance.md",
+      "url": "04-Concurrency/04.05-Concurrency-Performance.md",
       "source_file": "README-en.md",
       "line": 68,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\04.05-Concurrency-Performance.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\04-Concurrency\\04.05-Concurrency-Performance.md"
     },
     {
       "type": "markdown",
       "text": "Logical Replication Model",
-      "url": "en/05-Distributed/05.01-Logical-Replication-Model.md",
+      "url": "05-Distributed/05.01-Logical-Replication-Model.md",
       "source_file": "README-en.md",
       "line": 72,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.01-Logical-Replication-Model.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\05-Distributed\\05.01-Logical-Replication-Model.md"
     },
     {
       "type": "markdown",
       "text": "Citus Sharding Theory",
-      "url": "en/05-Distributed/05.02-Citus-Sharding-Theory.md",
+      "url": "05-Distributed/05.02-Citus-Sharding-Theory.md",
       "source_file": "README-en.md",
       "line": 73,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.02-Citus-Sharding-Theory.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\05-Distributed\\05.02-Citus-Sharding-Theory.md"
     },
     {
       "type": "markdown",
       "text": "Patroni+Raft Formalization",
-      "url": "en/05-Distributed/05.03-Patroni-Raft-Formal.md",
+      "url": "05-Distributed/05.03-Patroni-Raft-Formal.md",
       "source_file": "README-en.md",
       "line": 74,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.03-Patroni-Raft-Formal.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\05-Distributed\\05.03-Patroni-Raft-Formal.md"
     },
     {
       "type": "markdown",
       "text": "2PC/3PC Protocols",
-      "url": "en/05-Distributed/05.04-2PC-3PC-Protocol.md",
+      "url": "05-Distributed/05.04-2PC-3PC-Protocol.md",
       "source_file": "README-en.md",
       "line": 75,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\05-Distributed\\05.04-2PC-3PC-Protocol.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\05-Distributed\\05.04-2PC-3PC-Protocol.md"
     },
     {
       "type": "markdown",
       "text": "TLA+ Model Collection",
-      "url": "en/06-FormalMethods/06.01-TLA-Model-Collection.md",
+      "url": "06-FormalMethods/06.01-TLA-Model-Collection.md",
       "source_file": "README-en.md",
       "line": 79,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\06-FormalMethods\\06.01-TLA-Model-Collection.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\06-FormalMethods\\06.01-TLA-Model-Collection.md"
     },
     {
       "type": "markdown",
       "text": "Concept Relation Graph",
-      "url": "en/06-FormalMethods/06.02-Concept-Relation-Graph.md",
+      "url": "06-FormalMethods/06.02-Concept-Relation-Graph.md",
       "source_file": "README-en.md",
       "line": 80,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\06-FormalMethods\\06.02-Concept-Relation-Graph.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\06-FormalMethods\\06.02-Concept-Relation-Graph.md"
     },
     {
       "type": "markdown",
       "text": "Verification Tools",
-      "url": "en/06-FormalMethods/06.03-Verification-Tools.md",
+      "url": "06-FormalMethods/06.03-Verification-Tools.md",
       "source_file": "README-en.md",
       "line": 81,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\06-FormalMethods\\06.03-Verification-Tools.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\06-FormalMethods\\06.03-Verification-Tools.md"
     },
     {
       "type": "markdown",
       "text": "VACUUM Memory Optimization",
-      "url": "en/00-Version-Specific/17-Released/17.01-VACUUM-Memory-Optimization-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.01-VACUUM-Memory-Optimization-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 89,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.01-VACUUM-Memory-Optimization-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.01-VACUUM-Memory-Optimization-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "Incremental Backup",
-      "url": "en/00-Version-Specific/17-Released/17.02-Incremental-Backup-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.02-Incremental-Backup-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 90,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.02-Incremental-Backup-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.02-Incremental-Backup-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "JSON_TABLE",
-      "url": "en/00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.03-JSON_TABLE-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 91,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.03-JSON_TABLE-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.03-JSON_TABLE-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "MERGE Enhancements",
-      "url": "en/00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.04-MERGE-Enhancements-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 92,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.04-MERGE-Enhancements-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.04-MERGE-Enhancements-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "Logical Replication Upgrades",
-      "url": "en/00-Version-Specific/17-Released/17.05-Logical-Replication-Upgrades-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.05-Logical-Replication-Upgrades-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 93,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.05-Logical-Replication-Upgrades-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.05-Logical-Replication-Upgrades-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "pg_maintain Role",
-      "url": "en/00-Version-Specific/17-Released/17.06-pg_maintain-Role-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.06-pg_maintain-Role-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 94,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.06-pg_maintain-Role-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.06-pg_maintain-Role-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "Monitoring & Diagnostics",
-      "url": "en/00-Version-Specific/17-Released/17.07-Monitoring-Diagnostics-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.07-Monitoring-Diagnostics-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 95,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.07-Monitoring-Diagnostics-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.07-Monitoring-Diagnostics-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "Upgrade Guide",
-      "url": "en/00-Version-Specific/17-Released/17.08-Upgrade-Guide-DEEP-V2.md",
+      "url": "00-Version-Specific/17-Released/17.08-Upgrade-Guide-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 96,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\17-Released\\17.08-Upgrade-Guide-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\17-Released\\17.08-Upgrade-Guide-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "AIO (Asynchronous I/O)",
-      "url": "en/00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md",
+      "url": "00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 100,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\18.01-AIO-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\18-Released\\18.01-AIO-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "B-tree Skip Scan",
-      "url": "en/00-Version-Specific/18-Released/18.02-SkipScan-DEEP-V2.md",
+      "url": "00-Version-Specific/18-Released/18.02-SkipScan-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 101,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\18.02-SkipScan-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\18-Released\\18.02-SkipScan-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "More...",
-      "url": "en/00-Version-Specific/18-Released/INDEX.md",
+      "url": "00-Version-Specific/18-Released/INDEX.md",
       "source_file": "README-en.md",
       "line": 102,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\INDEX.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\18-Released\\INDEX.md"
     },
     {
       "type": "markdown",
       "text": "00-Version-Specific/README.md",
-      "url": "en/00-Version-Specific/README.md",
+      "url": "00-Version-Specific/README.md",
       "source_file": "README-en.md",
       "line": 104,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\README.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\README.md"
     },
     {
       "type": "markdown",
       "text": "Concurrency Control Methods Comparison Matrix",
-      "url": "en/04-Concurrency/01-MVCC-Formally-Specified.md",
+      "url": "04-Concurrency/01-MVCC-Formally-Specified.md",
       "source_file": "README-en.md",
       "line": 114,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\04-Concurrency\\01-MVCC-Formally-Specified.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\04-Concurrency\\01-MVCC-Formally-Specified.md"
     },
     {
       "type": "markdown",
       "text": "Index Type Selection Decision Tree",
-      "url": "en/02-Storage/02.05-Index-Types-Matrix.md",
+      "url": "02-Storage/02.05-Index-Types-Matrix.md",
       "source_file": "README-en.md",
       "line": 118,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\02-Storage\\02.05-Index-Types-Matrix.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\02-Storage\\02.05-Index-Types-Matrix.md"
     },
     {
       "type": "markdown",
       "text": "AIO Architecture Diagram",
-      "url": "en/00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md",
+      "url": "00-Version-Specific/18-Released/18.01-AIO-DEEP-V2.md",
       "source_file": "README-en.md",
       "line": 122,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\00-Version-Specific\\18-Released\\18.01-AIO-DEEP-V2.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\00-Version-Specific\\18-Released\\18.01-AIO-DEEP-V2.md"
     },
     {
       "type": "markdown",
       "text": "Serializable Proof Structure",
-      "url": "en/01-Theory/01.02-Transaction-Theory.md",
+      "url": "01-Theory/01.02-Transaction-Theory.md",
       "source_file": "README-en.md",
       "line": 126,
       "link_type": "internal_doc",
-      "status": "broken_file",
-      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\en\\01-Theory\\01.02-Transaction-Theory.md"
+      "status": "valid",
+      "resolved_path": "E:\\_src\\PostgreSQL_modern\\PostgreSQL_Formal\\01-Theory\\01.02-Transaction-Theory.md"
     },
     {
       "type": "markdown",
@@ -5742,16 +5225,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-io_uring机制形式化",
       "available_anchors": [
-        "最佳实践配置",
-        "51-大数据分析平台",
-        "33-性能对比矩阵",
-        "toc",
-        "13-同步io-vs-异步io对比",
-        "正确做法",
-        "-目录",
+        "21-iouring架构",
         "4-反例与边界条件",
-        "summary",
-        "41-常见误用模式"
+        "问题",
+        "22-队列模型",
+        "3-存储设备过载",
+        "1-内存消耗过大",
+        "2-iouring机制形式化",
+        "61-aio决策树",
+        "23-性能模型",
+        "12-数学形式化定义"
       ]
     },
     {
@@ -5764,16 +5247,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-io_uring架构",
       "available_anchors": [
-        "最佳实践配置",
-        "51-大数据分析平台",
-        "33-性能对比矩阵",
-        "toc",
-        "13-同步io-vs-异步io对比",
-        "正确做法",
-        "-目录",
+        "21-iouring架构",
         "4-反例与边界条件",
-        "summary",
-        "41-常见误用模式"
+        "问题",
+        "22-队列模型",
+        "3-存储设备过载",
+        "1-内存消耗过大",
+        "2-iouring机制形式化",
+        "61-aio决策树",
+        "23-性能模型",
+        "12-数学形式化定义"
       ]
     },
     {
@@ -6362,16 +5845,16 @@
       "status": "broken_anchor",
       "expected_anchor": "uuid_generate_v7函数",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
+        "物理存储格式",
+        "toc",
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -6636,16 +6119,16 @@
       "status": "broken_anchor",
       "expected_anchor": "范围查询性能-1",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
+        "物理存储格式",
+        "toc",
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -7839,24 +7322,11 @@
     {
       "type": "markdown",
       "text": "2.1 pg\\_hba.conf OAuth配置",
-      "url": "#21-pg_hbaconf-oauth配置",
+      "url": "#21-pghbaconf-oauth配置",
       "source_file": "00-NewFeatures-18\\18.06-OAuth2-Integration-DEEP-V2.md",
       "line": 18,
       "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "21-pg_hbaconf-oauth配置",
-      "available_anchors": [
-        "postgresql配置",
-        "toc",
-        "11-oauth20流程",
-        "summary",
-        "21-pghbaconf-oauth配置",
-        "oauth2配置参数",
-        "pghbaconf-oauth2配置",
-        "31-keycloak集成",
-        "postgresql-18-oauth2sso集成深度分析",
-        "22-认证流程实现"
-      ]
+      "status": "valid"
     },
     {
       "type": "markdown",
@@ -8147,16 +7617,16 @@
       "status": "broken_anchor",
       "expected_anchor": "postgresql-18-新特性深度分析pg_upgrade-增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -8295,16 +7765,16 @@
       "status": "broken_anchor",
       "expected_anchor": "41-pg_upgrade-cli增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -9856,16 +9326,16 @@
       "status": "broken_anchor",
       "expected_anchor": "总结-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -9878,16 +9348,16 @@
       "status": "broken_anchor",
       "expected_anchor": "参考公式汇总-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -10044,16 +9514,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-pg_tracing扩展架构",
       "available_anchors": [
-        "43-连接池监控",
-        "122-semantic-conventions",
-        "7-总结与最佳实践",
-        "1-可观测性理论基础",
+        "62-推荐配置",
+        "61-开销计算模型",
+        "222-触发器追踪",
+        "322-追踪查询与分析",
+        "13-采样策略理论",
         "211-系统架构图",
-        "toc",
-        "52-查询优化器追踪",
-        "212-扩展安装与配置",
-        "3-生产环境部署实践",
-        "summary"
+        "133-自适应采样",
+        "312-postgresql特定处理配置",
+        "332-告警规则配置",
+        "4-性能追踪与分析"
       ]
     },
     {
@@ -10957,16 +10427,16 @@
       "status": "broken_anchor",
       "expected_anchor": "快速启动",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -10979,16 +10449,16 @@
       "status": "broken_anchor",
       "expected_anchor": "连接信息",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -11001,16 +10471,16 @@
       "status": "broken_anchor",
       "expected_anchor": "服务架构",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -11023,16 +10493,16 @@
       "status": "broken_anchor",
       "expected_anchor": "常用命令",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -11045,16 +10515,16 @@
       "status": "broken_anchor",
       "expected_anchor": "如何执行文档示例",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -11067,16 +10537,16 @@
       "status": "broken_anchor",
       "expected_anchor": "pgadmin-使用",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -11089,16 +10559,16 @@
       "status": "broken_anchor",
       "expected_anchor": "常见问题",
       "available_anchors": [
-        "使用密码连接",
-        "pgadmin-web-界面",
-        "在-pg18-中执行",
-        "等待健康检查通过",
+        "启动命令",
+        "在-pg16-中执行",
+        "连接到-pg17-示例数据库",
+        "查看详细日志",
+        "查看卷",
+        "-常见问题",
+        "查看资源使用",
+        "性能测试",
         "postgresql-多版本实验环境---docker-使用指南",
-        "前提条件",
-        "停止并删除数据卷",
-        "-服务架构",
-        "toc",
-        "常见原因端口被占用"
+        "等待健康检查通过"
       ]
     },
     {
@@ -11475,16 +10945,16 @@
       "status": "broken_anchor",
       "expected_anchor": "特性分类矩阵",
       "available_anchors": [
+        "-postgresql-17-稳定版---8篇文档",
+        "-阅读路径指南",
         "toc",
-        "postgresql-版本特性深度解析",
-        "summary",
-        "按类别展示跨版本特性演进",
-        "-特性分类矩阵",
-        "-postgresql-18-最新版---12篇文档",
+        "-目录结构",
         "-postgresql-19-预览版",
-        "-快速导航",
         "-更新日志",
-        "-版本概览"
+        "postgresql-版本特性深度解析",
+        "按类别展示跨版本特性演进",
+        "-相关资源",
+        "性能提升对比图"
       ]
     },
     {
@@ -13720,7 +13190,7 @@
     {
       "type": "markdown",
       "text": "📑 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "02-Storage\\02.04-HeapAM-DEEP-V2.md",
       "line": 14,
       "link_type": "anchor_only",
@@ -13907,16 +13377,16 @@
       "status": "broken_anchor",
       "expected_anchor": "52-lp_redirect机制",
       "available_anchors": [
-        "2-tid结构与元组标识",
-        "12-元组形式化定义",
-        "42-版本链",
+        "41-元组可见性规则",
+        "82-mvcc正确性",
+        "9-参考文献",
         "toc",
-        "22-地址空间",
-        "64-扫描操作",
-        "-目录",
-        "summary",
-        "heap-access-method-深度形式化-v2",
-        "71-元组大小计算"
+        "7-性能分析与优化",
+        "8-形式化验证",
+        "34-元组标志位",
+        "23-tid稳定性",
+        "33-元组头结构",
+        "4-mvcc行版本控制"
       ]
     },
     {
@@ -14084,7 +13554,7 @@
     {
       "type": "markdown",
       "text": "📑 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "02-Storage\\02.05-Index-Types-Matrix-DEEP-V2.md",
       "line": 14,
       "link_type": "anchor_only",
@@ -15056,7 +14526,7 @@
     {
       "type": "markdown",
       "text": "📑 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "05-Distributed\\05.04-2PC-3PC-Protocol-DEEP-V2.md",
       "line": 14,
       "link_type": "anchor_only",
@@ -15416,7 +14886,7 @@
     {
       "type": "markdown",
       "text": "📑 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "06-FormalMethods\\06.01-TLA-Model-Collection-DEEP-V2.md",
       "line": 14,
       "link_type": "anchor_only",
@@ -15785,7 +15255,7 @@
     {
       "type": "markdown",
       "text": "📑 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "06-FormalMethods\\06.02-Concept-Relation-Graph-DEEP-V2.md",
       "line": 14,
       "link_type": "anchor_only",
@@ -16236,7 +15706,7 @@
     {
       "type": "markdown",
       "text": "📑 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "06-FormalMethods\\06.03-Verification-Tools-DEEP-V2.md",
       "line": 14,
       "link_type": "anchor_only",
@@ -16774,7 +16244,7 @@
     {
       "type": "markdown",
       "text": "📑 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "07-PracticalCases\\09-AI-ML-Platform-DEEP-V2.md",
       "line": 14,
       "link_type": "anchor_only",
@@ -17987,16 +17457,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-shared_buffers优化",
       "available_anchors": [
-        "tps提升-12",
-        "toc",
-        "41-检测方法",
-        "52-numa优化",
+        "对于大查询临时增加",
         "1-os缓存只剩下8gb文件系统缓存不足",
-        "问题-临时文件目录膨胀",
-        "正确做法",
-        "42-诊断工具",
-        "summary",
-        "绑定到node-0"
+        "21-buffer-pool理论基础",
+        "解决方案",
+        "32gb--2mb--16384-pages",
+        "4-配置postgresql",
+        "3-性能下降20",
+        "62-内存分配流程图",
+        "检查点相关",
+        "33-内存溢出处理"
       ]
     },
     {
@@ -18036,16 +17506,16 @@
       "status": "broken_anchor",
       "expected_anchor": "3-work_mem调优",
       "available_anchors": [
-        "tps提升-12",
-        "toc",
-        "41-检测方法",
-        "52-numa优化",
+        "对于大查询临时增加",
         "1-os缓存只剩下8gb文件系统缓存不足",
-        "问题-临时文件目录膨胀",
-        "正确做法",
-        "42-诊断工具",
-        "summary",
-        "绑定到node-0"
+        "21-buffer-pool理论基础",
+        "解决方案",
+        "32gb--2mb--16384-pages",
+        "4-配置postgresql",
+        "3-性能下降20",
+        "62-内存分配流程图",
+        "检查点相关",
+        "33-内存溢出处理"
       ]
     },
     {
@@ -18364,16 +17834,16 @@
       "status": "broken_anchor",
       "expected_anchor": "42-pg_visibility扩展",
       "available_anchors": [
-        "53-vacuum性能优化",
-        "71-案例1-电商订单表膨胀治理",
-        "23-膨胀度量的形式化",
-        "toc",
-        "5-自动vacuum调优",
         "vacuum分析器-深度形式化分析-v20",
-        "43-自定义膨胀监控视图",
-        "summary",
-        "72-案例2-xid回绕危机处理",
-        "22-死元组判定规则"
+        "6-监控指标体系",
+        "33-冻结策略",
+        "4-膨胀检测工具与方法",
+        "7-实战案例分析",
+        "73-案例3-分区表vacuum优化",
+        "82-配置检查清单",
+        "1-问题背景与动机",
+        "12-vacuum的核心价值",
+        "toc"
       ]
     },
     {
@@ -20961,16 +20431,16 @@
       "status": "broken_anchor",
       "expected_anchor": "31--fixtures模式",
       "available_anchors": [
-        "51-gitlab-ci配置",
-        "toc",
         "41-pgbench基准测试",
-        "执行测试",
-        "summary",
+        "1-测试金字塔",
         "gitlab-ciyml",
-        "2-pgtap测试框架",
-        "初始化测试数据",
-        "23-测试组织",
-        "创建测试数据库"
+        "自定义测试脚本",
+        "toc",
+        "5-持续集成",
+        "安装pgtap",
+        "51-gitlab-ci配置",
+        "数据库测试框架深度分析-v20",
+        "22-单元测试示例"
       ]
     },
     {
@@ -23792,15 +23262,15 @@
       "expected_anchor": "21--strangler-fig模式-绞杀者模式",
       "available_anchors": [
         "",
-        "21-strangler-fig模式-绞杀者模式",
-        "步骤1-基础设施准备",
-        "63-数据一致性校验工具",
-        "4-回滚策略",
+        "解析命令行参数",
+        "自动执行-备份--迁移--验证--切换",
+        "步骤1-备份",
+        "62-一键迁移脚本",
+        "步骤2-创建目标数据库",
+        "配置管理",
+        "64-特性开关管理工具",
         "toc",
-        "5-验证与测试",
-        "6-自动化迁移工具集-新增",
-        "11-现状评估矩阵",
-        "自动执行-备份--迁移--验证--切换"
+        "回滚函数"
       ]
     },
     {
@@ -24524,16 +23994,16 @@
       "status": "broken_anchor",
       "expected_anchor": "102-pg_stat_io视图",
       "available_anchors": [
-        "92-并行流复制默认开启",
-        "23-存储过程aio配置",
-        "21-aio架构原理",
-        "82-dca安全上下文集成",
-        "toc",
+        "11-pgupgrade-优化统计保留",
+        "12-dca架构升级路径",
+        "122-存储过程兼容性评估",
+        "2-异步io-aio-子系统",
+        "9-逻辑复制增强",
         "31-skip-scan工作原理",
-        "32-dca索引设计新模式",
-        "10-可观测性增强",
-        "4-uuidv7-原生支持",
-        "summary"
+        "3-skip-scan-多列索引优化",
+        "长期目标-3个月",
+        "21-aio架构原理",
+        "toc"
       ]
     },
     {
@@ -24546,16 +24016,16 @@
       "status": "broken_anchor",
       "expected_anchor": "11-pg_upgrade-优化统计保留",
       "available_anchors": [
-        "92-并行流复制默认开启",
-        "23-存储过程aio配置",
-        "21-aio架构原理",
-        "82-dca安全上下文集成",
-        "toc",
+        "11-pgupgrade-优化统计保留",
+        "12-dca架构升级路径",
+        "122-存储过程兼容性评估",
+        "2-异步io-aio-子系统",
+        "9-逻辑复制增强",
         "31-skip-scan工作原理",
-        "32-dca索引设计新模式",
-        "10-可观测性增强",
-        "4-uuidv7-原生支持",
-        "summary"
+        "3-skip-scan-多列索引优化",
+        "长期目标-3个月",
+        "21-aio架构原理",
+        "toc"
       ]
     },
     {
@@ -24856,16 +24326,16 @@
       "status": "broken_anchor",
       "expected_anchor": "61-postgres_fdw高级用法",
       "available_anchors": [
-        "82-缓存穿透防护",
-        "61-postgresfdw高级用法",
+        "6-fdw联邦架构",
+        "62-异构数据整合",
+        "51-冲突解决策略",
+        "长期目标-3个月",
+        "81-缓存一致性策略",
+        "42-读写分离实现",
         "toc",
-        "1-分布式dca架构概览",
-        "91-异地多活",
+        "分布式数据库中心架构深度分析-v20",
         "9-跨数据中心架构",
-        "43-延迟处理策略",
-        "31-citus架构组件",
-        "summary",
-        "2-数据分片策略"
+        "4-读写分离架构"
       ]
     },
     {
@@ -26023,15 +25493,15 @@
       "expected_anchor": "32-pg_hbaconf配置",
       "available_anchors": [
         "",
-        "benchmarksh---性能基准测试",
-        "本地连接",
-        "pgbouncer连接",
-        "备份服务器",
-        "wal配置",
-        "pghbaconf---客户端认证配置",
-        "应用配置",
+        "32-pghbaconf配置",
         "1-基础备份",
-        "3-postgresql配置"
+        "内存优化",
+        "toc",
+        "dca生产环境部署指南",
+        "22-操作系统配置",
+        "3-postgresql配置",
+        "pghbaconf---客户端认证配置",
+        "4-存储过程测试"
       ]
     },
     {
@@ -27128,29 +26598,16 @@
     {
       "type": "markdown",
       "text": "🎯 本指南目标",
-      "url": "#本指南目标",
+      "url": "#-本指南目标",
       "source_file": "11-Database-Centric-Architecture\\QUICKSTART.md",
       "line": 24,
       "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "本指南目标",
-      "available_anchors": [
-        "",
-        "使用示例",
-        "toc",
-        "1-什么是dca",
-        "22-扩展安装",
-        "-目录",
-        "summary",
-        "61-继续学习",
-        "dca-快速开始指南",
-        "检查postgresql版本"
-      ]
+      "status": "valid"
     },
     {
       "type": "markdown",
       "text": "📚 目录",
-      "url": "#目录",
+      "url": "#-目录",
       "source_file": "11-Database-Centric-Architecture\\QUICKSTART.md",
       "line": 25,
       "link_type": "anchor_only",
@@ -27348,24 +26805,11 @@
     {
       "type": "markdown",
       "text": "🎉 总结",
-      "url": "#总结",
+      "url": "#-总结",
       "source_file": "11-Database-Centric-Architecture\\QUICKSTART.md",
       "line": 47,
       "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "总结",
-      "available_anchors": [
-        "",
-        "使用示例",
-        "toc",
-        "1-什么是dca",
-        "22-扩展安装",
-        "-目录",
-        "summary",
-        "61-继续学习",
-        "dca-快速开始指南",
-        "检查postgresql版本"
-      ]
+      "status": "valid"
     },
     {
       "type": "markdown",
@@ -27617,16 +27061,16 @@
       "status": "broken_anchor",
       "expected_anchor": "核心概念",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -27639,16 +27083,16 @@
       "status": "broken_anchor",
       "expected_anchor": "学习路径",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -27661,16 +27105,16 @@
       "status": "broken_anchor",
       "expected_anchor": "主题分类",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -27683,16 +27127,16 @@
       "status": "broken_anchor",
       "expected_anchor": "版本特性",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -27705,16 +27149,16 @@
       "status": "broken_anchor",
       "expected_anchor": "关系图谱",
       "available_anchors": [
-        "postgresqlformal-知识图谱导航",
+        "storage",
+        "学习路径图",
+        "存储引擎",
+        "-图例",
         "dba-学习路径",
+        "概念关系图",
         "aiml-集成",
-        "toc",
-        "-目录",
-        "summary",
-        "-学习路径",
-        "maintenance",
-        "工具与诊断",
-        "distributed"
+        "云原生",
+        "关系类型",
+        "toc"
       ]
     },
     {
@@ -29365,16 +28809,16 @@
       "status": "broken_anchor",
       "expected_anchor": "pg17-pg_maintain-角色与安全增强深度分析",
       "available_anchors": [
+        "pg17-pgmaintain-角色与安全增强深度分析",
         "",
-        "2-maintain-权限详解",
-        "极少数情况下需要禁用校验和",
-        "12-pgmaintain-预定义角色的作用",
-        "42-直接-tls-握手的优势",
-        "本地连接",
-        "pghbaconf---云环境访问控制",
-        "toc",
+        "pghbaconf---强制新客户端使用-alpn",
+        "63-审计策略与监控",
+        "61-维护人员权限设计",
+        "alpn-协商设置",
+        "23-授权与撤销语法",
+        "5-数据校验和默认开启",
         "31-禁止-alter-system-的必要性",
-        "启用-ssl"
+        "4-tls-alpn-支持"
       ]
     },
     {
@@ -29423,16 +28867,16 @@
       "status": "broken_anchor",
       "expected_anchor": "12-pg_maintain-预定义角色的作用",
       "available_anchors": [
+        "pg17-pgmaintain-角色与安全增强深度分析",
         "",
-        "2-maintain-权限详解",
-        "极少数情况下需要禁用校验和",
-        "12-pgmaintain-预定义角色的作用",
-        "42-直接-tls-握手的优势",
-        "本地连接",
-        "pghbaconf---云环境访问控制",
-        "toc",
+        "pghbaconf---强制新客户端使用-alpn",
+        "63-审计策略与监控",
+        "61-维护人员权限设计",
+        "alpn-协商设置",
+        "23-授权与撤销语法",
+        "5-数据校验和默认开启",
         "31-禁止-alter-system-的必要性",
-        "启用-ssl"
+        "4-tls-alpn-支持"
       ]
     },
     {
@@ -29490,16 +28934,16 @@
       "status": "broken_anchor",
       "expected_anchor": "3-allow_alter_system-参数",
       "available_anchors": [
+        "pg17-pgmaintain-角色与安全增强深度分析",
         "",
-        "2-maintain-权限详解",
-        "极少数情况下需要禁用校验和",
-        "12-pgmaintain-预定义角色的作用",
-        "42-直接-tls-握手的优势",
-        "本地连接",
-        "pghbaconf---云环境访问控制",
-        "toc",
+        "pghbaconf---强制新客户端使用-alpn",
+        "63-审计策略与监控",
+        "61-维护人员权限设计",
+        "alpn-协商设置",
+        "23-授权与撤销语法",
+        "5-数据校验和默认开启",
         "31-禁止-alter-system-的必要性",
-        "启用-ssl"
+        "4-tls-alpn-支持"
       ]
     },
     {
@@ -29755,16 +29199,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-pg_wait_events-系统视图",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -29786,16 +29230,16 @@
       "status": "broken_anchor",
       "expected_anchor": "22-与-pg_stat_activity-结合使用",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -29880,16 +29324,16 @@
       "status": "broken_anchor",
       "expected_anchor": "42-pg_stat_progress_vacuum-新字段",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -29911,16 +29355,16 @@
       "status": "broken_anchor",
       "expected_anchor": "5-pg_stat_checkpointer-视图",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -29969,16 +29413,16 @@
       "status": "broken_anchor",
       "expected_anchor": "61-pg_stat_io-视图",
       "available_anchors": [
-        "7-综合监控方案",
-        "51-检查点详细统计",
-        "toc",
         "42-pgstatprogressvacuum-新字段",
-        "31-io-块读写时间显示",
-        "62-slru-缓存统计",
-        "summary",
-        "34-执行计划对比示例",
-        "23-实际诊断案例",
-        "72-关键告警规则"
+        "72-关键告警规则",
+        "22-与-pgstatactivity-结合使用",
+        "21-视图结构与字段说明",
+        "63-死元组统计增强",
+        "postgresqlconf---pg17-监控优化配置",
+        "12-对-dba-和运维的价值",
+        "toc",
+        "43-监控脚本示例",
+        "7-综合监控方案"
       ]
     },
     {
@@ -30216,16 +29660,16 @@
       "status": "broken_anchor",
       "expected_anchor": "2-pg_upgrade-升级流程",
       "available_anchors": [
+        "pg17-行为变更参数",
         "-----------------------------",
         "",
-        "此方案需要升级前设置逻辑复制",
-        "--磁盘空间需求低",
-        "获取数据库大小",
-        "检查当前-postgresql-版本",
-        "performancebenchmarksh",
+        "回滚方案-c-逻辑复制回滚-零停机",
+        "3-逻辑复制升级-pg17-新方式",
+        "性能基准测试套件",
+        "附录-b-故障排除流程图",
         "1-在-pg16-主库配置",
-        "3-验证旧集群状态",
-        "跨版本复制配置"
+        "63-云托管环境",
+        "13-停止应用写入"
       ]
     },
     {
@@ -30778,16 +30222,16 @@
       "status": "broken_anchor",
       "expected_anchor": "️-安全监控类",
       "available_anchors": [
-        "-升级指南类",
-        "8大核心特性",
+        "postgresql-17-新特性完整指南",
+        "-完整文档列表",
+        "-快速参考卡片",
+        "官方资源",
+        "一句话总结",
+        "内部导航",
         "toc",
-        "-dba-路径运维优先",
-        "-开发者路径功能优先",
-        "-目录",
-        "summary",
-        "-运维备份类",
-        "-性能优化类",
-        "-安全监控类"
+        "-学习路径推荐",
+        "-相关资源",
+        "-特性总览"
       ]
     },
     {
@@ -30836,16 +30280,16 @@
       "status": "broken_anchor",
       "expected_anchor": "️-架构师路径全局视野",
       "available_anchors": [
-        "-升级指南类",
-        "8大核心特性",
+        "postgresql-17-新特性完整指南",
+        "-完整文档列表",
+        "-快速参考卡片",
+        "官方资源",
+        "一句话总结",
+        "内部导航",
         "toc",
-        "-dba-路径运维优先",
-        "-开发者路径功能优先",
-        "-目录",
-        "summary",
-        "-运维备份类",
-        "-性能优化类",
-        "-安全监控类"
+        "-学习路径推荐",
+        "-相关资源",
+        "-特性总览"
       ]
     },
     {
@@ -31310,16 +30754,16 @@
       "status": "broken_anchor",
       "expected_anchor": "uuid_generate_v7函数",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
+        "物理存储格式",
+        "toc",
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -31584,16 +31028,16 @@
       "status": "broken_anchor",
       "expected_anchor": "范围查询性能-1",
       "available_anchors": [
-        "缓存命中率",
-        "物理存储格式",
-        "附录b-性能测试完整脚本",
-        "2-时间提取优化",
-        "范围查询性能",
-        "技术实现细节",
+        "uuidgeneratev7函数",
+        "并发安全实现",
+        "与现有uuid类型的兼容性",
         "熵分析",
-        "高效时间范围查询",
-        "b-树深度",
-        "适用场景决策树"
+        "物理存储格式",
+        "toc",
+        "批量生成优化",
+        "字节序处理",
+        "选择决策矩阵",
+        "分片键选择"
       ]
     },
     {
@@ -32842,24 +32286,11 @@
     {
       "type": "markdown",
       "text": "2.1 pg\\_hba.conf OAuth配置",
-      "url": "#21-pg_hbaconf-oauth配置",
+      "url": "#21-pghbaconf-oauth配置",
       "source_file": "00-Version-Specific\\18-Released\\18.06-OAuth2-Integration-DEEP-V2.md",
       "line": 42,
       "link_type": "anchor_only",
-      "status": "broken_anchor",
-      "expected_anchor": "21-pg_hbaconf-oauth配置",
-      "available_anchors": [
-        "postgresql配置",
-        "toc",
-        "11-oauth20流程",
-        "summary",
-        "21-pghbaconf-oauth配置",
-        "oauth2配置参数",
-        "pghbaconf-oauth2配置",
-        "31-keycloak集成",
-        "postgresql-18-oauth2sso集成深度分析",
-        "22-认证流程实现"
-      ]
+      "status": "valid"
     },
     {
       "type": "markdown",
@@ -33150,16 +32581,16 @@
       "status": "broken_anchor",
       "expected_anchor": "postgresql-18-新特性深度分析pg_upgrade-增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -33298,16 +32729,16 @@
       "status": "broken_anchor",
       "expected_anchor": "41-pg_upgrade-cli增强",
       "available_anchors": [
-        "4-自动化工具",
-        "43-cicd集成",
-        "42-容器化升级",
-        "toc",
-        "11-大对象检查",
-        "8-创建新数据目录",
-        "5-总结与展望",
+        "1-标准并行升级",
+        "1-服务状态检查",
+        "gitlab-ciyml",
+        "postupgradesh---升级后处理",
+        "41-pgupgrade-cli增强",
         "1-升级机制理论",
-        "5-扩展兼容性检查",
-        "pg-upgrade-instanceyaml"
+        "42-容器化升级",
+        "8-创建新数据目录",
+        "11-原地升级-vs-逻辑升级",
+        "31-1718升级步骤"
       ]
     },
     {
@@ -34859,16 +34290,16 @@
       "status": "broken_anchor",
       "expected_anchor": "总结-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -34881,16 +34312,16 @@
       "status": "broken_anchor",
       "expected_anchor": "参考公式汇总-1",
       "available_anchors": [
-        "6-验证数据完整性",
-        "521-连接池配置",
-        "3-等待故障检测模拟",
-        "422-pod拓扑分布约束",
-        "custom-queriesyaml",
-        "233-并行备份配置",
-        "32-监控集成",
-        "411-复制模式",
-        "初始化测试数据",
-        "连接池配置"
+        "部署生产集群",
+        "检查存储类",
+        "231-备份类型",
+        "531-网络策略",
+        "83-容量规划公式",
+        "62-电商平台",
+        "42-跨可用区部署",
+        "修改版本号触发滚动升级",
+        "只读副本池水平扩展读流量",
+        "toc"
       ]
     },
     {
@@ -35047,16 +34478,16 @@
       "status": "broken_anchor",
       "expected_anchor": "21-pg_tracing扩展架构",
       "available_anchors": [
-        "43-连接池监控",
-        "122-semantic-conventions",
-        "7-总结与最佳实践",
-        "1-可观测性理论基础",
+        "62-推荐配置",
+        "61-开销计算模型",
+        "222-触发器追踪",
+        "322-追踪查询与分析",
+        "13-采样策略理论",
         "211-系统架构图",
-        "toc",
-        "52-查询优化器追踪",
-        "212-扩展安装与配置",
-        "3-生产环境部署实践",
-        "summary"
+        "133-自适应采样",
+        "312-postgresql特定处理配置",
+        "332-告警规则配置",
+        "4-性能追踪与分析"
       ]
     },
     {
@@ -36398,16 +35829,16 @@
       "status": "broken_anchor",
       "expected_anchor": "测试场景-1",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -36420,16 +35851,16 @@
       "status": "broken_anchor",
       "expected_anchor": "预期性能提升-1",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -36460,16 +35891,16 @@
       "status": "broken_anchor",
       "expected_anchor": "3-json_table",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -36482,16 +35913,16 @@
       "status": "broken_anchor",
       "expected_anchor": "测试场景-2",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -36504,16 +35935,16 @@
       "status": "broken_anchor",
       "expected_anchor": "预期性能提升-2",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -36571,16 +36002,16 @@
       "status": "broken_anchor",
       "expected_anchor": "评估后升级场景-️",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {
@@ -36593,16 +36024,16 @@
       "status": "broken_anchor",
       "expected_anchor": "暂缓升级场景-️",
       "available_anchors": [
-        "a-快速开始命令",
-        "特性测试结果",
-        "toc",
-        "2-增量备份测试",
-        "2-测试流程",
+        "3-性能指标定义",
         "汇总与建议",
-        "1-vacuum-内存优化",
-        "测试概述",
+        "3-jsontable",
+        "测试目标",
+        "成本效益分析",
+        "暂缓升级场景-",
+        "性能数据分析示例",
+        "预期性能提升",
         "1-vacuum-测试",
-        "标准硬件配置"
+        "c-参考资源"
       ]
     },
     {

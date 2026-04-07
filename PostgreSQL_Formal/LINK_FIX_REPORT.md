@@ -35,13 +35,13 @@
 | 00-Version-Specific/18-Released/18.10-CloudNativePG-DEEP-V2.md | 104 | `#总结-1` | `#总结` | 总结... |
 | 00-Version-Specific/18-Released/18.10-CloudNativePG-DEEP-V2.md | 105 | `#参考公式汇总-1` | `#参考公式汇总` | 参考公式汇总... |
 | 01-Theory/01.01-Relational-Algebra-DEEP-V2.md | 14 | `#-目录` | `#目录` | 📑 目录... |
-| 01-Theory/01.01-Relational-Algebra.md | 13 | `#-目录` | `#目录` | 📑 目录... |
-| 01-Theory/01.02-Transaction-Theory.md | 13 | `#-目录` | `#目录` | 📑 目录... |
+| 01-Theory/01.01-Relational-Algebra-DEEP-V2.md | 13 | `#-目录` | `#目录` | 📑 目录... |
+| 01-Theory/01.02-Transaction-Theory-DEEP-V2.md | 13 | `#-目录` | `#目录` | 📑 目录... |
 | 01-Theory/01.03-ACID-Formalization-DEEP-V2.md | 14 | `#-目录` | `#目录` | 📑 目录... |
-| 01-Theory/01.03-ACID-Formalization.md | 13 | `#-目录` | `#目录` | 📑 目录... |
+| 01-Theory/01.03-ACID-Formalization-DEEP-V2.md | 13 | `#-目录` | `#目录` | 📑 目录... |
 | 02-Storage/02.04-HeapAM-DEEP-V2.md | 14 | `#-目录` | `#目录` | 📑 目录... |
 | 02-Storage/02.05-Index-Types-Matrix-DEEP-V2.md | 14 | `#-目录` | `#目录` | 📑 目录... |
-| 04-Concurrency/01-MVCC-Formally-Specified.md | 13 | `#-目录` | `#目录` | 📑 目录... |
+| 04-Concurrency/01-MVCC-DEEP-V2.md | 13 | `#-目录` | `#目录` | 📑 目录... |
 | 04-Concurrency/04.05-Concurrency-Performance-DEEP-V2.md | 14 | `#-目录` | `#目录` | 📑 目录... |
 | 05-Distributed/05.04-2PC-3PC-Protocol-DEEP-V2.md | 14 | `#-目录` | `#目录` | 📑 目录... |
 | 06-FormalMethods/06.01-TLA-Model-Collection-DEEP-V2.md | 14 | `#-目录` | `#目录` | 📑 目录... |
@@ -76,7 +76,7 @@
 - `01-Theory/01.01-Relational-Algebra-DEEP-V2.md`: `#26-自然连接-natural-join---⋈` - 数学符号
 - `01-Theory/01.01-Relational-Algebra-DEEP-V2.md`: `#27-重命名-rename---ρ` - 希腊字母
 - `01-Theory/01.01-Relational-Algebra-DEEP-V2.md`: `#28-除法-division---÷` - 数学符号
-- `01-Theory/01.01-Relational-Algebra.md`: 类似上述希腊字母和数学符号问题
+- `01-Theory/01.01-Relational-Algebra-DEEP-V2.md`: 类似上述希腊字母和数学符号问题
 - `01-Theory/01.04-Isolation-Levels-Adya-DEEP-V2.md`: `#隔离级别形式化---adya模型深度分析-v2` - 标题不匹配
 - `01-Theory/01.04-Isolation-Levels-Adya-DEEP-V2.md`: `#311-g0---脏写-dirty-write` - 序号格式
 - `01-Theory/01.04-Isolation-Levels-Adya-DEEP-V2.md`: `#312-g1---脏读-dirty-read` - 序号格式

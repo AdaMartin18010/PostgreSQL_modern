@@ -23,31 +23,31 @@
 
 | 主题 | 保留文件 | 归档文件 |
 |------|----------|----------|
-| 关系代数 | `01.01-Relational-Algebra-DEEP-V2.md` | `01.01-Relational-Algebra.md` |
-| 事务理论 | `01.02-Transaction-Theory-DEEP-V2.md` | `01.02-Transaction-Theory.md` |
-| ACID形式化 | `01.03-ACID-Formalization-DEEP-V2.md` | `01.03-ACID-Formalization.md` |
-| 隔离级别 | `01.04-Isolation-Levels-Adya-DEEP-V2.md` | `01.04-Isolation-Levels-Adya.md` |
-| 分布式事务 | `01.05-Distributed-Transactions-DEEP-V2.md` | `01.05-Distributed-Transactions.md` |
+| 关系代数 | `01.01-Relational-Algebra-DEEP-V2.md` | `01.01-Relational-Algebra-DEEP-V2.md` |
+| 事务理论 | `01.02-Transaction-Theory-DEEP-V2.md` | `01.02-Transaction-Theory-DEEP-V2.md` |
+| ACID形式化 | `01.03-ACID-Formalization-DEEP-V2.md` | `01.03-ACID-Formalization-DEEP-V2.md` |
+| 隔离级别 | `01.04-Isolation-Levels-Adya-DEEP-V2.md` | `01.04-Isolation-Levels-Adya-DEEP-V2.md` |
+| 分布式事务 | `01.05-Distributed-Transactions-DEEP-V2.md` | `01.05-Distributed-Transactions-DEEP-V2.md` |
 
 ### 1.2 存储引擎 (02-Storage) - 5篇
 
 | 主题 | 保留文件 | 归档文件 |
 |------|----------|----------|
-| 缓冲池 | `02.01-BufferPool-DEEP-V2.md` | `02.01-BufferPool-Formal.md` |
-| B树索引 | `02.02-BTree-DEEP-V2.md` | `02.02-BTree-Formal.md` |
-| WAL日志 | `02.03-WAL-DEEP-V2.md` | `02.03-WAL-Theory.md` |
-| 堆表存储 | `02.04-HeapAM-DEEP-V2.md` | `02.04-HeapAM-Formal.md` |
-| 索引矩阵 | `02.05-Index-Types-Matrix-DEEP-V2.md` | `02.05-Index-Types-Matrix.md` |
+| 缓冲池 | `02.01-BufferPool-DEEP-V2.md` | `02.01-BufferPool-DEEP-V2.md` |
+| B树索引 | `02.02-BTree-DEEP-V2.md` | `02.02-BTree-DEEP-V2.md` |
+| WAL日志 | `02.03-WAL-DEEP-V2.md` | `02.03-WAL-DEEP-V2.md` |
+| 堆表存储 | `02.04-HeapAM-DEEP-V2.md` | `02.04-HeapAM-DEEP-V2.md` |
+| 索引矩阵 | `02.05-Index-Types-Matrix-DEEP-V2.md` | `02.05-Index-Types-Matrix-DEEP-V2.md` |
 
 ### 1.3 并发控制 (04-Concurrency) - 5篇
 
 | 主题 | 保留文件 | 归档文件 |
 |------|----------|----------|
-| MVCC | `01-MVCC-DEEP-V2.md` | `01-MVCC-Formally-Specified.md` |
-| 锁协议 | `04.02-Locking-Protocols-DEEP-V2.md` | `04.02-Locking-Protocols.md` |
-| 死锁检测 | `04.03-Deadlock-Detection-DEEP-V2.md` | `04.03-Deadlock-Detection.md` |
-| 可串行化 | `04.04-SSI-Serializable-DEEP-V2.md` | `04.04-SSI-Serializable.md` |
-| 并发性能 | `04.05-Concurrency-Performance-DEEP-V2.md` | `04.05-Concurrency-Performance.md` |
+| MVCC | `01-MVCC-DEEP-V2.md` | `01-MVCC-DEEP-V2.md` |
+| 锁协议 | `04.02-Locking-Protocols-DEEP-V2.md` | `04.02-Locking-Protocols-DEEP-V2.md` |
+| 死锁检测 | `04.03-Deadlock-Detection-DEEP-V2.md` | `04.03-Deadlock-Detection-DEEP-V2.md` |
+| 可串行化 | `04.04-SSI-Serializable-DEEP-V2.md` | `04.04-SSI-Serializable-DEEP-V2.md` |
+| 并发性能 | `04.05-Concurrency-Performance-DEEP-V2.md` | `04.05-Concurrency-Performance-DEEP-V2.md` |
 
 **P0 阶段交付物**:
 
@@ -68,10 +68,10 @@
 
 | 主题 | 保留文件 | 归档文件 |
 |------|----------|----------|
-| 成本模型 | `03.01-QueryOptimizer-CostModel-DEEP-V2.md` | `03.01-QueryOptimizer-CostModel.md` |
-| 连接算法 | `03.02-Join-Algorithms-Analysis-DEEP-V2.md` | `03.02-Join-Algorithms-Analysis.md` |
-| 统计推导 | `03.03-Statistics-Derivation-DEEP-V2.md` | `03.03-Statistics-Derivation.md` |
-| JIT编译 | `03.04-JIT-Compilation-DEEP-V2.md` | `03.04-JIT-Compilation.md` |
+| 成本模型 | `03.01-QueryOptimizer-CostModel-DEEP-V2.md` | `03.01-QueryOptimizer-CostModel-DEEP-V2.md` |
+| 连接算法 | `03.02-Join-Algorithms-Analysis-DEEP-V2.md` | `03.02-Join-Algorithms-Analysis-DEEP-V2.md` |
+| 统计推导 | `03.03-Statistics-Derivation-DEEP-V2.md` | `03.03-Statistics-Derivation-DEEP-V2.md` |
+| JIT编译 | `03.04-JIT-Compilation-DEEP-V2.md` | `03.04-JIT-Compilation-DEEP-V2.md` |
 
 ### 2.2 分布式系统 (05-Distributed) - 4篇
 
@@ -109,18 +109,18 @@
 
 | 主题 | 保留文件 | 归档文件 |
 |------|----------|----------|
-| 电商平台 | `01-ECommerce-Platform-DEEP-V2.md` | `01-ECommerce-Platform.md` |
-| 金融系统 | `02-Financial-System-DEEP-V2.md` | `02-Financial-System.md` |
-| IoT平台 | `03-IoT-Platform-DEEP-V2.md` | `03-IoT-Platform.md` |
-| 社交网络 | `04-Social-Network-DEEP-V2.md` | `04-Social-Network.md` |
-| SaaS多租户 | `05-SaaS-MultiTenant-DEEP-V2.md` | `05-SaaS-MultiTenant.md` |
-| GIS应用 | `06-GIS-Application-DEEP-V2.md` | `06-GIS-Application.md` |
-| 数据仓库 | `07-DataWarehouse-DEEP-V2.md` | `07-DataWarehouse.md` |
-| 游戏平台 | `08-Gaming-Platform-DEEP-V2.md` | `08-Gaming-Platform.md` |
-| AI/ML平台 | `09-AI-ML-Platform-DEEP-V2.md` | `09-AI-ML-Platform.md` |
-| 医疗系统 | `09-Healthcare-System-DEEP-V2.md` | `10-Healthcare-System.md` |
-| 物流系统 | `10-Logistics-System-DEEP-V2.md` | `11-Logistics-System.md` |
-| 内容管理 | `12-Content-Management-DEEP-V2.md` | `12-Content-Management.md` |
+| 电商平台 | `01-ECommerce-Platform-DEEP-V2.md` | `01-ECommerce-Platform-DEEP-V2.md` |
+| 金融系统 | `02-Financial-System-DEEP-V2.md` | `02-Financial-System-DEEP-V2.md` |
+| IoT平台 | `03-IoT-Platform-DEEP-V2.md` | `03-IoT-Platform-DEEP-V2.md` |
+| 社交网络 | `04-Social-Network-DEEP-V2.md` | `04-Social-Network-DEEP-V2.md` |
+| SaaS多租户 | `05-SaaS-MultiTenant-DEEP-V2.md` | `05-SaaS-MultiTenant-DEEP-V2.md` |
+| GIS应用 | `06-GIS-Application-DEEP-V2.md` | `06-GIS-Application-DEEP-V2.md` |
+| 数据仓库 | `07-DataWarehouse-DEEP-V2.md` | `07-DataWarehouse-DEEP-V2.md` |
+| 游戏平台 | `08-Gaming-Platform-DEEP-V2.md` | `08-Gaming-Platform-DEEP-V2.md` |
+| AI/ML平台 | `09-AI-ML-Platform-DEEP-V2.md` | `09-Healthcare-System-DEEP-V2.md` |
+| 医疗系统 | `09-Healthcare-System-DEEP-V2.md` | `09-Healthcare-System-DEEP-V2.md` |
+| 物流系统 | `10-Logistics-System-DEEP-V2.md` | `10-Logistics-System-DEEP-V2.md` |
+| 内容管理 | `12-Content-Management-DEEP-V2.md` | `12-Content-Management-DEEP-V2.md` |
 
 ### 3.2 性能优化 (08-Performance) - 4篇
 
@@ -198,14 +198,14 @@ git tag -a pre-refactor-$(date +%Y%m%d) -m "重构前完整备份"
 ### 重构前命名
 
 ```
-01.01-Relational-Algebra.md
+01.01-Relational-Algebra-DEEP-V2.md
 01.01-Relational-Algebra-DEEP-V2.md
 ```
 
 ### 重构后命名
 
 ```
-01.01-Relational-Algebra.md          # 原 DEEP-V2 版本
+01.01-Relational-Algebra-DEEP-V2.md          # 原 DEEP-V2 版本
 01.01-Relational-Archive.md          # 原基础版本 (归档)
 ```
 

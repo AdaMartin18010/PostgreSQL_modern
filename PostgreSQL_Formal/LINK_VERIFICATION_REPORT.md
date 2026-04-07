@@ -48,13 +48,13 @@
 | 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 27 | `#26-自然连接-natural-join---` | 2.6 自然连接 (Natural Join) - ⋈ | 可能的锚点: #26-自然连接-natural-join |
 | 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 28 | `#27-重命名-rename---ρ` | 2.7 重命名 (Rename) - ρ |  |
 | 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 29 | `#28-除法-division---` | 2.8 除法 (Division) - ÷ | 可能的锚点: #28-除法-division |
-| 01-Theory\01.01-Relational-Algebra.md | 19 | `#21-选择-selection---σ` | 2.1 选择 (Selection) - σ |  |
-| 01-Theory\01.01-Relational-Algebra.md | 20 | `#22-投影-projection---π` | 2.2 投影 (Projection) - π |  |
-| 01-Theory\01.01-Relational-Algebra.md | 21 | `#23-并集-union---` | 2.3 并集 (Union) - ∪ | 可能的锚点: #23-并集-union |
-| 01-Theory\01.01-Relational-Algebra.md | 22 | `#24-集合差-set-difference---` | 2.4 集合差 (Set Difference) - − | 可能的锚点: #24-集合差-set-difference |
-| 01-Theory\01.01-Relational-Algebra.md | 23 | `#25-笛卡尔积-cartesian-product---` | 2.5 笛卡尔积 (Cartesian Product) -... | 可能的锚点: #25-笛卡尔积-cartesian-product |
-| 01-Theory\01.01-Relational-Algebra.md | 24 | `#26-自然连接-natural-join---` | 2.6 自然连接 (Natural Join) - ⋈ | 可能的锚点: #26-自然连接-natural-join |
-| 01-Theory\01.01-Relational-Algebra.md | 25 | `#27-重命名-rename---ρ` | 2.7 重命名 (Rename) - ρ |  |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 19 | `#21-选择-selection---σ` | 2.1 选择 (Selection) - σ |  |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 20 | `#22-投影-projection---π` | 2.2 投影 (Projection) - π |  |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 21 | `#23-并集-union---` | 2.3 并集 (Union) - ∪ | 可能的锚点: #23-并集-union |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 22 | `#24-集合差-set-difference---` | 2.4 集合差 (Set Difference) - − | 可能的锚点: #24-集合差-set-difference |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 23 | `#25-笛卡尔积-cartesian-product---` | 2.5 笛卡尔积 (Cartesian Product) -... | 可能的锚点: #25-笛卡尔积-cartesian-product |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 24 | `#26-自然连接-natural-join---` | 2.6 自然连接 (Natural Join) - ⋈ | 可能的锚点: #26-自然连接-natural-join |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 25 | `#27-重命名-rename---ρ` | 2.7 重命名 (Rename) - ρ |  |
 | 01-Theory\01.04-Isolation-Levels-Adya-DEEP-V2.md | 13 | `#隔离级别形式化---adya模型深度分析-v2` | 隔离级别形式化 - Adya模型深度分析 V2 |  |
 | 01-Theory\01.04-Isolation-Levels-Adya-DEEP-V2.md | 14 | `#-目录` | 📑 目录 | 可能的锚点: #目录 |
 | 01-Theory\01.04-Isolation-Levels-Adya-DEEP-V2.md | 25 | `#311-g0---脏写-dirty-write` | 3.1.1 G0 - 脏写 (Dirty Write) |  |
@@ -80,7 +80,7 @@
 |------|------------|------|
 | 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 8 | [ ] 待修复 |
 | 11-Database-Centric-Architecture\00-ROADMAP-AND-ACTION-PLAN-v2.md | 8 | [ ] 待修复 |
-| 01-Theory\01.01-Relational-Algebra.md | 7 | [ ] 待修复 |
+| 01-Theory\01.01-Relational-Algebra-DEEP-V2.md | 7 | [ ] 待修复 |
 | 01-Theory\01.04-Isolation-Levels-Adya-DEEP-V2.md | 6 | [ ] 待修复 |
 | 00-Version-Specific\17-Released\INDEX.md | 3 | [ ] 待修复 |
 | 00-Version-Specific\17-Released\17.08-Upgrade-Guide-DEEP-V2.md | 2 | [ ] 待修复 |
@@ -150,9 +150,9 @@
 - `01-Theory\01.01-Relational-Algebra-DEEP-V2.md`: `#25-笛卡尔积-cartesian-product---` -> 可能的锚点: #25-笛卡尔积-cartesian-product
 - `01-Theory\01.01-Relational-Algebra-DEEP-V2.md`: `#26-自然连接-natural-join---` -> 可能的锚点: #26-自然连接-natural-join
 - `01-Theory\01.01-Relational-Algebra-DEEP-V2.md`: `#28-除法-division---` -> 可能的锚点: #28-除法-division
-- `01-Theory\01.01-Relational-Algebra.md`: `#23-并集-union---` -> 可能的锚点: #23-并集-union
-- `01-Theory\01.01-Relational-Algebra.md`: `#24-集合差-set-difference---` -> 可能的锚点: #24-集合差-set-difference
-- `01-Theory\01.01-Relational-Algebra.md`: `#25-笛卡尔积-cartesian-product---` -> 可能的锚点: #25-笛卡尔积-cartesian-product
+- `01-Theory\01.01-Relational-Algebra-DEEP-V2.md`: `#23-并集-union---` -> 可能的锚点: #23-并集-union
+- `01-Theory\01.01-Relational-Algebra-DEEP-V2.md`: `#24-集合差-set-difference---` -> 可能的锚点: #24-集合差-set-difference
+- `01-Theory\01.01-Relational-Algebra-DEEP-V2.md`: `#25-笛卡尔积-cartesian-product---` -> 可能的锚点: #25-笛卡尔积-cartesian-product
 - ... 还有 2 个
 
 ### 手动修复步骤
@@ -1287,7 +1287,7 @@
 - `#32-关系代数与sql的对应`
 - ... 还有 24 个锚点
 
-### 01-Theory\01.01-Relational-Algebra.md
+### 01-Theory\01.01-Relational-Algebra-DEEP-V2.md
 
 - `#关系代数-relational-algebra-形式化规范`
 - `#目录`
@@ -1335,7 +1335,7 @@
 - `#43-与ansi-sql的对应`
 - ... 还有 16 个锚点
 
-### 01-Theory\01.02-Transaction-Theory.md
+### 01-Theory\01.02-Transaction-Theory-DEEP-V2.md
 
 - `#事务理论-transaction-theory-形式化规范`
 - `#目录`
@@ -1383,7 +1383,7 @@
 - `#42-ansi-sql隔离级别形式化`
 - ... 还有 24 个锚点
 
-### 01-Theory\01.03-ACID-Formalization.md
+### 01-Theory\01.03-ACID-Formalization-DEEP-V2.md
 
 - `#acid-性质形式化规范`
 - `#目录`
@@ -1431,7 +1431,7 @@
 - `#42-形式化定义`
 - ... 还有 23 个锚点
 
-### 01-Theory\01.04-Isolation-Levels-Adya.md
+### 01-Theory\01.04-Isolation-Levels-Adya-DEEP-V2.md
 
 - `#隔离级别形式化-adya模型`
 - `#1-概念定义`
@@ -1470,7 +1470,7 @@
 - `#2pc-vs-3pc-性能对比模拟`
 - ... 还有 46 个锚点
 
-### 01-Theory\01.05-Distributed-Transactions.md
+### 01-Theory\01.05-Distributed-Transactions-DEEP-V2.md
 
 - `#分布式事务形式化`
 - `#1-概念定义`
@@ -1505,7 +1505,7 @@
 - `#51-检查点机制`
 - ... 还有 20 个锚点
 
-### 02-Storage\02.01-BufferPool-Formal.md
+### 02-Storage\02.01-BufferPool-DEEP-V2.md
 
 - `#buffer-pool-形式化规范`
 - `#1-概念定义`
@@ -1544,7 +1544,7 @@
 - `#53-btree结构可视化`
 - ... 还有 11 个锚点
 
-### 02-Storage\02.02-BTree-Formal.md
+### 02-Storage\02.02-BTree-DEEP-V2.md
 
 - `#btree-索引形式化规范`
 - `#1-概念定义`
@@ -1586,7 +1586,7 @@
 - `#53-同步级别对比矩阵`
 - ... 还有 11 个锚点
 
-### 02-Storage\02.03-WAL-Theory.md
+### 02-Storage\02.03-WAL-DEEP-V2.md
 
 - `#wal-write-ahead-logging-理论形式化`
 - `#1-概念定义`
@@ -1632,7 +1632,7 @@
 - `#5-hot-heap-only-tuple-机制`
 - ... 还有 19 个锚点
 
-### 02-Storage\02.04-HeapAM-Formal.md
+### 02-Storage\02.04-HeapAM-DEEP-V2.md
 
 - `#heap-access-method-形式化`
 - `#1-概念定义`
@@ -1667,7 +1667,7 @@
 - `#44-hash索引适用场景`
 - ... 还有 26 个锚点
 
-### 02-Storage\02.05-Index-Types-Matrix.md
+### 02-Storage\02.05-Index-Types-Matrix-DEEP-V2.md
 
 - `#index-types-对比矩阵`
 - `#1-索引类型对比`
@@ -1698,7 +1698,7 @@
 - `#5-物理计划选择`
 - ... 还有 21 个锚点
 
-### 03-Query\03.01-QueryOptimizer-CostModel.md
+### 03-Query\03.01-QueryOptimizer-CostModel-DEEP-V2.md
 
 - `#查询优化器代价模型形式化规范`
 - `#1-概念定义`
@@ -1744,7 +1744,7 @@
 - `#6-postgresql实现`
 - ... 还有 10 个锚点
 
-### 03-Query\03.02-Join-Algorithms-Analysis.md
+### 03-Query\03.02-Join-Algorithms-Analysis-DEEP-V2.md
 
 - `#连接算法形式化分析`
 - `#1-概念定义`
@@ -1784,7 +1784,7 @@
 - `#6-思维表征`
 - ... 还有 6 个锚点
 
-### 03-Query\03.03-Statistics-Derivation.md
+### 03-Query\03.03-Statistics-Derivation-DEEP-V2.md
 
 - `#statistics-derivation-形式化`
 - `#1-统计信息类型`
@@ -1818,7 +1818,7 @@
 - `#5-思维表征`
 - ... 还有 4 个锚点
 
-### 03-Query\03.04-JIT-Compilation.md
+### 03-Query\03.04-JIT-Compilation-DEEP-V2.md
 
 - `#jit-compilation-形式化`
 - `#1-jit原理`
@@ -1850,7 +1850,7 @@
 - `#54-mvcc时间线可视化`
 - ... 还有 20 个锚点
 
-### 04-Concurrency\01-MVCC-Formally-Specified.md
+### 04-Concurrency\01-MVCC-DEEP-V2.md
 
 - `#mvcc-multi-version-concurrency-control-形式化规范`
 - `#目录`
@@ -1898,7 +1898,7 @@
 - `#44-postgresql死锁检测实现`
 - ... 还有 19 个锚点
 
-### 04-Concurrency\04.02-Locking-Protocols.md
+### 04-Concurrency\04.02-Locking-Protocols-DEEP-V2.md
 
 - `#锁协议形式化规范`
 - `#1-概念定义`
@@ -1938,7 +1938,7 @@
 - `#52-核心实现`
 - ... 还有 15 个锚点
 
-### 04-Concurrency\04.03-Deadlock-Detection.md
+### 04-Concurrency\04.03-Deadlock-Detection-DEEP-V2.md
 
 - `#死锁检测形式化分析`
 - `#1-概念定义`
@@ -1981,7 +1981,7 @@
 - `#6-实例与反例`
 - ... 还有 3 个锚点
 
-### 04-Concurrency\04.04-SSI-Serializable.md
+### 04-Concurrency\04.04-SSI-Serializable-DEEP-V2.md
 
 - `#serializable-snapshot-isolation-ssi-形式化`
 - `#1-ssi原理`
@@ -2015,7 +2015,7 @@
 - `#42-连接池排队模型`
 - ... 还有 18 个锚点
 
-### 04-Concurrency\04.05-Concurrency-Performance.md
+### 04-Concurrency\04.05-Concurrency-Performance-DEEP-V2.md
 
 - `#concurrency-performance-形式化`
 - `#1-性能指标`
@@ -2049,7 +2049,7 @@
 - `#53-一致性谱系图`
 - ... 还有 4 个锚点
 
-### 05-Distributed\05.01-Logical-Replication-Model.md
+### 05-Distributed\05.01-Logical-Replication-DEEP-V2.md
 
 - `#逻辑复制形式化模型`
 - `#1-概念定义`
@@ -2091,7 +2091,7 @@
 - `#42-谓词下推与分片裁剪`
 - ... 还有 34 个锚点
 
-### 05-Distributed\05.02-Citus-Sharding-Theory.md
+### 05-Distributed\05.02-Citus-Sharding-Theory-DEEP-V2.md
 
 - `#citus-分片理论形式化`
 - `#1-概念定义`
@@ -2130,7 +2130,7 @@
 - `#35-活性保证`
 - ... 还有 45 个锚点
 
-### 05-Distributed\05.03-Patroni-Raft-Formal.md
+### 05-Distributed\05.03-Patroni-Raft-Formal-DEEP-V2.md
 
 - `#patroni-raft-形式化`
 - `#1-raft共识算法`
@@ -2164,7 +2164,7 @@
 - `#42-恢复算法`
 - ... 还有 20 个锚点
 
-### 05-Distributed\05.04-2PC-3PC-Protocol.md
+### 05-Distributed\05.04-2PC-3PC-Protocol-DEEP-V2.md
 
 - `#2pc-vs-3pc-形式化`
 - `#1-两阶段提交-2pc`
@@ -2199,7 +2199,7 @@
 - `#42-两阶段锁-2pl-模型`
 - ... 还有 22 个锚点
 
-### 06-FormalMethods\06.01-TLA-Model-Collection.md
+### 06-FormalMethods\06.01-TLA-Model-Collection-DEEP-V2.md
 
 - `#tla-模型集合`
 - `#1-tla模型列表`
@@ -2241,7 +2241,7 @@
 - `#4-知识图谱构建方法论`
 - ... 还有 37 个锚点
 
-### 06-FormalMethods\06.02-Concept-Relation-Graph.md
+### 06-FormalMethods\06.02-Concept-Relation-Graph-DEEP-V2.md
 
 - `#概念关系图谱`
 - `#1-概念图谱结构`
@@ -2278,7 +2278,7 @@
 - `#42-增量验证策略`
 - ... 还有 39 个锚点
 
-### 06-FormalMethods\06.03-Verification-Tools.md
+### 06-FormalMethods\06.03-Verification-Tools-DEEP-V2.md
 
 - `#verification-tools-形式化`
 - `#1-工具链`
@@ -2313,7 +2313,7 @@
 - `#32-库存扣减并发控制`
 - ... 还有 37 个锚点
 
-### 07-PracticalCases\01-ECommerce-Platform.md
+### 07-PracticalCases\01-ECommerce-Platform-DEEP-V2.md
 
 - `#案例1-电商平台postgresql架构`
 - `#1-业务场景`
@@ -2347,7 +2347,7 @@
 - `#43-最终一致性补偿机制`
 - ... 还有 34 个锚点
 
-### 07-PracticalCases\02-Financial-System.md
+### 07-PracticalCases\02-Financial-System-DEEP-V2.md
 
 - `#案例2-金融核心系统`
 - `#1-合规要求`
@@ -2380,7 +2380,7 @@
 - `#4-实时分析方案`
 - ... 还有 32 个锚点
 
-### 07-PracticalCases\03-IoT-Platform.md
+### 07-PracticalCases\03-IoT-Platform-DEEP-V2.md
 
 - `#案例3-物联网时序数据平台`
 - `#1-数据特征`
@@ -2411,7 +2411,7 @@
 - `#41-递归cte实现图查询`
 - ... 还有 17 个锚点
 
-### 07-PracticalCases\04-Social-Network.md
+### 07-PracticalCases\04-Social-Network-DEEP-V2.md
 
 - `#案例4-社交网络平台`
 - `#1-图数据建模`
@@ -2441,7 +2441,7 @@
 - `#61-分层备份架构`
 - ... 还有 18 个锚点
 
-### 07-PracticalCases\05-SaaS-MultiTenant.md
+### 07-PracticalCases\05-SaaS-MultiTenant-DEEP-V2.md
 
 - `#案例5-saas多租户系统`
 - `#1-多租户模式`
@@ -2471,7 +2471,7 @@
 - `#52-geojson-api`
 - ... 还有 13 个锚点
 
-### 07-PracticalCases\06-GIS-Application.md
+### 07-PracticalCases\06-GIS-Application-DEEP-V2.md
 
 - `#案例6-gis地理信息系统`
 - `#1-postgis`
@@ -2500,7 +2500,7 @@
 - `#52-查询优化策略`
 - ... 还有 15 个锚点
 
-### 07-PracticalCases\07-DataWarehouse.md
+### 07-PracticalCases\07-DataWarehouse-DEEP-V2.md
 
 - `#案例7-数据仓库`
 - `#1-场景`
@@ -2533,7 +2533,7 @@
 - `#5-最佳实践总结`
 - ... 还有 9 个锚点
 
-### 07-PracticalCases\08-Gaming-Platform.md
+### 07-PracticalCases\08-Gaming-Platform-DEEP-V2.md
 
 - `#案例8-游戏平台`
 - `#1-低延迟要求`
@@ -2564,7 +2564,7 @@
 - `#使用python-sqlalchemy-pgvector`
 - ... 还有 20 个锚点
 
-### 07-PracticalCases\09-AI-ML-Platform.md
+### 07-PracticalCases\09-Healthcare-System-DEEP-V2.md
 
 - `#案例9-aiml平台`
 - `#1-向量数据库`
@@ -2594,7 +2594,7 @@
 - `#51-数据安全最佳实践`
 - ... 还有 12 个锚点
 
-### 07-PracticalCases\10-Healthcare-System.md
+### 07-PracticalCases\09-Healthcare-System-DEEP-V2.md
 
 - `#案例10-医疗信息系统`
 - `#1-合规要求`
@@ -2624,7 +2624,7 @@
 - `#43-读写分离架构`
 - ... 还有 10 个锚点
 
-### 07-PracticalCases\11-Logistics-System.md
+### 07-PracticalCases\10-Logistics-System-DEEP-V2.md
 
 - `#案例11-物流追踪系统`
 - `#1-场景`
@@ -2654,7 +2654,7 @@
 - `#43-索引优化`
 - ... 还有 11 个锚点
 
-### 07-PracticalCases\12-Content-Management.md
+### 07-PracticalCases\12-Content-Management-DEEP-V2.md
 
 - `#案例12-内容管理系统`
 - `#1-全文搜索`
@@ -2684,7 +2684,7 @@
 - `#tpc-h数据加载优化脚本`
 - ... 还有 28 个锚点
 
-### 08-Performance\01-TPC-H-Benchmark.md
+### 08-Performance\01-TPC-H-Benchmark-DEEP-V2.md
 
 - `#tpc-h-基准测试报告`
 - `#1-测试环境`
@@ -2715,7 +2715,7 @@
 - `#5-高级优化技术`
 - ... 还有 11 个锚点
 
-### 08-Performance\02-Vector-Retrieval-Benchmark.md
+### 08-Performance\02-Vector-Retrieval-Benchmark-DEEP-V2.md
 
 - `#向量检索性能测试`
 - `#1-测试数据`
@@ -2745,7 +2745,7 @@
 - `#21-脚本语法与变量`
 - ... 还有 41 个锚点
 
-### 08-Performance\03-Concurrency-Benchmark.md
+### 08-Performance\03-Concurrency-Benchmark-DEEP-V2.md
 
 - `#并发性能基准测试`
 - `#1-测试场景`
@@ -2775,7 +2775,7 @@
 - `#自动调整-postgresql-12`
 - ... 还有 47 个锚点
 
-### 08-Performance\04-Memory-Benchmark.md
+### 08-Performance\04-Memory-Benchmark-DEEP-V2.md
 
 - `#内存性能基准测试`
 - `#1-测试配置`
@@ -2805,7 +2805,7 @@
 - `#51-配置参数详解`
 - ... 还有 15 个锚点
 
-### 09-Tools\01-vacuum-analyzer.md
+### 09-Tools\01-vacuum-analyzer-DEEP-V2.md
 
 - `#工具-vacuum分析器`
 
@@ -2833,7 +2833,7 @@
 - `#51-索引类型特性`
 - ... 还有 15 个锚点
 
-### 09-Tools\02-index-advisor.md
+### 09-Tools\02-index-advisor-DEEP-V2.md
 
 - `#工具-索引推荐器`
 
@@ -2861,7 +2861,7 @@
 - `#模式3-内存排序溢出`
 - ... 还有 20 个锚点
 
-### 09-Tools\03-slow-query-analyzer.md
+### 09-Tools\03-slow-query-analyzer-DEEP-V2.md
 
 - `#工具-慢查询分析器`
 
@@ -2889,7 +2889,7 @@
 - `#51-连接池大小计算`
 - ... 还有 27 个锚点
 
-### 09-Tools\04-connection-pool-monitor.md
+### 09-Tools\04-connection-pool-monitor-DEEP-V2.md
 
 - `#工具-连接池监控`
 
@@ -2917,7 +2917,7 @@
 - `#51-系统架构`
 - ... 还有 15 个锚点
 
-### 10-Visualization\01-MVCC-Visualization.md
+### 10-Visualization\01-MVCC-Visualization-DEEP-V2.md
 
 - `#mvcc可视化图表`
 - `#1-版本链示意图`
@@ -2947,7 +2947,7 @@
 - `#51-常见问题的图形特征`
 - ... 还有 15 个锚点
 
-### 10-Visualization\02-QueryPlan-Visualization.md
+### 10-Visualization\02-QueryPlan-Visualization-DEEP-V2.md
 
 - `#查询计划可视化`
 - `#1-执行计划树`
@@ -2977,7 +2977,7 @@
 - `#52-事务提交数据流`
 - ... 还有 11 个锚点
 
-### 10-Visualization\03-Architecture-Diagrams.md
+### 10-Visualization\03-Architecture-Diagrams-DEEP-V2.md
 
 - `#架构图集`
 - `#1-postgresql整体架构`
@@ -3007,7 +3007,7 @@
 - `#52-功能启用决策矩阵`
 - ... 还有 12 个锚点
 
-### 10-Visualization\04-Decision-Matrix-Collection.md
+### 10-Visualization\04-Decision-Matrix-Collection-DEEP-V2.md
 
 - `#决策矩阵集合`
 - `#1-索引选择矩阵`
@@ -3037,7 +3037,7 @@
 - `#5-架构重构里程碑`
 - ... 还有 18 个锚点
 
-### 10-Visualization\05-Timeline-Architecture-Evolution.md
+### 10-Visualization\05-Timeline-Architecture-Evolution-DEEP-V2.md
 
 - `#postgresql架构演进时间线`
 

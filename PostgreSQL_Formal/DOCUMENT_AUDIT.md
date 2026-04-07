@@ -81,23 +81,23 @@
 
 | 模块 | 保留文件 | 归档文件 |
 |------|----------|----------|
-| 01-Theory | `01.01-Relational-Algebra-DEEP-V2.md` | `01.01-Relational-Algebra.md` |
-| 01-Theory | `01.02-Transaction-Theory-DEEP-V2.md` | `01.02-Transaction-Theory.md` |
-| 01-Theory | `01.03-ACID-Formalization-DEEP-V2.md` | `01.03-ACID-Formalization.md` |
-| 01-Theory | `01.04-Isolation-Levels-Adya-DEEP-V2.md` | `01.04-Isolation-Levels-Adya.md` |
-| 01-Theory | `01.05-Distributed-Transactions-DEEP-V2.md` | `01.05-Distributed-Transactions.md` |
-| 02-Storage | `02.01-BufferPool-DEEP-V2.md` | `02.01-BufferPool-Formal.md` |
-| 02-Storage | `02.02-BTree-DEEP-V2.md` | `02.02-BTree-Formal.md` |
-| 02-Storage | `02.03-WAL-DEEP-V2.md` | `02.03-WAL-Theory.md` |
-| 02-Storage | `02.04-HeapAM-DEEP-V2.md` | `02.04-HeapAM-Formal.md` |
-| 02-Storage | `02.05-Index-Types-Matrix-DEEP-V2.md` | `02.05-Index-Types-Matrix.md` |
+| 01-Theory | `01.01-Relational-Algebra-DEEP-V2.md` | `01.01-Relational-Algebra-DEEP-V2.md` |
+| 01-Theory | `01.02-Transaction-Theory-DEEP-V2.md` | `01.02-Transaction-Theory-DEEP-V2.md` |
+| 01-Theory | `01.03-ACID-Formalization-DEEP-V2.md` | `01.03-ACID-Formalization-DEEP-V2.md` |
+| 01-Theory | `01.04-Isolation-Levels-Adya-DEEP-V2.md` | `01.04-Isolation-Levels-Adya-DEEP-V2.md` |
+| 01-Theory | `01.05-Distributed-Transactions-DEEP-V2.md` | `01.05-Distributed-Transactions-DEEP-V2.md` |
+| 02-Storage | `02.01-BufferPool-DEEP-V2.md` | `02.01-BufferPool-DEEP-V2.md` |
+| 02-Storage | `02.02-BTree-DEEP-V2.md` | `02.02-BTree-DEEP-V2.md` |
+| 02-Storage | `02.03-WAL-DEEP-V2.md` | `02.03-WAL-DEEP-V2.md` |
+| 02-Storage | `02.04-HeapAM-DEEP-V2.md` | `02.04-HeapAM-DEEP-V2.md` |
+| 02-Storage | `02.05-Index-Types-Matrix-DEEP-V2.md` | `02.05-Index-Types-Matrix-DEEP-V2.md` |
 
 #### 应用模块 (07-10)
 
 | 模块 | 保留文件示例 | 归档文件示例 |
 |------|-------------|-------------|
-| 07-PracticalCases | `01-ECommerce-Platform-DEEP-V2.md` | `01-ECommerce-Platform.md` |
-| 07-PracticalCases | `02-Financial-System-DEEP-V2.md` | `02-Financial-System.md` |
+| 07-PracticalCases | `01-ECommerce-Platform-DEEP-V2.md` | `01-ECommerce-Platform-DEEP-V2.md` |
+| 07-PracticalCases | `02-Financial-System-DEEP-V2.md` | `02-Financial-System-DEEP-V2.md` |
 | 07-PracticalCases | ... (共12篇) | ... (共12篇) |
 
 ## 预估收益
